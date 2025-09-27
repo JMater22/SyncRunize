@@ -1,63 +1,30 @@
-import express from "express";
-import axios from "axios";
+// server.js
+import express from 'express';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import morgan from 'morgan';
+import { errorHandler } from './utils/error_handler.js';
+
+dotenv.config();
 
 const app = express();
+
+// Middleware
+app.use(cors());
 app.use(express.json());
+app.use(morgan('dev'));
 
-// Algorithm engine base URL
-const ALGO_ENGINE_URL = "http://127.0.0.1:8000"; // later replace with Docker URL
-
-// Test SBERT similarity
-app.post("/api/sbert", async (req, res) => {
-  try {
-    const response = await axios.post(`${ALGO_ENGINE_URL}/sbert`, req.body);
-    res.json(response.data);
-  } catch (err) {
-    console.error("SBERT error:", err.message);
-    res.status(500).json({ error: "SBERT request failed" });
-  }
+// Test route (to check server)
+app.get('/', (req, res) => {
+  res.send('✅ Backend API running...');
 });
 
-// Agreement score
-app.post("/api/agreement", async (req, res) => {
-  try {
-    const response = await axios.post(`${ALGO_ENGINE_URL}/agreement`, req.body);
-    res.json(response.data);
-  } catch (err) {
-    console.error("Agreement error:", err.message);
-    res.status(500).json({ error: "Agreement request failed" });
-  }
-});
+// TODO: Import routes here (Step 2 onwards)
+// app.use('/api/users', userRoutes);
 
-// Trust score
-app.post("/api/trust", async (req, res) => {
-  try {
-    const response = await axios.post(`${ALGO_ENGINE_URL}/trust`, req.body);
-    res.json(response.data);
-  } catch (err) {
-    console.error("Trust error:", err.message);
-    res.status(500).json({ error: "Trust request failed" });
-  }
-});
+app.use(errorHandler);
 
-// Safest route (OSM)
-app.post("/api/route", async (req, res) => {
-  try {
-    const response = await axios.post(`${ALGO_ENGINE_URL}/route-osm`, req.body);
-    res.json(response.data);
-  } catch (err) {
-    console.error("Route error:", err.message);
-    res.status(500).json({ error: "Route request failed" });
-  }
-});
-
-// Root
-app.get("/", (req, res) => {
-  res.json({ message: "Node backend running and proxying algorithm engine!" });
-});
-
-// Start server
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Node server running at http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
