@@ -1,30 +1,55 @@
-// server.js
-import express from 'express';
-import dotenv from 'dotenv';
-import cors from 'cors';
-import morgan from 'morgan';
-import { errorHandler } from './utils/error_handler.js';
+import express from "express";
+import bodyParser from "body-parser";
+import cors from "cors";
+import dotenv from "dotenv";
+
+import userRoutes from "./routes/user_routes.js";
+import postRoutes from "./routes/post_routes.js";
+import commentRoutes from "./routes/comment_routes.js";
+import likeRoutes from "./routes/like_routes.js";
+import followRoutes from "./routes/follow_routes.js";
+
+import groupRoutes from "./routes/group_routes.js";
+import groupMemberRoutes from "./routes/group_member_routes.js";
+import groupPostRoutes from "./routes/group_post_routes.js";
+
+import hazardRoutes from "./routes/hazard_routes.js";
+import officialIncidentRoutes from "./routes/official_incident_routes.js";
+
+import challengeRoutes from "./routes/challenge_routes.js";
+import badgeRoutes from "./routes/badge_routes.js";
+
+import notificationRoutes from "./routes/notification_routes.js";
+import moderationRoutes from "./routes/moderation_routes.js";
 
 dotenv.config();
 
 const app = express();
-
-// Middleware
 app.use(cors());
-app.use(express.json());
-app.use(morgan('dev'));
+app.use(bodyParser.json());
 
-// Test route (to check server)
-app.get('/', (req, res) => {
-  res.send('✅ Backend API running...');
-});
+// ---------------- Routes ----------------
+app.use("/api/users", userRoutes);
+app.use("/api/posts", postRoutes);
+app.use("/api/comments", commentRoutes);
+app.use("/api/likes", likeRoutes);
+app.use("/api/follows", followRoutes);
 
-// TODO: Import routes here (Step 2 onwards)
-// app.use('/api/users', userRoutes);
+app.use("/api/groups", groupRoutes);
+app.use("/api/group-members", groupMemberRoutes);
+app.use("/api/group-posts", groupPostRoutes);
 
-app.use(errorHandler);
+app.use("/api/hazards", hazardRoutes);
+app.use("/api/official-incidents", officialIncidentRoutes);
+
+app.use("/api/challenges", challengeRoutes);
+app.use("/api/badges", badgeRoutes);
+
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/moderation", moderationRoutes);
+// -----------------------------------------
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
