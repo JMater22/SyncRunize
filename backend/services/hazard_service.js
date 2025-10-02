@@ -1,19 +1,29 @@
 // services/hazard_service.js
-// Handles hazard trust/agreement scoring via Python FastAPI
-
 import axios from "axios";
 
-const HAZARD_API_URL = process.env.HAZARD_API_URL || "http://localhost:8000";
+const ALGO_ENGINE_URL = "http://localhost:8000"; // FastAPI engine
 
-export const recalculateHazardScores = async (reportId) => {
+// Agreement scoring
+export const computeAgreement = async (report, neighbors) => {
   try {
-    // Stub call — adjust endpoint once Python backend is ready
-    const res = await axios.post(`${HAZARD_API_URL}/hazards/recalculate`, {
-      reportId,
+    const res = await axios.post(`${ALGO_ENGINE_URL}/agreement`, {
+      report,
+      neighbors,
     });
-    return res.data;
+    return res.data.agreement_score;
   } catch (err) {
-    console.error("Hazard service error:", err.message);
-    throw err;
+    console.error("Agreement error:", err.message);
+    return null;
+  }
+};
+
+// Trust scoring
+export const computeTrust = async (reports) => {
+  try {
+    const res = await axios.post(`${ALGO_ENGINE_URL}/trust`, reports);
+    return res.data.trust_score;
+  } catch (err) {
+    console.error("Trust error:", err.message);
+    return null;
   }
 };
