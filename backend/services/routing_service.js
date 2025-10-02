@@ -1,20 +1,18 @@
 // services/routing_service.js
-// Calls Python FastAPI for Dijkstra safe routing
-
 import axios from "axios";
 
-const ROUTING_API_URL = process.env.ROUTING_API_URL || "http://localhost:8000";
+const ALGO_ENGINE_URL = "http://localhost:8000";
 
-export const getSafeRoute = async (startLat, startLng, endLat, endLng) => {
+export const getSafestRoute = async (start, end, alpha = 0.5) => {
   try {
-    // Stub call — adjust endpoint later
-    const res = await axios.post(`${ROUTING_API_URL}/route`, {
-      start: [startLat, startLng],
-      end: [endLat, endLng],
+    const res = await axios.post(`${ALGO_ENGINE_URL}/route-osm`, {
+      start,
+      end,
+      alpha,
     });
-    return res.data;
+    return res.data.coordinates;
   } catch (err) {
-    console.error("Routing service error:", err.message);
-    throw err;
+    console.error("Routing error:", err.message);
+    return [];
   }
 };

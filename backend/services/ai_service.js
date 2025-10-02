@@ -1,22 +1,30 @@
 // services/ai_service.js
-// Handles AI tasks (summarization, semantic similarity, etc.)
+import axios from "axios";
 
-import OpenAI from "openai";
+const OLLAMA_URL = "http://localhost:11434/api/generate"; // Ollama local endpoint
+const MODEL = "llama3.1:8b";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "your-api-key-here",
-});
-
-export const summarizeText = async (text) => {
+export const summarizeHazard = async (hazard) => {
   try {
-    // Stub call — requires valid OpenAI API key in .env
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      messages: [{ role: "user", content: `Summarize this: ${text}` }],
+    const prompt = `
+Summarize this hazard report in simple words for a runner:
+
+Type: ${hazard.type}
+Description: ${hazard.description}
+Location: (${hazard.lat}, ${hazard.lng})
+Trust Score: ${hazard.trust_score || "N/A"}
+Agreement Score: ${hazard.agreement_score || "N/A"}
+`;
+
+    const res = await axios.post(OLLAMA_URL, {
+      model: MODEL,
+      prompt,
+      stream: false,
     });
-    return completion.choices[0].message.content;
+
+    return res.data.response.trim();
   } catch (err) {
-    console.error("AI service error:", err.message);
-    return "AI summary unavailable (stub).";
+    console.error("AI summary error:", err.message);
+    return "⚠️ Unable to generate summary.";
   }
 };
