@@ -1,0 +1,255 @@
+:root.md{
+  --ion-background-color: #e8f0f7;
+}
+
+
+/* Desktop tabs styling with integrated title */
+.desktop-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  background:#2C3E50;
+  color: white;
+  min-height: 60px;
+}
+
+/* Responsive grid layout */
+.page-layout-enhanced {
+  display: block; /* Default to block for mobile */
+  padding: 16px 12px 80px;
+  max-width: 100%;
+  margin: 0 auto;
+  
+}
+
+/* Desktop grid layout */
+@media (min-width: 769px) {
+  .page-layout-enhanced {
+    display: grid;
+    grid-template-columns: 320px 1fr 340px;
+    gap: 24px;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+    align-items: start;
+    min-height: 100vh;
+  }
+}
+
+/* Desktop header spacing - ONLY on desktop */
+@media (min-width: 769px) {
+  .desktop-header ~ ion-router-outlet,
+  ion-page#main-content {
+    padding-top: 80px;
+  }
+  
+  ion-content {
+    --padding-top: 80px !important;
+  }
+}
+
+/* Mobile - remove desktop padding */
+@media (max-width: 768px) {
+  ion-page#main-content {
+    padding-top: 0 !important;
+  }
+  
+  ion-content {
+    --padding-top: 0px !important;
+    padding-top: 0 !important;
+  }
+  
+  /* Ensure mobile header has proper spacing */
+  .mobile-header {
+    display: block;
+  }
+  
+  /* Mobile layout adjustments */
+  .page-layout-enhanced {
+    padding: 16px 12px 60px; /* Less bottom padding on mobile */
+  }
+}
+
+/* Title container within tabs */
+.tab-title-container {
+  flex: 0 0 auto;
+  margin-right: 2rem;
+}
+
+.tab-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 1px;
+  margin: 0;
+  padding: 0;
+}
+
+
+/* Responsive title positioning */
+@media (min-width: 769px) {
+  .tab-title {
+    margin-left: 100px;
+  }
+}
+
+@media (max-width: 768px) {
+  .tab-title {
+    margin-left: 0;
+    font-size: 1.2rem; /* Smaller on mobile */
+  }
+}
+
+/* Tab buttons container */
+.tab-buttons-container {
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 900;
+}
+
+.ion-page menu-content menu-content-overlay menu-content-open {
+  background:#2C3E50;
+}
+/* Individual tab button styling */
+.desktop-tabs ion-tab-button {
+  --color: rgba(255, 255, 255, 0.7);
+  --color-selected: white;
+  --ripple-color: rgba(255, 255, 255, 0.2);
+  min-width: 80px;
+  font-size: 0.9rem;
+}
+
+.desktop-tabs ion-tab-button:hover {
+  --color: white;
+}
+
+/* Mobile menu button (hidden on desktop) */
+.mobile-menu-button {
+  display: none;
+}
+
+ion-footer,
+ion-footer ion-toolbar,
+ion-tab-bar,
+.footer,
+.footer ion-toolbar {
+  --background: #2C3E50 !important;
+  --color: white !important;
+  background: #2C3E50 !important;
+}
+
+.mobile-header {
+  --background: #2C3E50; /* Change this to your desired color */
+}
+
+.mobile-header ion-toolbar {
+  --background: #2C3E50;/* Same color for the toolbar */
+  --color: white; /* Text color */
+}
+
+.mobile-header ion-title {
+  --color: white; /* Title text color */
+}
+
+/* Mobile menu button styling */
+.mobile-menu-button {
+  --color: white; /* Menu button color */
+}
+
+/* Responsive design breakpoints */
+@media (max-width: 768px) {
+  /* Hide desktop elements */
+  .desktop-tabs {
+    display: none !important;
+  }
+  
+  .desktop-header {
+    display: none !important;
+  }
+  
+  /* Show mobile elements */
+  .mobile-menu-button {
+    display: flex !important;
+  }
+  
+  .mobile-header {
+    display: block !important;
+  }
+  
+  /* Mobile-specific adjustments */
+  .footer {
+    display: block;
+  }
+  
+  /* Adjust mobile content spacing */
+  ion-tabs {
+    padding-top: 0;
+  }
+}
+
+@media (min-width: 769px) {
+  /* Desktop specific styling */ 
+  .tab-title-container {
+    margin-right: 3rem;
+  }
+  
+  .tab-buttons-container {
+    gap: 1rem;
+  }
+  
+  .desktop-tabs ion-tab-button {
+    min-width: 100px;
+    font-size: 1rem;
+  }
+  
+  /* Hide mobile elements on desktop */
+  .mobile-header {
+    display: none !important;
+  }
+  
+  .footer {
+    display: none; /* Hide footer on desktop if not needed */
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .page-layout-enhanced {
+    grid-template-columns: 280px 1fr 300px;
+    gap: 16px;
+    padding: 20px 16px 80px;
+    background: #2C3E50;
+  }
+  
+  .tab-title {
+    margin-left: 50px;
+    font-size: 1.3rem;
+  }
+}
+
+/* Large desktop adjustments */
+@media (min-width: 1441px) {
+  .page-layout-enhanced {
+    max-width: 1600px;
+    grid-template-columns: 360px 1fr 380px;
+    gap: 32px;
+  }
+}
+
+/* Alternative approach - if you want the title more integrated */
+.desktop-tabs.integrated-title {
+  background: linear-gradient(90deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 100%);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.desktop-tabs.integrated-title .tab-title {
+  background: linear-gradient(45deg, #fff, #f0f0f0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+}

@@ -1,0 +1,64 @@
+/* ✅ Desktop Tab Bar */
+.desktop-tabs {
+  background: #2C3E50; 
+  border-bottom: 2px solid var(--ion-color-medium, #ccc);
+  display: flex;
+  justify-content: center;
+  padding: 0 20px;
+  height: 56px;
+  color: #fff;
+}
+
+/* ✅ Force ALL Ionic Tab Bars (desktop + mobile) */
+ion-tab-bar {
+  --background: #2C3E50;   /* correct way */
+  background: #2C3E50 !important; /* fallback */
+  --border-color: var(--ion-color-medium, #ccc);
+  --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --height: 56px;
+  --min-height: 56px;   
+  --padding-start: 0;
+  --padding-end: 0;
+  --ion-safe-area-left: 0px;
+  --ion-safe-area-right: 0px;
+}
+
+/* ✅ Tab Buttons */
+.desktop-tabs ion-tab-button {
+  --color: #bbb;
+  --color-selected: #8cb814;
+  --ripple-color: #8cb814;
+  font-weight: 500;
+  text-transform: capitalize;
+  transition: color 0.2s ease-in-out, border-bottom 0.2s ease-in-out;
+  padding: 0 10px;
+}
+
+/* ✅ Active Tab Highlight */
+.desktop-tabs ion-tab-button.tab-selected {
+  --color: #8cb814;
+  border-bottom: 3px solid #8cb814;
+}
+
+/* ✅ Tab Label Styling */
+.desktop-tabs ion-label {
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  color: #fff;
+}
+
+.toolbar-title-default md in-toolbar hydrated {
+  --color: #2C3E50;
+}
+/* ✅ Mobile/Desktop toggle */
+.mobile-header {
+  display: none;
+}
+@media (max-width: 768px) {
+  .desktop-tabs {
+    display: none;
+  }
+  .mobile-header {
+    display: block;
+  }
+}

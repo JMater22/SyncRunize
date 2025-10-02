@@ -1,0 +1,501 @@
+/* Main layout */
+.login-page-content2 {
+  display: flex;
+  height: 800px;
+  background: #fff;
+}
+
+/* ----------------------------- */
+/* Container */ 
+/* ----------------------------- */
+.form-container2 {
+  flex: 1;
+  max-width: 480px;
+  min-width: 360px;
+  padding: 3rem 2rem;
+  height: 900px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.form-content2 {
+  max-width: 360px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ----------------------------- */
+/* Header */
+/* ----------------------------- */
+.form-header2 {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.form-title2 {
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.5px;
+  text-align: center;
+}
+
+.form-subtitle2 {
+  color: #7f8c8d;
+  font-size: 0.95rem;
+  margin: 0;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* ----------------------------- */
+/* Fields */
+/* ----------------------------- */
+.form-fields2 {
+  margin-bottom: 1.75rem;
+}
+
+.input-group2 {
+  margin-bottom: 1.25rem;
+}
+
+label.input-label2 {
+  display: block;
+  color: #2c3e50;
+  font-size: 0.80rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+/* Inputs */
+ion-input.custom-input2 {
+  --background: #fcfcfc;
+  color: #000000;
+  --border-color: #000000a4;
+  --border-radius: 3px;
+  --border-style: solid;
+  --border-width: 1px;
+  --min-height: 46px;
+  font-size: 1.00rem;
+  transition: all 0.2s ease;
+}
+
+ion-input.custom-input2.ion-focused {
+  --border-color: #3498db;
+  --box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+}
+
+/* ----------------------------- */
+/* Options */
+/* ----------------------------- */
+.form-options2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  font-size: 0.85rem;
+}
+
+.checkbox-wrapper2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox-label2 {
+  font-size: 0.85rem;
+  color: #2c3e50;
+}
+
+.forgot-link2 {
+  color: #3498db;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+/* ----------------------------- */
+/* Buttons */
+/* ----------------------------- */
+ion-button.submit-button2 {
+  --background: #92C628;
+  --background-activated: #e67e22;
+  --color: #2c3e50;
+  --border-radius: 4px;
+  height: 48px;
+  font-weight: 600;
+  margin-bottom: 1.75rem;
+  font-size: 1rem;
+  letter-spacing: 0.3px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-transform: none;
+}
+
+ion-button.submit-button2:hover {
+  transform: translateY(-1px);
+  --box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ----------------------------- */
+/* Social Buttons */
+/* ----------------------------- */
+.social-login2 {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.75rem;
+}
+
+ion-button.social-button {
+  --border-color: #92C628;
+  --border-style: solid;
+  --border-width: 1px;
+  --color: #2c3e50;
+  --background: #fff;
+  --border-radius: 8px;
+  height: 44px;
+  font-weight: 500;
+  text-transform: none;
+  flex: 1;
+  font-size: 0.85rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+ion-button.social-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+/* ----------------------------- */
+/* Login Section */
+/* ----------------------------- */
+.login-section2 {
+  text-align: center;
+  color: #7f8c8d;
+  font-size: 14px;
+  margin-top: 1.25rem;
+}
+
+.login-link2 {
+  color: #3498db;
+  font-weight: 600;
+  text-decoration: underline;
+  margin-left: 0.25rem;
+  transition: color 0.2s ease;
+}
+
+.login-link2:hover {
+  color: #2980b9;
+}
+
+/* Right side - Visual container */
+.visual-container2 {
+  flex: 1.2;
+  position: relative;
+  overflow: hidden;
+  background: #e8f0f7;
+}
+
+.visual-content2 {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Main image styling */
+.main-image2 {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+/* Image fallback styling */
+.image-fallback2 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: #f8f9fa;
+}
+
+.fallback-content2 {
+  text-align: center;
+  color: #2c3e50;
+}
+
+.fallback-content2 h3 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #2c3e50;
+}
+
+.fallback-content2 p {
+  font-size: 1.1rem;
+  color: #7f8c8d;
+}
+
+/* Animation */
+.form-container2 {
+  animation: slideInLeft 0.6s ease-out;
+}
+
+.visual-container2 {
+  animation: slideInRight 0.6s ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .login-page-content2 {
+    flex-direction: column;
+  }
+  
+  .visual-container2 {
+    min-height: 40vh;
+    order: -1;
+    flex: none;
+  }
+  
+  .form-container2 {
+    order: 1;
+    min-width: auto;
+    max-width: none;
+    flex: none;
+  }
+}
+
+/* Mobile styles - Full form expansion with no scrolling */
+@media (max-width: 768px) {
+  /* Prevent scrolling on the main container */
+  .login-page-content2 {
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden; /* Prevent scrolling */
+    position: fixed; /* Fix to viewport */
+    top: 0;
+    left: 0;
+  }
+  
+  .form-container2 {
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    min-width: none;
+    padding: 1.5rem;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden; /* Prevent container scrolling */
+    position: relative;
+  }
+
+    .visual-container2 {
+    display: none !important;
+  }
+  
+  .form-content2 {
+    max-width: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: visible;
+    flex-shrink: 1;
+  }
+  
+  /* Adjust spacing to fit in viewport */
+  .form-header2 {
+    margin-bottom: 1.5rem; /* Reduced spacing */
+  }
+  
+  .form-title2 {
+    font-size: 1.75rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .form-subtitle2 {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-fields2 {
+    margin-bottom: 1.5rem;
+  }
+  
+  .input-group2 {
+    margin-bottom: 1rem;
+  }
+  
+  .custom-input2 {
+    --min-height: 48px;
+    font-size: 1rem;
+  }
+  
+  .form-options2 {
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  
+  .checkbox-wrapper2 {
+    order: 1;
+  }
+  
+  .forgot-link2 {
+    order: 2;
+    width: 100%;
+    text-align: center;
+    margin-top: 0.5rem;
+  }
+  
+  .submit-button2 {
+    height: 48px;
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+  }
+  
+  .social-login2 {
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .social-button {
+    height: 44px;
+    font-size: 0.9rem;
+  }
+  
+  .login-section2 {
+    margin-top: 1rem;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-page-content2 {
+    position: fixed;
+    top: 0;
+    left: 0;
+    overflow: hidden;
+  }
+  
+  .form-container2 {
+    padding: 1rem;
+    overflow: hidden;
+  }
+  
+  .form-title2 {
+    font-size: 1.5rem;
+  }
+  
+  .form-subtitle2 {
+    font-size: 0.9rem;
+  }
+  
+  .form-header2 {
+    margin-bottom: 1.25rem;
+  }
+  
+  .input-group2 {
+    margin-bottom: 0.9rem;
+  }
+  
+  .custom-input2 {
+    --min-height: 46px;
+    font-size: 1rem;
+  }
+  
+  .form-options2 {
+    margin-bottom: 1rem;
+  }
+  
+  .checkbox-label2 {
+    font-size: 0.8rem;
+  }
+  
+  .forgot-link2 {
+    font-size: 0.8rem;
+  }
+  
+  .submit-button2 {
+    height: 46px;
+    font-size: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  
+  .social-button {
+    height: 42px;
+    font-size: 0.85rem;
+  }
+  
+  .social-login2 {
+    margin-bottom: 1.25rem;
+  }
+  
+  .login-section2 {
+    margin-top: 0.75rem;
+    font-size: 13px;
+  }
+}
+
+/* Ensure no background colors bleed through */
+.login-page-content2::before {
+  display: none;
+}
+
+/* Loading state for submit button */
+.submit-button2.loading {
+  --color: rgba(44, 62, 80, 0.6);
+  cursor: not-allowed;
+}
+
+.submit-button2.loading::after {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-left: 0.5rem;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

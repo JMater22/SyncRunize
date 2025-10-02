@@ -1,0 +1,33 @@
+/* Container for the image + text */
+.mobile-app-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+  padding: 20px;
+}
+
+/* Text wrapper */
+.mobile-app-text h2 {
+  font-size: 40px;
+  font-weight: 700;
+  color: #2c3e50; /* dark blue-gray */
+  margin-bottom: 12px;
+}
+
+.mobile-app-text p {
+  font-size: 18px;
+  line-height: 1.6;
+  color: #555;   /* softer gray */
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.mobile-app-info img {
+  width: 700px;      /* reduce size */
+  max-width: 100%;    /* stay responsive */
+  height: auto;      /* keep aspect ratio */
+  margin-top: 100px;
+  margin-bottom: 5px;
+}

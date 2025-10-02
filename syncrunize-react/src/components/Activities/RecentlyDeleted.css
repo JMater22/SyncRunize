@@ -1,0 +1,460 @@
+/* ===== Recently Deleted Page Container ===== */
+.ion-padding {
+  padding: 100px !important;
+  background-color: #f7f9fc;
+  min-height: 100vh;
+  margin-left: 50px;
+}
+
+.recently-deleted-content {
+  background-color: #f7f9fc;
+  min-height: 100vh;
+}
+
+/* ===== Header ===== */ 
+.deleted-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center; 
+  margin-bottom: 16px;
+  gap: 16px;
+  padding: 16px;
+}
+
+.deleted-header h2 {
+  font-size: 28px;
+  font-weight: bold;
+  color: #2c3e50;
+  margin: 0;
+  text-align: center;
+  order: 1;
+}
+
+/* ===== Search + Go Back ===== */
+.search-and-link {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+  max-width: 400px;
+  order: 2;
+}
+
+ion-searchbar.RecentlyDeleted-searchbar {
+  --background: #ffffff;
+  --color: #333;
+  --placeholder-color: #999999;
+  --icon-color: #666;
+  --border-radius: 25px;
+  --box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  width: 100%;
+  margin: 0;
+  height: 44px;
+}
+
+.go-back-link {
+  --background: #92C628; /* green */
+  --color: #fff;
+  --border-radius: 25px;
+  font-weight: 600;
+  --padding-start: 24px;
+  --padding-end: 24px;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  --box-shadow: 0 2px 8px rgba(146, 198, 40, 0.3);
+  text-transform: none;
+  height: 44px;
+  font-size: 16px;
+  width: 100%;
+  margin: 0;
+}
+
+.go-back-link:hover {
+  --background: #7ba922;
+}
+
+/* ===== Summary Section ===== */
+.activity-count {
+  text-align: center;
+  margin: 24px 16px 32px 16px;
+  order: 3;
+}
+
+.activity-count-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: #666666;
+  margin: 0;
+}
+
+.activity-count .count-number {
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.activity-count .bold-text {
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+/* ===== Desktop Table View ===== */
+.activities-table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: calc(100% - 320px);
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 0 !important;
+}
+
+.activities-table ion-row:first-child {
+  font-weight: bold;
+  background-color: #ecf0f1;
+  color: #2c3e50;
+}
+
+.activities-table ion-row:first-child ion-col {
+  font-weight: bold;
+  color: #2c3e50;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.activities-table ion-row {
+  border-bottom: 1px solid #e0e0e0;
+  align-items: center;
+  transition: background 0.2s ease;
+  margin: 0;
+  padding: 0;
+}
+
+.activities-table ion-row:last-child {
+  border-bottom: none;
+}
+
+.activities-table ion-row:not(:first-child):hover {
+  background-color: #f8fafd;
+}
+
+.activities-table ion-col {
+  padding: 14px 12px;
+  font-size: 15px;
+  color: #333;
+  border: none;
+  margin: 0;
+}
+
+.activities-table ion-row:not(:first-child) ion-col:nth-child(2) {
+  font-weight: 500;
+}
+
+.activities-table ion-button {
+  --color: #3498db;
+  font-size: 14px;
+  text-transform: none;
+  --padding-start: 8px;
+  --padding-end: 8px;
+  --padding-top: 4px;
+  --padding-bottom: 4px;
+  margin: 0 2px;
+}
+
+.activities-table ion-button:hover {
+  --color: #1d6fa5;
+}
+
+.activities-table ion-button.delete-btn {
+  --color: #e74c3c;
+}
+
+.activities-table ion-button.delete-btn:hover {
+  --color: #c0392b;
+}
+
+/* ===== Mobile Card View ===== */
+.cards-container {
+  max-width: calc(100% - 320px);
+  margin: 0 auto;
+  display: none; /* Hidden by default, shown on mobile */
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  padding-bottom: 20px;
+}
+
+.activity-card {
+  margin-bottom: 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background: #ffffff !important;
+}
+
+.activity-card ion-card-content {
+  padding: 16px;
+  background: #ffffff !important;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.activity-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50 !important;
+  margin: 0;
+  flex: 1;
+}
+
+.activity-date {
+  font-size: 14px;
+  color: #7f8c8d !important;
+  white-space: nowrap;
+  margin-left: 12px;
+}
+
+.activity-stats {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #95a5a6 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50 !important;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.card-actions ion-button {
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --padding-top: 8px;
+  --padding-bottom: 8px;
+  font-size: 14px;
+  text-transform: none;
+}
+
+.restore-btn {
+  --color: #27ae60;
+}
+
+.restore-btn:hover {
+  --color: white;
+}
+
+.delete-btn {
+  --color: #e74c3c;
+}
+
+.delete-btn:hover {
+  --color: white;
+}
+
+/* ===== Responsive Controls ===== */
+.desktop-only {
+  display: block;
+}
+
+.mobile-only {
+  display: none;
+}
+
+/* ===== No Results ===== */
+.no-results {
+  text-align: center;
+  padding: 40px 20px;
+  color: #7f8c8d;
+  font-size: 16px;
+}
+
+/* ===== Desktop Overrides ===== */
+@media (min-width: 769px) {
+  .deleted-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0;
+    margin-bottom: 24px;
+  }
+
+  .deleted-header h2 {
+    font-size: 32px;
+    margin-left: 160px;
+    order: unset;
+  }
+
+  .search-and-link {
+    flex-direction: row;
+    max-width: unset;
+    width: auto;
+    order: unset;
+  }
+
+  ion-searchbar.RecentlyDeleted-searchbar {
+    width: 260px;
+    margin-right: 100px;
+    margin-top: 20px;
+    --border-radius: 10px;
+  }
+
+  .go-back-link {
+    width: auto;
+    margin-right: 240px;
+    margin-top: 20px;
+    --border-radius: 20px;
+  }
+
+  .activity-count {
+    text-align: left;
+    margin: 10px 0 20px;
+  }
+
+  .activity-count-text {
+    margin-left: 160px;
+  }
+}
+
+/* ===== Responsive Breakpoints ===== */
+@media (max-width: 768px) {
+  .ion-padding {
+    padding: 20px !important;
+    margin-left: 0;
+  }
+
+  .recently-deleted-content {
+    padding: 20px !important;
+    margin-left: 0;
+  }
+
+  /* FORCE HIDE desktop table on mobile - Multiple selectors for safety */
+  .activities-table,
+  .desktop-only,
+  ion-grid.activities-table,
+  .desktop-only .activities-table,
+  .desktop-only ion-grid,
+  .activities-table ion-row,
+  .activities-table ion-col {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* FORCE SHOW mobile cards */
+  .mobile-only,
+  .cards-container {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  .cards-container {
+    max-width: 100%;
+    margin: 0;
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+    padding-bottom: 20px;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  }
+
+  .activity-card {
+    background: #ffffff !important;
+    border: 1px solid #e0e0e0;
+  }
+
+  .activity-card ion-card-content {
+    background: #ffffff !important;
+    color: #333333 !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .recently-deleted-content {
+    padding: 16px !important;
+  }
+  
+  .deleted-header {
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .deleted-header h2 {
+    font-size: 24px;
+  }
+  
+  .search-and-link {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .cards-container {
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .activity-card {
+    background: #ffffff !important;
+    border: 1px solid #e0e0e0;
+  }
+
+  .activity-card ion-card-content {
+    padding: 12px;
+    background: #ffffff !important;
+  }
+
+  .activity-title {
+    font-size: 16px;
+    color: #2c3e50 !important;
+  }
+
+  .activity-date {
+    font-size: 13px;
+    color: #7f8c8d !important;
+  }
+
+  .activity-stats {
+    gap: 16px;
+  }
+
+  .stat-label {
+    color: #95a5a6 !important;
+  }
+
+  .stat-value {
+    font-size: 15px;
+    color: #2c3e50 !important;
+  }
+
+  .card-actions ion-button {
+    --padding-start: 10px;
+    --padding-end: 10px;
+    font-size: 13px;
+  }
+}

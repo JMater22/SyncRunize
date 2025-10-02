@@ -1,0 +1,149 @@
+/* Title */
+.my-routes-title {
+  font-size: 32px;
+  font-weight: bold;
+  color: #2c3e50;
+  margin-left: 260px; /* desktop */
+}
+
+/* Row layout */
+.search-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 20px 0;
+  gap: 16px;
+  flex-wrap: wrap; /* allow wrapping */
+}
+
+/* Searchbar container */
+.searchbar-container {
+  margin-top: 20px;
+  margin-left: 240px; /* desktop */
+  flex: 1;
+} 
+
+/* Button column */
+.button-col {
+  margin-top: 20px;
+  margin-right: 240px; /* desktop */
+  display: flex;
+  justify-content: flex-end;
+}
+
+ion-button.create-route-btn {
+  --background: #92C628;
+  --color: #fff;
+  border-radius: 20px;
+  font-weight: bold;
+  --transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.create-route-btn:hover {
+  --background: #c0392b;
+}
+
+/* Routes grid container */
+.routes-container {
+  padding: 0 16px;
+  margin-top: 20px;
+  margin-left: 150px;
+  margin-right: 150px;
+}
+
+/* Searchbar styling */
+.ion-align-items-center.ion-justify-content-between ion-searchbar.sc-ion-searchbar-md-h {
+  --background: #ffffff;
+  --color: #000000;
+  --placeholder-color: #757070;
+  --icon-color: #817e7e;
+  --border-radius: 20px;
+  --height: 40px;
+  --border-color: #000000;
+  --border-width: 1px;
+  --border-style: solid;
+  width: 100%;
+  min-width: auto; /* ✅ let it shrink on mobile */
+  max-width: 380px; /* ✅ cap for larger screens */
+}
+
+/* Card styles */
+.custom-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  gap: 30px;
+}
+
+.custom-card,
+.custom-card-content,
+.custom-card ion-card-title {
+  color: #161515;
+  font-weight: 700;
+}
+
+/* Background */
+:root.md {
+  --ion-background-color: #ffffff;
+}
+
+/* ✅ Tablet */
+@media (max-width: 1024px) {
+  .my-routes-title {
+    font-size: 28px;
+    margin-left: 20px;
+  }
+
+  .searchbar-container {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .button-col {
+    margin-right: 0;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .search-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .routes-container {
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+}
+
+/* ✅ Mobile */
+@media (max-width: 768px) {
+  .my-routes-title {
+    font-size: 22px;
+    text-align: center;
+    margin: 80px auto 16px;
+  }
+
+  .search-row {
+    gap: 12px;
+  }
+
+  .searchbar-container {
+    margin-top: 10px;
+  }
+
+  .button-col {
+    margin-top: 10px;
+  }
+
+  .routes-container {
+    margin-left: 10px;
+    margin-right: 10px;
+    padding: 0;
+  }
+
+  ion-button.create-route-btn {
+    width: 100%; /* ✅ full width on mobile */
+    border-radius: 12px;
+  }
+}

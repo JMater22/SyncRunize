@@ -1,0 +1,331 @@
+/* ===== Page Header ===== */
+.groups-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1px;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 150px; /* aligns with filter + grid */
+}
+
+.page-title {
+  font-size: 40px;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.create-group-btn {
+  --background: #92C628;
+  --color: #fff;
+  border-radius: 20px;
+  font-weight: bold;
+  padding: 0 20px;
+  float: right;
+  margin-left: auto;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  
+}
+
+.create-group-btn:hover {
+  --background: #c0392b; /* unified hover color */
+  transform: scale(1.05);
+}
+
+/* ===== Filter / Search Section ===== */
+.filter-search-bar {
+  margin-bottom: 20px;
+  padding: 0 150px;
+}
+
+.filter-col {
+  flex: 1;
+  min-width: 220px; /* keeps them from shrinking too small */
+  display: flex;
+  align-items: center;
+}
+
+.loc-searchbar {
+  min-width: 220px;          /* stack when too narrow */
+  display: flex;
+  align-items: center;
+  flex: 1;
+  
+}
+
+/* Input & Select styling */
+.filter-select {
+  --background: #ffffff;
+  --color: #000000;               /* BLACK text for selected value */
+  --placeholder-color: #b0b0b0;   /* lighter gray placeholder */
+  --placeholder-opacity: 1;
+  --highlight-color-focused: transparent;
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --border-radius: 20px;
+  --border-width: 1px;
+  --border-style: solid;
+  --border-color: #e5e7eb;        /* soft gray border */
+  height: 46px;
+  font-size: 15px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Force black text in the select button */
+.filter-select::part(text) {
+  color: #000000 !important;
+}
+
+/* Keep the dropdown icon green */
+.filter-select::part(icon) {
+  color: #92C628 !important;
+}
+
+/* Ensure the native select text is black */
+.filter-select::part(native) {
+  color: #000000 !important;
+}
+
+/* ===== Select Popover Styling ===== */
+/* White background for the entire popover and remove black areas */
+ion-select-popover {
+  --background: #ffffff !important;
+  --min-height: auto !important;
+  --max-height: 300px !important;
+  --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+ion-select-popover .popover-wrapper {
+  background: #ffffff !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+ion-select-popover .popover-content {
+  background: #ffffff !important;
+  --background: #ffffff !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+ion-select-popover ion-content {
+  --background: #ffffff !important;
+  --padding-start: 0 !important;
+  --padding-end: 0 !important;
+  --padding-top: 0 !important;
+  --padding-bottom: 0 !important;
+  background: #ffffff !important;
+}
+
+/* Remove any scroll content background */
+ion-select-popover ion-content .inner-scroll {
+  background: #ffffff !important;
+}
+
+/* Style for the select options */
+ion-select-popover ion-item {
+  --background: #ffffff !important;
+  --color: #000000 !important;
+  --padding-start: 16px !important;
+  --padding-end: 16px !important;
+  --min-height: 48px !important;
+  --border-color: transparent !important;
+  background: #ffffff !important;
+  border: none !important;
+}
+
+ion-select-popover ion-item ion-label {
+  color: #000000 !important;
+}
+
+/* Green radio buttons */
+ion-select-popover ion-radio {
+  --color: #92C628 !important;
+  --color-checked: #92C628 !important;
+  margin-right: 12px !important;
+}
+
+/* Light gray hover effect for popover items */
+ion-select-popover ion-item:hover {
+  --background: #f5f5f5 !important;
+  background: #f5f5f5 !important;
+}
+
+/* Remove any default header/footer from popover */
+ion-select-popover ion-header,
+ion-select-popover ion-footer {
+  display: none !important;
+}
+
+/* Target specific select option classes if needed */
+.select-option-all,
+.select-option-joined,
+.select-option-not-joined {
+  --background: #ffffff !important;
+  background: #ffffff !important;
+}
+
+/* Additional override for any remaining black backgrounds */
+.popover-viewport {
+  background: #ffffff !important;
+}
+
+ion-popover {
+  --background: #ffffff !important;
+}
+
+ion-popover .popover-content {
+  background: #ffffff !important;
+}
+
+/* ===== Groups Grid ===== */
+.groups-grid {
+  padding: 0 150px;
+  margin-top: 20px;
+  margin-bottom: 80px;
+}
+
+.group-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+.group-card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+.group-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.card-info {
+  padding: 16px;
+}
+
+.card-info h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #161515;
+  margin: 0 0 8px;
+}
+
+.card-info .location {
+  font-size: 14px;
+  color: #757070;
+  margin: 0 0 4px;
+}
+
+.card-info .member-count {
+  font-size: 14px;
+  color: #92C628;
+  font-weight: 600;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1024px) {
+  .groups-page-header,
+  .filter-search-bar,
+  .groups-grid {
+    padding: 0 20px;
+  }
+
+  .groups-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .create-group-btn {
+    width: 100%;
+  }
+
+  .filter-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .filter-btn-col {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .filter-btn-col .create-group-btn {
+    width: 100%;
+  }
+
+  /* ✅ Mobile & Small Tablets */
+@media (max-width: 768px) {
+  .groups-page-header{
+    margin-top: 70px;
+  }
+
+
+  .filter-search-bar,
+  .groups-grid {
+    padding: 0 16px; /* reduce side padding */
+  }
+
+  .groups-page-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .page-title {
+    font-size: 24px; /* smaller for mobile */
+  }
+
+  .create-group-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .filter-row {
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .filter-col,
+  .loc-searchbar {
+    width: 100%; /* stack filters full width */
+  }
+
+  .filter-btn-col {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .filter-btn-col .create-group-btn {
+    width: 100%;
+  }
+
+  /* Groups grid cards */
+  .groups-grid {
+    margin-top: 12px;
+    margin-bottom: 60px;
+  }
+
+  .group-card img {
+    height: 140px;
+  }
+
+  .card-info h3 {
+    font-size: 16px;
+  }
+
+  .card-info .location,
+  .card-info .member-count {
+    font-size: 12px;
+  }
+}
+
+}
