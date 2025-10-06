@@ -1,41 +1,62 @@
 import * as GroupMemberModel from "../models/group_member_model.js";
 
-// GET members
+// Get all members of a specific group
 export const getGroupMembers = async (req, res) => {
   try {
-    const members = await GroupMemberModel.getGroupMembers(req.params.groupId);
+    const { groupId } = req.params;
+    const members = await GroupMemberModel.getGroupMembers(groupId);
     res.json(members);
   } catch (err) {
+    console.error("❌ Error fetching members:", err);
     res.status(500).json({ error: "Failed to fetch members" });
   }
 };
 
-// POST add member
+// Add member (either self join or admin add)
 export const addMember = async (req, res) => {
   try {
-    const { userId, role } = req.body;
-    const member = await GroupMemberModel.addMember(req.params.groupId, userId, role);
-    res.status(201).json(member);
+    const { groupId } = req.params;
+    const { userId: bodyUserId, role } = req.body || {};
+    const loggedInUserId = req.user?.userId;
+
+    const targetUserId = bodyUserId || loggedInUserId;
+    if (!targetUserId) {
+      return res.status(400).json({ error: "No user ID specified or authenticated" });
+    }
+
+    const finalRole = role || "member";
+
+    const member = await GroupMemberModel.addMember(groupId, targetUserId, finalRole);
+    res.status(201).json({
+      message: bodyUserId
+        ? "✅ Member added by admin"
+        : "✅ User joined the group successfully",
+      data: member,
+    });
   } catch (err) {
+    console.error("❌ Add member error:", err);
     res.status(500).json({ error: "Failed to add member" });
   }
 };
 
-// PUT update role
+// Update member role
 export const updateRole = async (req, res) => {
   try {
+    const { groupId, userId } = req.params;
     const { role } = req.body;
-    const member = await GroupMemberModel.updateRole(req.params.groupId, req.params.userId, role);
+
+    const member = await GroupMemberModel.updateRole(groupId, userId, role);
     res.json(member);
   } catch (err) {
     res.status(500).json({ error: "Failed to update role" });
   }
 };
 
-// DELETE member
+// Remove member (leave or kick)
 export const removeMember = async (req, res) => {
   try {
-    const result = await GroupMemberModel.removeMember(req.params.groupId, req.params.userId);
+    const { groupId, userId } = req.params;
+    const result = await GroupMemberModel.removeMember(groupId, userId);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: "Failed to remove member" });

@@ -7,7 +7,7 @@ const MODEL = "llama3.1:8b";
 export const summarizeHazard = async (hazard) => {
   try {
     const prompt = `
-Summarize this hazard report in simple words for a runner:
+Summarize this hazard report in simple words for a runner. Be concise:
 
 Type: ${hazard.type}
 Description: ${hazard.description}

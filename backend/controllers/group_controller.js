@@ -24,11 +24,32 @@ export const getGroupById = async (req, res) => {
 // POST create group
 export const createGroup = async (req, res) => {
   try {
-    const { name, description } = req.body;
-    const createdBy = req.user.userId; // from JWT
-    const group = await GroupModel.createGroup(name, description, createdBy);
-    res.status(201).json(group);
+    const { name, description, group_picture } = req.body;
+    const userId = req.user?.userId; // Extracted from JWT (ensure authenticate middleware)
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized: user not authenticated" });
+    }
+
+    const defaultPicture = "https://i.pinimg.com/736x/43/a5/4b/43a54b5ac213b39d702b16a503738437.jpg"; // replace with your hosted image
+
+    // 1️⃣ Create the group
+    const group = await GroupModel.createGroup({
+      name,
+      description,
+      group_picture: group_picture || defaultPicture,
+      created_by: userId,
+    });
+
+    // 2️⃣ Add the creator as admin in group_members
+    await GroupMemberModel.addMember(group.group_id, userId, "admin");
+
+    res.status(201).json({
+      message: "Group created successfully",
+      group,
+    });
   } catch (err) {
+    console.error("❌ Error creating group:", err);
     res.status(500).json({ error: "Failed to create group" });
   }
 };

@@ -43,8 +43,23 @@ export const getHazardsNearby = async (req, res) => {
   try {
     const { lat, lng, radius } = req.query;
     const hazards = await Hazard.findHazardsNearLocation(lat, lng, radius);
-    res.json(hazards);
+
+    // Generate AI summaries for each hazard in parallel
+    const hazardsWithSummaries = await Promise.all(
+      hazards.map(async (hazard) => {
+        try {
+          const summary = await summarizeHazard(hazard);
+          return { ...hazard, ai_summary: summary };
+        } catch (e) {
+          console.warn("AI summary failed for hazard:", hazard.report_id, e.message);
+          return { ...hazard, ai_summary: null };
+        }
+      })
+    );
+
+    res.json(hazardsWithSummaries);
   } catch (err) {
+    console.error("Error fetching nearby hazards:", err);
     res.status(500).json({ error: "Failed to fetch hazards" });
   }
 };

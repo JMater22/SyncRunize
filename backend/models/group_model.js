@@ -13,11 +13,11 @@ export const getGroupById = async (groupId) => {
 };
 
 // Create group
-export const createGroup = async (name, description, createdBy) => {
+export const createGroup = async (name, description, group_picture, createdBy) => {
   const result = await pool.query(
-    `INSERT INTO groups (name, description, created_by)
-     VALUES ($1, $2, $3) RETURNING *`,
-    [name, description, createdBy]
+    `INSERT INTO groups (name, description, group_picture,created_by)
+     VALUES ($1, $2, $3, $4) RETURNING *`,
+    [name, description, group_picture, createdBy]
   );
   return result.rows[0];
 };
