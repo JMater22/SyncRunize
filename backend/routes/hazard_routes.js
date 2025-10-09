@@ -1,10 +1,13 @@
-// routes/hazard_routes.js
 import express from "express";
-import { createHazard, getHazardsNearby } from "../controllers/hazard_controller.js";
+import * as HazardController from "../controllers/hazard_controller.js";
+import { authenticate } from "../utils/auth_middleware.js";
 
 const router = express.Router();
 
-router.post("/", createHazard); // create + score + AI summarize
-router.get("/nearby", getHazardsNearby); // get hazards by location
+// Secure hazard creation
+router.post("/", authenticate, HazardController.createHazard);
+
+// Getting nearby hazards (public okay)
+router.get("/nearby", HazardController.getHazardsNearby);
 
 export default router;

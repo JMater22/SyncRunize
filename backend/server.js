@@ -37,9 +37,9 @@
 
   app.use("/api/groups", groupRoutes);
   app.use("/api/group-members", groupMemberRoutes);
-  app.use("/api/group-posts", groupPostRoutes);
+  app.use("/api/group-posts", groupPostRoutes); // NOT YET INTEGRATED ON POSTMAN
 
-  app.use("/api/hazards", hazardRoutes);
+  app.use("/api/hazards", hazardRoutes); // GOODS GUMANA
   app.use("/api/official-incidents", officialIncidentRoutes);
 
   app.use("/api/challenges", challengeRoutes);

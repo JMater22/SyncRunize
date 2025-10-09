@@ -15,8 +15,9 @@ export const getGroupMembers = async (groupId) => {
 // Add member
 export const addMember = async (groupId, userId, role = "member") => {
   const result = await pool.query(
-    `INSERT INTO group_members (group_id, user_id, role)
-     VALUES ($1, $2, $3) ON CONFLICT (group_id, user_id) DO NOTHING RETURNING *`,
+    `INSERT INTO group_members (group_id, user_id, role, joined_at)
+     VALUES ($1, $2, $3, NOW())
+     RETURNING *`,
     [groupId, userId, role]
   );
   return result.rows[0];
