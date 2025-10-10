@@ -22,6 +22,8 @@
   import notificationRoutes from "./routes/notification_routes.js";
   import moderationRoutes from "./routes/moderation_routes.js";
 
+  import statsRoutes from "./routes/stats_routes.js";
+  import userRouteRoutes from "./routes/user_route_routes.js";
   dotenv.config();
 
   const app = express();
@@ -47,6 +49,10 @@
 
   app.use("/api/notifications", notificationRoutes);
   app.use("/api/moderation", moderationRoutes);
+
+
+  app.use("/api/stats", statsRoutes);
+  app.use("/api/routes", userRouteRoutes);
   // -----------------------------------------
 
   const PORT = process.env.PORT || 5000;
