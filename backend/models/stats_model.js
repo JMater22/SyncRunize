@@ -2,42 +2,55 @@
 import pool from "../utils/db.js";
 
 /**
- * Retrieve summarized statistics for a user over a custom date range.
- * @param {number} userId - Current logged-in user's ID.
- * @param {string} startDate - ISO start date (YYYY-MM-DD)
- * @param {string} endDate - ISO end date (YYYY-MM-DD)
+ * Fetch user statistics grouped by day, week, or month
+ * Optionally filter by date range
  */
-export const getUserStatsByRange = async (userId, startDate, endDate) => {
-  const query = `
-    SELECT
-      COUNT(*) AS runs_count,
-      COALESCE(SUM(distance), 0) AS total_distance,
-      COALESCE(AVG(average_pace), 0) AS avg_pace,
-      COALESCE(SUM(estimated_calories), 0) AS total_calories
-    FROM user_routes
-    WHERE user_id = $1
-      AND created_at BETWEEN $2 AND $3;
-  `;
-  const { rows } = await pool.query(query, [userId, startDate, endDate]);
-  return rows[0];
-};
+export const getUserStats = async (userId, period = "month", start_date = null, end_date = null) => {
+  let groupByClause;
 
-/**
- * Retrieve monthly stats aggregation (grouped by month).
- */
-export const getUserStatsByMonth = async (userId) => {
-  const query = `
-    SELECT
-      DATE_TRUNC('month', created_at) AS month,
-      COUNT(*) AS runs_count,
-      COALESCE(SUM(distance), 0) AS total_distance,
-      COALESCE(AVG(average_pace), 0) AS avg_pace,
-      COALESCE(SUM(estimated_calories), 0) AS total_calories
+  switch (period) {
+    case "day":
+      groupByClause = `TO_CHAR(created_at, 'YYYY-MM-DD')`;
+      break;
+    case "week":
+      groupByClause = `TO_CHAR(created_at, 'IYYY-IW')`;
+      break;
+    case "month":
+    default:
+      groupByClause = `TO_CHAR(created_at, 'YYYY-MM')`;
+      break;
+  }
+
+  // Base query with explicit NUMERIC casting
+  let query = `
+    SELECT 
+      ${groupByClause} AS period,
+      COUNT(*) AS total_runs,
+      ROUND(SUM(distance)::NUMERIC, 2) AS total_distance,
+      ROUND(AVG(average_pace)::NUMERIC, 2) AS avg_pace,
+      ROUND(SUM(estimated_calories)::NUMERIC, 2) AS total_calories
     FROM user_routes
     WHERE user_id = $1
-    GROUP BY DATE_TRUNC('month', created_at)
-    ORDER BY month DESC;
   `;
-  const { rows } = await pool.query(query, [userId]);
+
+  const params = [userId];
+  let paramIndex = 2;
+
+  // Add date filters dynamically
+  if (start_date) {
+    query += ` AND created_at >= $${paramIndex++}`;
+    params.push(start_date);
+  }
+  if (end_date) {
+    query += ` AND created_at <= $${paramIndex++}`;
+    params.push(end_date);
+  }
+
+  query += `
+    GROUP BY period
+    ORDER BY period ASC;
+  `;
+
+  const { rows } = await pool.query(query, params);
   return rows;
 };
