@@ -43,7 +43,7 @@ const Profile: React.FC = () => {
   const [showLogoutAlert, setShowLogoutAlert] = useState(false);
   const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
   const [followersModalType, setFollowersModalType] = useState<"followers" | "following">("followers");
-
+  const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('week');
   // Profile data state
   const [profileData, setProfileData] = useState({
     firstName: "Alexander",
@@ -51,6 +51,31 @@ const Profile: React.FC = () => {
     description: "Running enthusiast • Fitness lover • Goal crusher",
     profilePic: ProfilePic
   });
+  const statsData = {
+  week: {
+    title: 'This Week',
+    runs: 3,
+    time: '4h 22m',
+    distance: '7.2 km',
+    calories: '850 kcal'
+  },
+  month: {
+    title: 'This Month',
+    runs: 12,
+    time: '18h 45m',
+    distance: '28.5 km',
+    calories: '3,420 kcal'
+  },
+  year: {
+    title: 'Year to Date',
+    runs: 54,
+    time: '234h 23m',
+    distance: '387 km',
+    calories: '46,280 kcal'
+  }
+};
+
+  const currentStats = statsData[timeRange]
 
   // Form state for editing
   const [editForm, setEditForm] = useState({ ...profileData });
@@ -209,55 +234,47 @@ const Profile: React.FC = () => {
                     <h3>Performance Stats</h3>
                   </div>
                   
-                  <div className="stats-card weekly">
+                  {/* Time Range Dropdown */}
+                  <div className="time-range-dropdown">
+                    <select 
+                      value={timeRange}
+                      onChange={(e) => setTimeRange(e.target.value as 'week' | 'month' | 'year')}
+                      className="time-range-select"
+                    >
+                      <option value="week">This Week</option>
+                      <option value="month">This Month</option>
+                      <option value="year">Year to Date</option>
+                    </select>
+                  </div>
+
+                  {/* Dynamic Stats Card */}
+                  <div className={`stats-card ${timeRange}`}>
                     <div className="stats-card-header">
-                      <h4>This Week</h4>
-                      <span className="trend-indicator positive">+12%</span>
+                      <h4>{currentStats.title}</h4>
                     </div>
                     <div className="stats-list">
                       <div className="stats-item">
                         <div className="stats-content">
                           <span className="stats-label">Runs</span>
-                          <span className="stats-value">3</span>
+                          <span className="stats-value">{currentStats.runs}</span>
                         </div>
                       </div>
                       <div className="stats-item">
                         <div className="stats-content">
                           <span className="stats-label">Time</span>
-                          <span className="stats-value">4h 22m</span>
+                          <span className="stats-value">{currentStats.time}</span>
                         </div>
                       </div>
                       <div className="stats-item">
                         <div className="stats-content">
                           <span className="stats-label">Distance</span>
-                          <span className="stats-value">7.2 km</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="stats-card yearly">
-                    <div className="stats-card-header">
-                      <h4>Year to Date</h4>
-                      <span className="trend-indicator positive">+28%</span>
-                    </div>
-                    <div className="stats-list">
-                      <div className="stats-item">
-                        <div className="stats-content">
-                          <span className="stats-label">Total Runs</span>
-                          <span className="stats-value">54</span>
+                          <span className="stats-value">{currentStats.distance}</span>
                         </div>
                       </div>
                       <div className="stats-item">
                         <div className="stats-content">
-                          <span className="stats-label">Total Time</span>
-                          <span className="stats-value">234h 23m</span>
-                        </div>
-                      </div>
-                      <div className="stats-item">
-                        <div className="stats-content">
-                          <span className="stats-label">Total Distance</span>
-                          <span className="stats-value">387 km</span>
+                          <span className="stats-label">Calories</span>
+                          <span className="stats-value">{currentStats.calories}</span>
                         </div>
                       </div>
                     </div>
@@ -271,7 +288,7 @@ const Profile: React.FC = () => {
                 {activeTab === "activities" && (
                   <div className="content-section">
                     <div className="section-header">
-                      <h2>Recent Activities</h2>
+                      <h2>All Activities</h2>
                       <IonButton fill="clear" className="view-all-btn">View All</IonButton>
                     </div>
 
@@ -346,7 +363,11 @@ const Profile: React.FC = () => {
 
                     <div className="challenges-grid">
                       {[
-                        { title: "April Elevation Challenge", progress: 65, target: "2,000m elevation", timeLeft: "12 days left" },
+                        { title: "April 10k", progress: 65, target: "Run 10K in the month of April", timeLeft: "12 days left" },
+                        { title: "Spring Distance Goal", progress: 40, target: "100km this month", timeLeft: "18 days left" },
+                        { title: "Weekend Warrior", progress: 80, target: "8 weekend runs", timeLeft: "5 days left" },
+                        { title: "Early Bird Runner", progress: 25, target: "10 morning runs", timeLeft: "20 days left" },
+                        { title: "April 10k", progress: 65, target: "Run 10K in the month of April", timeLeft: "12 days left" },
                         { title: "Spring Distance Goal", progress: 40, target: "100km this month", timeLeft: "18 days left" },
                         { title: "Weekend Warrior", progress: 80, target: "8 weekend runs", timeLeft: "5 days left" },
                         { title: "Early Bird Runner", progress: 25, target: "10 morning runs", timeLeft: "20 days left" }
@@ -492,23 +513,26 @@ const Profile: React.FC = () => {
         </IonModal>
 
         {/* Logout Confirmation Alert */} 
-        <IonAlert
-          isOpen={showLogoutAlert}
-          onDidDismiss={() => setShowLogoutAlert(false)}
-          header="Confirm Logout"
-          message="Are you sure you want to log out?"
-          buttons={[
-            {
-              text: 'Cancel',
-              role: 'cancel'
-            },
-            {
-              text: 'Log Out',
-              role: 'destructive',
-              handler: handleLogout
-            }
-          ]}
-        />
+          <IonAlert
+            isOpen={showLogoutAlert}
+            onDidDismiss={() => setShowLogoutAlert(false)}
+            header="Confirm Logout"
+            message="Are you sure you want to log out?"
+            cssClass="logout-alert"
+            buttons={[
+              {
+                text: 'Cancel',
+                role: 'cancel',
+                cssClass: 'alert-button-cancel'
+              },
+              {
+                text: 'Log Out',
+                role: 'destructive',
+                cssClass: 'alert-button-logout',
+                handler: handleLogout
+              }
+            ]}
+          />    
 
         {/* Edit Profile Modal */}
         <IonModal isOpen={isEditModalOpen} className="edit-profile-modal">

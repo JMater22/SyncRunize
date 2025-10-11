@@ -10,6 +10,12 @@ import {
   IonAvatar,
   IonIcon, 
   IonChip,
+  IonModal,
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonButtons,
+  IonTextarea,
 } from "@ionic/react";
 import {
   chatbubbleEllipses,
@@ -20,46 +26,76 @@ import {
   heartOutline,
   timeOutline, 
   locationOutline,
+  flameOutline,
+  closeOutline,
+  imageOutline,
 } from "ionicons/icons";
 import ProfilePic from "../assets/Profile Picture.png";
+import GirlPic from "../assets/GIRL 3.jpg";
+import MariaPic from "../assets/MARIA 2.png";
 import Map from "../assets/MAP 1.png";
 import "../components/Home/Home.css"; 
 import "../pages/Challenges";
 
 const Home: React.FC = () => {
   const [openComments, setOpenComments] = useState<number | null>(null);
+  const [showCreatePostModal, setShowCreatePostModal] = useState(false);
+  const [postContent, setPostContent] = useState("");
 
   const sampleComments = [
     { user: "Maria Gonzales", text: "Great run! 🔥🔥", avatar: ProfilePic, time: "2m ago" },
     { user: "John Doe", text: "Solid effort 👏", avatar: ProfilePic, time: "5m ago" },
-    { user: "Emily Chen", text: "Keep it up, Alexander 💪", avatar: ProfilePic, time: "12m ago" },
+    { user: "Emily Chen", text: "Keep it up, Alexander 💪", avatar: GirlPic, time: "12m ago" },
   ];
 
   const activities = [
     {
       user: "Alexander Smith",
-      date: "March 23, 2025",
+      date: "April 29, 2025",
       time: "2h ago",
       distance: "16.3 km",
       duration: "02:43:51",
+      calories: "842",
       likes: 24,
       comments: 3,
     },
     {
-      user: "Alexander Smith",
-      date: "March 22, 2025",
+      user: "Maria Gonzales",
+      date: "March 13, 2025",
       time: "1d ago",
       distance: "8.2 km",
       duration: "01:25:30",
+      calories: "521",
       likes: 18,
       comments: 5,
     },
     {
-      user: "Alexander Smith",
-      date: "March 20, 2025",
+      user: "Emily Chen",
+      date: "May 2, 2025",
       time: "3d ago",
       distance: "21.1 km",
       duration: "03:15:42",
+      calories: "1,234",
+      likes: 42,
+      comments: 8,
+    },
+    {
+      user: "Alexander Smith",
+      date: "May 2, 2025",
+      time: "3d ago",
+      distance: "21.1 km",
+      duration: "03:15:42",
+      calories: "1,234",
+      likes: 42,
+      comments: 8,
+    },
+    {
+      user: "John Doe",
+      date: "May 2, 2025",
+      time: "3d ago",
+      distance: "21.1 km",
+      duration: "03:15:42",
+      calories: "1,234",
       likes: 42,
       comments: 8,
     },
@@ -109,6 +145,10 @@ const Home: React.FC = () => {
                       <span className="summary-value">4h 23m</span>
                       <span className="summary-label">Time</span>
                     </div>
+                    <div className="summary-item">
+                      <span className="summary-value">3234</span>
+                      <span className="summary-label">Calories</span>
+                    </div>
                   </div>
                 </div>
               </IonCardContent>
@@ -125,8 +165,8 @@ const Home: React.FC = () => {
               </div>
 
               <div className="post-section">
-                <IonItem className="post-input">
-                  <IonInput placeholder="What's on your mind?" />
+                <IonItem className="post-input" button onClick={() => setShowCreatePostModal(true)}>
+                  <IonInput placeholder="What's on your mind?" readonly />
                   <IonButton fill="clear" slot="end">
                     <IonIcon icon={createOutline} />
                   </IonButton>
@@ -168,6 +208,13 @@ const Home: React.FC = () => {
                         <div>
                           <span className="stat-value">{activity.duration}</span>
                           <span className="stat-label">Time</span>
+                        </div>
+                      </div>
+                      <div className="stat-card calories">
+                        <IonIcon icon={flameOutline} />
+                        <div>
+                          <span className="stat-value">{activity.calories}</span>
+                          <span className="stat-label">Calories</span>
                         </div>
                       </div>
                     </div>
@@ -285,27 +332,62 @@ const Home: React.FC = () => {
                 </IonButton>
               </div>
             </IonCard>
-
-            <IonCard className="sidebar-card-enhanced trending-card">
-              <div className="sidebar-card-header">
-                <div className="sidebar-icon-container trending">
-                  <IonIcon icon={thumbsUp} />
-                </div>
-                <div>
-                  <h3 className="sidebar-title">Trending</h3>
-                  <p className="sidebar-subtitle">Popular This Week</p>
-                </div>
-              </div>
-              <div className="sidebar-card-content">
-                <div className="trending-topics">
-                  <IonChip color="primary" className="trending-chip">#MarathonTraining</IonChip>
-                  <IonChip color="secondary" className="trending-chip">#MorningRun</IonChip>
-                  <IonChip color="tertiary" className="trending-chip">#NYC</IonChip>
-                </div>
-              </div>
-            </IonCard>
           </aside>
         </div>
+
+        {/* Create Post Modal */}
+        <IonModal isOpen={showCreatePostModal} onDidDismiss={() => setShowCreatePostModal(false)}>
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Create Post</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setShowCreatePostModal(false)}>
+                  <IonIcon icon={closeOutline} />
+                </IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+          <IonContent className="modal-content">
+            <div className="modal-body">
+              <div className="user-profile">
+                <IonAvatar className="avatar-modal">
+                  <img src={ProfilePic} alt="User Avatar" />
+                </IonAvatar>
+                <span className="name-modal">Alexander Smith</span>
+              </div>
+              
+              <IonTextarea
+                placeholder="What's on your mind, Alexander?"
+                value={postContent}
+                onIonInput={(e) => setPostContent(e.detail.value!)}
+                autoGrow={true}
+                className="post-textarea"
+              />
+
+              <div className="modal-actions">
+                <div className="media-buttons">
+                  <IonButton fill="clear" className="media-btn">
+                    <IonIcon icon={imageOutline} />
+                  </IonButton>
+                  <IonButton fill="clear" className="media-btn">
+                    <IonIcon icon={locationOutline} />
+                  </IonButton>
+                </div>
+                <IonButton 
+                  className="post-btn"
+                  disabled={!postContent.trim()}
+                  onClick={() => {
+                    console.log("Post content:", postContent);
+                    setPostContent("");
+                    setShowCreatePostModal(false);
+                  }}
+                >
+                  Post
+                </IonButton>
+              </div>
+            </div>
+          </IonContent>
+        </IonModal>
       </IonContent>
     </IonPage>
   );

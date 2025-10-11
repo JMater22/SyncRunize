@@ -20,7 +20,7 @@
 .searchbar-container {
   margin-top: 20px;
   margin-left: 240px; /* desktop */
-  flex: 1;
+  flex: 1; 
 } 
 
 /* Button column */
@@ -49,6 +49,7 @@ ion-button.create-route-btn {
   margin-top: 20px;
   margin-left: 150px;
   margin-right: 150px;
+  margin-bottom: 60px;
 }
 
 /* Searchbar styling */

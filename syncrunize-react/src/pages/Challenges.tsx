@@ -53,7 +53,7 @@ const Challenges: React.FC = () => {
                       Join Challenge
                     </IonButton>
                 </IonCardContent>
-              </IonCard>
+              </IonCard> 
             </IonCol>
 
             <IonCol size="12" sizeMd="6" className="challenge-image-col">
@@ -84,6 +84,9 @@ const Challenges: React.FC = () => {
                       <p className="challenge-date">
                         April 1, 2025 to April 30, 2025
                       </p>
+                      <IonButton expand="block" className="suggested-join-btn">
+                        Join Challenge
+                      </IonButton>
                     </IonCardContent>
                 </IonCard>
               </IonCol>
@@ -93,8 +96,11 @@ const Challenges: React.FC = () => {
                   <IonImg src={Group2} alt="10K Challenge" />
                   <IonCardContent>
                     <h4 className="challenge-subtitle">April 10K Challenge</h4>
-                    <p>Complete a 10 km (6.2 mi) run.</p>
-                    <p>April 1, 2025 to April 30, 2025</p>
+                    <p className="challenge-description">Complete a 10 km (6.2 mi) run.</p>
+                    <p className="challenge-date">April 1, 2025 to April 30, 2025</p>
+                    <IonButton expand="block" className="suggested-join-btn">
+                      Join Challenge
+                    </IonButton>
                   </IonCardContent>
                 </IonCard>
               </IonCol>
@@ -104,8 +110,11 @@ const Challenges: React.FC = () => {
                   <IonImg src={Group1} alt="300K Challenge" />
                   <IonCardContent>
                     <h4 className="challenge-subtitle">April 300K Challenge</h4>
-                    <p>Run a total of 300 km (186.4 mi) in a month.</p>
-                    <p>April 1, 2025 to April 30, 2025</p>
+                    <p className="challenge-description">Run a total of 300 km (186.4 mi) in a month.</p>
+                    <p className="challenge-date">April 1, 2025 to April 30, 2025</p>
+                    <IonButton expand="block" className="suggested-join-btn">
+                      Join Challenge
+                    </IonButton>
                   </IonCardContent>
                 </IonCard>
               </IonCol>
@@ -117,8 +126,11 @@ const Challenges: React.FC = () => {
                     <h4 className="challenge-subtitle">
                       April Half Marathon Challenge
                     </h4>
-                    <p>Complete a 13.1 mi (21.1 km) run.</p>
-                    <p>April 1, 2025 to April 30, 2025</p>
+                    <p className="challenge-description">Complete a 13.1 mi (21.1 km) run.</p>
+                    <p className="challenge-date">April 1, 2025 to April 30, 2025</p>
+                    <IonButton expand="block" className="suggested-join-btn">
+                      Join Challenge
+                    </IonButton>
                   </IonCardContent>
                 </IonCard>
               </IonCol>
@@ -130,8 +142,11 @@ const Challenges: React.FC = () => {
                     <h4 className="challenge-subtitle">
                       April Elevation Challenge
                     </h4>
-                    <p>Climb a total of 2,000 m (6,561 ft) in a month.</p>
-                    <p>April 1, 2025 to April 30, 2025</p>
+                    <p className="challenge-description">Climb a total of 2,000 m (6,561 ft) in a month.</p>
+                    <p className="challenge-date">April 1, 2025 to April 30, 2025</p>
+                    <IonButton expand="block" className="suggested-join-btn">
+                      Join Challenge
+                    </IonButton>
                   </IonCardContent>
                 </IonCard>
               </IonCol>
@@ -141,8 +156,11 @@ const Challenges: React.FC = () => {
                   <IonImg src={Group2} alt="10K Challenge" />
                   <IonCardContent>
                     <h4 className="challenge-subtitle">April 10K Challenge</h4>
-                    <p>Complete a 10 km (6.2 mi) run.</p>
-                    <p>April 1, 2025 to April 30, 2025</p>
+                    <p className="challenge-description">Complete a 10 km (6.2 mi) run.</p>
+                    <p className="challenge-date">April 1, 2025 to April 30, 2025</p>
+                    <IonButton expand="block" className="suggested-join-btn">
+                      Join Challenge
+                    </IonButton>
                   </IonCardContent>
                 </IonCard>
               </IonCol>
@@ -152,8 +170,11 @@ const Challenges: React.FC = () => {
                   <IonImg src={Group1} alt="300K Challenge" />
                   <IonCardContent>
                     <h4 className="challenge-subtitle">April 300K Challenge</h4>
-                    <p>Run a total of 300 km (186.4 mi) in a month.</p>
-                    <p>April 1, 2025 to April 30, 2025</p>
+                    <p className="challenge-description">Run a total of 300 km (186.4 mi) in a month.</p>
+                    <p className="challenge-date">April 1, 2025 to April 30, 2025</p>
+                    <IonButton expand="block" className="suggested-join-btn">
+                      Join Challenge
+                    </IonButton>
                   </IonCardContent>
                 </IonCard>
               </IonCol>
@@ -165,8 +186,11 @@ const Challenges: React.FC = () => {
                     <h4 className="challenge-subtitle">
                       April Half Marathon Challenge
                     </h4>
-                    <p>Complete a 13.1 mi (21.1 km) run.</p>
-                    <p>April 1, 2025 to April 30, 2025</p>
+                    <p className="challenge-description">Complete a 13.1 mi (21.1 km) run.</p>
+                    <p className="challenge-date">April 1, 2025 to April 30, 2025</p>
+                    <IonButton expand="block" className="suggested-join-btn">
+                      Join Challenge
+                    </IonButton>
                   </IonCardContent>
                 </IonCard>
               </IonCol>
@@ -178,8 +202,11 @@ const Challenges: React.FC = () => {
                     <h4 className="challenge-subtitle">
                       April Elevation Challenge
                     </h4>
-                    <p>Climb a total of 2,000 m (6,561 ft) in a month.</p>
-                    <p>April 1, 2025 to April 30, 2025</p>
+                    <p className="challenge-description">Climb a total of 2,000 m (6,561 ft) in a month.</p>
+                    <p className="challenge-date">April 1, 2025 to April 30, 2025</p>
+                    <IonButton expand="block" className="suggested-join-btn">
+                      Join Challenge
+                    </IonButton>
                   </IonCardContent>
                 </IonCard>
               </IonCol>
@@ -189,8 +216,11 @@ const Challenges: React.FC = () => {
                   <IonImg src={Group2} alt="10K Challenge" />
                   <IonCardContent>
                     <h4 className="challenge-subtitle">April 10K Challenge</h4>
-                    <p>Complete a 10 km (6.2 mi) run.</p>
-                    <p>April 1, 2025 to April 30, 2025</p>
+                    <p className="challenge-description">Complete a 10 km (6.2 mi) run.</p>
+                    <p className="challenge-date">April 1, 2025 to April 30, 2025</p>
+                    <IonButton expand="block" className="suggested-join-btn">
+                      Join Challenge
+                    </IonButton>
                   </IonCardContent>
                 </IonCard>
               </IonCol>
@@ -200,8 +230,11 @@ const Challenges: React.FC = () => {
                   <IonImg src={Group1} alt="300K Challenge" />
                   <IonCardContent>
                     <h4 className="challenge-subtitle">April 300K Challenge</h4>
-                    <p>Run a total of 300 km (186.4 mi) in a month.</p>
-                    <p>April 1, 2025 to April 30, 2025</p>
+                    <p className="challenge-description">Run a total of 300 km (186.4 mi) in a month.</p>
+                    <p className="challenge-date">April 1, 2025 to April 30, 2025</p>
+                    <IonButton expand="block" className="suggested-join-btn">
+                      Join Challenge
+                    </IonButton>
                   </IonCardContent>
                 </IonCard>
               </IonCol>
@@ -213,8 +246,11 @@ const Challenges: React.FC = () => {
                     <h4 className="challenge-subtitle">
                       April Half Marathon Challenge
                     </h4>
-                    <p>Complete a 13.1 mi (21.1 km) run.</p>
-                    <p>April 1, 2025 to April 30, 2025</p>
+                    <p className="challenge-description">Complete a 13.1 mi (21.1 km) run.</p>
+                    <p className="challenge-date">April 1, 2025 to April 30, 2025</p>
+                    <IonButton expand="block" className="suggested-join-btn">
+                      Join Challenge
+                    </IonButton>
                   </IonCardContent>
                 </IonCard>
               </IonCol>

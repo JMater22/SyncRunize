@@ -135,7 +135,7 @@ h2.profile-name {
 
 .summary-stats {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
 }
 
@@ -326,6 +326,8 @@ span.activity-handle {
   padding: 20px;
   border-right: 1px solid #e2e8f0;
   transition: all 0.3s ease;
+  text-align: center;
+  justify-content: center;
 }
 
 .stat-card:last-child {
@@ -343,7 +345,7 @@ span.activity-handle {
 
 .stat-card.distance ion-icon { color: #3b82f6; }
 .stat-card.time ion-icon { color: #10b981; }
-.stat-card.pace ion-icon { color: #f59e0b; }
+.stat-card.calories ion-icon { color: #ef4444; }
 
 .stat-card div {
   display: flex;
@@ -725,30 +727,164 @@ p.sidebar-subtitle {
   font-weight: 600;
   color: #111827;
 }
-
-/* ================= Trending Card ================= */
-.trending-card .sidebar-icon-container.trending {
-  background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%);
+/* ================= Create Post Modal ================= */
+.modal-content {
+  --background: #ffffff;
+  --padding-start: 0;
+  --padding-end: 0;
+  --padding-top: 0;
+  --padding-bottom: 0;
 }
 
-.trending-topics {
+.modal-body {
+  padding: 24px;
+}
+
+.user-profile {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
-.trending-chip {
+.avatar-modal {
+  width: 50px;
+  height: 50px;
+  border: 2px solid #e2e8f0;
+}
+
+.name-modal {
+  font-size: 16px;
   font-weight: 600;
-  border-radius: 8px;
-  padding: 6px 12px;
-  transition: transform 0.2s ease, background 0.3s ease;
-  cursor: pointer;
+  color: #1e293b;
 }
 
-.trending-chip:hover {
-  transform: scale(1.05);
-  filter: brightness(1.1);
+.post-textarea {
+  --background: #f8fafc;
+  --color: #1e293b;
+  --placeholder-color: #94a3b8;
+  --padding-top: 16px;
+  --padding-bottom: 16px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+  min-height: 120px;
+  width: 100%;
+}
+
+.post-textarea:focus-within,
+.post-textarea.textarea-has-focus {
+  border-color: #92C628;
+  box-shadow: 0 0 0 3px rgba(146, 198, 40, 0.1);
+  --background: #ffffff;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.media-buttons {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+
+.media-btn {
+  --color: #64748b;
+  --background-hover: #f1f5f9;
+  --ripple-color: rgba(146, 198, 40, 0.1);
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --border-radius: 10px;
+  height: 40px;
+  width: 40px;
+  margin: 0;
+}
+
+.media-btn ion-icon {
+  font-size: 22px;
+}
+
+.media-btn:hover {
+  --color: #92C628;
+}
+
+.post-btn {
+  --background: #e2e8f0;
+  --color: #94a3b8;
+  --border-radius: 10px;
+  --padding-start: 32px;
+  --padding-end: 32px;
+  font-weight: 600;
+  font-size: 15px;
+  height: 42px;
+  text-transform: none;
+  transition: all 0.3s ease;
+}
+
+.post-btn:not([disabled]) {
+  --background: #92C628;
+  --background-hover: #7ba321;
+  --color: white;
+}
+
+.post-btn:hover:not([disabled]) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(146, 198, 40, 0.3);
+}
+
+.post-btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Modal Header Styling */
+ion-modal ion-header ion-toolbar {
+  --background: white;
+  --border-color: #e2e8f0;
+  --border-width: 0 0 1px 0;
+  --color: #1e293b;
+  --min-height: 56px;
+  padding: 0 8px;
+}
+
+ion-modal ion-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+ion-modal ion-buttons ion-button {
+  --color: #64748b;
+  --background-hover: #f1f5f9;
+  --border-radius: 8px;
+  margin: 0;
+  width: 40px;
+  height: 40px;
+}
+
+ion-modal ion-buttons ion-button ion-icon {
+  font-size: 24px;
+}
+
+ion-modal ion-buttons ion-button:hover {
+  --color: #1e293b;
+}
+
+/* Modal Backdrop */
+ion-modal::part(backdrop) {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
 }
 
 /* ================= Responsive Fix for Mobile ================= */
@@ -824,7 +960,8 @@ p.sidebar-subtitle {
   }
 
   .activity-stats-grid {
-    grid-template-columns: 1fr 1fr; /* reduce columns on small screens */
+    grid-template-columns: 1fr 1fr 1fr;
+    text-align: center;
   }
 
   .stat-card {
@@ -833,6 +970,44 @@ p.sidebar-subtitle {
 
   .search-input,
   .post-input {
+    font-size: 14px;
+  }
+   .create-post-modal {
+    padding: 16px;
+  }
+
+  .modal-user-info {
+    padding: 12px;
+  }
+
+  .modal-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .modal-user-info h3 {
+    font-size: 14px;
+  }
+
+  .modal-user-info p {
+    font-size: 12px;
+  }
+
+  .post-textarea {
+    font-size: 14px;
+  }
+
+  .post-options {
+    flex-direction: column;
+  }
+
+  .post-options ion-button {
+    height: 36px;
+    font-size: 13px;
+  }
+
+  .post-submit-btn {
+    height: 44px;
     font-size: 14px;
   }
 }

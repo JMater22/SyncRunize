@@ -78,7 +78,8 @@ ion-card-content .friends-info {
 }
 
 .join-challenge-btn:hover {
-  --background: #c0392b;
+  --background: #7aa820;
+  transform: scale(1.02);
 }
 
 /* Challenge Details */
@@ -154,7 +155,26 @@ ion-card-content .friends-info {
   font-size: 13px;
   color: #888;
   margin-top: 0;
+  margin-bottom: 16px;
   line-height: 1.4;
+}
+
+/* Suggested Card Join Button */
+.suggested-join-btn {
+  --background: #92C628;
+  --color: #fff;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 0;
+  margin-top: 12px;
+  --transition: background-color 0.3s ease, transform 0.2s ease;
+  text-transform: none;
+}
+
+.suggested-join-btn:hover {
+  --background: #7aa820;
+  transform: scale(1.02);
 }
 
 /* ===== Responsive ===== */
@@ -252,5 +272,11 @@ ion-card-content .friends-info {
 
   .suggested-card .challenge-date {
     font-size: 12px;
+    margin-bottom: 12px;
+  }
+
+  .suggested-join-btn {
+    font-size: 13px;
+    padding: 8px 0;
   }
 }

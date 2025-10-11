@@ -1,9 +1,6 @@
 import React from "react";
 import {
   IonPage,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
   IonContent,
   IonSearchbar,
   IonButton,
@@ -13,24 +10,31 @@ import {
   IonCardHeader,
   IonCardTitle,
   IonCardContent,
-  IonImg,
-  IonFooter
+  IonImg
 } from "@ionic/react";
 
 import MapImage from "../assets/MAP 1.png";
 import '../components/Routes/RoutesPage.css';
 import CustomCard from "../components/Routes/CustomCard";
+import { useHistory } from 'react-router-dom';
 
 const RoutesPage: React.FC = () => {
+  const history = useHistory();
+
+  const handleCreateRoute = () => {
+    history.push('/create-route');
+  };
+
   return (
-    <IonPage>
-      <IonContent>
+    <IonPage> 
+      <IonContent> 
         {/* Header Title */}
         <IonRow className="routes-header ion-align-items-center">
           <IonCol size="12">
             <h1 className="my-routes-title">My Routes</h1>
           </IonCol>
         </IonRow>
+
         {/* Search + Button */}
         <IonRow className="ion-align-items-center ion-justify-content-between">
           {/* Searchbar Column */}
@@ -44,11 +48,12 @@ const RoutesPage: React.FC = () => {
           <IonCol size="4" className="button-col ion-text-right">
             <IonButton 
               expand="block" 
-              className="create-route-btn">
+              className="create-route-btn"
+              onClick={handleCreateRoute}>
               Create New Route
             </IonButton>
           </IonCol>
-        </IonRow>
+        </IonRow>  {/* ADD THIS CLOSING TAG */}
 
         {/* Routes Grid */}
         <IonGrid className="routes-container">
@@ -89,8 +94,6 @@ const RoutesPage: React.FC = () => {
           </IonRow>
         </IonGrid>
       </IonContent>
-
-
     </IonPage>
   );
 };

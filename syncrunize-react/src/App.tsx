@@ -16,7 +16,6 @@ import {
   IonMenuButton,
   IonList,
   IonItem,
-  IonFooter,
   setupIonicReact
 } from '@ionic/react';
 
@@ -35,6 +34,7 @@ import GroupFeed from "./components/Community/GroupFeed";
 import Leaderboard from "./components/Community/Leaderboard";
 import GetStarted from "./components/UserAuth/GetStarted";
 import Login from "./components/UserAuth/LoginForm";
+import CreateRouteMap from './components/Routes/CreateRouteMap';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -50,7 +50,6 @@ import '@ionic/react/css/palettes/dark.system.css';
 
 import './theme/variables.css';
 import './theme/tabs.css';
-import './theme/footer.css';
 
 setupIonicReact();
 
@@ -118,6 +117,9 @@ const App: React.FC = () => (
           <Route exact path="/leaderboard" component={Leaderboard} />
           <Route exact path="/get-started" component={GetStarted} />
           <Route exact path="/login" component={Login} />
+          <Route exact path="/create-route" component={CreateRouteMap} />
+          
+          
 
           <Route exact path="/">
             <Redirect to="/home" />
@@ -156,13 +158,6 @@ const App: React.FC = () => (
           </div>
         </IonHeader>
       </IonTabs>
-
-      {/* Mobile Footer - Only visible on mobile */}
-      <IonFooter className="mobile-footer">
-        <IonToolbar color="">
-          <IonTitle className="ion-text-center">SYNCRUNIZE</IonTitle>
-        </IonToolbar>
-      </IonFooter>
     </IonPage>
   </IonReactRouter>
 </IonApp>

@@ -41,11 +41,11 @@
 @media (min-width: 769px) {
   .desktop-header ~ ion-router-outlet,
   ion-page#main-content {
-    padding-top: 80px;
+    padding-top: 0px;
   }
   
   ion-content {
-    --padding-top: 80px !important;
+    --padding-top: 60px !important;
   }
 }
 
@@ -56,8 +56,8 @@
   }
   
   ion-content {
-    --padding-top: 0px !important;
-    padding-top: 0 !important;
+    --padding-top: 50px !important;
+    
   }
   
   /* Ensure mobile header has proper spacing */

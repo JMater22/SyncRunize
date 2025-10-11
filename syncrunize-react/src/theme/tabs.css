@@ -36,7 +36,7 @@ ion-tab-bar {
 
 /* ✅ Active Tab Highlight */
 .desktop-tabs ion-tab-button.tab-selected {
-  --color: #8cb814;
+  --color: #000000;
   border-bottom: 3px solid #8cb814;
 }
 

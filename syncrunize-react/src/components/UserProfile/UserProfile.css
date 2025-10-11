@@ -213,6 +213,54 @@
   --color: #dc2626;
   --background: rgba(239, 68, 68, 0.1);
 }
+/* Logout Alert Styles */
+.logout-alert {
+  --background: #ffffff;
+  --backdrop-opacity: 0.6;
+}
+
+
+
+.logout-alert .alert-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.logout-alert .alert-head {
+  padding: 20px 20px 0;
+  text-align: center;
+}
+
+.logout-alert .alert-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a; 
+}
+
+.logout-alert .alert-message {
+  padding: 12px 20px;
+  font-size: 14px;
+  color: #666666;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.logout-alert .alert-button-group {
+  padding: 8px;
+}
+
+/* Cancel Button */
+.alert-button-cancel {
+  font-weight: 500;
+  color: #007aff;
+}
+/* Logout Button (Destructive) */
+.alert-button-logout {
+  font-weight: 600;
+  color: #ff3b30;
+}
+
+
 
 .edit-profile-button {
   --background: #8bc34a;
@@ -328,16 +376,44 @@
   margin: 0;
 }
 
-.trend-indicator {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 8px;
+/* Time Range Dropdown */
+.time-range-dropdown {
+  margin-bottom: 20px;
 }
 
-.trend-indicator.positive {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
+.time-range-select {
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #000000;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236366f1' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+
+.stats-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.stats-card h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #374151;
+  margin: 0;
 }
 
 .stats-list {
@@ -349,33 +425,34 @@
 .stats-item {
   display: flex;
   align-items: center;
-  gap: 12px;
+  padding: 12px;
+  background: rgba(249, 250, 251, 0.6);
+  border-radius: 12px;
+  transition: all 0.2s ease;
 }
 
-.stats-icon {
-  font-size: 20px;
-  width: 32px;
-  text-align: center;
+.stats-item:hover {
+  background: rgba(243, 244, 246, 0.8);
+  transform: translateX(4px);
 }
 
 .stats-content {
   display: flex;
-  flex-direction: column;
-  flex: 1;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
 }
 
 .stats-label {
-  font-size: 12px;
+  font-size: 13px;
   color: #6b7280;
   font-weight: 500;
-  line-height: 1;
 }
 
 .stats-value {
   font-size: 18px;
   font-weight: 700;
   color: #1f2937;
-  line-height: 1.2;
 }
 
 .quick-actions {
@@ -1211,6 +1288,39 @@ p.challenge-target {
   .stat-label {
     font-size: 10px; /* smaller labels */
     letter-spacing: 0.3px;
+  }
+  .sidebar-col {
+    padding-right: 0;
+    margin-bottom: 24px;
+  }
+
+  .stats-sidebar {
+    position: relative;
+    top: 0;
+  }
+  .time-range-select {
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+
+  .stats-card {
+    padding: 20px;
+  }
+
+  .stats-card h4 {
+    font-size: 14px;
+  }
+
+  .stats-value {
+    font-size: 16px;
+  }
+
+  .stats-label {
+    font-size: 12px;
+  }
+
+  .stats-item {
+    padding: 10px;
   }
 
   .activity-card-modern{
