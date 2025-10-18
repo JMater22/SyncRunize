@@ -9,17 +9,9 @@ import {
   IonButton,
   IonAvatar,
   IonIcon, 
-  IonChip,
-  IonModal,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonButtons,
-  IonTextarea,
 } from "@ionic/react";
 import {
   chatbubbleEllipses,
-  thumbsUp,
   peopleOutline,
   flagOutline,
   createOutline,
@@ -27,13 +19,11 @@ import {
   timeOutline, 
   locationOutline,
   flameOutline,
-  closeOutline,
-  imageOutline,
 } from "ionicons/icons";
 import ProfilePic from "../assets/Profile Picture.png";
 import GirlPic from "../assets/GIRL 3.jpg";
-import MariaPic from "../assets/MARIA 2.png";
 import Map from "../assets/MAP 1.png";
+import CreatePostModal from "../components/Home/CreatePostModal";
 import "../components/Home/Home.css"; 
 import "../pages/Challenges";
 
@@ -165,12 +155,14 @@ const Home: React.FC = () => {
               </div>
 
               <div className="post-section">
-                <IonItem className="post-input" button onClick={() => setShowCreatePostModal(true)}>
-                  <IonInput placeholder="What's on your mind?" readonly />
-                  <IonButton fill="clear" slot="end">
-                    <IonIcon icon={createOutline} />
-                  </IonButton>
-                </IonItem>
+                <div className="post-input" onClick={() => setShowCreatePostModal(true)} style={{ cursor: "pointer" }}>
+                  <IonItem className="post-input-item">
+                    <IonInput placeholder="What's on your mind?" readonly />
+                    <IonButton fill="clear" slot="end">
+                      <IonIcon icon={createOutline} />
+                    </IonButton>
+                  </IonItem>
+                </div>
               </div>
             </div>
 
@@ -336,58 +328,11 @@ const Home: React.FC = () => {
         </div>
 
         {/* Create Post Modal */}
-        <IonModal isOpen={showCreatePostModal} onDidDismiss={() => setShowCreatePostModal(false)}>
-          <IonHeader>
-            <IonToolbar>
-              <IonTitle>Create Post</IonTitle>
-              <IonButtons slot="end">
-                <IonButton onClick={() => setShowCreatePostModal(false)}>
-                  <IonIcon icon={closeOutline} />
-                </IonButton>
-              </IonButtons>
-            </IonToolbar>
-          </IonHeader>
-          <IonContent className="modal-content">
-            <div className="modal-body">
-              <div className="user-profile">
-                <IonAvatar className="avatar-modal">
-                  <img src={ProfilePic} alt="User Avatar" />
-                </IonAvatar>
-                <span className="name-modal">Alexander Smith</span>
-              </div>
-              
-              <IonTextarea
-                placeholder="What's on your mind, Alexander?"
-                value={postContent}
-                onIonInput={(e) => setPostContent(e.detail.value!)}
-                autoGrow={true}
-                className="post-textarea"
-              />
-
-              <div className="modal-actions">
-                <div className="media-buttons">
-                  <IonButton fill="clear" className="media-btn">
-                    <IonIcon icon={imageOutline} />
-                  </IonButton>
-                  <IonButton fill="clear" className="media-btn">
-                    <IonIcon icon={locationOutline} />
-                  </IonButton>
-                </div>
-                <IonButton 
-                  className="post-btn"
-                  disabled={!postContent.trim()}
-                  onClick={() => {
-                    console.log("Post content:", postContent);
-                    setPostContent("");
-                    setShowCreatePostModal(false);
-                  }}
-                >
-                  Post
-                </IonButton>
-              </div>
-            </div>
-          </IonContent>
-        </IonModal>
+        <CreatePostModal 
+          isOpen={showCreatePostModal} 
+          onDidDismiss={() => setShowCreatePostModal(false)}
+          userName="Alexander Smith"
+        />
       </IonContent>
     </IonPage>
   );

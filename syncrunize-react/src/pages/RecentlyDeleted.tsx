@@ -18,16 +18,16 @@ import '../components/Activities/RecentlyDeleted.css';
 const RecentlyDeleted = () => {
   const [searchText, setSearchText] = useState("");
   const [isMobile, setIsMobile] = useState(false);
-  
+   
   const activities = [
-    { id: 1, date: "Fri, 4/4/2025", title: "Afternoon Run", distance: "4.11 km", time: "49:14" },
-    { id: 2, date: "Sat, 4/5/2025", title: "Morning Run", distance: "13.11 km", time: "1:49:14" },
-    { id: 3, date: "Tues, 4/1/2025", title: "Evening Run", distance: "2.11 km", time: "9:54" },
-    { id: 4, date: "Mon, 3/31/2025", title: "5K Run", distance: "5.12 km", time: "29:23" },
-    { id: 5, date: "Fri, 4/4/2025", title: "Afternoon Run", distance: "4.11 km", time: "49:14" },
-    { id: 6, date: "Sat, 4/5/2025", title: "Morning Run", distance: "13.11 km", time: "1:49:14" },
-    { id: 7, date: "Tues, 4/1/2025", title: "Evening Run", distance: "2.11 km", time: "9:54" },
-    { id: 8, date: "Mon, 3/31/2025", title: "5K Run", distance: "5.12 km", time: "29:23" }
+    { id: 1, date: "Fri, 4/4/2025", title: "Afternoon Run", distance: "4.11 km", time: "49:14", calories: 312 },
+    { id: 2, date: "Sat, 4/5/2025", title: "Morning Run", distance: "13.11 km", time: "1:49:14", calories: 892 },
+    { id: 3, date: "Tues, 4/1/2025", title: "Evening Run", distance: "2.11 km", time: "9:54", calories: 156 },
+    { id: 4, date: "Mon, 3/31/2025", title: "5K Run", distance: "5.12 km", time: "29:23", calories: 387 },
+    { id: 5, date: "Fri, 4/4/2025", title: "Afternoon Run", distance: "4.11 km", time: "49:14", calories: 312 },
+    { id: 6, date: "Sat, 4/5/2025", title: "Morning Run", distance: "13.11 km", time: "1:49:14", calories: 892 },
+    { id: 7, date: "Tues, 4/1/2025", title: "Evening Run", distance: "2.11 km", time: "9:54", calories: 156 },
+    { id: 8, date: "Mon, 3/31/2025", title: "5K Run", distance: "5.12 km", time: "29:23", calories: 387 }
   ];
 
   // Check screen size
@@ -61,17 +61,19 @@ const RecentlyDeleted = () => {
       <IonGrid className="activities-table">
         <IonRow>
           <IonCol size="2">Date</IonCol>
-          <IonCol size="3">Activity</IonCol>
-          <IonCol size="2">Distance</IonCol>
-          <IonCol size="2">Time</IonCol>
+          <IonCol size="2.5">Activity</IonCol>
+          <IonCol size="1.5">Distance</IonCol>
+          <IonCol size="1.5">Time</IonCol>
+          <IonCol size="1.5">Calories</IonCol>
           <IonCol size="3">Actions</IonCol>
         </IonRow>
         {filteredActivities.map((activity) => (
           <IonRow key={activity.id}>
             <IonCol size="2">{activity.date}</IonCol>
-            <IonCol size="3">{activity.title}</IonCol>
-            <IonCol size="2">{activity.distance}</IonCol>
-            <IonCol size="2">{activity.time}</IonCol>
+            <IonCol size="2.5">{activity.title}</IonCol>
+            <IonCol size="1.5">{activity.distance}</IonCol>
+            <IonCol size="1.5">{activity.time}</IonCol>
+            <IonCol size="1.5">{activity.calories} kcal</IonCol>
             <IonCol size="3">
               <IonButton 
                 fill="clear" 
@@ -87,7 +89,7 @@ const RecentlyDeleted = () => {
                 onClick={() => handleDelete(activity.id)}
                 className="delete-btn"
               >
-                Delete
+                Delete Permanently
               </IonButton>
             </IonCol>
           </IonRow>
@@ -116,6 +118,10 @@ const RecentlyDeleted = () => {
                 <div className="stat-item">
                   <span className="stat-label">TIME</span>
                   <span className="stat-value">{activity.time}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">CALORIES</span>
+                  <span className="stat-value">{activity.calories} kcal</span>
                 </div>
               </div>
 

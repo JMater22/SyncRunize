@@ -7,7 +7,7 @@
 
 .page-layout-enhanced {
   display: grid;
-  grid-template-columns: 320px 1fr 340px;
+  grid-template-columns: 320px 1fr 340px; 
   gap: 24px;
   max-width: 1440px;
   margin: 0 auto;
@@ -727,165 +727,6 @@ p.sidebar-subtitle {
   font-weight: 600;
   color: #111827;
 }
-/* ================= Create Post Modal ================= */
-.modal-content {
-  --background: #ffffff;
-  --padding-start: 0;
-  --padding-end: 0;
-  --padding-top: 0;
-  --padding-bottom: 0;
-}
-
-.modal-body {
-  padding: 24px;
-}
-
-.user-profile {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.avatar-modal {
-  width: 50px;
-  height: 50px;
-  border: 2px solid #e2e8f0;
-}
-
-.name-modal {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.post-textarea {
-  --background: #f8fafc;
-  --color: #1e293b;
-  --placeholder-color: #94a3b8;
-  --padding-top: 16px;
-  --padding-bottom: 16px;
-  --padding-start: 16px;
-  --padding-end: 16px;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  font-size: 15px;
-  line-height: 1.6;
-  margin-bottom: 20px;
-  transition: all 0.3s ease;
-  min-height: 120px;
-  width: 100%;
-}
-
-.post-textarea:focus-within,
-.post-textarea.textarea-has-focus {
-  border-color: #92C628;
-  box-shadow: 0 0 0 3px rgba(146, 198, 40, 0.1);
-  --background: #ffffff;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #e2e8f0;
-}
-
-.media-buttons {
-  display: flex;
-  gap: 8px;
-  flex: 1;
-}
-
-.media-btn {
-  --color: #64748b;
-  --background-hover: #f1f5f9;
-  --ripple-color: rgba(146, 198, 40, 0.1);
-  --padding-start: 12px;
-  --padding-end: 12px;
-  --border-radius: 10px;
-  height: 40px;
-  width: 40px;
-  margin: 0;
-}
-
-.media-btn ion-icon {
-  font-size: 22px;
-}
-
-.media-btn:hover {
-  --color: #92C628;
-}
-
-.post-btn {
-  --background: #e2e8f0;
-  --color: #94a3b8;
-  --border-radius: 10px;
-  --padding-start: 32px;
-  --padding-end: 32px;
-  font-weight: 600;
-  font-size: 15px;
-  height: 42px;
-  text-transform: none;
-  transition: all 0.3s ease;
-}
-
-.post-btn:not([disabled]) {
-  --background: #92C628;
-  --background-hover: #7ba321;
-  --color: white;
-}
-
-.post-btn:hover:not([disabled]) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(146, 198, 40, 0.3);
-}
-
-.post-btn[disabled] {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Modal Header Styling */
-ion-modal ion-header ion-toolbar {
-  --background: white;
-  --border-color: #e2e8f0;
-  --border-width: 0 0 1px 0;
-  --color: #1e293b;
-  --min-height: 56px;
-  padding: 0 8px;
-}
-
-ion-modal ion-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-ion-modal ion-buttons ion-button {
-  --color: #64748b;
-  --background-hover: #f1f5f9;
-  --border-radius: 8px;
-  margin: 0;
-  width: 40px;
-  height: 40px;
-}
-
-ion-modal ion-buttons ion-button ion-icon {
-  font-size: 24px;
-}
-
-ion-modal ion-buttons ion-button:hover {
-  --color: #1e293b;
-}
-
-/* Modal Backdrop */
-ion-modal::part(backdrop) {
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
-}
 
 /* ================= Responsive Fix for Mobile ================= */
 @media (max-width: 1024px) {
@@ -972,27 +813,6 @@ ion-modal::part(backdrop) {
   .post-input {
     font-size: 14px;
   }
-   .create-post-modal {
-    padding: 16px;
-  }
-
-  .modal-user-info {
-    padding: 12px;
-  }
-
-  .modal-avatar {
-    width: 40px;
-    height: 40px;
-  }
-
-  .modal-user-info h3 {
-    font-size: 14px;
-  }
-
-  .modal-user-info p {
-    font-size: 12px;
-  }
-
   .post-textarea {
     font-size: 14px;
   }

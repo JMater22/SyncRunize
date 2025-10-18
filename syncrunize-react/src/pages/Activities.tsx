@@ -15,14 +15,14 @@ import '../components/Activities/Activities.css';
 
 const Activities: React.FC = () => {
   const activities = [
-    { date: "Fri, 4/4/2025", title: "Afternoon Run", distance: "4.11 km", time: "49:14" },
-    { date: "Sat, 4/5/2025", title: "Morning Run", distance: "13.11 km", time: "1:49:14" },
-    { date: "Tues, 4/1/2025", title: "Evening Run", distance: "2.11 km", time: "9:54" },
-    { date: "Mon, 3/31/2025", title: "5K Run", distance: "5.12 km", time: "29:23" },
-    { date: "Sun, 3/30/2025", title: "Recovery Run", distance: "3.25 km", time: "22:45" },
-    { date: "Fri, 3/28/2025", title: "Tempo Run", distance: "8.50 km", time: "42:30" },
-    { date: "Wed, 3/26/2025", title: "Hill Training", distance: "6.75 km", time: "38:15" },
-    { date: "Mon, 3/24/2025", title: "Long Run", distance: "15.00 km", time: "1:32:20" },
+    { date: "Fri, 4/4/2025", title: "Afternoon Run", distance: "4.11 km", time: "49:14", calories: 312 },
+    { date: "Sat, 4/5/2025", title: "Morning Run", distance: "13.11 km", time: "1:49:14", calories: 892 },
+    { date: "Tues, 4/1/2025", title: "Evening Run", distance: "2.11 km", time: "9:54", calories: 156 },
+    { date: "Mon, 3/31/2025", title: "5K Run", distance: "5.12 km", time: "29:23", calories: 387 },
+    { date: "Sun, 3/30/2025", title: "Recovery Run", distance: "3.25 km", time: "22:45", calories: 245 },
+    { date: "Fri, 3/28/2025", title: "Tempo Run", distance: "8.50 km", time: "42:30", calories: 612 },
+    { date: "Wed, 3/26/2025", title: "Hill Training", distance: "6.75 km", time: "38:15", calories: 521 },
+    { date: "Mon, 3/24/2025", title: "Long Run", distance: "15.00 km", time: "1:32:20", calories: 1043 },
   ];
 
   return (
@@ -58,6 +58,7 @@ const Activities: React.FC = () => {
             <IonCol>Title</IonCol>
             <IonCol>Distance</IonCol>
             <IonCol>Time</IonCol>
+            <IonCol>Calories</IonCol>
             <IonCol>Actions</IonCol>
           </IonRow>
 
@@ -67,9 +68,10 @@ const Activities: React.FC = () => {
               <IonCol>{activity.title}</IonCol>
               <IonCol>{activity.distance}</IonCol>
               <IonCol>{activity.time}</IonCol>
+              <IonCol>{activity.calories} kcal</IonCol>
               <IonCol>
                 <IonButton fill="clear" size="small">Edit</IonButton>
-                <IonButton fill="clear" size="small">Delete</IonButton>
+                <IonButton fill="clear" color="danger" size="small">Delete</IonButton>
               </IonCol>
             </IonRow>
           ))}
@@ -93,6 +95,10 @@ const Activities: React.FC = () => {
                   <div className="stat-item">
                     <span className="stat-label">Time</span>
                     <span className="stat-value">{activity.time}</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">Calories</span>
+                    <span className="stat-value">{activity.calories} kcal</span>
                   </div>
                 </div>
                 <div className="card-actions">
