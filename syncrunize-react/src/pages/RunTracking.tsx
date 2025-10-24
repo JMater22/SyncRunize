@@ -17,7 +17,7 @@ return (
           <div className="mobile-app-text">
             <h2>Run Tracking Available on Mobile App Only</h2>
             <p>
-              Track your runs, monitor your progress, and stay motivated — all
+              Track your runs, monitor your progress, and stay motivated  all
               from your phone. Download the app now to get started!
             </p>
           </div>

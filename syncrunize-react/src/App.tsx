@@ -26,6 +26,7 @@ import Community from './pages/Community';
 import Challenges from './pages/Challenges';
 import RunTracking from './pages/RunTracking';
 import RoutesPage from './pages/RoutesPage';
+import SavedRoutesPage from './components/Routes/SavedRoutesPage';
 import Activities from './pages/Activities'; 
 import RecentlyDeleted from './pages/RecentlyDeleted';
 import Profile from './pages/Profile';
@@ -109,6 +110,7 @@ const App: React.FC = () => (
           <Route exact path="/challenges" component={Challenges} />
           <Route exact path="/run-tracking" component={RunTracking} />
           <Route exact path="/routes" component={RoutesPage} />
+          <Route exact path="/saved-routes" component={SavedRoutesPage} />
           <Route exact path="/activities" component={Activities} />
           <Route exact path="/profile" component={Profile} />
           <Route exact path="/recently-deleted" component={RecentlyDeleted} />

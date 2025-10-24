@@ -24,6 +24,10 @@ const RoutesPage: React.FC = () => {
   const handleCreateRoute = () => {
     history.push('/create-route');
   };
+  
+  const handleSavedRoutes = () => {
+    history.push('/saved-routes');
+  };
 
   return (
     <IonPage> 
@@ -40,7 +44,6 @@ const RoutesPage: React.FC = () => {
           {/* Searchbar Column */}
           <IonCol size="" className="searchbar-container">
             <IonSearchbar 
-              placeholder="Search for keywords" 
               className="custom-searchbar"/>
           </IonCol>
 
@@ -48,12 +51,18 @@ const RoutesPage: React.FC = () => {
           <IonCol size="4" className="button-col ion-text-right">
             <IonButton 
               expand="block" 
+              className="saved-routes-btn"
+              onClick={handleSavedRoutes}>
+              Saved Routes
+            </IonButton>
+            <IonButton 
+              expand="block" 
               className="create-route-btn"
               onClick={handleCreateRoute}>
               Create New Route
             </IonButton>
           </IonCol>
-        </IonRow>  {/* ADD THIS CLOSING TAG */}
+        </IonRow>
 
         {/* Routes Grid */}
         <IonGrid className="routes-container">

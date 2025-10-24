@@ -10,6 +10,8 @@ import {
   IonAvatar,
   IonTextarea,
   IonIcon,
+  IonItem,
+  IonLabel,
   IonRadio,
   IonRadioGroup,
 } from "@ionic/react";
@@ -18,9 +20,9 @@ import {
   imageOutline,
   locationOutline,
   happyOutline,
-  ellipsisHorizontal,
-  personAddOutline,
+  heartOutline,
 } from "ionicons/icons";
+
 import ProfilePic from "../../assets/Profile Picture.png";
 import "./CreatePostModal.css";
 
@@ -88,7 +90,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
               <div className="user-info">
                 <span className="name-modal">{userName}</span>
                 <IonButton
-                  fill="solid"
+                  fill="outline"
                   size="small"
                   className="friends-btn"
                   onClick={() => setStep("audience")}
@@ -104,27 +106,24 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
               onIonInput={(e) => setPostContent(e.detail.value!)}
               autoGrow={true}
               className="post-textarea"
-              rows={1}
             />
 
             <div className="add-to-post">
               <span>Add to your post</span>
               <div className="media-icons">
-                <button className="media-icon-btn" title="Photo/Video">
+                <button className="media-icon-btn">
                   <IonIcon icon={imageOutline} />
                 </button>
-                <button className="media-icon-btn" title="Tag People">
-                  <IonIcon icon={personAddOutline} />
-                </button>
-                <button className="media-icon-btn" title="Feeling/Activity">
+                <button className="media-icon-btn">
                   <IonIcon icon={happyOutline} />
                 </button>
-                <button className="media-icon-btn" title="Check In">
+                <button className="media-icon-btn">
+                  <IonIcon icon={heartOutline} />
+                </button>
+                <button className="media-icon-btn">
                   <IonIcon icon={locationOutline} />
                 </button>
-                <button className="media-icon-btn more-btn" title="More">
-                  <IonIcon icon={ellipsisHorizontal} />
-                </button>
+                <button className="media-icon-btn more-btn">···</button>
               </div>
             </div>
 
@@ -151,7 +150,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
                   <div className="radio-icon">🌐</div>
                   <div className="radio-text">
                     <h4>Public</h4>
-                    <p>Anyone on or off SyncRunize</p>
+                    <p>Anyone on or off Facebook</p>
                   </div>
                 </div>
                 <IonRadio value="public" />
@@ -159,21 +158,10 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
 
               <div className="radio-option">
                 <div className="radio-content">
-                  <div className="radio-icon">👥</div>
-                  <div className="radio-text">
-                    <h4>Friends</h4>
-                    <p>Your friends on SyncRunize</p>
-                  </div>
-                </div>
-                <IonRadio value="friends" />
-              </div>
-
-              <div className="radio-option">
-                <div className="radio-content">
                   <div className="radio-icon">🔒</div>
                   <div className="radio-text">
-                    <h4>Only me</h4>
-                    <p>Only you can see this post</p>
+                    <h4>Private</h4>
+                    <p>Only you</p>
                   </div>
                 </div>
                 <IonRadio value="private" />
