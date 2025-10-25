@@ -228,6 +228,48 @@ ion-popover .popover-content {
   font-weight: 600;
 }
 
+/* ===== Join Button Styles ===== */
+.join-btn {
+  --background: #92C628;
+  --background-hover: #7ba920;
+  --background-activated: #6d9618;
+  --color: #ffffff;
+  --border-radius: 8px;
+  height: 40px;
+  font-weight: 600;
+  font-size: 14px;
+  margin-top: 12px;
+  text-transform: none;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.join-btn:hover {
+  transform: translateY(-1px);
+  --box-shadow: 0 4px 12px rgba(146, 198, 40, 0.3);
+}
+
+/* Joined Button (different style when already joined) */
+.joined-btn {
+  --background: #e5e7eb;
+  --background-hover: #d1d5db;
+  --background-activated: #9ca3af;
+  --color: #6b7280;
+  --border-radius: 8px;
+  height: 40px;
+  font-weight: 600;
+  font-size: 14px;
+  margin-top: 12px;
+  text-transform: none;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.joined-btn:hover {
+  --color: #1a1a1a;
+  --background: #d1d5db;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 1024px) {
   .groups-page-header,
@@ -325,6 +367,12 @@ ion-popover .popover-content {
   .card-info .location,
   .card-info .member-count {
     font-size: 12px;
+  }
+    .join-btn,
+  .joined-btn {
+    height: 38px;
+    font-size: 13px;
+    margin-top: 10px;
   }
 }
 

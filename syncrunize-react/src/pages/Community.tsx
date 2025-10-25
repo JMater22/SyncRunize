@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   IonPage,
   IonContent,
@@ -9,7 +9,7 @@ import {
   IonCol,
   IonCard,
   IonCardContent,
-  IonButton,
+  IonButton, 
   IonSearchbar,  
 } from "@ionic/react";
 
@@ -20,6 +20,8 @@ import "../components/Community/CreateGroup.tsx";
 import "../components/Community/GroupFeed.tsx";
 
 const Community: React.FC = () => {
+  const [joinedGroups, setJoinedGroups] = useState<number[]>([]);
+
   const groups = [
     { id: 1, name: "Pampanga Runners Community", location: "Mabalacat, Pampanga, Philippines", members: "1,078 Runners", image: Group1 },
     { id: 2, name: "Clark Running Club", location: "Angeles, Pampanga, Philippines", members: "1,878 Runners", image: Group2 },
@@ -34,6 +36,16 @@ const Community: React.FC = () => {
     { id: 11, name: "Pampanga Runners Community", location: "Mabalacat, Pampanga, Philippines", members: "1,078 Runners", image: Group1 },
     { id: 12, name: "Clark Running Club", location: "Angeles, Pampanga, Philippines", members: "1,878 Runners", image: Group2 }
   ];
+
+  const handleJoinToggle = (groupId: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card navigation when clicking button
+    
+    if (joinedGroups.includes(groupId)) {
+      setJoinedGroups(joinedGroups.filter(id => id !== groupId));
+    } else {
+      setJoinedGroups([...joinedGroups, groupId]);
+    }
+  };
 
   return (
     <IonPage>
@@ -83,13 +95,22 @@ const Community: React.FC = () => {
                 <IonCol key={group.id} size="12" sizeMd="6" sizeLg="3">
                   <IonCard
                     className="group-card clickable-card"
-                    routerLink={'/group-feed'} // ✅ use routerLink instead of history.push
+                    routerLink={'/group-feed'}
                   >
                     <img src={group.image} alt={group.name} />
                     <IonCardContent className="card-info">
                       <h3>{group.name}</h3>
                       <p className="location">{group.location}</p>
                       <p className="member-count">{group.members}</p>
+                      
+                      {/* Join/Joined Button */}
+                      <IonButton
+                        className={joinedGroups.includes(group.id) ? "joined-btn" : "join-btn"}
+                        expand="block"
+                        onClick={(e) => handleJoinToggle(group.id, e)}
+                      >
+                        {joinedGroups.includes(group.id) ? "Joined" : "Join"}
+                      </IonButton>
                     </IonCardContent>
                   </IonCard>
                 </IonCol>

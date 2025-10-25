@@ -2,360 +2,293 @@ import React, { useState } from "react";
 import {
   IonPage,
   IonContent,
-  IonList,
-  IonItem,
-  IonAvatar,
-  IonLabel,
   IonButton,
-  IonInput,
-  IonTextarea,
   IonIcon,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
+  IonSegment,
+  IonSegmentButton,
+  IonLabel,
 } from "@ionic/react";
 import {
-  heart,
-  chatbubble,
-  camera, 
-  videocam,
   location,
-  happy,
-  trophy,
-  personAdd,
-  ellipsisHorizontal
+  chatbubbles,
 } from "ionicons/icons";
 import "./GroupFeed.css";
 
-interface User {
-  id: number;
+// Import local images
+import BannerImage from "../../assets/Banner UP.png";
+import GroupImage from "../../assets/GROUP 1.png";
+import ProfileImage from "../../assets/MAN5.png";
+
+interface LeaderboardEntry {
+  rank: number;
   name: string;
-  username: string;
   avatar: string;
-  verified?: boolean;
+  distance: string;
+  runs: number;
+  longest: string;
 }
 
-interface Post {
+interface Member {
   id: number;
-  user: {
-    name: string;
-    avatar: string;
-  };
-  content: string;
-  image: string;
-  likes: number;
-  comments: number;
-  time: string;
+  name: string;
+  location: string;
+  avatar: string;
+  isAdmin?: boolean;
 }
 
 const GroupFeed: React.FC = () => {
-  const [showModal, setShowModal] = useState<boolean>(false);
-  const [likedPosts, setLikedPosts] = useState<Set<number>>(new Set());
+  const [activeSegment, setActiveSegment] = useState<string>("leaderboard");
 
-  const toggleLike = (postId: number) => {
-    const newLikedPosts = new Set(likedPosts);
-    if (newLikedPosts.has(postId)) {
-      newLikedPosts.delete(postId);
-    } else {
-      newLikedPosts.add(postId);
-    }
-    setLikedPosts(newLikedPosts);
+  const lastWeekLeaders = {
+    distance: [
+      { name: "Amir Haha", avatar: ProfileImage, value: "130.5 km" },
+      { name: "Hero Berms", avatar: ProfileImage, value: "70.9 km" },
+      { name: "Carl Tayag", avatar: ProfileImage, value: "66.6 km" },
+    ],
+    time: [
+      { name: "Jam Losañez", avatar: ProfileImage, value: "96:10:49" },
+      { name: "Amir Haha", avatar: ProfileImage, value: "22:55:10" },
+      { name: "PATRICK JARV", avatar: ProfileImage, value: "7:51:55" },
+    ],
   };
 
-  const suggestedUsers: User[] = [
-    {
-      id: 1,
-      name: "Calvin Drag",
-      username: "@calvindragrunner",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face&auto=format"
-    },
-    {
-      id: 2,
-      name: "Ivy Root",
-      username: "@ivy_root_29",
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face&auto=format"
-    },
-    {
-      id: 3,
-      name: "Lauren Prittsky",
-      username: "@laurenlovesrunning",
-      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face&auto=format",
-      verified: true
-    }
+  const thisWeekLeaderboard: LeaderboardEntry[] = [
+    { rank: 1, name: "Amir Haha", avatar: ProfileImage, distance: "69.9 km", runs: 6, longest: "21.2 km" },
+    { rank: 2, name: "Carl Tayag", avatar: ProfileImage, distance: "49.3 km", runs: 5, longest: "12.3 km" },
+    { rank: 3, name: "Darrell Castro", avatar: ProfileImage, distance: "48.4 km", runs: 4, longest: "18.0 km" },
+    { rank: 4, name: "Derick Climaco", avatar: ProfileImage, distance: "47.2 km", runs: 3, longest: "32.2 km" },
+    { rank: 5, name: "Callifter Eugenio", avatar: ProfileImage, distance: "43.0 km", runs: 5, longest: "12.0 km" },
+    { rank: 6, name: "Michael John Agustin", avatar: ProfileImage, distance: "41.2 km", runs: 3, longest: "21.0 km" },
+    { rank: 7, name: "Pima", avatar: ProfileImage, distance: "39.9 km", runs: 4, longest: "17.8 km" },
+    { rank: 8, name: "Joypsii", avatar: ProfileImage, distance: "39.7 km", runs: 7, longest: "15.0 km" },
+    { rank: 9, name: "Gil Timothy Lactaoen", avatar: ProfileImage, distance: "39.0 km", runs: 4, longest: "12.0 km" },
   ];
 
-  const recentlyJoined: User[] = [
-    {
-      id: 1,
-      name: "Michael - 28 yo",
-      username: "San Francisco",
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face&auto=format"
-    },
-    {
-      id: 2,
-      name: "Susan - 37 yo",
-      username: "New York",
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face&auto=format"
-    },
-    {
-      id: 3,
-      name: "James - 28 yo",
-      username: "Seattle",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face&auto=format"
-    }
-  ];
-
-  const posts: Post[] = [
-    {
-      id: 1,
-      user: {
-        name: "Alexander Smith",
-        avatar: "https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=150&h=150&fit=crop&crop=face&auto=format"
-      },
-      content: "Just finished an amazing 10K run through Golden Gate Park! The morning fog made it absolutely magical. Who wants to join me tomorrow? 🏃‍♂️",
-      image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&h=400&fit=crop&auto=format",
-      likes: 124,
-      comments: 43,
-      time: "2 hours ago"
-    },
-    {
-      id: 2,
-      user: {
-        name: "Sarah Johnson",
-        avatar: "https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=150&h=150&fit=crop&crop=face&auto=format"
-      },
-      content: "Training for the upcoming marathon! These hill repeats are brutal but so worth it. Remember: every step counts! 💪",
-      image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&auto=format",
-      likes: 89,
-      comments: 27,
-      time: "4 hours ago"
-    },
-    {
-      id: 3,
-      user: {
-        name: "Mike Torres",
-        avatar: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&h=400&fit=crop&auto=format"
-      },
-      content: "Group run this Sunday at 7 AM - Presidio trails! Perfect weather forecast and amazing views. Let's make it a big group! 🌅",
-      image: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=600&h=400&fit=crop&auto=format",
-      likes: 156,
-      comments: 62,
-      time: "6 hours ago"
-    }
+  const clubMembers: Member[] = [
+    { id: 1, name: "Yobs V. Cabrera", location: "Tarlac City, Tarlac, Philippines", avatar: ProfileImage, isAdmin: true },
+    { id: 2, name: "Aaron Andres", location: "Mabalacat, Pampanga, Philippines", avatar: ProfileImage },
+    { id: 3, name: "Aaron Castañeda", location: "Tarlac, Central Luzon, Philippines", avatar: ProfileImage },
+    { id: 4, name: "Aaron Gomez", location: "Cabanatuan City, Central Luzon, Philippines", avatar: ProfileImage },
+    { id: 5, name: "Ace Ronald Ampong", location: "Tarlac, TARLAC", avatar: ProfileImage },
+    { id: 6, name: "Adhi Abana", location: "Mabalacat City, Central Luzon, Philippines", avatar: ProfileImage },
+    { id: 7, name: "Aenean Cay", location: "Capas, Tarlac, Philippines", avatar: ProfileImage },
+    { id: 8, name: "Aeron Belleza", location: "Tarlac City, Central Luzon, Philippines", avatar: ProfileImage },
+    { id: 9, name: "Allan Rey Agustin", location: "Aurora, Isabela, Philippines", avatar: ProfileImage },
+    { id: 10, name: "Ajay Guileb", location: "Gerona, Tarlac, Philippines", avatar: ProfileImage },
+    { id: 11, name: "Aldrin Acob", location: "Gerona, Tarlac, Philippines", avatar: ProfileImage },
+    { id: 12, name: "Alex Martinez", location: "San Jose, Tarlac, Philippines", avatar: ProfileImage },
+    { id: 13, name: "Angelo Santos", location: "Bamban, Tarlac, Philippines", avatar: ProfileImage },
+    { id: 14, name: "Benjamin Cruz", location: "Concepcion, Tarlac, Philippines", avatar: ProfileImage },
+    { id: 15, name: "Carlos Reyes", location: "Victoria, Tarlac, Philippines", avatar: ProfileImage },
+    { id: 16, name: "Daniel Garcia", location: "Paniqui, Tarlac, Philippines", avatar: ProfileImage },
+    { id: 17, name: "Edward Flores", location: "La Paz, Tarlac, Philippines", avatar: ProfileImage },
+    { id: 18, name: "Francis Lopez", location: "Camiling, Tarlac, Philippines", avatar: ProfileImage },
+    { id: 19, name: "Gabriel Torres", location: "Mayantoc, Tarlac, Philippines", avatar: ProfileImage },
+    { id: 20, name: "Henry Pascual", location: "Capas, Tarlac, Philippines", avatar: ProfileImage },
   ];
 
   return (
     <IonPage>
-      {/* Header */}
-      <IonHeader className="custom-header">
-        <IonToolbar className="custom-toolbar">
-          <IonTitle className="custom-title">City Runner Group Feed</IonTitle>
-        </IonToolbar>
-      </IonHeader>
-
       <IonContent>
-        {/* Layout Grid */}
-        <div className="layout-grid">
-          {/* LEFT SIDEBAR */}
-          <section className="sidebar-left">
-            <h3 className="section-title">
-              <IonIcon icon={personAdd} className="section-icon" />
-              Who to follow
-            </h3>
-            <IonList className="follow-list">
-              {suggestedUsers.map((user) => (
-                <IonItem key={user.id} className="follow-item">
-                  <IonAvatar slot="start">
-                    <img src={user.avatar} alt={user.name} />
-                  </IonAvatar>
-                  <IonLabel className="user-info">
-                    <div className="name">
-                      {user.name}
-                      {user.verified && <span className="verified-badge"></span>}
-                    </div>
-                    <div className="username">{user.username}</div>
-                  </IonLabel>
-                  <IonButton className="follow-button" slot="end" size="small">
-                    Follow
-                  </IonButton>
-                </IonItem>
-              ))}
-            </IonList>
-            <IonButton expand="block" className="show-more" fill="clear">
-              Show more
-            </IonButton>
-          </section>
-
-          {/* MAIN FEED */}
-          <section className="feed">
-            {/* Post Input */}
-            <div
-              className="post-input-container"
-              onClick={() => setShowModal(true)}
-            >
-              <IonAvatar className="post-input-avatar">
-                <img
-                  src="https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=150&h=150&fit=crop&crop=face&auto=format"
-                  alt="Your avatar"
+        {/* Hero Banner */}
+        <div className="club-hero-banner">
+          <img 
+            src={BannerImage}
+            alt="Club banner" 
+            className="hero-image"
+          />
+          <div className="club-hero-overlay">
+            <div className="club-hero-content">
+              <div className="club-avatar">
+                <img 
+                  src={GroupImage}
+                  alt="Club logo" 
                 />
-              </IonAvatar>
-              <IonInput
-                placeholder="Share your running journey..."
-                readonly
-                className="post-input-field"
-              />
-            </div>
-
-            {/* Posts */}
-            <div className="posts-container">
-              {posts.map((post) => (
-                <div key={post.id} className="post">
-                  <div className="post-header">
-                    <IonAvatar>
-                      <img src={post.user.avatar} alt={post.user.name} />
-                    </IonAvatar>
-                    <div className="user-info">
-                      <span className="name">{post.user.name}</span>
-                      <span className="time">{post.time}</span>
-                    </div>
-                    <IonButton fill="clear" className="post-menu">
-                      <IonIcon icon={ellipsisHorizontal} />
-                    </IonButton>
-                  </div>
-
-                  <div className="post-content">
-                    <p>{post.content}</p>
-                    <img
-                      src={post.image}
-                      alt="Post content"
-                      className="post-image"
-                    />
-                  </div>
-
-                  <div className="post-actions">
-                    <IonButton
-                      fill="clear"
-                      className={`action-button ${likedPosts.has(post.id) ? 'liked' : ''}`}
-                      onClick={() => toggleLike(post.id)}
-                    >
-                      <IonIcon icon={heart} slot="start" />
-                      {post.likes + (likedPosts.has(post.id) ? 1 : 0)}
-                    </IonButton>
-                    <IonButton fill="clear" className="action-button">
-                      <IonIcon icon={chatbubble} slot="start" />
-                      {post.comments}
-                    </IonButton>
-                  </div>
+              </div>
+              <div className="club-info">
+                <h1 className="club-name">Tarlac City Runners</h1>
+                <div className="club-location">
+                  <IonIcon icon={location} />
+                  <span>Tarlac City, Tarlac, Philippines</span>
                 </div>
-              ))}
-            </div>
-          </section>
-
-          {/* RIGHT SIDEBAR */}
-          <section className="sidebar-right">
-            {/* LEADERBOARD */}
-            <div className="leaderboard-card">
-              <IonButton
-                className="leaderboard-btn"
-                routerLink="/leaderboard"
-                expand="block"
-              >
-                <IonIcon icon={trophy} slot="start" />
-                Leaderboard
+                <p className="club-description">Let's Run Tarlakenos</p>
+              </div>
+              <IonButton className="join-club-btn">
+                Join Club
               </IonButton>
             </div>
+          </div>
+        </div>
 
-            {/* RECENTLY JOINED */}
-            <div className="recently-joined">
-              <h3 className="section-title">Recently Joined</h3>
-              <div className="joined-list">
-                {recentlyJoined.map((user) => (
-                  <div key={user.id} className="joined-item">
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                      className="joined-avatar"
-                    />
-                    <div className="joined-info">
-                      <span className="name">{user.name}</span>
-                      <span className="location">{user.username}</span>
+        {/* Navigation Tabs */}
+        <div className="club-navigation">
+          <IonSegment value={activeSegment} onIonChange={(e) => setActiveSegment(e.detail.value as string)}>
+            <IonSegmentButton value="leaderboard">
+              <IonLabel>Club Leaderboard</IonLabel>
+            </IonSegmentButton>
+            <IonSegmentButton value="members">
+              <IonLabel>Members</IonLabel>
+            </IonSegmentButton>
+            <IonSegmentButton value="posts">
+              <IonLabel>Posts <span className="post-count">57 NEW</span></IonLabel>
+            </IonSegmentButton>
+          </IonSegment>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="club-main-content">
+          <div className="club-content-grid">
+            {/* Left Content */}
+            <div className="club-left-content">
+              {activeSegment === "leaderboard" && (
+                <>
+                  {/* Last Week's Leaders */}
+                  <section className="leaders-section">
+                    <h2 className="section-heading">Last Week's Leaders</h2>
+                    <div className="leaders-grid">
+                      {/* Distance */}
+                      <div className="leader-category">
+                        <h3 className="category-title">Distance</h3>
+                        {lastWeekLeaders.distance.map((leader, index) => (
+                          <div key={index} className="leader-item">
+                            <div className="leader-medal">{index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}</div>
+                            <img src={leader.avatar} alt={leader.name} className="leader-avatar" />
+                            <span className="leader-name">{leader.name}</span>
+                            <span className="leader-value">{leader.value}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Total Running Time */}
+                      <div className="leader-category">
+                        <h3 className="category-title">Total Running Time</h3>
+                        {lastWeekLeaders.time.map((leader, index) => (
+                          <div key={index} className="leader-item">
+                            <div className="leader-medal">{index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}</div>
+                            <img src={leader.avatar} alt={leader.name} className="leader-avatar" />
+                            <span className="leader-name">{leader.name}</span>
+                            <span className="leader-value">{leader.value}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  </section>
 
-            {/* STATS CARD */}
-            <div className="stats-card">
-              <h3 className="section-title">Your Stats</h3>
-              <div className="stats-list">
-                <div className="stat-item">
-                  <span className="stat-label">This Week</span>
-                  <span className="stat-value">32.5 km</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">This Month</span>
-                  <span className="stat-value">127.8 km</span>
-                </div>
-              </div>
-            </div>
-          </section>
+                  {/* This Week's Leaderboard */}
+                  <section className="leaderboard-section">
+                    <div className="leaderboard-header">
+                      <h2 className="section-heading">This Week's Leaderboard</h2>
+                      <div className="week-toggle">
+                        <button className="week-btn">Last Week</button>
+                        <button className="week-btn active">This Week</button>
+                      </div>
+                    </div>
 
-          {/* CREATE POST MODAL */}
-          {showModal && (
-            <div className="modal-overlay" onClick={() => setShowModal(false)}>
-              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h3>Create Post</h3>
-                  <IonButton
-                    fill="clear"
-                    className="close-button"
-                    onClick={() => setShowModal(false)}
-                  >
-                    ×
-                  </IonButton>
-                </div>
-                <div className="modal-body">
-                  <div className="modal-user-profile">
-                    <IonAvatar>
-                      <img
-                        src="https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=150&h=150&fit=crop&crop=face&auto=format"
-                        alt="Your avatar"
-                      />
-                    </IonAvatar>
-                    <span className="modal-username">Alexander Smith</span>
-                  </div>
-                  <IonTextarea
-                    placeholder="What's on your mind, Alexander?"
-                    rows={5}
-                    className="modal-textarea"
-                  />
-                  <div className="modal-actions">
-                    <div className="media-buttons">
-                      <IonButton fill="clear" className="media-btn">
-                        <IonIcon icon={camera} />
-                      </IonButton>
-                      <IonButton fill="clear" className="media-btn">
-                        <IonIcon icon={videocam} />
-                      </IonButton>
-                      <IonButton fill="clear" className="media-btn">
-                        <IonIcon icon={location} />
-                      </IonButton>
-                      <IonButton fill="clear" className="media-btn">
-                        <IonIcon icon={happy} />
+                    <div className="leaderboard-table">
+                      <div className="table-header">
+                        <div className="th rank-col">Rank</div>
+                        <div className="th athlete-col">Athlete</div>
+                        <div className="th">Distance ▼</div>
+                        <div className="th">Runs</div>
+                        <div className="th">Longest ▼</div>
+                      </div>
+
+                      {thisWeekLeaderboard.map((entry) => (
+                        <div key={entry.rank} className="table-row">
+                          <div className="td rank-col">{entry.rank}</div>
+                          <div className="td athlete-col">
+                            <img src={entry.avatar} alt={entry.name} className="athlete-avatar" />
+                            <span className="athlete-name">{entry.name}</span>
+                          </div>
+                          <div className="td">{entry.distance}</div>
+                          <div className="td">{entry.runs}</div>
+                          <div className="td">{entry.longest}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </>
+              )}
+
+              {activeSegment === "members" && (
+                <div className="members-content">
+                  {/* Invite Section */}
+                  <div className="invite-section">
+                    <div className="invite-header">
+                      <h2 className="section-heading">Invite Athletes to This Club</h2>
+                      <IonButton className="invite-btn-inline">
+                        Invite Athletes
                       </IonButton>
                     </div>
-                    <IonButton
-                      className="post-submit-btn"
-                      onClick={() => setShowModal(false)}
-                    >
-                      Post
-                    </IonButton>
+                    <p className="invite-description">
+                      The bigger your Club, the more fun you can have. Compare your training,
+                      view recent accomplishments, and chat with Club members.
+                    </p>
                   </div>
+
+                  {/* Admins Section */}
+                  <section className="admins-section">
+                    <h3 className="subsection-heading">Admins</h3>
+                    <div className="members-list">
+                      {clubMembers.filter(member => member.isAdmin).map((admin) => (
+                        <div key={admin.id} className="member-item">
+                          <img src={admin.avatar} alt={admin.name} className="member-avatar" />
+                          <div className="member-info">
+                            <span className="member-name">{admin.name}</span>
+                            <span className="member-location">{admin.location}</span>
+                          </div>
+                          <span className="member-badge">Owner</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* Members Section */}
+                  <section className="members-list-section">
+                    <h3 className="subsection-heading">Members</h3>
+                    <div className="members-list">
+                      {clubMembers.filter(member => !member.isAdmin).map((member) => (
+                        <div key={member.id} className="member-item">
+                          <img src={member.avatar} alt={member.name} className="member-avatar" />
+                          <div className="member-info">
+                            <span className="member-name">{member.name}</span>
+                            <span className="member-location">{member.location}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </div>
+              )}
+
+              {activeSegment === "posts" && (
+                <div className="empty-state">
+                  <IonIcon icon={chatbubbles} className="empty-icon" />
+                  <p>Club posts will appear here</p>
+                </div>
+              )}
+            </div>
+
+            {/* Right Sidebar */}
+            <div className="club-right-sidebar">
+              <div className="invite-card">
+                <h3 className="invite-title">Invite Athletes to This Club</h3>
+                <IonButton className="invite-btn" expand="block">
+                  Invite Athletes
+                </IonButton>
+              </div>
+
+              <div className="members-card">
+                <h3 className="members-count">698 members</h3>
+                <div className="members-avatars">
+                  <img src={ProfileImage} alt="Member" />
+                  <img src={ProfileImage} alt="Member" />
+                  <img src={ProfileImage} alt="Member" />
+                  <span className="more-members">and 695 others</span>
                 </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
       </IonContent>
     </IonPage>

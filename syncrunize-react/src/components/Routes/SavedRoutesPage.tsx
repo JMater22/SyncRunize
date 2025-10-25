@@ -88,7 +88,6 @@ const SavedRoutesPage: React.FC = () => {
                   <CustomCard className="saved-route-card">
                     <div className="card-image-wrapper">
                       <IonImg src={MapImage} alt={`Map of ${route.title} Route`} />
-                      {/* Remove Button - Small Icon */}
                       <button 
                         className="remove-icon-btn"
                         onClick={() => handleRemoveRoute(route.id)}
