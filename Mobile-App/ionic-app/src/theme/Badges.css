@@ -1,0 +1,95 @@
+/* Badges Page Styles */
+
+.badges-toolbar {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.badges-content {
+  --background: #000000;
+  --padding-top: 20px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+}
+
+/* Grid Layout */
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  padding: 20px 0;
+}
+
+/* Badge Card */
+.badge-card {
+  margin: 0;
+  background: #2a2a2a;
+  border-radius: 20px;
+  box-shadow: none;
+  height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badge-card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  width: 100%;
+  height: 100%;
+}
+
+/* Badge Circle */
+.badge-circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+/* Badge Icon */
+.badge-icon {
+  font-size: 60px;
+  color: #ffffff;
+  transform: rotate(180deg);
+}
+
+.badge-icon::before {
+  content: '';
+  position: absolute;
+  top: 35px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 3px;
+  background: #ffffff;
+}
+
+.badge-icon::after {
+  content: '';
+  position: absolute;
+  top: 30px;
+  right: 45px;
+  width: 15px;
+  height: 3px;
+  background: #ffffff;
+  transform: rotate(45deg);
+}
+
+/* Badge Title */
+.badge-title {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  margin: 0;
+  line-height: 1.3;
+}
+

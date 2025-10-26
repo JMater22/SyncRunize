@@ -1,0 +1,56 @@
+.header-title {
+  text-align: center;
+  margin-right: 3rem;
+}
+.title-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+.map-background-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+/* Bottom overlay fixed */
+.bottom-overlay {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: #222;
+  margin-bottom: 3rem;
+  padding: 20px;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  color: white;
+  text-align: center;
+  z-index: 2; /* ensures it’s above the map */
+}
+
+/* Buttons row */
+.action-buttons-row {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.resume-btn {
+  --background: #444;
+  --color: white;
+  min-width: 120px;
+}
+
+.finish-btn {
+  --background: #7fff00;
+  --color: black;
+  min-width: 120px;
+}

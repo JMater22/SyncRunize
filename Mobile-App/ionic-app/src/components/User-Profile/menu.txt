@@ -1,0 +1,12 @@
+ {/* Menu Items */}
+        <IonList>
+          <IonItem button>
+            <IonLabel>🏃 Activities</IonLabel>
+          </IonItem>
+          <IonItem routerLink="/Analytics/analytics1/index.html" button>
+            <IonLabel>📊 Statistics</IonLabel>
+          </IonItem>
+          <IonItem button>
+            <IonLabel>🏆 Best Efforts</IonLabel>
+          </IonItem>
+        </IonList>

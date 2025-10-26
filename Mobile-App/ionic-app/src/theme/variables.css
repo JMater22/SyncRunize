@@ -1,0 +1,147 @@
+/* For information on how to create your own theme, please see:
+http://ionicframework.com/docs/theming/ */
+
+.primary {
+    color: #2dd55b;
+}
+.nav-icon{
+     color: #2dd55b;
+     font-size: 2rem;
+}
+.label-header{
+    padding-left: .5rem;
+}
+.container{
+ color: #545454;
+}
+.toggle-padding{
+    padding-left: 10    rem;
+   
+}
+ion-card ion-item {
+  --background: var(--ion-card-background, var(--ion-background-color));
+  --ion-item-background: var(--ion-card-background, var(--ion-background-color));
+  /* optional, if you want rounded look */
+}
+.background-image {
+  position: relative;
+  width: 100%;
+  height: 150vh;
+  background-image: url('../components/Assets/User-Authentication/Picture1.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: flex-end;
+  background-attachment: fixed;
+ 
+}
+ion-tab-bar {
+  --background: #0e0c0c;   /* Tab bar background */
+  margin-bottom: 0;
+  
+}.stats-container {
+  display: flex;
+  justify-content: space-between; /* push left/right */
+  align-items: center;            /* vertical alignment */
+}
+
+.stat {
+  text-align: center; /* stack label + value neatly */
+}
+
+.stat p {
+  font-size: 14px;
+  color: #aaa; /* lighter text */
+  margin: 0;
+}
+
+.stat h2 {
+  font-size: 20px;
+  font-weight: bold;
+  margin: 4px 0 0 0;
+}
+.challenge1 {
+  background-image: url(../components/assets/challenge1.jpg);
+  width: 95%;
+  height: 180px;       /* fixed height */
+  overflow: hidden;    /* crop overflow */
+  border-radius: 8px 8px 0 0; /* match card radius */
+  background-position: center;
+  margin: .5rem;
+}
+
+
+.header-adjust{
+  padding-left: 1rem;
+  margin-top: 1.5rem;
+  font-size: x-large;
+  
+}
+.profile{
+  background-image: url('../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg');
+  width: 95%;
+  height: 180px;       /* fixed height */
+  overflow: hidden;    /* crop overflow */
+  border-radius: 8px 8px 0 0; /* match card radius */
+  background-position: center;
+  margin: .5rem;
+}
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.bar-row span {
+  width: 40px;  /* fixed width for month label */
+  font-weight: 500;
+}
+.custom-avatar {
+  width: 35px;   /* change size */
+  height: 35px;  /* keep it square for circle */
+}
+
+.custom-avatar img {
+  object-fit: cover;   /* ensures image fills nicely */
+}
+.icon-size {
+  width: 30px;   /* change size */
+  height: 30px;  /* keep it square for circle */
+  
+}
+.custom-button{
+  
+  width: 100px;
+}
+.space-between{
+  display: flex;
+  justify-content: space-between;
+ align-items: center;
+}
+.map-container {
+  position: relative; /* allows button overlay */
+  width: 100%;
+  height: 100%;
+}
+
+.map-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Circular START button on top of the map */
+.start-btn {
+  --border-radius: 50%;
+  width: 120px;
+  height: 120px;
+  font-size: 18px;
+  font-weight: bold;
+
+  position: absolute;
+  top: 32rem;      /* distance from top */
+  left: 50%;
+  transform: translateX(-50%);
+}

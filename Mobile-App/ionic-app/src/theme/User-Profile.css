@@ -1,0 +1,371 @@
+/* Global Dark Theme */
+.profile-page {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.profile-content {
+  --background: #000000;
+  --color: #ffffff;
+  background: #000000;
+}
+
+/* Header Styles */
+.profile-header ion-toolbar {
+  --background: #000000;
+  --color: #ffffff;
+}
+/* General dark background */
+ion-content {
+  --background: #121212;
+  color: #fff;
+  font-family: "Inter", sans-serif;
+}
+
+/* Header Toolbar */
+ion-toolbar {
+  --background: #1e1e1e;
+  --color: #fff;
+}
+
+/* Profile Card */
+ion-item {
+  --background: #1e1e1e;
+  border-radius: 12px;
+  margin: 12px 0;
+}
+
+ion-avatar img {
+  border-radius: 50%;
+  border: 2px solid #4caf50;
+}
+
+ion-button[fill="outline"] {
+  --border-color: #4caf50;
+  --color: #4caf50;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+/* Stats Section */
+ion-grid {
+  background: #1e1e1e;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 8px;
+  text-align: center;
+}
+ion-col h2 {
+  color: #fff;
+  margin: 0;
+}
+ion-col p {
+  color: #aaa;
+  font-size: 12px;
+}
+
+/* Distance Section */
+ion-card {
+  background: #1e1e1e;
+  border-radius: 12px;
+  margin-top: 12px;
+}
+ion-card-title {
+  color: #fff;
+}
+ion-card p {
+  color: #aaa;
+  font-size: 12px;
+}
+.chart {
+  margin-top: 10px;
+}
+.chart-row {
+  display: flex;
+  align-items: center;
+  margin: 8px 0;
+}
+.chart-row span {
+  width: 50px;
+  font-size: 13px;
+  color: #ddd;
+}
+.bar {
+  height: 8px;
+  background: #4caf50;
+  border-radius: 8px;
+}
+.bar-container {
+  flex: 1;
+  background: #333;
+  border-radius: 8px;
+  margin-left: 8px;
+}
+.chart-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #aaa;
+  margin-top: 8px;
+}
+/* Challenges */
+.challenge-card {
+  background: #1e1e1e;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+.challenge-card img {
+  width: 100%;
+  height: auto;
+}
+.challenge-card h4 {
+  color: #fff;
+  margin: 8px 0;
+}
+.challenge-card p {
+  color: #aaa;
+  font-size: 13px;
+}
+
+/* Running Groups */
+.groups-title {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 16px 0 8px;
+}
+
+.groups-grid {
+  margin-top: 12px;
+}
+
+.group-card {
+  background: #2a2d3a;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  height: 120px;
+  border: 1.5px solid #7cf77a; /* neon green border */
+}
+
+.group-icon {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+.group-icon.red {
+  color: #e53935;
+}
+
+.group-icon.colorful {
+  color: #ff9800;
+}
+
+.group-info h4 {
+  color: #fff;
+  font-size: 16px;
+  margin: 0;
+}
+
+.group-info p {
+  font-size: 13px;
+  color: #ccc;
+  margin: 2px 0 0;
+}
+.challenges-title{
+   color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 16px 0 8px;
+  padding-left: .5rem;
+
+}/* Global Dark Theme */
+.profile-page {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.profile-content {
+  --background: #000000;
+  --color: #ffffff;
+  background: #000000;
+}
+
+/* Header Styles */
+.profile-header ion-toolbar {
+  --background: #000000;
+  --color: #ffffff;
+}
+/* General dark background */
+ion-content {
+  --background: #121212;
+  color: #fff;
+  font-family: "Inter", sans-serif;
+}
+
+/* Header Toolbar */
+ion-toolbar {
+  --background: #1e1e1e;
+  --color: #fff;
+}
+
+/* Profile Card */
+ion-item {
+  --background: #1e1e1e;
+  border-radius: 12px;
+  margin: 12px 0;
+}
+
+ion-avatar img {
+  border-radius: 50%;
+  border: 2px solid #4caf50;
+}
+
+ion-button[fill="outline"] {
+  --border-color: #4caf50;
+  --color: #4caf50;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+/* Stats Section */
+ion-grid {
+  background: #1e1e1e;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 8px;
+  text-align: center;
+}
+ion-col h2 {
+  color: #fff;
+  margin: 0;
+}
+ion-col p {
+  color: #aaa;
+  font-size: 12px;
+}
+
+/* Distance Section */
+ion-card {
+  background: #1e1e1e;
+  border-radius: 12px;
+  margin-top: 12px;
+}
+ion-card-title {
+  color: #fff;
+}
+ion-card p {
+  color: #aaa;
+  font-size: 12px;
+}
+.chart {
+  margin-top: 10px;
+}
+.chart-row {
+  display: flex;
+  align-items: center;
+  margin: 8px 0;
+}
+.chart-row span {
+  width: 50px;
+  font-size: 13px;
+  color: #ddd;
+}
+.bar {
+  height: 8px;
+  background: #4caf50;
+  border-radius: 8px;
+}
+.bar-container {
+  flex: 1;
+  background: #333;
+  border-radius: 8px;
+  margin-left: 8px;
+}
+.chart-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #aaa;
+  margin-top: 8px;
+}
+/* Challenges */
+.challenge-card {
+  background: #1e1e1e;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+.challenge-card img {
+  width: 100%;
+  height: auto;
+}
+.challenge-card h4 {
+  color: #fff;
+  margin: 8px 0;
+}
+.challenge-card p {
+  color: #aaa;
+  font-size: 13px;
+}
+
+/* Running Groups */
+.groups-title {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 16px 0 8px;
+}
+
+.groups-grid {
+  margin-top: 12px;
+}
+
+.group-card {
+  background: #2a2d3a;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  height: 120px;
+  border: 1.5px solid #7cf77a; /* neon green border */
+}
+
+.group-icon {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+.group-icon.red {
+  color: #e53935;
+}
+
+.group-icon.colorful {
+  color: #ff9800;
+}
+
+.group-info h4 {
+  color: #fff;
+  font-size: 16px;
+  margin: 0;
+}
+
+.group-info p {
+  font-size: 13px;
+  color: #ccc;
+  margin: 2px 0 0;
+}
+.challenges-title{
+   color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 16px 0 8px;
+  padding-left: .5rem;
+
+}

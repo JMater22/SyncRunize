@@ -1,0 +1,16 @@
+.dark-page {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.dark-content {
+  --background: #000000;
+  --color: #ffffff;
+  background: #000000;
+}
+
+/* Header Styles */
+.dark-header ion-toolbar {
+  --background: #000000;
+  --color: #ffffff;
+}

@@ -1,0 +1,128 @@
+.inrun-container {
+  position: relative;
+  --background: transparent;
+}
+
+.map-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.3; /* faded */
+  z-index: 0;
+}
+
+.overlay {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 20px;
+
+}
+
+/* Metrics */
+.metrics {
+  margin-top: 50px;
+  margin-bottom: 40px;
+}
+
+.metric-item {
+  margin-bottom: 25px;
+}
+
+.metric-label {
+  display: block;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.metric-label.time {
+  color: #7FFF00; /* green */
+}
+
+.metric-label.pace {
+  color: #ADFF2F; /* yellow-green */
+}
+
+.metric-label.distance {
+  color: #32CD32; /* bright green */
+}
+
+.metric-value {
+  display: block;
+  font-size: 42px;
+  font-weight: 800;
+  color: white;
+}
+
+.metric-unit {
+  font-size: 14px;
+  color: white;
+}
+
+/* Notice Buttons */
+.notice-buttons {
+  margin-top: 30px;
+}
+
+.notice-btn {
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 15px;
+  border-radius: 10px;
+  height: 50px;
+  --box-shadow: none;
+}
+
+.notice-btn.red {
+  --background: #e60000;
+  --color: white;
+}
+
+.notice-btn.orange {
+  --background: #ff8000;
+  --color: black;
+}
+
+.notice-btn.green {
+  --background: #32cd32;
+  --color: black;
+}
+
+/* Bottom Actions */
+.bottom-actions {
+  position: absolute;
+  bottom: 30px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  z-index: 2;
+}
+
+.stop-btn {
+  --background: #32cd32; /* green */
+  --color: black;
+  font-weight: bold;
+  font-size: 14px;
+  border-radius: 50%;
+  width: 70px;   /* fixed size */
+  height: 70px;  /* fixed size */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  text-transform: none;
+  margin-bottom: 4rem;
+}
+
+.map-btn {
+  --background: #333;
+  --color: #32cd32;
+  border-radius: 50%;
+  width: 70px;
+  height: 70px;
+}

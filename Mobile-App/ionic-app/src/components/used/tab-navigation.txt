@@ -1,0 +1,12 @@
+{/* Tab Navigation */}
+        <IonSegment
+          value={tab}
+          onIonChange={(e) => setTab(e.detail.value as "following" | "followers")}
+        >
+          <IonSegmentButton value="following">
+            <IonLabel>Following</IonLabel>
+          </IonSegmentButton>
+          <IonSegmentButton value="followers">
+            <IonLabel>Followers</IonLabel>
+          </IonSegmentButton>
+        </IonSegment>

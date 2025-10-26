@@ -1,0 +1,81 @@
+/* Global Dark Theme */
+.review-page {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.review-content {
+  --background: #000000;
+  --color: #ffffff;
+  background: #000000;
+}
+
+/* Header Styles */
+.review-header ion-toolbar {
+  --background: #000000;
+  --color: #ffffff;
+}
+/* Custom styles for the Running Review app */
+.review-container {
+  max-width: 100%;
+  padding: 1rem;
+}
+
+.description-text {
+  color: var(--ion-color-medium);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-bottom: 1.5rem;
+}
+
+/* Accuracy rating centered */
+.rating-section {
+  text-align: center; /* Center label + stars */
+}
+
+.rating-label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 18px;
+  color: #ffffff;
+}
+
+.star-rating {
+  display: flex;
+  justify-content: center; /* Center stars */
+  gap: 6px;
+}
+
+.star-button {
+  --padding-start: 0;
+  --padding-end: 0;
+}
+
+.star-icon {
+  font-size: 28px;
+  color: #888888;
+  transition: color 0.2s ease-in-out;
+}
+
+.star-icon.filled {
+  color: #ffd700; /* Gold for filled stars */
+}
+
+.star-icon.empty:hover {
+  color: #bbbbbb;
+}
+
+/* Buttons */
+.action-buttons ion-button {
+  --background: #3a3a3a;
+  --color: #ffffff;
+  --border-color: #ffffff;
+}
+
+.action-buttons ion-button:hover {
+  --background: #555555;
+}
+
+.action-buttons {
+  margin-top: 2rem;
+}

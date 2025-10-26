@@ -1,0 +1,350 @@
+/* Dashboard Dark Theme Styles */
+
+.dashboard-page {
+  --ion-background-color: #1a1a1a;
+  --ion-text-color: #ffffff;
+}
+
+.dashboard-header {
+  --ion-background-color: #2d2d2d;
+}
+
+.dashboard-toolbar {
+  --ion-background-color: #2d2d2d;
+  --ion-color-base: #ffffff;
+}
+
+.dashboard-title {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+.header-icon {
+  color: #ffffff;
+  font-size: 1.2rem;
+}
+
+.header-avatar {
+  width: 32px;
+  height: 32px;
+}
+
+.dashboard-content {
+  --ion-background-color: #1a1a1a;
+  padding: 16px;
+}
+
+/* Section Headers */
+.section-header {
+  display: flex;
+  align-items: center;
+  margin: 20px 0 10px 0;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.section-icon {
+  color: #7ed321;
+  margin-right: 8px;
+  font-size: 1.2rem;
+}
+
+.section-title {
+  color: #ffffff;
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 15px 0 5px 0;
+}
+
+.section-subtitle {
+  color: #999999;
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+}
+
+/* Cards */
+ion-card {
+  --ion-background-color: #2d2d2d;
+  --ion-color-base: #ffffff;
+  margin: 10px 0;
+  border-radius: 12px;
+}
+
+.records-card .stats-container {
+  display: flex;
+  justify-content: space-around;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-value {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.stat-label {
+  color: #999999;
+  font-size: 0.9rem;
+  margin-top: 5px;
+}
+
+/* Chart Styles */
+.chart-card {
+  padding: 0;
+}
+
+.dropdown-container {
+  padding: 15px 15px 0 15px;
+  text-align: right;
+}
+
+.month-dropdown {
+  background: #1a1a1a;
+  color: #ffffff;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+}
+
+.chart-container {
+  padding: 15px;
+}
+
+.chart-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.month-label {
+  width: 40px;
+  color: #ffffff;
+  font-size: 0.9rem;
+  margin-right: 15px;
+}
+
+.bar-container {
+  flex: 1;
+  margin-right: 15px;
+}
+
+.distance-bar {
+  height: 8px;
+  --ion-color-success: #7ed321;
+}
+.distance-header {
+  display: flex;
+  justify-content: space-between; /* pushes text left, select right */
+  align-items: center; /* vertically centers */
+  margin-bottom: 10px; /* spacing below */
+}
+
+.distance-header h2 {
+  margin: 0; /* remove default spacing */
+  font-size: 1.2rem; 
+  font-weight: 600;
+}
+
+.chart-labels {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 55px 15px 55px;
+  color: #999999;
+  font-size: 0.8rem;
+}
+
+/* Activity Styles */
+.activity-card ion-list {
+  background: transparent;
+}
+
+.activity-item {
+  --ion-background-color: transparent;
+  --ion-item-background: transparent;
+  margin-bottom: 15px;
+  padding: 10px 0;
+}
+
+.activity-avatar {
+  width: 48px;
+  height: 48px;
+}
+
+.activity-title {
+  color: #ffffff;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.activity-details {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.activity-stat {
+  display: block;
+  color: #999999;
+  font-size: 0.85rem;
+  margin-bottom: 2px;
+}
+
+.activity-stat strong {
+  color: #ffffff;
+}
+
+/* Challenge Styles */
+.challenge-card {
+  overflow: hidden;
+}
+
+.challenge-image-container {
+  width: 100%;
+  height: 150px;
+  overflow: hidden;
+}
+
+.challenge-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.challenge-title {
+  color: #ffffff;
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.challenge-description {
+  color: #cccccc;
+  margin: 10px 0;
+  line-height: 1.4;
+}
+
+.challenge-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+}
+
+.challenge-date {
+  color: #999999;
+  font-size: 0.85rem;
+}
+
+.join-button {
+  --ion-color-success: #7ed321;
+  --ion-color-success-contrast: #000000;
+}
+
+/* Leaderboard Styles */
+.leaderboard-card {
+  padding: 0;
+}
+
+.leaderboard-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 15px 10px 15px;
+  color: #999999;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-bottom: 1px solid #404040;
+}
+
+.leaderboard-list {
+  background: transparent;
+  padding: 0;
+}
+
+.leaderboard-item {
+  --ion-background-color: transparent;
+  --ion-item-background: transparent;
+  display: flex;
+  align-items: center;
+  padding: 12px 15px;
+  border-bottom: 1px solid #404040;
+}
+
+.leaderboard-item:last-child {
+  border-bottom: none;
+}
+
+.rank {
+  width: 30px;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-right: 15px;
+}
+
+.leaderboard-avatar {
+  width: 40px;
+  height: 40px;
+  margin-right: 15px;
+}
+
+.leader-name {
+  flex: 1;
+}
+
+.leader-name h3 {
+  color: #ffffff;
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.leader-name p {
+  color: #999999;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.leader-distance {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.green-text {
+  color: #7ed321 !important;
+}
+
+.view-more {
+  text-align: center;
+  margin-left: 2.5rem;
+  padding: 15px;
+  color: #090909;
+  font-weight: 600;
+  cursor: pointer;
+  border-top: 1px solid #404040;
+  
+ 
+}
+
+/* Global overrides for dark theme */
+ion-content {
+  --ion-background-color: #1a1a1a;
+}
+
+ion-card-header {
+  padding-bottom: 0;
+}
+
+ion-card-content {
+  padding-top: 0;
+}

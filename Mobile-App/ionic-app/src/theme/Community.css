@@ -1,0 +1,470 @@
+/* Community.css - Dark Theme */
+
+/* Global Dark Theme */
+.community-page {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.community-content {
+  --background: #000000;
+  --color: #ffffff;
+  background: #000000;
+}
+
+/* Header Styles */
+.community-header ion-toolbar {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.title-icon {
+  margin-right: 8px;
+  color: #84cc16;
+}
+
+/* Segment Navigation */
+.segment-toolbar {
+  --background: #000000;
+  --border-color: #333333;
+}
+
+.community-segment {
+  --background: #000000;
+  --indicator-color: #84cc16;
+}
+
+.segment-btn {
+  --color: #666666;
+  --color-checked: #84cc16;
+  --indicator-color: #84cc16;
+}
+
+.segment-btn ion-icon {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.segment-btn ion-label {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Search Container */
+.search-container {
+  padding: 16px;
+  background: #000000;
+}
+
+.challenge-search,
+.group-search {
+  --background: #1a1a1a;
+  --color: #ffffff;
+  --placeholder-color: #666666;
+  --icon-color: #666666;
+  --border-radius: 12px;
+}
+
+/* Challenges Tab */
+.challenges-tab {
+  padding: 0;
+}
+
+/* Current Challenge Card */
+.current-challenge-card {
+  margin: 0 16px 20px 16px;
+  --background: #1a1a1a;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.challenge-image-container {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
+}
+
+.challenge-image-container ion-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.challenge-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.8));
+  padding: 20px 16px 16px 16px;
+  color: white;
+}
+
+.challenge-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: white;
+}
+
+.participants {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: #cccccc;
+}
+
+.participants-icon {
+  font-size: 16px;
+}
+
+.challenge-content {
+  padding: 16px;
+  background: #1a1a1a;
+}
+
+.progress-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress-label {
+  font-size: 14px;
+  color: #cccccc;
+  font-weight: 500;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #333333;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #84cc16;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Create Challenge Button */
+.create-challenge-btn {
+  margin: 0 16px 24px 16px;
+  --background: #2a2a2a;
+  --color: #ffffff;
+  --border-radius: 12px;
+  height: 48px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* Suggested Section */
+.suggested-section {
+  padding: 0 16px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 16px 0;
+}
+
+.suggested-challenge-card {
+  margin-bottom: 16px;
+  --background: #1a1a1a;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.suggested-overlay {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+}
+
+.join-challenge-btn {
+  --background: #84cc16;
+  --color: #000000;
+  --border-radius: 8px;
+  height: 32px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.suggested-content {
+  padding: 16px;
+  background: #1a1a1a;
+}
+
+.suggested-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 8px 0;
+}
+
+.suggested-description {
+  font-size: 14px;
+  color: #cccccc;
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+}
+
+.suggested-date {
+  font-size: 12px;
+  color: #888888;
+  margin: 0;
+}
+
+/* Feed Tab */
+.feed-tab {
+  padding: 16px;
+}
+
+.post-input-card {
+  --background: #1a1a1a;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.post-input-card ion-item {
+  --background: transparent;
+  --border-color: transparent;
+}
+
+.post-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-size: 16px;
+  flex: 1;
+  padding: 8px 0;
+}
+
+.post-input::placeholder {
+  color: #666666;
+}
+
+.feed-posts {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.post-card {
+  --background: #1a1a1a;
+  border-radius: 12px;
+}
+
+.post-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.post-header ion-avatar {
+  width: 40px;
+  height: 40px;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.username {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.timestamp {
+  font-size: 12px;
+  color: #888888;
+}
+
+.post-text {
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 8px 0 12px 0;
+}
+
+.post-image {
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.post-actions {
+  display: flex;
+  gap: 20px;
+}
+
+.action-item {
+  font-size: 14px;
+  color: #888888;
+}
+
+/* Groups Tab */
+.groups-tab {
+  padding: 16px;
+}
+
+.groups-header {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  align-items: center;
+}
+
+.create-groups-btn {
+  --background: #84cc16;
+  --color: #000000;
+  --border-radius: 8px;
+  height: 36px;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-left: 10rem;
+}
+
+.group-search {
+  flex: 1;
+  --background: #1a1a1a;
+  --color: #ffffff;
+  --placeholder-color: #666666;
+  --icon-color: #666666;
+  --border-radius: 8px;
+}
+
+.group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.group-card {
+  --background: #1a1a1a;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  height: 120px;
+}
+
+.group-card ion-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.group-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.8));
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.group-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+}
+
+.join-group-btn {
+  --background: #84cc16;
+  --color: #000000;
+  --border-radius: 6px;
+  height: 32px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Modal Styles */
+.modal-content {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.modal-content ion-toolbar {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.create-form {
+  padding: 16px;
+}
+
+.create-form ion-item {
+  --background: #1a1a1a;
+  --border-radius: 12px;
+  --border-color: #333333;
+  margin-bottom: 16px;
+}
+
+.create-form ion-label {
+  color: #ffffff;
+}
+
+.create-form ion-input,
+.create-form ion-textarea {
+  --color: #ffffff;
+  --placeholder-color: #666666;
+}
+
+.form-actions {
+  margin-top: 24px;
+}
+
+.create-challenge-final-btn {
+  --background: #84cc16;
+  --color: #000000;
+  --border-radius: 12px;
+  height: 48px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .challenge-title {
+    font-size: 18px;
+  }
+  
+  .groups-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .find-groups-btn {
+    width: 100%;
+  }
+  
+  .group-search {
+    width: 100%;
+  }
+}
+
+/* Animation */
+.current-challenge-card,
+.suggested-challenge-card,
+.post-card,
+.group-card {
+  transition: transform 0.2s ease;
+}
+
+.current-challenge-card:hover,
+.suggested-challenge-card:hover,
+.post-card:hover,
+.group-card:hover {
+  transform: translateY(-2px);
+}

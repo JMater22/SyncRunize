@@ -1,0 +1,77 @@
+.login-page {
+  --background: #0d0f0a; /* dark background */
+  color: #fff;
+  font-family: Arial, sans-serif;
+}
+
+.header-toolbar {
+  --background: transparent;
+  --border-width: 0;
+}
+
+.login-form {
+  padding: 24px;
+}
+
+/* Title */
+.login-form h1 {
+  font-size: 34px;
+  font-weight: 900;
+  color: #ffffff;
+  margin-bottom: 40px;
+  text-align: left;
+  line-height: 1.2;
+}
+
+/* Remove default IonItem styles */
+.form-item {
+  --background: transparent;
+  border: none !important;
+  box-shadow: none !important;
+  margin-bottom: 20px;
+  
+}
+
+.form-item ion-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 6px;
+  margin-top: 1rem;
+  
+}
+
+.form-item ion-input {
+  background: #ffffff;
+  color: #000000;
+  border-radius: 12px;
+  font-size: 15px;
+  padding: 12px;
+  border: none;
+  outline: none;
+  margin-top: 1rem;
+}
+
+/* Forgot password */
+.forgot-password {
+  margin: 10px 0 20px;
+  text-align: right;
+}
+
+.forgot-link {
+  font-size: 14px;
+  color: #8fd92b;
+  text-decoration: none;
+}
+
+/* Login button */
+.login-btn {
+  --background: #8fd92b;
+  --color: #000000;
+  font-size: 16px;
+  font-weight: 800;
+  border-radius: 8px;
+  height: 48px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}

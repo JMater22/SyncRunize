@@ -1,0 +1,209 @@
+/* General Page Styles */
+ion-content {
+  --background: #121212;
+  color: #ffffff;
+}
+.analytics-page {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.analytics-content {
+  --background: #000000;
+  --color: #ffffff;
+  background: #000000;
+}
+
+/* Header Styles */
+.analytics-header ion-toolbar {
+  --background: #000000;
+  --color: #ffffff;
+}
+h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+  color: #e0e0e0;
+}
+
+/* Cards */
+ion-card {
+  background: #1e1e1e;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  margin: 0.5rem 0;
+}
+
+ion-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+ion-card-content {
+  font-size: 0.9rem;
+  color: #bdbdbd;
+}
+
+/* Activity Summary */
+.period {
+  font-size: 0.8rem;
+  color: #9e9e9e;
+}
+
+.value {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #ffffff;
+  margin: 0.2rem 0;
+}
+
+.change {
+  font-size: 0.75rem;
+}
+
+.change.positive {
+  color: #4caf50;
+}
+
+.change.neutral {
+  color: #ffc107;
+}
+
+/* Weekly Activity */
+.activity-metrics {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.metric-label {
+  font-size: 0.8rem;
+  color: #9e9e9e;
+}
+
+.metric-value {
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.metric-value.green {
+  color: #4caf50;
+  font-size: 2rem;
+}
+
+.metric-value.orange {
+  color: #ff9800;
+    font-size: 2rem;
+}
+
+.progress-bar {
+  height: 6px;
+  border-radius: 6px;
+  background: #333;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50, #ff9800);
+  border-radius: 6px;
+}
+
+/* Best Efforts */
+.efforts-list {
+  margin-bottom: 1rem;
+}
+
+.effort-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #2a2a2a;
+  padding: 0.5rem;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.effort-icon {
+  font-size: 1.2rem;
+  margin-right: 0.5rem;
+}
+
+.effort-content {
+  flex-grow: 1;
+}
+
+.effort-title {
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: #ffffff;
+}
+
+.effort-subtitle {
+  font-size: 0.75rem;
+  color: #9e9e9e;
+}
+
+.effort-value {
+  font-weight: bold;
+  color: #4caf50;
+}
+
+/* Badges */
+.badge-section h3 {
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  color: #9e9e9e;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.badge {
+  background: #2a2a2a;
+  padding: 0.3rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: #ffffff;
+}
+
+/* Recent Activities */
+.activity-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  color: #ffffff;
+}
+
+.activity-metrics-small {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #9e9e9e;
+}
+
+/* Active Challenges */
+.progress-bar-challenge {
+  height: 8px;
+  border-radius: 8px;
+  background: #333;
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+}
+
+.progress-fill-challenge {
+  height: 100%;
+  background: #4caf50;
+  border-radius: 8px;
+}
+
+.progress-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #9e9e9e;
+}

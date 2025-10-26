@@ -1,0 +1,43 @@
+.profile-photo-section {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+
+}
+
+.profile-photo-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  
+}
+
+.profile-photo {
+  border-radius: 50%;
+  height: 110px;
+  object-fit: cover;
+  overflow: hidden;
+}
+
+.edit-photo-btn {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  
+}
+
+.form-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.form-group {
+  flex: 1;
+}
+
+.full-width {
+  width: 100%;
+}

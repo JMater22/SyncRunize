@@ -1,0 +1,99 @@
+/* ReportHazard.css */
+
+/* Photo Card Section */
+.photo-card {
+  margin-bottom: 20px;
+}
+
+.photo-card-content {
+  text-align: center;
+  padding: 20px;
+}
+
+.photo-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.photo-icon {
+  font-size: 48px;
+}
+
+/* Section Titles */
+.section-title {
+  margin: 20px 0 16px 0;
+}
+
+.section-title:first-of-type {
+  margin-top: 24px;
+}
+
+/* Other Hazard Input */
+.other-hazard-input {
+  margin-top: 8px;
+}
+
+/* Location Buttons */
+.location-button {
+  height: 60px;
+}
+
+/* Confidence Rating */
+.confidence-rating-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.star-rating {
+  font-size: 24px;
+  cursor: pointer;
+  margin: 0 2px;
+  color: #ccc;
+  transition: color 0.2s ease;
+}
+
+.star-rating.filled {
+  color: #ffd700;
+}
+
+.star-rating:hover {
+  color: #ffd700;
+}
+
+/* Submit Button */
+.submit-button {
+  margin: 20px 0;
+  --border-radius: 12px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .photo-icon {
+    font-size: 40px;
+  }
+  
+  .location-button {
+    height: 50px;
+    font-size: 14px;
+  }
+  
+  .star-rating {
+    font-size: 20px;
+    margin: 0 1px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .star-rating {
+    color: #666;
+  }
+  
+  .star-rating:hover {
+    color: #ffd700;
+  }
+}

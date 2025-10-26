@@ -1,0 +1,122 @@
+/* Header Styling */
+.custom-toolbar {
+  --background: rgba(0, 0, 0, 0.8);
+  --color: white;
+  position: absolute;
+  top: 0;
+  z-index: 1000;
+}
+
+.custom-toolbar ion-title {
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.custom-toolbar ion-back-button {
+  --color: white;
+  --icon-font-size: 24px;
+}
+
+/* Main Content */
+.map-content {
+  --background: transparent;
+  position: relative;
+}
+
+.map-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.map-background-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Floating Card */
+.floating-card {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  z-index: 100;
+  background: rgba(40, 40, 40, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 0;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.card-content {
+  padding: 24px 20px 20px;
+}
+
+.card-section {
+  margin-bottom: 20px;
+}
+
+.distance-section {
+  margin-bottom: 24px;
+}
+
+/* Labels */
+.label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 8px 0;
+  letter-spacing: 0.5px;
+}
+
+/* Time Value */
+.time-value {
+  color: white;
+  font-size: 36px;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Distance Value */
+.distance-value {
+  color: white;
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Start Button */
+.start-btn-container {
+  --background: #8BC34A;
+  --background-activated: #7CB342;
+  --background-hover: #9CCC65;
+  --color: white;
+  --border-radius: 12px;
+  height: 48px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  
+  text-transform: uppercase;
+}
+
+.start-btn::part(native) {
+  border-radius: 12px;
+}
+
+
+
+
+
+
+

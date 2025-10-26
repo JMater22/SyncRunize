@@ -1,0 +1,96 @@
+/* RunMap Component Styles */
+.dark-header {
+  --background: #1a1a1a;
+  --color: white;
+}
+
+.header-title {
+  text-align: center;
+  margin-right: 3rem;
+}
+
+.title-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.run-icon {
+  font-size: 1.5rem;
+  color: #4ade80; /* Green color matching the start button */
+}
+
+.run-map-content {
+  --background: #000;
+  --padding-top: 0;
+  --padding-bottom: 0;
+  --padding-start: 0;
+  --padding-end: 0;
+}
+
+.map-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.map-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.start-button {
+  position: relative;
+  height: 120px;
+  width: 120px;
+  
+  z-index: 10;
+  margin-bottom: 40px;
+  --background: #4ade80;
+  --background-activated: #22c55e;
+  --background-focused: #22c55e;
+  --background-hover: #22c55e;
+  --color: white;
+  --border-radius: 50%;
+  --padding-start: 40px;
+  --padding-end: 40px;
+  --padding-top: 15px;
+  --padding-bottom: 15px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  min-width: 120px;
+  box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4);
+}
+
+.start-button:hover {
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+
+/* Alternative: If you want to use the ionicons walk icon instead of emoji */
+.walk-icon {
+  color: #4ade80;
+  font-size: 1.5rem;
+}
+
+/* Dark theme adjustments */
+ion-toolbar {
+  --background: #1a1a1a;
+  --color: white;
+}
+
+ion-back-button {
+  --color: white;
+}

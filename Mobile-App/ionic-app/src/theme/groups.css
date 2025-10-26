@@ -1,0 +1,107 @@
+/* General dark theme */
+ion-content {
+  --background: #383737;
+  color: #fff;
+  font-family: Arial, sans-serif;
+}
+
+/* Tabs navigation */
+ion-tab-bar {
+  --background: #060606;
+  border: none;
+  
+}
+
+ion-tab-button {
+  --color: #0a0a0b;
+  --color-selected: #8ee35d;
+}
+
+ion-tab-button ion-icon {
+  font-size: 22px;
+}
+
+ion-tab-button.ion-selected ion-label {
+  color: #8ee35d;
+  font-weight: bold;
+}
+
+/* Group action bar (Find + Search) */
+.group-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.group-action-bar ion-button {
+  --background: #8ee35d;
+  --color: #000;
+  font-weight: bold;
+  border-radius: 8px;
+  text-transform: none;
+  padding: 6px 14px;
+}
+
+.group-action-bar ion-input {
+  --background: #2f2f2f;
+  --padding-start: 12px;
+  --color: #fff;
+  border-radius: 8px;
+  flex: 1;
+}
+
+/* Section titles */
+.section-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin: 20px 0 10px;
+}
+
+/* Group cards */
+.group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.group-card {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.group-card ion-img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+}
+
+/* Overlay text & join button */
+.group-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.7));
+}
+
+.group-name {
+  font-size: 15px;
+  font-weight: bold;
+  color: #fff;
+}
+
+.group-overlay ion-button {
+  --background: #8ee35d;
+  --color: #000;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-transform: none;
+}
