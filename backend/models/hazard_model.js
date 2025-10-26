@@ -4,8 +4,6 @@ import fs from "fs";
 import path from "path";
 
 
-
-
 // 🧩 Create a new hazard report with optional image
 export const create = async (data) => {
   try {
