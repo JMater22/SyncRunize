@@ -1,0 +1,177 @@
+/* Title */
+.my-routes-title {
+  font-size: 32px;
+  font-weight: bold;
+  color: #2c3e50;
+  margin-left: 260px;
+  margin-top: 10px;
+}
+
+/* Back Button */
+.back-btn {
+  --background: #92C628;
+  --background-hover: #7ba622;
+  --color: #ffffff;
+  --border-radius: 20px;
+  --padding-start: 20px;
+  --padding-end: 20px;
+  font-size: 16px;
+  font-weight: 600;
+  margin-left: 240px;
+  margin-top: 20px;
+  text-transform: none;
+}
+
+/* Searchbar container */
+.searchbar-container {
+  margin-top: 20px;
+  margin-left: 240px;
+  flex: 1; 
+}
+
+/* Routes grid container */
+.routes-container {
+  padding: 0 16px;
+  margin-top: 20px;
+  margin-left: 150px;
+  margin-right: 150px;
+  margin-bottom: 60px;
+}
+
+/* Searchbar styling */
+.ion-align-items-center.ion-justify-content-between ion-searchbar.sc-ion-searchbar-md-h {
+  --background: #ffffff;
+  --color: #000000;
+  --placeholder-color: #757070;
+  --icon-color: #817e7e;
+  --border-radius: 20px;
+  --height: 40px;
+  --border-color: #000000;
+  --border-width: 1px;
+  --border-style: solid;
+  width: 100%;
+  min-width: auto;
+  max-width: 380px;
+}
+
+/* Card image wrapper for positioning delete button */
+.card-image-wrapper {
+  position: relative;
+}
+
+/* Small circular remove button */
+.remove-icon-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.7);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.remove-icon-btn ion-icon {
+  font-size: 20px;
+  color: #ffffff;
+}
+
+.remove-icon-btn:hover {
+  background-color: #dc3545;
+  transform: scale(1.1);
+}
+
+.remove-icon-btn:active {
+  transform: scale(0.95);
+}
+
+/* Card styles */
+.custom-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  gap: 30px;
+}
+
+.custom-card,
+.custom-card-content,
+.custom-card ion-card-title {
+  color: #161515;
+  font-weight: 700;
+}
+
+/* Background */
+:root.md {
+  --ion-background-color: #ffffff;
+}
+
+/* ✅ Tablet */
+@media (max-width: 1024px) {
+  .my-routes-title {
+    font-size: 28px;
+    margin-left: 20px;
+  }
+
+  .back-btn {
+    margin-left: 10px;
+  }
+
+  .searchbar-container {
+    margin-left: 0;
+    width: 100%;
+    padding: 0 20px;
+  }
+
+  .routes-container {
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+}
+
+/* ✅ Mobile */
+@media (max-width: 768px) {
+  .my-routes-title {
+    font-size: 30px;
+    text-align: left;
+    margin: 30px 30px;
+    margin-bottom: 0px;
+  }
+
+  .back-btn {
+    margin-left: 20px;
+    margin-top: 30px;
+  }
+
+  .searchbar-container {
+    margin-top: 10px;
+    padding: 0 16px;
+  }
+
+  .routes-container {
+    margin-left: 10px;
+    margin-right: 10px;
+    padding: 0;
+  }
+
+  .ion-align-items-center.ion-justify-content-between ion-searchbar.sc-ion-searchbar-md-h {
+    max-width: 100%;
+  }
+
+  /* Slightly smaller button on mobile */
+  .remove-icon-btn {
+    width: 32px;
+    height: 32px;
+    top: 10px;
+    right: 10px;
+  }
+
+  .remove-icon-btn ion-icon {
+    font-size: 18px;
+  }
+}
