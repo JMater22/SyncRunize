@@ -8,16 +8,14 @@ import {
   IonSegmentButton,
   IonLabel,
 } from "@ionic/react";
-import {
-  location,
-  chatbubbles,
-} from "ionicons/icons";
+import { location, chatbubbles } from "ionicons/icons";
 import "./GroupFeed.css";
 
-// Import local images
+// Import local images (ensure these paths match your project)
 import BannerImage from "../../assets/Banner UP.png";
 import GroupImage from "../../assets/GROUP 1.png";
 import ProfileImage from "../../assets/MAN5.png";
+import PostClub from "../../assets/GROUP 2.png";
 
 interface LeaderboardEntry {
   rank: number;
@@ -36,8 +34,20 @@ interface Member {
   isAdmin?: boolean;
 }
 
+interface Post {
+  id: number;
+  author: string;
+  avatar: string;
+  timestamp: string;
+  content: string;
+  image?: string;
+  kudos: number;
+  comments: number;
+}
+
 const GroupFeed: React.FC = () => {
   const [activeSegment, setActiveSegment] = useState<string>("leaderboard");
+  const [isJoined, setIsJoined] = useState<boolean>(false);
 
   const lastWeekLeaders = {
     distance: [
@@ -87,23 +97,38 @@ const GroupFeed: React.FC = () => {
     { id: 20, name: "Henry Pascual", location: "Capas, Tarlac, Philippines", avatar: ProfileImage },
   ];
 
+  const [clubPosts, setClubPosts] = useState<Post[]>([
+    {
+      id: 1,
+      author: "Masao de Guzman",
+      avatar: ProfileImage,
+      timestamp: "July 9, 2025 at 5:05 PM",
+      content: "Hello friends, please join us on August 24.",
+      image: BannerImage,
+      kudos: 18,
+      comments: 5,
+    },
+    {
+      id: 2,
+      author: "Vincent Reyla",
+      avatar: ProfileImage,
+      timestamp: "October 4, 2025 at 7:50 PM",
+      content: "Any suggestions here in Tarlac City guys... 😊",
+      kudos: 8,
+      comments: 0,
+    },
+  ]);
+
   return (
     <IonPage>
       <IonContent>
         {/* Hero Banner */}
         <div className="club-hero-banner">
-          <img 
-            src={BannerImage}
-            alt="Club banner" 
-            className="hero-image"
-          />
+          <img src={BannerImage} alt="Club banner" className="hero-image" />
           <div className="club-hero-overlay">
             <div className="club-hero-content">
               <div className="club-avatar">
-                <img 
-                  src={GroupImage}
-                  alt="Club logo" 
-                />
+                <img src={GroupImage} alt="Club logo" />
               </div>
               <div className="club-info">
                 <h1 className="club-name">Tarlac City Runners</h1>
@@ -113,8 +138,11 @@ const GroupFeed: React.FC = () => {
                 </div>
                 <p className="club-description">Let's Run Tarlakenos</p>
               </div>
-              <IonButton className="join-club-btn">
-                Join Club
+              <IonButton
+                className={isJoined ? "join-club-btn joined" : "join-club-btn"}
+                onClick={() => setIsJoined((s) => !s)}
+              >
+                {isJoined ? "Joined" : "Join Club"}
               </IonButton>
             </div>
           </div>
@@ -122,7 +150,10 @@ const GroupFeed: React.FC = () => {
 
         {/* Navigation Tabs */}
         <div className="club-navigation">
-          <IonSegment value={activeSegment} onIonChange={(e) => setActiveSegment(e.detail.value as string)}>
+          <IonSegment
+            value={activeSegment}
+            onIonChange={(e) => setActiveSegment((e.detail.value as string) || "leaderboard")}
+          >
             <IonSegmentButton value="leaderboard">
               <IonLabel>Club Leaderboard</IonLabel>
             </IonSegmentButton>
@@ -130,7 +161,9 @@ const GroupFeed: React.FC = () => {
               <IonLabel>Members</IonLabel>
             </IonSegmentButton>
             <IonSegmentButton value="posts">
-              <IonLabel>Posts <span className="post-count">57 NEW</span></IonLabel>
+              <IonLabel>
+                Posts <span className="post-count">57 NEW</span>
+              </IonLabel>
             </IonSegmentButton>
           </IonSegment>
         </div>
@@ -140,17 +173,16 @@ const GroupFeed: React.FC = () => {
           <div className="club-content-grid">
             {/* Left Content */}
             <div className="club-left-content">
+              {/* LEADERBOARD */}
               {activeSegment === "leaderboard" && (
                 <>
-                  {/* Last Week's Leaders */}
                   <section className="leaders-section">
                     <h2 className="section-heading">Last Week's Leaders</h2>
                     <div className="leaders-grid">
-                      {/* Distance */}
                       <div className="leader-category">
                         <h3 className="category-title">Distance</h3>
                         {lastWeekLeaders.distance.map((leader, index) => (
-                          <div key={index} className="leader-item">
+                          <div key={`dist-${index}`} className="leader-item">
                             <div className="leader-medal">{index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}</div>
                             <img src={leader.avatar} alt={leader.name} className="leader-avatar" />
                             <span className="leader-name">{leader.name}</span>
@@ -159,11 +191,10 @@ const GroupFeed: React.FC = () => {
                         ))}
                       </div>
 
-                      {/* Total Running Time */}
                       <div className="leader-category">
                         <h3 className="category-title">Total Running Time</h3>
                         {lastWeekLeaders.time.map((leader, index) => (
-                          <div key={index} className="leader-item">
+                          <div key={`time-${index}`} className="leader-item">
                             <div className="leader-medal">{index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}</div>
                             <img src={leader.avatar} alt={leader.name} className="leader-avatar" />
                             <span className="leader-name">{leader.name}</span>
@@ -210,15 +241,13 @@ const GroupFeed: React.FC = () => {
                 </>
               )}
 
+              {/* MEMBERS */}
               {activeSegment === "members" && (
                 <div className="members-content">
-                  {/* Invite Section */}
                   <div className="invite-section">
                     <div className="invite-header">
                       <h2 className="section-heading">Invite Athletes to This Club</h2>
-                      <IonButton className="invite-btn-inline">
-                        Invite Athletes
-                      </IonButton>
+                      <IonButton className="invite-btn-inline">Invite Athletes</IonButton>
                     </div>
                     <p className="invite-description">
                       The bigger your Club, the more fun you can have. Compare your training,
@@ -226,11 +255,10 @@ const GroupFeed: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Admins Section */}
                   <section className="admins-section">
                     <h3 className="subsection-heading">Admins</h3>
                     <div className="members-list">
-                      {clubMembers.filter(member => member.isAdmin).map((admin) => (
+                      {clubMembers.filter((m) => m.isAdmin).map((admin) => (
                         <div key={admin.id} className="member-item">
                           <img src={admin.avatar} alt={admin.name} className="member-avatar" />
                           <div className="member-info">
@@ -243,11 +271,10 @@ const GroupFeed: React.FC = () => {
                     </div>
                   </section>
 
-                  {/* Members Section */}
                   <section className="members-list-section">
                     <h3 className="subsection-heading">Members</h3>
                     <div className="members-list">
-                      {clubMembers.filter(member => !member.isAdmin).map((member) => (
+                      {clubMembers.filter((m) => !m.isAdmin).map((member) => (
                         <div key={member.id} className="member-item">
                           <img src={member.avatar} alt={member.name} className="member-avatar" />
                           <div className="member-info">
@@ -261,10 +288,72 @@ const GroupFeed: React.FC = () => {
                 </div>
               )}
 
+              {/* POSTS */}
               {activeSegment === "posts" && (
-                <div className="empty-state">
-                  <IonIcon icon={chatbubbles} className="empty-icon" />
-                  <p>Club posts will appear here</p>
+                <div className="posts-content">
+                  {isJoined && (
+                    <div className="create-post-section">
+                      <IonButton className="create-post-btn" expand="block">Create a Post</IonButton>
+                    </div>
+                  )}
+
+                  {!isJoined && clubPosts.length === 0 ? (
+                    <div className="empty-state">
+                      <IonIcon icon={chatbubbles} className="empty-icon" />
+                      <p>Join the club to view and create posts</p>
+                    </div>
+                  ) : (
+                    <div className="posts-list">
+                      {clubPosts.map((post) => (
+                        <div key={post.id} className="post-card">
+                          <div className="post-header">
+                            <img src={post.avatar} alt={post.author} className="post-avatar" />
+                            <div className="post-author-info">
+                              <span className="post-author-name">{post.author}</span>
+                              <span className="post-timestamp">{post.timestamp}</span>
+                            </div>
+                          </div>
+
+                          <div className="post-content">
+                            <p>{post.content}</p>
+                            {post.image && <img src={PostClub} alt="Post content" className="post-image" />}
+                          </div>
+
+                          <div className="post-footer">
+                            <div className="post-stats">
+                              <div className="kudos-avatars">
+                                <img src={ProfileImage} alt="kudos" />
+                                <img src={ProfileImage} alt="kudos" />
+                                <img src={ProfileImage} alt="kudos" />
+                              </div>
+                              <span className="kudos-text">{post.kudos} Likes · {post.comments} Comments</span>
+                            </div>
+
+                            <div className="post-actions">
+                              <button className="post-action-btn">
+                                <span className="thumbs-up-icon">👍</span>
+                              </button>
+                              <button className="post-action-btn">
+                                <IonIcon icon={chatbubbles} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {post.comments > 0 && (
+                            <div className="post-comments-link">
+                              <span>See all {post.comments} comments</span>
+                            </div>
+                          )}
+
+                          <div className="add-comment-section">
+                            <img src={ProfileImage} alt="You" className="comment-avatar" />
+                            <input type="text" placeholder="Add a comment, @ to mention" className="comment-input" />
+                            <button className="comment-post-btn">Post</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -273,9 +362,7 @@ const GroupFeed: React.FC = () => {
             <div className="club-right-sidebar">
               <div className="invite-card">
                 <h3 className="invite-title">Invite Athletes to This Club</h3>
-                <IonButton className="invite-btn" expand="block">
-                  Invite Athletes
-                </IonButton>
+                <IonButton className="invite-btn" expand="block">Invite Athletes</IonButton>
               </div>
 
               <div className="members-card">
@@ -284,8 +371,13 @@ const GroupFeed: React.FC = () => {
                   <img src={ProfileImage} alt="Member" />
                   <img src={ProfileImage} alt="Member" />
                   <img src={ProfileImage} alt="Member" />
-                  <span className="more-members">and 695 others</span>
+                  <span className="more-members-text">and 695 others</span>
                 </div>
+                {isJoined && (
+                  <IonButton className="leave-btn" expand="block" onClick={() => setIsJoined(false)}>
+                    Leave Club
+                  </IonButton>
+                )}
               </div>
             </div>
           </div>

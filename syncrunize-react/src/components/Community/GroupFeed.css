@@ -1,3 +1,15 @@
+/* ====== Header ====== */
+ion-header ion-toolbar {
+  --background: white;
+  --border-width: 0 0 1px 0;
+  --border-color: #e5e7eb;
+}
+
+ion-header ion-button {
+  --color: #1a1a1a;
+  font-size: 1.5rem;
+}
+
 /* ====== Hero Banner ====== */
 .club-hero-banner {
   position: relative;
@@ -87,6 +99,12 @@
   text-transform: none;
   padding: 0 2rem;
   flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.join-club-btn.joined {
+  --background: #6b7280;
+  --background-hover: #4b5563;
 }
 
 /* ====== Navigation Tabs ====== */
@@ -381,15 +399,11 @@
   margin-right: -8px;
 }
 
-.members-avatars img:last-of-type {
-  margin-right: 0;
-}
-
-.more-members {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin-left: 1rem;
-  white-space: nowrap;
+.more-members-text {
+  font-size: 15px;
+  color: #000000;
+  margin-left: 13px;
+  font-weight: 600;
 }
 
 /* ====== Empty State ====== */
@@ -409,6 +423,7 @@
   font-size: 1.1rem;
   margin: 0;
 }
+
 /* ====== Members Content ====== */
 .members-content {
   width: 100%;
@@ -437,8 +452,8 @@
 }
 
 .invite-btn-inline {
-  --background: #FC4C02;
-  --background-hover: #e04402;
+  --background: #92C628;
+  --background-hover: #92C628;
   --color: white;
   --border-radius: 4px;
   height: 36px;
@@ -540,6 +555,278 @@
   font-weight: 600;
   flex-shrink: 0;
 }
+
+/* Leave Button Styles */
+.leave-btn {
+  --background: #e76832;
+  --color: #ffffff;
+  margin-top: 16px;
+  --border-radius: 8px;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: 0.3px;
+  transition: all 0.3s ease;
+}
+
+.leave-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+}
+
+.leave-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.2);
+}
+
+/* Ensure proper spacing in members card */
+.members-card .leave-btn {
+  width: 100%;
+}
+
+/* Posts Content */
+.posts-content {
+  padding: 20px 0;
+}
+
+.create-post-section {
+  margin-bottom: 24px;
+}
+
+.create-post-btn {
+  --background: #fc5200;
+  --background-hover: #e04800;
+  --color: white;
+  font-weight: 600;
+  height: 44px;
+}
+
+.posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.post-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.post-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.post-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.post-author-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.post-author-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: #333;
+}
+
+.post-timestamp {
+  font-size: 13px;
+  color: #666;
+}
+
+.post-content {
+  margin-bottom: 16px;
+}
+
+.post-content p {
+  margin: 0 0 12px 0;
+  color: #333;
+  line-height: 1.5;
+}
+
+.post-image {
+  width: 100%;
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+.post-footer {
+  border-top: 1px solid #e0e0e0;
+  padding-top: 12px;
+}
+
+.post-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.kudos-avatars {
+  display: flex;
+  margin-left: 8px;
+}
+
+.kudos-avatars img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid white;
+  margin-left: -8px;
+}
+
+.kudos-text {
+  font-size: 13px;
+  color: #666;
+}
+
+.post-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.post-action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.post-action-btn:hover {
+  background: #f5f5f5;
+  border-color: #d0d0d0;
+}
+
+.thumbs-up-icon {
+  font-size: 16px;
+}
+
+.post-comments-link {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.post-comments-link span {
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.post-comments-link span:hover {
+  text-decoration: underline;
+}
+
+.add-comment-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.comment-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.comment-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  font-size: 14px;
+  outline: none;
+}
+
+.comment-input:focus {
+  border-color: #fc5200;
+}
+
+.comment-post-btn {
+  padding: 8px 20px;
+  background: #fc5200;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.comment-post-btn:hover {
+  background: #e04800;
+}
+.comments-list {
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-top: 1px solid #e0e0e0;
+}
+
+.comment-item {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.comment-item:last-child {
+  margin-bottom: 0;
+}
+
+.comment-content {
+  flex: 1;
+}
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.comment-author {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+.comment-timestamp {
+  font-size: 12px;
+  color: #666;
+}
+
+.comment-text {
+  font-size: 14px;
+  color: #333;
+  margin: 0;
+}
+
 /* ====== Mobile Responsive ====== */
 @media (max-width: 1024px) {
   .club-content-grid {
@@ -646,5 +933,123 @@
     width: 40px;
     height: 40px;
     margin-right: -6px;
+  }
+  .posts-content {
+    padding: 12px;
+  }
+
+  .create-post-section {
+    margin-bottom: 16px;
+  }
+
+  .create-post-btn {
+    height: 40px;
+    font-size: 14px;
+  }
+
+  .posts-list {
+    gap: 16px;
+  }
+
+  .post-card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .post-header {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .post-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .post-author-name {
+    font-size: 14px;
+  }
+
+  .post-timestamp {
+    font-size: 12px;
+  }
+
+  .post-content p {
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+
+  .post-image {
+    border-radius: 8px;
+    margin-top: 10px;
+  }
+
+  .post-footer {
+    padding-top: 10px;
+  }
+
+  .post-stats {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .kudos-avatars img {
+    width: 20px;
+    height: 20px;
+  }
+
+  .kudos-text {
+    font-size: 12px;
+  }
+
+  .post-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .post-action-btn {
+    padding: 8px;
+    font-size: 13px;
+  }
+
+  .thumbs-up-icon {
+    font-size: 14px;
+  }
+
+  .post-comments-link {
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+
+  .post-comments-link span {
+    font-size: 13px;
+  }
+
+  .add-comment-section {
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+    flex-wrap: wrap;
+  }
+
+  .comment-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .comment-input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-radius: 18px;
+  }
+
+  .comment-post-btn {
+    padding: 6px 16px;
+    font-size: 13px;
+    border-radius: 18px;
   }
 }
