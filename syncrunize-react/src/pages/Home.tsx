@@ -14,23 +14,25 @@ import {
   chatbubbleEllipses,
   peopleOutline,
   flagOutline,
-  createOutline,
+  createOutline, 
   heartOutline,
   timeOutline, 
   locationOutline,
-  flameOutline,
+  flameOutline, 
 } from "ionicons/icons";
+
+// Import the new CreatePostPage component
+import CreatePostPage from "../components/Home/CreatePostPage";
+import "../components/Home/Home.css"; 
+
+// Placeholder images
 import ProfilePic from "../assets/Profile Picture.png";
 import GirlPic from "../assets/GIRL 3.jpg";
 import Map from "../assets/MAP 1.png";
-import CreatePostModal from "../components/Home/CreatePostModal";
-import "../components/Home/Home.css"; 
-import "../pages/Challenges";
 
 const Home: React.FC = () => {
   const [openComments, setOpenComments] = useState<number | null>(null);
-  const [showCreatePostModal, setShowCreatePostModal] = useState(false);
-  const [postContent, setPostContent] = useState("");
+  const [showCreatePostPage, setShowCreatePostPage] = useState(false);
 
   const sampleComments = [
     { user: "Maria Gonzales", text: "Great run! 🔥🔥", avatar: ProfilePic, time: "2m ago" },
@@ -90,6 +92,23 @@ const Home: React.FC = () => {
       comments: 8,
     },
   ];
+
+  const handlePostSubmit = (content: string) => {
+    console.log("New post:", content);
+    // Handle post submission here
+  };
+
+  // If create post page is shown, render it instead
+  if (showCreatePostPage) {
+    return (
+      <CreatePostPage
+        userName="Alexander Smith"
+        userAvatar={ProfilePic}
+        onClose={() => setShowCreatePostPage(false)}
+        onSubmit={handlePostSubmit}
+      />
+    );
+  }
 
   return (
     <IonPage>
@@ -155,12 +174,9 @@ const Home: React.FC = () => {
               </div>
 
               <div className="post-section">
-                <div className="post-input" onClick={() => setShowCreatePostModal(true)} style={{ cursor: "pointer" }}>
+                <div className="post-input" onClick={() => setShowCreatePostPage(true)} style={{ cursor: "pointer" }}>
                   <IonItem className="post-input-item">
                     <IonInput placeholder="What's on your mind?" readonly />
-                    <IonButton fill="clear" slot="end">
-                      <IonIcon icon={createOutline} />
-                    </IonButton>
                   </IonItem>
                 </div>
               </div>
@@ -292,7 +308,7 @@ const Home: React.FC = () => {
                     <div className="progress-fill" style={{ width: "65%" }}></div>
                   </div>
                 </div>
-                <IonButton routerLink="/challenges" size="small" className="sidebar-cta">
+                <IonButton size="small" className="sidebar-cta">
                   View All
                 </IonButton>
               </div>
@@ -319,20 +335,13 @@ const Home: React.FC = () => {
                   </div>
                   <span className="group-name">NYC Runners Club</span>
                 </div>
-                <IonButton routerLink="/community" size="small" className="sidebar-cta">
+                <IonButton size="small" className="sidebar-cta">
                   Explore Groups
                 </IonButton>
               </div>
             </IonCard>
           </aside>
         </div>
-
-        {/* Create Post Modal */}
-        <CreatePostModal 
-          isOpen={showCreatePostModal} 
-          onDidDismiss={() => setShowCreatePostModal(false)}
-          userName="Alexander Smith"
-        />
       </IonContent>
     </IonPage>
   );

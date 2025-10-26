@@ -598,79 +598,143 @@ h3.activity-title {
 }
 
 /* ====== Enhanced Badges Grid ====== */
-.badge-progress {
-  background: rgba(103, 126, 234, 0.1);
-  color: #667eea;
-  font-size: 14px;
-  font-weight: 600;
-  padding: 6px 16px;
-  border-radius: 12px;
-}
+
 
 .badges-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 32px;
+  margin-top: 24px;
 }
 
 .badge-card-modern {
   position: relative;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
-  padding: 24px;
+  background: linear-gradient(145deg, #ffffff, #fefefe);
+  border-radius: 24px;
+  padding: 32px 24px;
   text-align: center;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.3s ease;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
+  border: 2px solid rgba(0, 0, 0, 0.04);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
 
 .badge-card-modern:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+  transform: translateY(-8px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.badge-card-modern.locked {
+  opacity: 0.6;
+  filter: grayscale(0.5);
+}
+
+.badge-tier-label {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.05);
+  color: #6b7280;
+}
+
+.badge-tier-label.bronze {
+  background: linear-gradient(135deg, rgba(205, 127, 50, 0.15), rgba(184, 115, 51, 0.15));
+  color: #cd7f32;
+  border: 1px solid rgba(205, 127, 50, 0.3);
+}
+
+.badge-tier-label.silver {
+  background: linear-gradient(135deg, rgba(192, 192, 192, 0.2), rgba(169, 169, 169, 0.2));
+  color: #888;
+  border: 1px solid rgba(192, 192, 192, 0.4);
+}
+
+.badge-tier-label.gold {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 193, 7, 0.2));
+  color: #d4af37;
+  border: 1px solid rgba(255, 215, 0, 0.4);
 }
 
 .badge-glow {
   position: absolute;
-  top: -50%;
-  left: -50%;
-  right: -50%;
-  bottom: -50%;
-  background: linear-gradient(45deg, transparent, rgba(255, 215, 0, 0.1), transparent);
-  transform: rotate(-45deg);
-  transition: transform 0.6s ease;
+  top: -100%;
+  left: -100%;
+  width: 300%;
+  height: 300%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, transparent 70%);
+  opacity: 0;
+  transition: all 0.6s ease;
+  pointer-events: none;
+}
+
+.badge-glow.bronze {
+  background: radial-gradient(circle, rgba(205, 127, 50, 0.2) 0%, transparent 60%);
+}
+
+.badge-glow.silver {
+  background: radial-gradient(circle, rgba(192, 192, 192, 0.25) 0%, transparent 60%);
+}
+
+.badge-glow.gold {
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.25) 0%, transparent 60%);
 }
 
 .badge-card-modern:hover .badge-glow {
-  transform: rotate(-45deg) translate(100%, 100%);
+  opacity: 1;
+  top: -50%;
+  left: -50%;
 }
 
 .badge-image {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 16px auto;
-  filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.1));
+  width: 100px;
+  height: 100px;
+  margin: 16px auto 20px auto;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.15));
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.badge-card-modern:hover .badge-image {
+  transform: scale(1.1) rotateZ(5deg);
 }
 
 .badge-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: #1f2937;
   margin: 0 0 8px 0;
+  letter-spacing: -0.3px;
 }
 
 .badge-description {
   font-size: 14px;
   color: #6b7280;
-  margin: 0 0 12px 0;
-  line-height: 1.4;
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+  min-height: 42px;
 }
 
 .badge-earned {
-  font-size: 12px;
+  font-size: 13px;
   color: #10b981;
   font-weight: 600;
+  background: rgba(16, 185, 129, 0.1);
+  padding: 6px 16px;
+  border-radius: 12px;
+  display: inline-block;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.badge-earned.locked-text {
+  color: #9ca3af;
+  background: rgba(156, 163, 175, 0.1);
+  border-color: rgba(156, 163, 175, 0.2);
 }
 
 /* ====== Enhanced Challenges Grid ====== */

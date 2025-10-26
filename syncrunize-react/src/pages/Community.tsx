@@ -102,7 +102,7 @@ const Community: React.FC = () => {
                       <h3>{group.name}</h3>
                       <p className="location">{group.location}</p>
                       <p className="member-count">{group.members}</p>
-                      
+                       
                       {/* Join/Joined Button */}
                       <IonButton
                         className={joinedGroups.includes(group.id) ? "joined-btn" : "join-btn"}

@@ -11,11 +11,11 @@
   gap: 24px;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 24px 20px 80px; 
+  padding: 24px 20px 80px;  
   align-items: start;
   min-height: 100vh;
 }
-
+ 
 /* ================= Enhanced Left Sidebar ================= */
 .left-sidebar {
   position: sticky;
@@ -212,6 +212,13 @@ h2.profile-name {
 .post-input.item-has-focus {
   border-color: #92C628;
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.post-input-item{
+  --background: #fff;
+  color: #000;
+  border: 2px solid #e2e8f0;
+  --inner-border-width: 0;
 }
 
 .input-avatar {
