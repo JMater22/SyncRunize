@@ -8,22 +8,37 @@ import {
   IonInput,
   IonButton,
   IonAvatar,
-  IonIcon, 
+  IonIcon,
+  IonFab,
+  IonFabButton,
+  IonBadge,
+  IonModal,
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonButtons,
+  IonList,
 } from "@ionic/react";
 import {
   chatbubbleEllipses,
   peopleOutline,
   flagOutline,
-  createOutline, 
+  createOutline,
   heartOutline,
-  timeOutline, 
-  locationOutline, 
-  flameOutline, 
+  timeOutline,
+  locationOutline,
+  flameOutline,
+  notifications,
+  close,
+  personAddOutline,
+  trophyOutline,
+  ribbonOutline,
+  checkmarkCircleOutline,
 } from "ionicons/icons";
 
 // Import the new CreatePostPage component
 import CreatePostPage from "../components/Home/CreatePostPage";
-import "../components/Home/Home.css"; 
+import "../components/Home/Home.css";
 
 // Placeholder images
 import ProfilePic from "../assets/Profile Picture.png";
@@ -33,11 +48,87 @@ import Map from "../assets/MAP 1.png";
 const Home: React.FC = () => {
   const [openComments, setOpenComments] = useState<number | null>(null);
   const [showCreatePostPage, setShowCreatePostPage] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const sampleComments = [
     { user: "Maria Gonzales", text: "Great run! 🔥🔥", avatar: ProfilePic, time: "2m ago" },
     { user: "John Doe", text: "Solid effort 👏", avatar: ProfilePic, time: "5m ago" },
     { user: "Emily Chen", text: "Keep it up, Alexander 💪", avatar: GirlPic, time: "12m ago" },
+  ];
+
+  const notificationsData = [
+    {
+      id: 1,
+      type: "follower",
+      icon: personAddOutline,
+      iconColor: "#3880ff",
+      user: "Sarah Johnson",
+      avatar: GirlPic,
+      message: "started following you",
+      time: "5m ago",
+      unread: true,
+    },
+    {
+      id: 2,
+      type: "badge",
+      icon: ribbonOutline,
+      iconColor: "#ffc409",
+      message: "You've earned a new badge: 100km Milestone!",
+      time: "1h ago",
+      unread: true,
+    },
+    {
+      id: 3,
+      type: "challenge",
+      icon: trophyOutline,
+      iconColor: "#10dc60",
+      message: "Challenge Complete: April Distance Goal",
+      description: "Congratulations! You've completed 100km this month.",
+      time: "2h ago",
+      unread: true,
+    },
+    {
+      id: 4,
+      type: "follower",
+      icon: personAddOutline,
+      iconColor: "#3880ff",
+      user: "Mike Chen",
+      avatar: ProfilePic,
+      message: "started following you",
+      time: "3h ago",
+      unread: true,
+    },
+    {
+      id: 5,
+      type: "like",
+      icon: heartOutline,
+      iconColor: "#eb445a",
+      user: "Emily Chen",
+      avatar: GirlPic,
+      message: "liked your activity",
+      time: "5h ago",
+      unread: true,
+    },
+    {
+      id: 6,
+      type: "comment",
+      icon: chatbubbleEllipses,
+      iconColor: "#3880ff",
+      user: "John Doe",
+      avatar: ProfilePic,
+      message: "commented on your post",
+      time: "1d ago",
+      unread: false,
+    },
+    {
+      id: 7,
+      type: "badge",
+      icon: ribbonOutline,
+      iconColor: "#ffc409",
+      message: "You've earned a new badge: Bronze",
+      time: "2d ago",
+      unread: false,
+    },
   ];
 
   const activities = [
@@ -107,7 +198,7 @@ const Home: React.FC = () => {
         onClose={() => setShowCreatePostPage(false)}
         onSubmit={handlePostSubmit}
       />
-    ); 
+    );
   }
 
   return (
@@ -342,6 +433,80 @@ const Home: React.FC = () => {
             </IonCard>
           </aside>
         </div>
+
+        {/* Floating Action Button for Notifications */}
+        <IonFab vertical="bottom" horizontal="end" slot="fixed">
+          <IonFabButton onClick={() => setShowNotifications(true)}>
+            <IonIcon icon={notifications} />
+            <IonBadge color="danger" className="fab-badge">5</IonBadge>
+          </IonFabButton>
+        </IonFab>
+
+        {/* Notifications Modal */}
+        <IonModal isOpen={showNotifications} onDidDismiss={() => setShowNotifications(false)} className="notifications-modal">
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Notifications</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setShowNotifications(false)}>
+                  <IonIcon icon={close} />
+                </IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+          <IonContent>
+            <IonList>
+              {notificationsData.map((notification) => (
+                <IonItem
+                  key={notification.id}
+                  button
+                  detail={false}
+                  className={`notification-item ${notification.unread ? 'unread' : ''}`}
+                >
+                  <div 
+                    className="notification-icon-wrapper"
+                    style={{ backgroundColor: `${notification.iconColor}20` }}
+                  >
+                    {notification.avatar ? (
+                      <IonAvatar className="notification-avatar">
+                        <img src={notification.avatar} alt={notification.user} />
+                      </IonAvatar>
+                    ) : (
+                      <IonIcon
+                        icon={notification.icon}
+                        className="notification-icon"
+                        style={{ color: notification.iconColor }}
+                      />
+                    )}
+                  </div>
+                  <div className="notification-content">
+                    <div className="notification-header">
+                      {notification.user && (
+                        <strong className="notification-user">
+                          {notification.user}
+                        </strong>
+                      )}
+                      <span className="notification-message">
+                        {notification.message}
+                      </span>
+                    </div>
+                    {notification.description && (
+                      <p className="notification-description">
+                        {notification.description}
+                      </p>
+                    )}
+                    <span className="notification-time">
+                      {notification.time}
+                    </span>
+                  </div>
+                  {notification.unread && (
+                    <div className="notification-unread-dot" />
+                  )}
+                </IonItem>
+              ))}
+            </IonList>
+          </IonContent>
+        </IonModal>
       </IonContent>
     </IonPage>
   );
