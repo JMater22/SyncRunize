@@ -29,8 +29,14 @@
   import ProfilePic from "../assets/Profile Picture.png";
   import Banner from "../assets/Banner UP.png";
   import MapImage from "../assets/MAP 1.png";
-  import Badge from "../assets/1 MIlE BADGE.png";
-  import Challenges from "../assets/GROUP 5.png";
+  import Challenges from "../assets/Couch to 5K.jpg";
+  import SevenDayStarter from "../assets/The 7-Day Starter.jpg";
+  import ThirtyDayStreak from "../assets/30-Day Streak.jpg";
+  import FiveKImprover from "../assets/5K Improver.jpg";
+  import WeekendLongRun from "../assets/Weekend Long Run.jpg";
+  import FiftyKMonth from "../assets/The 50K Month.jpg"; 
+  import ThreeTimesAWeek from "../assets/Three Times a Week.jpg"; 
+  import TenKBeginner from "../assets/10K Beginner.jpg";
   import BronzeBadge from "../assets/Bronze Animated-modified.png";
   import SilverBadge from "../assets/Silver Animated-modified.png";
   import GoldBadge from "../assets/Gold Animated-modified.png";
@@ -86,64 +92,72 @@
     const [editForm, setEditForm] = useState({ ...profileData });
 
     // Active challenges data aligned with new challenges
-    const activeChallengesData = [
-      { 
-        title: "Couch to 5K", 
-        progress: 45, 
-        target: "Build from walking to running 5K continuously", 
-        timeLeft: "38 days left",
-        duration: "56 days (8 weeks)"
-      },
-      { 
-        title: "The 7-Day Starter", 
-        progress: 71, 
-        target: "Run at least 1 kilometer every day for a week", 
-        timeLeft: "2 days left",
-        duration: "7 days"
-      },
-      { 
-        title: "30-Day Streak", 
-        progress: 53, 
-        target: "Run at least 1 mile every day for a month", 
-        timeLeft: "14 days left",
-        duration: "30 days"
-      },
-      { 
-        title: "5K Improver", 
-        progress: 60, 
-        target: "Work on improving your 5K time with structured training", 
-        timeLeft: "17 days left",
-        duration: "42 days (6 weeks)"
-      },
-      { 
-        title: "Weekend Long Run", 
-        progress: 35, 
-        target: "Do one longer run each weekend, building to 10 km", 
-        timeLeft: "36 days left",
-        duration: "56 days (8 weeks)"
-      },
-      { 
-        title: "The 50K Month", 
-        progress: 48, 
-        target: "Accumulate 50 kilometers total over the month at your pace", 
-        timeLeft: "16 days left",
-        duration: "30 days"
-      },
-      { 
-        title: "Three Times a Week", 
-        progress: 67, 
-        target: "Run three days per week with rest days between", 
-        timeLeft: "10 days left",
-        duration: "30 days"
-      },
-      { 
-        title: "10K Beginner", 
-        progress: 30, 
-        target: "Progress from 5K to completing 10K distance", 
-        timeLeft: "44 days left",
-        duration: "63 days (9 weeks)"
-      }
-    ];
+const activeChallengesData = [
+  { 
+    title: "Couch to 5K", 
+    progress: 45, 
+    target: "Build from walking to running 5K continuously", 
+    timeLeft: "38 days left",
+    duration: "56 days (8 weeks)",
+    image: Challenges // You'll need to import a Couch to 5K image
+  },
+  { 
+    title: "The 7-Day Starter", 
+    progress: 71, 
+    target: "Run at least 1 kilometer every day for a week", 
+    timeLeft: "2 days left",
+    duration: "7 days",
+    image: SevenDayStarter
+  },
+  { 
+    title: "30-Day Streak", 
+    progress: 53, 
+    target: "Run at least 1 mile every day for a month", 
+    timeLeft: "14 days left",
+    duration: "30 days",
+    image: ThirtyDayStreak
+  },
+  { 
+    title: "5K Improver", 
+    progress: 60, 
+    target: "Work on improving your 5K time with structured training", 
+    timeLeft: "17 days left",
+    duration: "42 days (6 weeks)",
+    image: FiveKImprover
+  },
+  { 
+    title: "Weekend Long Run", 
+    progress: 35, 
+    target: "Do one longer run each weekend, building to 10 km", 
+    timeLeft: "36 days left",
+    duration: "56 days (8 weeks)",
+    image: WeekendLongRun
+  },
+  { 
+    title: "The 50K Month", 
+    progress: 48, 
+    target: "Accumulate 50 kilometers total over the month at your pace", 
+    timeLeft: "16 days left",
+    duration: "30 days",
+    image: FiftyKMonth
+  },
+  { 
+    title: "Three Times a Week", 
+    progress: 67, 
+    target: "Run three days per week with rest days between", 
+    timeLeft: "10 days left",
+    duration: "30 days",
+    image: ThreeTimesAWeek
+  },
+  { 
+    title: "10K Beginner", 
+    progress: 30, 
+    target: "Progress from 5K to completing 10K distance", 
+    timeLeft: "44 days left",
+    duration: "63 days (9 weeks)",
+    image: TenKBeginner
+  }
+];
 
     // Mock data for followers and following
     const [followersData, setFollowersData] = useState([
@@ -424,41 +438,41 @@
                   </div>
                 )}
 
-                  {/* Challenges Section - Updated with new challenge data */}
-                  {activeTab === "challenges" && (
-                    <div className="content-section">
-                      <div className="section-header">
-                        <h2>Active Challenges</h2>
-                        <IonButton fill="clear" className="browse-challenges">Browse More</IonButton>
-                      </div>
+                 {/* Challenges Section - Updated with new challenge data */}
+                    {activeTab === "challenges" && (
+                      <div className="content-section">
+                        <div className="section-header">
+                          <h2>Active Challenges</h2>
+                          <IonButton fill="clear" className="browse-challenges">Browse More</IonButton>
+                        </div>
 
-                      <div className="challenges-grid">
-                        {activeChallengesData.map((challenge, i) => (
-                          <IonCard key={i} className="challenge-card-modern">
-                            <div className="challenge-image-container">
-                              <IonImg src={Challenges} alt="Challenge" />
-                              <div className="challenge-progress-overlay">
-                                <div className="progress-circle">
-                                  <span className="progress-text">{challenge.progress}%</span>
+                        <div className="challenges-grid">
+                          {activeChallengesData.map((challenge, i) => (
+                            <IonCard key={i} className="challenge-card-modern">
+                              <div className="challenge-image-container">
+                                <IonImg src={challenge.image} alt={challenge.title} />
+                                <div className="challenge-progress-overlay">
+                                  <div className="progress-circle">
+                                    <span className="progress-text">{challenge.progress}%</span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <IonCardContent>
-                              <h4 className="challenge-title">{challenge.title}</h4>
-                              <p className="challenge-target">{challenge.target}</p>
-                              <p className="challenge-duration">{challenge.duration}</p>
-                              <div className="challenge-footer">
-                                <span className="challenge-time">{challenge.timeLeft}</span>
-                                <IonButton size="small" className="join-challenge-btn">
-                                  Continue
-                                </IonButton>
-                              </div>
-                            </IonCardContent>
-                          </IonCard>
-                        ))}
+                              <IonCardContent>
+                                <h4 className="challenge-title">{challenge.title}</h4>
+                                <p className="challenge-target">{challenge.target}</p>
+                                <p className="challenge-duration">{challenge.duration}</p>
+                                <div className="challenge-footer">
+                                  <span className="challenge-time">{challenge.timeLeft}</span>
+                                  <IonButton size="small" className="join-challenge-btn">
+                                    Continue
+                                  </IonButton>
+                                </div>
+                              </IonCardContent>
+                            </IonCard>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </IonCol>
               </IonRow>
             </IonGrid>

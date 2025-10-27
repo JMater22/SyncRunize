@@ -17,7 +17,7 @@ import {
   createOutline, 
   heartOutline,
   timeOutline, 
-  locationOutline,
+  locationOutline, 
   flameOutline, 
 } from "ionicons/icons";
 
@@ -107,7 +107,7 @@ const Home: React.FC = () => {
         onClose={() => setShowCreatePostPage(false)}
         onSubmit={handlePostSubmit}
       />
-    );
+    ); 
   }
 
   return (

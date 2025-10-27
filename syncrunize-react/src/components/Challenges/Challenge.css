@@ -85,6 +85,7 @@ ion-card-content .friends-info {
 
 /* Join Challenge Button Styles */
 .join-challenge-btn,
+.main-challenge-btn,
 .suggested-join-btn {
   --background: #92C628;
   --color: #fff;
@@ -267,7 +268,7 @@ ion-card-content .friends-info {
   color: #92C628;
 }
 
-/* Challenge Image */
+/* Challenge Image */ 
 .challenge-image-col ion-img {
   border-radius: 30px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);

@@ -13,8 +13,9 @@ import {
   IonButton,
 } from "@ionic/react";
  
-import Group1 from "../assets/GROUP 1.png";
+
 import "../components/Challenges/Challenge.css";
+import Couch5K from "../assets/Couch to 5K.jpg";
 import SevenDayStarter from "../assets/The 7-Day Starter.jpg";
 import ThirtyDayStreak from "../assets/30-Day Streak.jpg";
 import FiveKImprover from "../assets/5K Improver.jpg";
@@ -29,15 +30,15 @@ import TenKInSixtyMinutes from "../assets/10K in 60 Minutes.jpg";
 import MarathonPrep from "../assets/Marathon Prep.jpg";
 
 const Challenges: React.FC = () => {
-  // State to track which challenges have been joined
+  
   const [joinedChallenges, setJoinedChallenges] = useState<{[key: string]: boolean}>({});
   const [showingJoined, setShowingJoined] = useState<{[key: string]: boolean}>({});
 
   const handleJoinClick = (challengeId: string) => {
-    // Show "Joined" text briefly
+    
     setShowingJoined(prev => ({ ...prev, [challengeId]: true }));
     
-    // After 800ms, transition to joined state with progress bar and Leave button
+    
     setTimeout(() => {
       setJoinedChallenges(prev => ({ ...prev, [challengeId]: true }));
       setShowingJoined(prev => ({ ...prev, [challengeId]: false }));
@@ -45,7 +46,7 @@ const Challenges: React.FC = () => {
   };
 
   const handleLeaveClick = (challengeId: string) => {
-    // Remove from joined challenges
+    
     setJoinedChallenges(prev => {
       const updated = { ...prev };
       delete updated[challengeId];
@@ -59,7 +60,7 @@ const Challenges: React.FC = () => {
 
     return (
       <div className={`button-animation-container ${isJoined ? 'joined' : ''}`}>
-        {/* Join Challenge Button - shows initially */}
+       
         {!isJoined && (
           <IonButton 
             expand="block" 
@@ -71,7 +72,7 @@ const Challenges: React.FC = () => {
           </IonButton>
         )}
         
-        {/* Progress Section and Leave Button - shows after joining */}
+       
         {isJoined && (
           <>
             <div className="progress-section">
@@ -102,7 +103,6 @@ const Challenges: React.FC = () => {
     <IonPage>
       <IonContent className="ion-padding challenges-page">
         <IonGrid>
-          {/* ✅ Main Challenge Section */}
           <IonRow className="main-challenge-row ion-align-items-center">
             <IonCol size="12" sizeMd="6" sizeLg="3">
               <IonCard className="challenge-card">
@@ -127,25 +127,25 @@ const Challenges: React.FC = () => {
                       </IonCol>
                     </IonRow>
                   </IonGrid>
-                  {renderButton('main-challenge', 'join-challenge-btn')}
+                  {renderButton('main-challenge', 'main-challenge-btn')}
                 </IonCardContent>
               </IonCard> 
             </IonCol>
 
-            <IonCol size="12" sizeMd="6" className="challenge-image-col">
-              <IonImg src={Group1} alt="Main Challenge Banner" />
+            <IonCol size="2" sizeMd="3" className="challenge-image-col">
+              <IonImg src={Couch5K} alt="Main Challenge Banner" />
             </IonCol>
           </IonRow>
 
           <div className="suggested-container">
-            {/* ✅ Suggested Challenges Section */}
+            
             <IonRow>
               <IonCol size="12">
                 <h3 className="suggested-header">Suggested Challenges</h3>
               </IonCol>
             </IonRow>
 
-            {/* Suggested Grid */}
+            
             <IonRow className="suggested-row">
               <IonCol size="12" sizeMd="6" sizeLg="3">
                 <IonCard className="suggested-card">

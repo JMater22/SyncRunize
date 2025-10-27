@@ -14,8 +14,8 @@ import {
 } from "@ionic/react";
 
 import Group1 from "../assets/GROUP 1.png";
-import Group2 from "../assets/GROUP 2.png";
-import "../components/Community/MainGroups.css";
+import Group2 from "../assets/GROUP 2.png"; 
+import "../components/Community/Community.css";
 import "../components/Community/CreateGroup.tsx";
 import "../components/Community/GroupFeed.tsx";
 

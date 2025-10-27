@@ -403,7 +403,7 @@ const GroupFeed: React.FC = () => {
 
                       <div className="post-form">
                         <IonInput
-                          className="post-title-input"
+                          className="post-title-input" 
                           placeholder="Add a title (optional)"
                           value={postTitle}
                           onIonInput={(e) => setPostTitle(e.detail.value || '')}

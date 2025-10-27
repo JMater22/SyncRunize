@@ -24,6 +24,7 @@ import {
   lockClosedOutline,
 } from "ionicons/icons";
 
+import "./CreatePostPage.css"; 
 interface CreatePostPageProps {
   userName: string;
   userAvatar: string;

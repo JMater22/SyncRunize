@@ -31,7 +31,6 @@ import RecentlyDeleted from "./pages/RecentlyDeleted";
 import Profile from "./pages/Profile";
 import CreateGroup from "./components/Community/CreateGroup";
 import GroupFeed from "./components/Community/GroupFeed";
-import Leaderboard from "./components/Community/Leaderboard";
 import GetStarted from "./components/UserAuth/GetStarted";
 import Login from "./components/UserAuth/LoginForm";
 import CreateRouteMap from "./components/Routes/CreateRouteMap";
@@ -125,7 +124,6 @@ const App: React.FC = () => {
               />
               <Route exact path="/create-group" component={CreateGroup} />
               <Route exact path="/group-feed" component={GroupFeed} />
-              <Route exact path="/leaderboard" component={Leaderboard} />
               <Route exact path="/create-route" component={CreateRouteMap} />
 
             </IonRouterOutlet>
