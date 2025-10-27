@@ -1,19 +1,15 @@
 import express from "express";
-import {
-  getChallenges,
-  updateChallenge,
-  deleteChallenge,
-} from "../controllers/challenge_controller.js";
+import { authenticate } from "../utils/auth_middleware.js";
+import * as ChallengeController from "../controllers/challenge_controller.js";
 
 const router = express.Router();
 
-// Retrieve all active challenges
-router.get("/", getChallenges);
+// Existing routes
+router.get("/", authenticate, ChallengeController.getAllChallenges);
+router.post("/join", authenticate, ChallengeController.joinChallenge);
+router.delete("/:userChallengeId", authenticate, ChallengeController.leaveChallenge);
 
-// Update challenge (distance, pace, etc.)
-router.put("/:id", updateChallenge);
-
-// Delete challenge
-router.delete("/:id", deleteChallenge);
+// ✅ NEW: get joined challenges for a user
+router.get("/user/", authenticate, ChallengeController.getUserChallengesProgress);
 
 export default router;

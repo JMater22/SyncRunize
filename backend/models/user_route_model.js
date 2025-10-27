@@ -1,6 +1,8 @@
 // models/user_route_model.js
 import pool from "../utils/db.js";
 import { generateRouteSnapshot } from "../utils/map_snapshot.js";
+import { haversineDistance } from "../utils/geo_utils.js";
+
 
 /**
  * Estimate calories burned based on average pace and duration
@@ -35,13 +37,20 @@ export const createRoute = async (data) => {
     end_lat,
     end_lng,
     chosen_path,
-    distance,
     duration_seconds,
     average_pace,
     risk_score = 0,
     route_name = 'Unnamed Route',
     weight_kg = 70,
   } = data;
+
+  // 1️⃣ Compute total distance from the path
+  let distanceKm = 0;
+  for (let i = 1; i < chosen_path.length; i++) {
+    const prev = chosen_path[i - 1];
+    const curr = chosen_path[i];
+    distanceKm += haversineDistance(prev.lat, prev.lng, curr.lat, curr.lng);
+  }
 
   const estimated_calories = estimateCalories(
     average_pace, 
@@ -87,7 +96,7 @@ export const createRoute = async (data) => {
 
   const result = await pool.query(
     `INSERT INTO user_routes 
-      (user_id, start_lat, start_lng, end_lat, end_lng, chosen_path, distance,
+      (user_id, start_lat, start_lng, end_lat, end_lng, chosen_path, distance_km,
        duration_seconds, average_pace, risk_score, estimated_calories, 
        route_name, snapshot_url, created_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())
@@ -99,7 +108,7 @@ export const createRoute = async (data) => {
       end_lat,
       end_lng,
       pathJson,
-      distance,
+      distanceKm,
       duration_seconds,
       average_pace,
       risk_score,

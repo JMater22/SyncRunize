@@ -17,7 +17,6 @@
   import officialIncidentRoutes from "./routes/official_incident_routes.js";
 
   import challengeRoutes from "./routes/challenge_routes.js";
-  import badgeRoutes from "./routes/badge_routes.js";
 
   import notificationRoutes from "./routes/notification_routes.js";
   import moderationRoutes from "./routes/moderation_routes.js";
@@ -25,8 +24,11 @@
   import statsRoutes from "./routes/stats_routes.js";
   import userRouteRoutes from "./routes/user_route_routes.js";
 
+
   import path from "path";
   import { fileURLToPath } from "url";
+  import { swaggerUi, swaggerSpec } from "./utils/swagger.js";
+
 
 
   dotenv.config();
@@ -54,7 +56,6 @@
   app.use("/api/official-incidents", officialIncidentRoutes);
 
   app.use("/api/challenges", challengeRoutes);
-  app.use("/api/badges", badgeRoutes);
 
   app.use("/api/notifications", notificationRoutes);
   app.use("/api/moderation", moderationRoutes);
@@ -62,6 +63,8 @@
 
   app.use("/api/stats", statsRoutes);
   app.use("/api/routes", userRouteRoutes);
+
+  app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   // -----------------------------------------
 console.log('🔍 MAP_SNAPSHOT_PROVIDER:', process.env.MAP_SNAPSHOT_PROVIDER);
   const PORT = process.env.PORT || 5000;
