@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useHistory } from 'react-router-dom';
 import {
   IonPage,
   IonContent,
@@ -33,7 +34,7 @@ import {
   personAddOutline,
   trophyOutline,
   ribbonOutline,
-  checkmarkCircleOutline,
+  speedometerOutline
 } from "ionicons/icons";
 
 // Import the new CreatePostPage component
@@ -44,6 +45,9 @@ import "../components/Home/Home.css";
 import ProfilePic from "../assets/Profile Picture.png";
 import GirlPic from "../assets/GIRL 3.jpg";
 import Map from "../assets/MAP 1.png";
+import Couch5K from "../assets/Couch to 5K.jpg";
+import SevenDayStarter from "../assets/The 7-Day Starter.jpg";
+import ThreeTimesAWeek from "../assets/Three Times a Week.jpg";
 
 const Home: React.FC = () => {
   const [openComments, setOpenComments] = useState<number | null>(null);
@@ -132,62 +136,74 @@ const Home: React.FC = () => {
   ];
 
   const activities = [
-    {
-      user: "Alexander Smith",
-      date: "April 29, 2025",
-      time: "2h ago",
-      distance: "16.3 km",
-      duration: "02:43:51",
-      calories: "842",
-      likes: 24,
-      comments: 3,
-    },
-    {
-      user: "Maria Gonzales",
-      date: "March 13, 2025",
-      time: "1d ago",
-      distance: "8.2 km",
-      duration: "01:25:30",
-      calories: "521",
-      likes: 18,
-      comments: 5,
-    },
-    {
-      user: "Emily Chen",
-      date: "May 2, 2025",
-      time: "3d ago",
-      distance: "21.1 km",
-      duration: "03:15:42",
-      calories: "1,234",
-      likes: 42,
-      comments: 8,
-    },
-    {
-      user: "Alexander Smith",
-      date: "May 2, 2025",
-      time: "3d ago",
-      distance: "21.1 km",
-      duration: "03:15:42",
-      calories: "1,234",
-      likes: 42,
-      comments: 8,
-    },
-    {
-      user: "John Doe",
-      date: "May 2, 2025",
-      time: "3d ago",
-      distance: "21.1 km",
-      duration: "03:15:42",
-      calories: "1,234",
-      likes: 42,
-      comments: 8,
-    },
-  ];
+  {
+    user: "Alexander Smith",
+    date: "April 29, 2025",
+    time: "2h ago",
+    distance: "16.3 km",
+    duration: "02:43:51",
+    pace: "10:03/km",
+    calories: "842",
+    likes: 24,
+    comments: 3,
+  },
+  {
+    user: "Maria Gonzales",
+    date: "March 13, 2025",
+    time: "1d ago",
+    distance: "8.2 km",
+    duration: "01:25:30",
+    pace: "10:25/km",
+    calories: "521",
+    likes: 18,
+    comments: 5,
+  },
+  {
+    user: "Emily Chen",
+    date: "May 2, 2025",
+    time: "3d ago",
+    distance: "21.1 km",
+    duration: "03:15:42",
+    pace: "9:16/km",
+    calories: "1,234",
+    likes: 42,
+    comments: 8,
+  },
+  {
+    user: "Alexander Smith",
+    date: "May 2, 2025",
+    time: "3d ago",
+    distance: "21.1 km",
+    duration: "03:15:42",
+    pace: "9:16/km",
+    calories: "1,234",
+    likes: 42,
+    comments: 8,
+  },
+  {
+    user: "John Doe",
+    date: "May 2, 2025",
+    time: "3d ago",
+    distance: "21.1 km",
+    duration: "03:15:42",
+    pace: "9:16/km",
+    calories: "1,234",
+    likes: 42,
+    comments: 8,
+  },
+];
+
 
   const handlePostSubmit = (content: string) => {
     console.log("New post:", content);
     // Handle post submission here
   };
+
+  const history = useHistory();
+const handleViewAllChallenges = () => {
+    history.push('/challenges');
+  };
+  
 
   // If create post page is shown, render it instead
   if (showCreatePostPage) {
@@ -253,6 +269,8 @@ const Home: React.FC = () => {
                 </div>
               </IonCardContent>
             </IonCard>
+
+            
           </aside>
 
           {/* Center Feed */}
@@ -260,16 +278,8 @@ const Home: React.FC = () => {
             <div className="feed-header">
               <div className="search-section">
                 <IonItem className="search-input">
-                  <IonInput placeholder="Find athletes and groups" />
+                  <IonInput placeholder="Find athletes" />
                 </IonItem>
-              </div>
-
-              <div className="post-section">
-                <div className="post-input" onClick={() => setShowCreatePostPage(true)} style={{ cursor: "pointer" }}>
-                  <IonItem className="post-input-item">
-                    <IonInput placeholder="What's on your mind?" readonly />
-                  </IonItem>
-                </div>
               </div>
             </div>
 
@@ -294,29 +304,36 @@ const Home: React.FC = () => {
 
                   <IonCardContent className="activity-content-enhanced">
                     {/* Stats */}
-                    <div className="activity-stats-grid">
-                      <div className="stat-card distance">
-                        <IonIcon icon={locationOutline} />
-                        <div>
-                          <span className="stat-value">{activity.distance}</span>
-                          <span className="stat-label">Distance</span>
+                      <div className="activity-stats-grid">
+                        <div className="stat-card distance">
+                          <IonIcon icon={locationOutline} />
+                          <div>
+                            <span className="stat-value">{activity.distance}</span>
+                            <span className="stat-label">Distance</span>
+                          </div>
+                        </div>
+                        <div className="stat-card time">
+                          <IonIcon icon={timeOutline} />
+                          <div>
+                            <span className="stat-value">{activity.duration}</span>
+                            <span className="stat-label">Time</span>
+                          </div>
+                        </div>
+                        <div className="stat-card pace">
+                          <IonIcon icon={speedometerOutline} />
+                          <div>
+                            <span className="stat-value">{activity.pace}</span>
+                            <span className="stat-label">Pace</span>
+                          </div>
+                        </div>
+                        <div className="stat-card calories">
+                          <IonIcon icon={flameOutline} />
+                          <div>
+                            <span className="stat-value">{activity.calories}</span>
+                            <span className="stat-label">Calories</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="stat-card time">
-                        <IonIcon icon={timeOutline} />
-                        <div>
-                          <span className="stat-value">{activity.duration}</span>
-                          <span className="stat-label">Time</span>
-                        </div>
-                      </div>
-                      <div className="stat-card calories">
-                        <IonIcon icon={flameOutline} />
-                        <div>
-                          <span className="stat-value">{activity.calories}</span>
-                          <span className="stat-label">Calories</span>
-                        </div>
-                      </div>
-                    </div>
 
                     {/* Map */}
                     <div className="activity-map-container">
@@ -379,58 +396,57 @@ const Home: React.FC = () => {
           {/* Right Sidebar */}
           <aside className="right-sidebar">
             <IonCard className="sidebar-card-enhanced challenges-card">
-              <div className="sidebar-card-header">
-                <div className="sidebar-icon-container challenges">
-                  <IonIcon icon={flagOutline} />
-                </div>
-                <div>
-                  <h3 className="sidebar-title">Challenges</h3>
-                  <p className="sidebar-subtitle">3 Active</p>
-                </div>
-              </div>
-              <div className="sidebar-card-content">
-                <p className="sidebar-description">Join running challenges to stay motivated!</p>
-                <div className="challenge-preview">
-                  <div className="challenge-item">
-                    <span className="challenge-name">April Distance Goal</span>
-                    <span className="challenge-progress">65%</span>
-                  </div>
-                  <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: "65%" }}></div>
+                <div className="sidebar-card-header">
+                  <div>
+                    <h3 className="sidebar-title">Your Challenges</h3>
                   </div>
                 </div>
-                <IonButton size="small" className="sidebar-cta">
-                  View All
-                </IonButton>
-              </div>
-            </IonCard>
+                <div className="sidebar-card-content">
+                    <div className="challenge-list">
+                      <div className="strava-challenge-item">
+                        <div className="challenge-badge">
+                          <img src={Couch5K} alt="Couch to 5K" />
+                        </div>
+                        <div className="challenge-info">
+                          <h4 className="challenge-title">Couch to 5K</h4>
+                          <div className="challenge-days-left">
+                            <IonIcon icon={timeOutline} />
+                            <span>38 days left</span>
+                          </div>
+                        </div>
+                      </div>
 
-            <IonCard className="sidebar-card-enhanced groups-card">
-              <div className="sidebar-card-header">
-                <div className="sidebar-icon-container groups">
-                  <IonIcon icon={peopleOutline} />
-                </div>
-                <div>
-                  <h3 className="sidebar-title">Groups</h3>
-                  <p className="sidebar-subtitle">5 Joined</p>
-                </div>
-              </div>
-              <div className="sidebar-card-content">
-                <p className="sidebar-description">Run together, go further!</p>
-                <div className="group-preview">
-                  <div className="group-avatars">
-                    <IonAvatar className="group-avatar"><img src={ProfilePic} alt="Member" /></IonAvatar>
-                    <IonAvatar className="group-avatar"><img src={ProfilePic} alt="Member" /></IonAvatar>
-                    <IonAvatar className="group-avatar"><img src={ProfilePic} alt="Member" /></IonAvatar>
-                    <div className="more-members">+12</div>
+                      <div className="strava-challenge-item">
+                        <div className="challenge-badge">
+                          <img src={SevenDayStarter} alt="The 7-Day Starter" />
+                        </div>
+                        <div className="challenge-info">
+                          <h4 className="challenge-title">The 7-Day Starter</h4>
+                          <div className="challenge-days-left">
+                            <IonIcon icon={timeOutline} />
+                            <span>2 days left</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="strava-challenge-item">
+                        <div className="challenge-badge">
+                          <img src={ThreeTimesAWeek} alt="Three Times a Week" />
+                        </div>
+                        <div className="challenge-info">
+                          <h4 className="challenge-title">Three Times a Week</h4>
+                          <div className="challenge-days-left">
+                            <IonIcon icon={timeOutline} />
+                            <span>10 days left</span>
+                          </div>
+                        </div>
+                      </div>
                   </div>
-                  <span className="group-name">NYC Runners Club</span>
+                  <IonButton expand="block" fill="clear" className="sidebar-cta" onClick={handleViewAllChallenges}>
+                    View All Challenges
+                  </IonButton>
                 </div>
-                <IonButton size="small" className="sidebar-cta">
-                  Explore Groups
-                </IonButton>
-              </div>
-            </IonCard>
+              </IonCard>
           </aside>
         </div>
 
@@ -494,7 +510,7 @@ const Home: React.FC = () => {
                       <p className="notification-description">
                         {notification.description}
                       </p>
-                    )}
+                    )} 
                     <span className="notification-time">
                       {notification.time}
                     </span>

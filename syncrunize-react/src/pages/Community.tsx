@@ -53,7 +53,7 @@ const Community: React.FC = () => {
         {/* ✅ Page Header */}
         <section className="groups-page-header">
           <h1 className="page-title">Groups</h1>
-          <IonButton className="create-group-btn" routerLink="/create-group">
+          <IonButton className="create-group-btn" routerLink="/create-group"> 
             Create a Group
           </IonButton>
         </section>

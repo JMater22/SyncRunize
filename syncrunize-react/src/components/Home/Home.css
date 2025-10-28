@@ -193,40 +193,6 @@ h2.profile-name {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.post-section {
-  margin-top: 16px;
-}
-
-.post-input {
-  --background: white;
-  --border-radius: 12px;
-  color: #000;
-  border: 2px solid #e2e8f0;
-  --inner-border-width: 0;
-  --padding-start: 16px;
-  --padding-end: 16px;
-  transition: all 0.3s ease;
-}
-
-.post-input:hover,
-.post-input.item-has-focus {
-  border-color: #92C628;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-}
-
-.post-input-item{
-  --background: #fff;
-  color: #000;
-  border: 2px solid #e2e8f0;
-  --inner-border-width: 0;
-}
-
-.input-avatar {
-  width: 40px;
-  height: 40px;
-  margin-right: 12px;
-  flex-shrink: 0;
-}
 
 /* ================= Enhanced Activity Cards ================= */
 .activity-feed {
@@ -321,16 +287,17 @@ span.activity-handle {
 
 .activity-stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0;
   border-bottom: 1px solid #e2e8f0;
 }
 
 .stat-card {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 20px;
+  gap: 8px;
+  padding: 24px 16px;
   border-right: 1px solid #e2e8f0;
   transition: all 0.3s ease;
   text-align: center;
@@ -346,32 +313,29 @@ span.activity-handle {
 }
 
 .stat-card ion-icon {
-  font-size: 20px;
-  flex-shrink: 0;
+  display: none;
 }
-
-.stat-card.distance ion-icon { color: #3b82f6; }
-.stat-card.time ion-icon { color: #10b981; }
-.stat-card.calories ion-icon { color: #ef4444; }
 
 .stat-card div {
   display: flex;
   flex-direction: column;
-}
-
-.stat-value {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1e293b;
-  line-height: 1;
+  gap: 4px;
 }
 
 .stat-label {
-  font-size: 11px;
+  font-size: 13px;
   color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 2px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  order: -1;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1;
 }
 
 .activity-map-container {
@@ -521,6 +485,7 @@ span.activity-handle {
 }
 
 /* ================= Enhanced Right Sidebar ================= */
+/* ================= Enhanced Right Sidebar ================= */
 .right-sidebar {
   position: sticky;
   top: 24px;
@@ -595,6 +560,91 @@ p.sidebar-subtitle {
   font-size: 0.95rem;
   color: #475569;
   margin: 0 0 12px 0;
+}
+
+/* === Strava-style Challenge Items === */
+.challenge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.strava-challenge-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.strava-challenge-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transform: translateX(2px);
+}
+
+.challenge-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: #f1f5f9;
+}
+
+.challenge-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.challenge-info {
+  flex: 1;
+  min-width: 0;
+}
+
+h4.challenge-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.challenge-days-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.challenge-days-left ion-icon {
+  font-size: 14px;
+}
+
+/* === Button Styling === */
+.sidebar-cta {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: none;
+  --color: #f59e0b;
+}
+
+.sidebar-cta:hover {
+  --color: #d97706;
 }
 
 /* Challenge Section */
