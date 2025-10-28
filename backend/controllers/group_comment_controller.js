@@ -14,7 +14,7 @@ export const getComments = async (req, res) => {
 export const createComment = async (req, res) => {
   try {
     const { content } = req.body;
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const comment = await GroupCommentModel.createComment(req.params.groupPostId, userId, content);
     res.status(201).json(comment);
   } catch (err) {

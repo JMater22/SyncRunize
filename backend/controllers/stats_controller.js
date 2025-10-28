@@ -7,7 +7,7 @@ import * as StatsModel from "../models/stats_model.js";
  */
 export const getStats = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { period, start_date, end_date } = req.query;
 
     // Validate period
@@ -66,7 +66,7 @@ export const getStats = async (req, res) => {
  */
 export const getCurrentStats = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { period } = req.query;
 
     const validPeriods = ["day", "week", "month"];

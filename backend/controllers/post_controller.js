@@ -15,7 +15,7 @@ export const getPosts = async (req, res) => {
 export const createPost = async (req, res) => {
   try {
     const { content, imageUrl } = req.body;
-    const userId = req.user.userId; // from JWT
+    const userId = req.user.id; // from JWT
     const post = await PostModel.createPost(userId, content, imageUrl);
     res.status(201).json(post);
   } catch (err) {
@@ -26,7 +26,7 @@ export const createPost = async (req, res) => {
 // UPDATE post
 export const updatePost = async (req, res) => {
   try {
-    const { id } = req.params;
+    const  id  = req.user.id;
     const { content, imageUrl } = req.body;
     const updated = await PostModel.updatePost(id, content, imageUrl);
     res.json(updated);
@@ -38,7 +38,7 @@ export const updatePost = async (req, res) => {
 // DELETE post
 export const deletePost = async (req, res) => {
   try {
-    const { id } = req.params;
+    const  id  = req.user.id;
     const result = await PostModel.deletePost(id);
     res.json(result);
   } catch (err) {

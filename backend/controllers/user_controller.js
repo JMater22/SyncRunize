@@ -1,76 +1,93 @@
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+// controllers/user_controller.js
 import * as UserModel from "../models/user_model.js";
+import { supabase } from "../utils/supabase.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
-
-// Register user
-export const register = async (req, res) => {
+// ✅ Create user profile (after Supabase signup)
+export const createUserProfile = async (req, res) => {
   try {
-    const { email, password, username } = req.body;
-    const existing = await UserModel.getUserByEmail(email);
-    if (existing) return res.status(400).json({ error: "Email already in use" });
+    const { name, gender, age, weight_kg } = req.body;
+    const user = req.user; // from Supabase middleware
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await UserModel.createUser(email, hashedPassword, username);
-    res.status(201).json(user);
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const existing = await UserModel.getUserByAuthId(user.id);
+    if (existing) {
+      return res.status(400).json({ error: "Profile already exists" });
+    }
+
+    const newUser = await UserModel.createUserProfile(
+      user.id,
+      name,
+      user.email,
+      gender,
+      age,
+      weight_kg
+    );
+
+    res.status(201).json(newUser);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Create User Error:", err);
+    res.status(500).json({ error: "Failed to create user profile" });
   }
 };
 
-// Login user
-export const login = async (req, res) => {
+// ✅ Get own profile (protected)
+export const getMyProfile = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const user = await UserModel.getUserByEmail(email);
-    if (!user) return res.status(400).json({ error: "Invalid email or password" });
-
-    const match = await bcrypt.compare(password, user.hashed_password);
-    if (!match) return res.status(400).json({ error: "Invalid email or password" });
-
-    const token = jwt.sign({ userId: user.user_id }, JWT_SECRET, { expiresIn: "1d" });
-    res.json({ token, user: { id: user.user_id, email: user.email, username: user.username } });
+    const user = req.user;
+    const profile = await UserModel.getUserByAuthId(user.id);
+    if (!profile) return res.status(404).json({ error: "Profile not found" });
+    res.json(profile);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Get Profile Error:", err);
+    res.status(500).json({ error: "Failed to fetch profile" });
   }
 };
 
-// Get profile
-export const getProfile = async (req, res) => {
+// ✅ Get public profile (by params)
+export const getPublicProfile = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await UserModel.getUserById(id);
-    if (!user) return res.status(404).json({ error: "User not found" });
-    res.json(user);
+    const profile = await UserModel.getPublicUserById(id);
+    if (!profile) return res.status(404).json({ error: "User not found" });
+    res.json(profile);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Get Public Profile Error:", err);
+    res.status(500).json({ error: "Failed to fetch public profile" });
   }
 };
 
-// Update profile
+// ✅ Update own profile (protected)
 export const updateProfile = async (req, res) => {
   try {
-    const { id } = req.params;
-    let { username, profile_picture, password } = req.body;
-    let hashedPassword = null;
-    if (password) hashedPassword = await bcrypt.hash(password, 10);
+    const user = req.user;
+    const updates = req.body;
 
-    const updated = await UserModel.updateUser(id, { username, profile_picture, hashedPassword });
+    const updated = await UserModel.updateUserProfile(user.id, updates);
+    if (!updated) return res.status(404).json({ error: "Profile not found" });
+
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Update Profile Error:", err);
+    res.status(500).json({ error: "Failed to update profile" });
   }
 };
 
-// Delete user
-export const deleteUser = async (req, res) => {
+// ✅ Delete own profile (protected)
+export const deleteProfile = async (req, res) => {
   try {
-    const { id } = req.params;
-    const deleted = await UserModel.deleteUser(id);
-    if (!deleted) return res.status(404).json({ error: "User not found" });
-    res.json({ message: "User deleted", id });
+    const user = req.user;
+    const deleted = await UserModel.deleteUserProfile(user.id);
+    if (!deleted) return res.status(404).json({ error: "Profile not found" });
+
+    // Optional: also delete the Supabase Auth user
+    await supabase.auth.admin.deleteUser(user.id);
+
+    res.json({ message: "Profile deleted successfully", user_id: user.id });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Delete Profile Error:", err);
+    res.status(500).json({ error: "Failed to delete profile" });
   }
 };

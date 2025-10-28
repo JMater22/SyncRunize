@@ -12,7 +12,7 @@ export const createHazard = async (req, res) => {
   let imagePath = null; // Track uploaded file path for cleanup
 
   try {
-    const userId = req.user?.userId;
+    const userId = req.user.id;
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
     // ✅ Handle optional image upload

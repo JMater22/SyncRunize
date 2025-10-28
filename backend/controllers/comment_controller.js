@@ -16,7 +16,7 @@ export const createComment = async (req, res) => {
   try {
     const { postId } = req.params;
     const { content } = req.body;
-    const userId = req.user.userId; // from JWT
+    const userId = req.user.id; // from JWT
     const comment = await CommentModel.createComment(postId, userId, content);
     res.status(201).json(comment);
   } catch (err) {

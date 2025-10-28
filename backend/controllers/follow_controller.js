@@ -26,7 +26,7 @@ export const getFollowing = async (req, res) => {
 export const followUser = async (req, res) => {
   try {
     const { userId } = req.params; // user being followed
-    const followerId = req.user.userId; // from JWT
+    const followerId = req.user.id; // from JWT
     if (parseInt(userId) === followerId) {
       return res.status(400).json({ error: "You cannot follow yourself" });
     }

@@ -2,6 +2,7 @@
   import bodyParser from "body-parser";
   import cors from "cors";
   import dotenv from "dotenv";
+  import pool from "./utils/db.js";
 
   import userRoutes from "./routes/user_routes.js";
   import postRoutes from "./routes/post_routes.js";
@@ -66,6 +67,16 @@
 
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   // -----------------------------------------
+
+  app.get("/test-db", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT NOW()");
+    res.json({ status: "✅ Connected", time: result.rows[0].now });
+  } catch (err) {
+    console.error("❌ DB Error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 console.log('🔍 MAP_SNAPSHOT_PROVIDER:', process.env.MAP_SNAPSHOT_PROVIDER);
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
