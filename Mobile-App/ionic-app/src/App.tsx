@@ -41,6 +41,7 @@ import GroupFeed from './pages/Group-feed';
 import ViewPost from './pages/View-Posts';
 import ViewActivity from './pages/View-Activity';
 import Badges from './pages/Badges';
+import CreatePost from './pages/Create-Post';
 
 
 
@@ -114,6 +115,7 @@ const App: React.FC = () => (
            <Route exact path="/posts" component={ViewPost} />
            <Route exact path="/activities" component={ViewActivity} />
            <Route exact path="/badges" component={Badges} />
+           <Route exact path="/create-post" component={CreatePost} />
           
           <Route exact path="/">
             <Redirect to="/home" />

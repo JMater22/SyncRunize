@@ -122,22 +122,7 @@ const Activity: React.FC = () => {
                 />
               </IonCol>
             </IonRow>
-            <IonRow>
-              <IonCol size="6">
-                <IonImg
-                  src={ChallengePic}
-                  alt="Activity Highlight"
-                  className="media-item highlight-photo"
-                />
-              </IonCol>
-              <IonCol size="6">
-                <IonImg
-                  src={Challenge1}
-                  alt="Activity Photo"
-                  className="media-item activity-photo"
-                />
-              </IonCol>
-            </IonRow>
+            
           </IonGrid>
           <IonButton
             expand="block"

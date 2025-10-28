@@ -16,18 +16,24 @@ import {
   IonButtons,
   IonBackButton,
   IonModal,
-  IonTextarea
+  IonTextarea,
+  IonActionSheet,
+  IonAlert
 } from "@ionic/react";
 import {
   heartOutline,
   heart,
-  chatbubbleOutline
+  chatbubbleOutline,
+  ellipsisVertical,
+  exitOutline
 } from "ionicons/icons";
-
+import { useHistory } from "react-router-dom";
 import ChallengePic from '../components/assets/istockphoto-143920084-612x612.jpg';
 import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
 
 const GroupFeed: React.FC = () => {
+  const history = useHistory();
+  
   // Comments state
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
@@ -49,6 +55,10 @@ const GroupFeed: React.FC = () => {
     2: { count: 41, isLiked: false },
     3: { count: 150, isLiked: false }
   });
+
+  // Leave Group state
+  const [showActionSheet, setShowActionSheet] = useState(false);
+  const [showLeaveAlert, setShowLeaveAlert] = useState(false);
 
   const handleLike = (postId: number) => {
     setLikes(prev => ({
@@ -88,6 +98,14 @@ const GroupFeed: React.FC = () => {
     }
   };
 
+  const handleLeaveGroup = () => {
+    // Add your leave group logic here (API call, etc.)
+    console.log("User left the group");
+    
+    // Navigate back to home or groups list
+    history.push("/HomeModule/homeM1");
+  };
+
   return (
     <IonPage>
       {/* Top Header */}
@@ -97,19 +115,25 @@ const GroupFeed: React.FC = () => {
             <IonBackButton defaultHref="/HomeModule/homeM1" />
           </IonButtons>
           <IonTitle>Group Feed</IonTitle>
+          <IonButtons slot="end">
+            <IonButton onClick={() => setShowActionSheet(true)}>
+              <IonIcon icon={ellipsisVertical} />
+            </IonButton>
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
 
       {/* Content */}
       <IonContent fullscreen className="ion-padding">
+        
         <div className="feed-tab">
           {/* Post Creation Input */}
-          <IonCard className="post-input-card">
+          <IonCard className="post-input-card" routerLink="/create-post">
             <IonItem lines="none">
               <IonAvatar slot="start">
                 <IonImg src={ProfilePic} />
               </IonAvatar>
-              <input type="text" placeholder="What's on your mind?" className="post-input" style={{border: 'none', outline: 'none', width: '100%', padding: '10px'}} />
+              <input type="text" placeholder="What's on your mind?" className="post-input" style={{border: 'none', outline: 'none', width: '100%', padding: '10px'}} readOnly />
             </IonItem>
           </IonCard>
 
@@ -264,6 +288,46 @@ const GroupFeed: React.FC = () => {
             </div>
           </IonContent>
         </IonModal>
+
+        {/* Action Sheet for Group Options */}
+        <IonActionSheet
+          isOpen={showActionSheet}
+          onDidDismiss={() => setShowActionSheet(false)}
+          buttons={[
+            {
+              text: 'Leave Group',
+              role: 'destructive',
+              icon: exitOutline,
+              handler: () => {
+                setShowLeaveAlert(true);
+              }
+            },
+            {
+              
+              text: 'Cancel',
+              role: 'cancel'
+            }
+          ]}
+        />
+
+        {/* Leave Group Confirmation Alert */}
+        <IonAlert 
+          isOpen={showLeaveAlert}
+          onDidDismiss={() => setShowLeaveAlert(false)}
+          header="Leave Group"
+          message="Are you sure you want to leave this group? You won't be able to see posts or participate anymore."
+          buttons={[
+            {
+              text: 'Cancel',
+              role: 'cancel'
+            },
+            {
+              text: 'Leave',
+              role: 'destructive',
+              handler: handleLeaveGroup
+            }
+          ]}
+        />
       </IonContent>
     </IonPage>
   );

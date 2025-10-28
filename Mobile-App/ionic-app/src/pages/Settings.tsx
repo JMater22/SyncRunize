@@ -24,19 +24,19 @@ import "../theme/global.css";
 
 export default function Settings() {
   return (
-    <IonPage>
-      {/* Header */}
-      <IonHeader className="dark-header">
-        <IonToolbar>
-          <IonButtons slot="start">
-            <IonBackButton defaultHref="/settings" />
-          </IonButtons>
-          <IonTitle>Settings</IonTitle>
-        </IonToolbar>
-      </IonHeader>
+    <IonPage >
+        {/* Header */}
+        <IonHeader className="dark-header">
+          <IonToolbar>
+            <IonButtons slot="start">
+              <IonBackButton defaultHref="/settings" />
+            </IonButtons>
+            <IonTitle>Settings</IonTitle>
+          </IonToolbar>
+        </IonHeader>
 
-      {/* Scrollable Content */}
-     <IonContent fullscreen>
+        {/* Scrollable Content */}
+      <IonContent className="dark-content" fullscreen>
 
   {/* Account Settings */}
   <IonCard>
@@ -142,39 +142,39 @@ export default function Settings() {
           <IonToggle slot="end" color="success"/>
         </IonItem>
       </IonList>
-    </IonCardContent>
-  </IonCard>
+        </IonCardContent>
+        </IonCard>
 
-  {/* App Preferences */}
-  <IonCard>
-    <IonCardHeader>
-      <IonCardTitle>App Preferences</IonCardTitle>
-    </IonCardHeader>
-    <IonCardContent>
-      <IonList>
-        <IonItem>
-          <IonLabel>
-            <h2>Distance Units</h2>
-            <p>Choose kilometers or miles</p>
-          </IonLabel>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <IonButton size="small" fill="outline" color="success">km</IonButton>
-            <IonButton size="small" fill="outline" color="success">mi</IonButton>
-          </div>
-        </IonItem>
+      {/* App Preferences */}
+      <IonCard>
+        <IonCardHeader>
+          <IonCardTitle>App Preferences</IonCardTitle>
+        </IonCardHeader>
+        <IonCardContent>
+          <IonList>
+            <IonItem>
+              <IonLabel>
+                <h2>Distance Units</h2>
+                <p>Choose kilometers or miles</p>
+              </IonLabel>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <IonButton size="small" fill="outline" color="success">km</IonButton>
+                <IonButton size="small" fill="outline" color="success">mi</IonButton>
+              </div>
+            </IonItem>
 
-      </IonList>
-    </IonCardContent>
-  </IonCard>
+          </IonList>
+        </IonCardContent>
+      </IonCard>
 
-  {/* Log Out */}
-  <div style={{ padding: "16px" }}>
-    <IonButton expand="block" color="danger">
-      Log Out →
-    </IonButton>
-  </div>
+    {/* Log Out */}
+    <div style={{ padding: "16px" }}>
+      <IonButton expand="block" color="danger">
+        Log Out →
+      </IonButton>
+    </div>
 
-</IonContent>
+    </IonContent>
 
     </IonPage>
     

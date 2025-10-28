@@ -217,7 +217,7 @@ export default function Dashboard() {
         <IonCard  className="leaderboard-card">
           <IonCardContent >
             <div className="leaderboard-header">
-              <span>Group Name</span>
+              <span>Rank</span>
               <span>Distance</span>
             </div>
             <IonList className="leaderboard-list">

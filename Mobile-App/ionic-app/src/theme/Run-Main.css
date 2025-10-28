@@ -55,9 +55,8 @@
   position: relative;
   height: 120px;
   width: 120px;
-  
   z-index: 10;
-  margin-bottom: 40px;
+  margin-bottom: 80px;
   --background: #4ade80;
   --background-activated: #22c55e;
   --background-focused: #22c55e;

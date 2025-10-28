@@ -22,9 +22,9 @@ import {
   IonCardHeader,
   IonCardTitle,
   IonCardContent,
-  IonRouterLink,
+  IonRouterLink, IonImg
 } from "@ionic/react";
-import { settingsOutline, chevronForwardOutline, location } from "ionicons/icons";
+import { settingsOutline, chevronForwardOutline, location, people } from "ionicons/icons";
 import "../theme/User-Profile.css";
 import ProfilePic from "../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg";
 import ChallengePic from "../components/assets/istockphoto-143920084-612x612.jpg";
@@ -74,7 +74,7 @@ export default function Profile() {
               </IonRouterLink>
             </IonCol>
             <IonCol>
-              <IonRouterLink routerLink="/followers">
+              <IonRouterLink routerLink="/following">
                 <h2>2</h2>
                 <p>Followers</p>
               </IonRouterLink>
@@ -155,17 +155,28 @@ export default function Profile() {
         </div>
 
         {/* Challenges */}
-        <IonCard >
-          <IonCardTitle className="challenges-title">Challenges</IonCardTitle>
-          <img src={ChallengePic} alt="Challenge" />
-          <IonCardHeader>
-            <IonCardTitle>April Run 300K Challenge</IonCardTitle>
-          </IonCardHeader>
-          <IonCardContent>
-            Run a total of 300 km (186.4 mi) in a month.
-            <p>Apr 1, 2025 to Apr 30, 2025</p>
-          </IonCardContent>
-        </IonCard>
+        <h3 className="groups-title">Challenges</h3>
+         <IonCard className="current-challenge-card">
+              <div className="challenge-image-container">
+                <IonImg src={ChallengePic} alt="Running Challenge" />
+                <div className="challenge-overlay">
+                  <h3 className="challenge-title">Couch to 5k</h3>
+                  <div className="participants">
+                    <IonIcon icon={people} className="participants-icon" />
+                    <span>1,341 participants</span>
+                  </div>
+                </div>
+              </div>
+              <IonCardContent className="challenge-content">
+                <div className="progress-section">
+                  <span className="progress-label">Current Progress: 5km</span>
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: "65%" }}></div>
+                  </div>
+                </div>
+              </IonCardContent>
+            </IonCard>
+
 
         {/* Groups */}
         <h3 className="groups-title">Your Running Groups</h3>
