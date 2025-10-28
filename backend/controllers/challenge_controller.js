@@ -16,7 +16,7 @@ export const getAllChallenges = async (req, res) => {
 // POST /api/user-challenges/join → join a challenge
 export const joinChallenge = async (req, res) => {
   try {
-    const userId = req.user.userId; // from auth middleware
+    const userId = req.user.id; // from auth middleware
     const { challenge_id } = req.body;
 
     // Check if already joined
@@ -50,7 +50,7 @@ export const joinChallenge = async (req, res) => {
 // GET /api/challenges/user/:userId → fetch all challenges user joined
 export const getUserChallengesProgress = async (req, res) => {
   try {
-    const userId = req.user.userId; // or req.user.userId if authenticated
+    const userId = req.user.id; // or req.user.userId if authenticated
 
     // Fetch all user challenges for this user
     const userChallenges = await UserChallengeModel.getUserChallenges(userId);

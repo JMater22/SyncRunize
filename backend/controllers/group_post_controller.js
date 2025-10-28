@@ -14,7 +14,7 @@ export const getGroupPosts = async (req, res) => {
 export const createGroupPost = async (req, res) => {
   try {
     const { content, imageUrl } = req.body;
-    const userId = req.user.userId; // from auth
+    const userId = req.user.id; // from auth
     const post = await GroupPostModel.createGroupPost(req.params.groupId, userId, content, imageUrl);
     res.status(201).json(post);
   } catch (err) {

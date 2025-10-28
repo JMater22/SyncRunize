@@ -15,7 +15,7 @@ export const getLikesCount = async (req, res) => {
 export const likePost = async (req, res) => {
   try {
     const { postId } = req.params;
-    const userId = req.user.userId; // from JWT
+    const userId = req.user.id; // from JWT
     const like = await LikeModel.addLike(postId, userId);
     if (!like) return res.status(200).json({ message: "Already liked" });
     res.status(201).json(like);
@@ -28,7 +28,7 @@ export const likePost = async (req, res) => {
 export const unlikePost = async (req, res) => {
   try {
     const { postId } = req.params;
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const result = await LikeModel.removeLike(postId, userId);
     res.json(result);
   } catch (err) {

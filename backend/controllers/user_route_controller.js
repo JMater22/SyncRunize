@@ -9,7 +9,7 @@ import { computeProgressPercent, awardBadgeIfQualified } from "../services/award
  */
 export const createRoute = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
 
     // 1️⃣ Create the route (includes distance & snapshot)
     const newRoute = await RouteModel.createRoute({
@@ -91,7 +91,7 @@ export const createRoute = async (req, res) => {
  */
 export const getUserRoutes = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const filters = req.query;
     const routes = await RouteModel.getUserRoutes(userId, filters);
     res.json(routes);

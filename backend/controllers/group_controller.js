@@ -25,7 +25,7 @@ export const getGroupById = async (req, res) => {
 export const createGroup = async (req, res) => {
   try {
     const { name, description, group_picture } = req.body;
-    const userId = req.user?.userId; // Extracted from JWT (ensure authenticate middleware)
+    const userId = req.user.id; // Extracted from JWT (ensure authenticate middleware)
 
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized: user not authenticated" });

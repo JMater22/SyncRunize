@@ -13,7 +13,7 @@ export const countLikes = async (req, res) => {
 // POST like
 export const addLike = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const like = await GroupLikeModel.addLike(req.params.groupPostId, userId);
     res.status(201).json(like);
   } catch (err) {
