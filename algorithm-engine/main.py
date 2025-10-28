@@ -36,7 +36,7 @@ class EmbedRequest(BaseModel):
 class Report(BaseModel):
     id: int
     user_id: int
-    type: str
+    incident_type: str   # <-- changed from `type`
     description: str
     lat: float
     lng: float
@@ -108,12 +108,13 @@ sim_matrix = {
 }
 
 def semantic_similarity(r1, r2):
-    if r1.type == r2.type:
+    # use incident_type field instead of type
+    if r1.incident_type == r2.incident_type:
         return 1.0
-    if r1.type in sim_matrix and r2.type in sim_matrix[r1.type]:
-        return sim_matrix[r1.type][r2.type]
-    elif r2.type in sim_matrix and r1.type in sim_matrix[r2.type]:
-        return sim_matrix[r2.type][r1.type]
+    if r1.incident_type in sim_matrix and r2.incident_type in sim_matrix[r1.incident_type]:
+        return sim_matrix[r1.incident_type][r2.incident_type]
+    elif r2.incident_type in sim_matrix and r1.incident_type in sim_matrix[r2.incident_type]:
+        return sim_matrix[r2.incident_type][r1.incident_type]
     else:
         return compute_sbert_similarity(r1.description, r2.description)
 
