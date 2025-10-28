@@ -1,0 +1,223 @@
+        .create-post-toolbar {
+          --background: #fff;
+          --border-color: #e5e7eb;
+        }
+
+        .create-post-content {
+          --background: #f9fafb;
+        }
+
+        .create-post-container {
+          max-width: 700px;
+          margin: 0 auto;
+          padding: 20px;
+        }
+
+        .post-user-section {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 20px;
+          padding: 20px;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .post-user-avatar {
+          width: 48px;
+          height: 48px;
+        }
+
+        .post-user-info {
+          flex: 1;
+        }
+
+        .post-user-name {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 600;
+          color: #1f2937;
+        }
+
+        .privacy-select {
+          margin-top: 4px;
+          font-size: 13px;
+          color: #6b7280;
+          max-width: 120px;
+          --padding-start: 0;
+          --padding-end: 0;
+        }
+
+        .privacy-option {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .post-textarea-container {
+          background: white;
+          color: #7e7e7e;
+          border-radius: 12px;
+          padding: 20px;
+          margin-bottom: 16px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .post-textarea {
+          --background: transparent;
+          --padding-start: 0;
+          --padding-end: 0;
+          font-size: 16px;
+          min-height: 200px;
+        }
+
+        .post-textarea textarea {
+          font-family: inherit;
+        }
+
+        .image-preview-container {
+          position: relative;
+          background: white;
+          border-radius: 12px;
+          padding: 12px;
+          margin-bottom: 16px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .image-preview {
+          width: 100%;
+          border-radius: 8px;
+          max-height: 400px;
+          object-fit: cover;
+        }
+
+        .remove-image-btn {
+          position: absolute;
+          top: 20px;
+          right: 20px;
+          background: rgba(0, 0, 0, 0.6);
+          border-radius: 50%;
+          width: 32px;
+          height: 32px;
+          --color: white;
+        }
+
+        .post-actions-section {
+          background: white;
+          border-radius: 12px;
+          padding: 20px;
+          margin-bottom: 16px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .post-actions-title {
+          font-size: 14px;
+          font-weight: 600;
+          color: #6b7280;
+          margin-bottom: 12px;
+        }
+
+        .post-actions-buttons {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .action-option-btn {
+          --background: #f3f4f6;
+          --background-hover: #e5e7eb;
+          --color: #374151;
+          --border-radius: 8px;
+          text-transform: none;
+          font-weight: 500;
+          height: 40px;
+        }
+
+        .action-option-btn ion-icon {
+          font-size: 20px;
+          margin-right: 8px;
+        }
+
+        .action-option-btn.photo {
+          --color: #10b981;
+        }
+
+        .action-option-btn.location {
+          --color: #3b82f6;
+        }
+
+        .action-option-btn.emoji {
+          --color: #f59e0b;
+        }
+
+        .post-tips {
+          background: white;
+          border-radius: 12px;
+          padding: 16px;
+          margin-bottom: 20px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .tip-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 0;
+          font-size: 14px;
+          color: #6b7280;
+        }
+
+        .tip-item:not(:last-child) {
+          border-bottom: 1px solid #f3f4f6;
+        }
+
+        .post-action-buttons {
+          display: flex;
+          gap: 12px;
+          margin-top: 20px;
+        }
+
+        .cancel-btn {
+          flex: 1;
+          --background: #999999;
+          --border-color: #d1d5db;
+          --color: #000000;
+          text-transform: none;
+          font-weight: 600;
+          height: 48px;
+        }
+
+        .submit-post-btn {
+          flex: 1;
+          --background: #92C628;
+          --background-hover: #059669;
+          --background-activated: #047857;
+          text-transform: none;
+          font-weight: 600;
+          height: 48px;
+        }
+
+        .submit-post-btn[disabled] {
+          --background: #d1d5db;
+          opacity: 0.6;
+        }
+
+        @media (max-width: 768px) {
+          .create-post-container {
+            padding: 12px;
+          }
+
+          .post-textarea {
+            min-height: 150px;
+          }
+
+          .post-action-buttons {
+            flex-direction: column;
+          }
+
+          .cancel-btn,
+          .submit-post-btn {
+            width: 100%;
+          }
+        }

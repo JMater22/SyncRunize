@@ -8,12 +8,12 @@ import {
   IonRow,
   IonCol,
   IonCardHeader,
-  IonCardTitle,
+  IonCardTitle, 
   IonCardContent,
   IonImg
 } from "@ionic/react";
 
-import MapImage from "../assets/MAP 1.png";
+import MapImage from "../assets/MAP 1.png"; 
 import '../components/Routes/RoutesPage.css';
 import CustomCard from "../components/Routes/CustomCard";
 import { useHistory } from 'react-router-dom';

@@ -20,7 +20,7 @@ const RecentlyDeleted = () => {
   const [isMobile, setIsMobile] = useState(false);
    
   const activities = [
-    { id: 1, date: "Fri, 4/4/2025", title: "Afternoon Run", distance: "4.11 km", time: "49:14", calories: 312 },
+    { id: 1, date: "Fri, 4/4/2025", title: "Afternoon Run", distance: "4.11 km ", time: "49:14", calories: 312 },
     { id: 2, date: "Sat, 4/5/2025", title: "Morning Run", distance: "13.11 km", time: "1:49:14", calories: 892 },
     { id: 3, date: "Tues, 4/1/2025", title: "Evening Run", distance: "2.11 km", time: "9:54", calories: 156 },
     { id: 4, date: "Mon, 3/31/2025", title: "5K Run", distance: "5.12 km", time: "29:23", calories: 387 },

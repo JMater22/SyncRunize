@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   IonPage,
   IonContent,
@@ -7,8 +7,11 @@ import {
   IonSegment,
   IonSegmentButton,
   IonLabel,
+  IonInput,
+  IonTextarea,
+  IonAvatar,
 } from "@ionic/react";
-import { location, chatbubbles } from "ionicons/icons";
+import { location, chatbubbles, imageOutline, closeCircle, arrowBack } from "ionicons/icons";
 import "./GroupFeed.css";
 
 // Import local images (ensure these paths match your project)
@@ -19,7 +22,7 @@ import PostClub from "../../assets/GROUP 2.png";
 
 interface LeaderboardEntry {
   rank: number;
-  name: string;
+  name: string; 
   avatar: string;
   distance: string;
   runs: number;
@@ -45,9 +48,22 @@ interface Post {
   comments: number;
 }
 
+interface PostData {
+  title: string;
+  content: string;
+  images: File[];
+}
+
 const GroupFeed: React.FC = () => {
   const [activeSegment, setActiveSegment] = useState<string>("leaderboard");
   const [isJoined, setIsJoined] = useState<boolean>(false);
+  const [showCreatePost, setShowCreatePost] = useState(false);
+  const [postTitle, setPostTitle] = useState('');
+  const [postContent, setPostContent] = useState('');
+  const [postImages, setPostImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const lastWeekLeaders = {
     distance: [
@@ -119,6 +135,77 @@ const GroupFeed: React.FC = () => {
     },
   ]);
 
+  const handlePublishPost = () => {
+    if (!postContent.trim() && postImages.length === 0) return;
+
+    const newPost: Post = {
+      id: Date.now(),
+      author: "Vince Guillermo",
+      avatar: ProfileImage,
+      timestamp: new Date().toLocaleString(),
+      content: postContent,
+      image: postImages.length > 0 ? URL.createObjectURL(postImages[0]) : undefined,
+      kudos: 0,
+      comments: 0
+    };
+
+    setClubPosts(prev => [newPost, ...prev]);
+    
+    // Reset form
+    setPostTitle('');
+    setPostContent('');
+    setPostImages([]);
+    setImagePreviews([]);
+    setShowCreatePost(false);
+  };
+
+  const handleFileSelect = (files: FileList | null) => {
+    if (!files) return;
+
+    const newFiles = Array.from(files).filter(file => 
+      file.type.startsWith('image/')
+    );
+
+    setPostImages(prev => [...prev, ...newFiles]);
+
+    newFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviews(prev => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    handleFileSelect(e.dataTransfer.files);
+  };
+
+  const removeImage = (index: number) => {
+    setPostImages(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDiscardPost = () => {
+    setPostTitle('');
+    setPostContent('');
+    setPostImages([]);
+    setImagePreviews([]);
+    setShowCreatePost(false);
+  };
+
   return (
     <IonPage>
       <IonContent>
@@ -162,7 +249,7 @@ const GroupFeed: React.FC = () => {
             </IonSegmentButton>
             <IonSegmentButton value="posts">
               <IonLabel>
-                Posts <span className="post-count">57 NEW</span>
+                Posts 
               </IonLabel>
             </IonSegmentButton>
           </IonSegment>
@@ -291,68 +378,157 @@ const GroupFeed: React.FC = () => {
               {/* POSTS */}
               {activeSegment === "posts" && (
                 <div className="posts-content">
-                  {isJoined && (
-                    <div className="create-post-section">
-                      <IonButton className="create-post-btn" expand="block">Create a Post</IonButton>
-                    </div>
-                  )}
+                  {showCreatePost ? (
+                    <div className="create-post-form">
+                      <div className="create-post-header">
+                        <IonButton fill="clear" onClick={handleDiscardPost}>
+                          Back
+                        </IonButton>
+                        <h2>Create Post</h2>
+                        <IonButton 
+                          onClick={handlePublishPost}
+                          disabled={!postContent.trim() && postImages.length === 0}
+                          strong
+                        >
+                          Publish
+                        </IonButton>
+                      </div>
 
-                  {!isJoined && clubPosts.length === 0 ? (
-                    <div className="empty-state">
-                      <IonIcon icon={chatbubbles} className="empty-icon" />
-                      <p>Join the club to view and create posts</p>
+                      <div className="post-creator-info">
+                        <IonAvatar className="creator-avatar">
+                          <img src={ProfileImage} alt="Vince Guillermo" />
+                        </IonAvatar>
+                        <div className="creator-name">Vince Guillermo</div>
+                      </div>
+
+                      <div className="post-form">
+                        <IonInput
+                          className="post-title-input" 
+                          placeholder="Add a title (optional)"
+                          value={postTitle}
+                          onIonInput={(e) => setPostTitle(e.detail.value || '')}
+                        />
+
+                        <IonTextarea
+                          className="post-content-input"
+                          placeholder="What's going on?"
+                          rows={6}
+                          value={postContent}
+                          onIonInput={(e) => setPostContent(e.detail.value || '')}
+                          autoGrow
+                        />
+
+                        {imagePreviews.length > 0 && (
+                          <div className="image-previews">
+                            {imagePreviews.map((preview, index) => (
+                              <div key={index} className="preview-item">
+                                <img src={preview} alt={`Preview ${index + 1}`} />
+                                <IonButton
+                                  className="remove-image-btn"
+                                  fill="clear"
+                                  size="small"
+                                  onClick={() => removeImage(index)}
+                                >
+                                  <IonIcon icon={closeCircle} />
+                                </IonButton>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div
+                          className={`file-upload-zone ${isDragging ? 'dragging' : ''}`}
+                          onDragOver={handleDragOver}
+                          onDragLeave={handleDragLeave}
+                          onDrop={handleDrop}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <IonIcon icon={imageOutline} className="upload-icon" />
+                          <div className="upload-text">Drag and drop files</div>
+                          <div className="upload-subtext">or click to upload</div>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            style={{ display: 'none' }}
+                            onChange={(e) => handleFileSelect(e.target.files)}
+                          />
+                        </div>
+                      </div>
                     </div>
                   ) : (
-                    <div className="posts-list">
-                      {clubPosts.map((post) => (
-                        <div key={post.id} className="post-card">
-                          <div className="post-header">
-                            <img src={post.avatar} alt={post.author} className="post-avatar" />
-                            <div className="post-author-info">
-                              <span className="post-author-name">{post.author}</span>
-                              <span className="post-timestamp">{post.timestamp}</span>
-                            </div>
-                          </div>
-
-                          <div className="post-content">
-                            <p>{post.content}</p>
-                            {post.image && <img src={PostClub} alt="Post content" className="post-image" />}
-                          </div>
-
-                          <div className="post-footer">
-                            <div className="post-stats">
-                              <div className="kudos-avatars">
-                                <img src={ProfileImage} alt="kudos" />
-                                <img src={ProfileImage} alt="kudos" />
-                                <img src={ProfileImage} alt="kudos" />
-                              </div>
-                              <span className="kudos-text">{post.kudos} Likes · {post.comments} Comments</span>
-                            </div>
-
-                            <div className="post-actions">
-                              <button className="post-action-btn">
-                                <span className="thumbs-up-icon">👍</span>
-                              </button>
-                              <button className="post-action-btn">
-                                <IonIcon icon={chatbubbles} />
-                              </button>
-                            </div>
-                          </div>
-
-                          {post.comments > 0 && (
-                            <div className="post-comments-link">
-                              <span>See all {post.comments} comments</span>
-                            </div>
-                          )}
-
-                          <div className="add-comment-section">
-                            <img src={ProfileImage} alt="You" className="comment-avatar" />
-                            <input type="text" placeholder="Add a comment, @ to mention" className="comment-input" />
-                            <button className="comment-post-btn">Post</button>
-                          </div>
+                    <>
+                      {isJoined && (
+                        <div className="create-post-section">
+                          <IonButton 
+                            className="create-post-btn" 
+                            expand="block"
+                            onClick={() => setShowCreatePost(true)}
+                          >
+                            Create a Post
+                          </IonButton>
                         </div>
-                      ))}
-                    </div>
+                      )}
+
+                      {!isJoined && clubPosts.length === 0 ? (
+                        <div className="empty-state">
+                          <IonIcon icon={chatbubbles} className="empty-icon" />
+                          <p>Join the club to view and create posts</p>
+                        </div>
+                      ) : (
+                        <div className="posts-list">
+                          {clubPosts.map((post) => (
+                            <div key={post.id} className="post-card">
+                              <div className="post-header">
+                                <img src={post.avatar} alt={post.author} className="post-avatar" />
+                                <div className="post-author-info">
+                                  <span className="post-author-name">{post.author}</span>
+                                  <span className="post-timestamp">{post.timestamp}</span>
+                                </div>
+                              </div>
+
+                              <div className="post-content">
+                                <p>{post.content}</p>
+                                {post.image && <img src={post.image} alt="Post content" className="post-image" />}
+                              </div>
+
+                              <div className="post-footer">
+                                <div className="post-stats">
+                                  <div className="kudos-avatars">
+                                    <img src={ProfileImage} alt="kudos" />
+                                    <img src={ProfileImage} alt="kudos" />
+                                    <img src={ProfileImage} alt="kudos" />
+                                  </div>
+                                  <span className="kudos-text">{post.kudos} Likes · {post.comments} Comments</span>
+                                </div>
+
+                                <div className="post-actions">
+                                  <button className="post-action-btn">
+                                    <span className="thumbs-up-icon">👍</span>
+                                  </button>
+                                  <button className="post-action-btn">
+                                    <IonIcon icon={chatbubbles} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {post.comments > 0 && (
+                                <div className="post-comments-link">
+                                  <span>See all {post.comments} comments</span>
+                                </div>
+                              )}
+
+                              <div className="add-comment-section">
+                                <img src={ProfileImage} alt="You" className="comment-avatar" />
+                                <input type="text" placeholder="Add a comment, @ to mention" className="comment-input" />
+                                <button className="comment-post-btn">Post</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}

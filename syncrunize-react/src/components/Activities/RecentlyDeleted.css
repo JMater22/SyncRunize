@@ -11,7 +11,7 @@
   min-height: 100vh;
 }
 
-/* ===== Header ===== */ 
+/* ===== Header ===== */  
 .deleted-header {
   display: flex;
   flex-direction: column;
