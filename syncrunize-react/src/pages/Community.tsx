@@ -14,8 +14,8 @@ import {
 } from "@ionic/react";
 
 import Group1 from "../assets/GROUP 1.png";
-import Group2 from "../assets/GROUP 2.png";
-import "../components/Community/MainGroups.css";
+import Group2 from "../assets/GROUP 2.png"; 
+import "../components/Community/Community.css";
 import "../components/Community/CreateGroup.tsx";
 import "../components/Community/GroupFeed.tsx";
 
@@ -53,7 +53,7 @@ const Community: React.FC = () => {
         {/* ✅ Page Header */}
         <section className="groups-page-header">
           <h1 className="page-title">Groups</h1>
-          <IonButton className="create-group-btn" routerLink="/create-group">
+          <IonButton className="create-group-btn" routerLink="/create-group"> 
             Create a Group
           </IonButton>
         </section>
@@ -102,7 +102,7 @@ const Community: React.FC = () => {
                       <h3>{group.name}</h3>
                       <p className="location">{group.location}</p>
                       <p className="member-count">{group.members}</p>
-                      
+                       
                       {/* Join/Joined Button */}
                       <IonButton
                         className={joinedGroups.includes(group.id) ? "joined-btn" : "join-btn"}

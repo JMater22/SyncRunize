@@ -27,7 +27,7 @@ const LoginForm: React.FC = () => {
       setIsMobile(window.innerWidth <= 768);
     };
 
-    checkScreenSize();
+    checkScreenSize(); 
     window.addEventListener("resize", checkScreenSize);
 
     return () => window.removeEventListener("resize", checkScreenSize);

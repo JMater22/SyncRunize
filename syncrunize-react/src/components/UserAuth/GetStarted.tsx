@@ -11,7 +11,19 @@ import {
 import "./GetStarted.css";
 import LogInImage from "../../assets/Authen Image.png";
 import LogoIcon from "../../assets/SycnRunize-Logo.png";
+import { supabase } from "../../supabaseClient.js";
 
+//This will handle OAuth
+const handleOAuthLogin = async (provider: 'google' | 'apple') => {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: window.location.origin, // redirect after login
+    },
+  });
+
+  if (error) console.error('OAuth login error:', error.message);
+};
 const GetStarted: React.FC = () => {
   const history = useHistory();
   const [isMobile, setIsMobile] = useState(false);
@@ -19,6 +31,10 @@ const GetStarted: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  
+  // Password visibility states
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   // Error states
   const [fullnameError, setFullnameError] = useState("");
@@ -29,66 +45,138 @@ const GetStarted: React.FC = () => {
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth <= 768);
-    };
-
+    }; 
+    
     checkScreenSize();
     window.addEventListener("resize", checkScreenSize);
 
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+    useEffect(() => {
+      const checkSession = async () => {
+        // 1. Check current session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          history.push('/home');
+          return;
+        }
 
-    // Reset all errors
-    setFullnameError("");
-    setEmailError("");
-    setPasswordError("");
-    setConfirmPasswordError("");
+        // 2. Check if OAuth redirected with token in URL
+        const { data: { session: oauthSession } } = await supabase.auth.getSessionFromUrl();
+        if (oauthSession) {
+          history.push('/home');
+        }
+      };
 
-    let isValid = true;
+      checkSession();
+    }, [history]);
 
-    // Validate fullname
-    if (!fullname.trim()) {
-      setFullnameError("Please enter your fullname");
+
+
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  // Reset all errors
+  setFullnameError("");
+  setEmailError("");
+  setPasswordError("");
+  setConfirmPasswordError("");
+
+  let isValid = true;
+
+  // Validate fullname
+  if (!fullname.trim()) {
+    setFullnameError("Please enter your fullname");
+    isValid = false;
+  }
+
+  // Validate email
+  if (!email.trim()) {
+    setEmailError("Please enter your email");
+    isValid = false;
+  } else {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setEmailError("Please enter a valid email address");
       isValid = false;
     }
+  }
 
-    // Validate email
-    if (!email.trim()) {
-      setEmailError("Please enter your email");
-      isValid = false;
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        setEmailError("Please enter a valid email address");
-        isValid = false;
+  // Validate password
+  if (!password) {
+    setPasswordError("Please enter your password");
+    isValid = false;
+  } else if (password.length < 6) {
+    setPasswordError("Password must be at least 6 characters long");
+    isValid = false;
+  }
+
+  // Validate confirm password
+  if (!confirmPassword) {
+    setConfirmPasswordError("Please confirm your password");
+    isValid = false;
+  } else if (password !== confirmPassword) {
+    setConfirmPasswordError("Passwords do not match");
+    isValid = false;
+  }
+
+  // If all validations pass, proceed with signup
+  if (isValid) {
+        console.log('✅ Validation passed');
+        console.log('Attempting signup with:', { email, fullname });
+        
+        try {
+          console.log('🔄 Calling supabase.auth.signUp...');
+          
+          const { data, error } = await supabase.auth.signUp({
+            email: email,
+            password: password,
+            options: {
+              data: {
+                full_name: fullname,
+              }
+            }
+          });
+
+          console.log('📦 Supabase response:', { data, error });
+
+          if (error) {
+            console.error('❌ Signup error:', error.message);
+            if (error.message.includes('already registered')) {
+              setEmailError('This email is already registered');
+            } else {
+              setEmailError(error.message);
+            }
+            return;
+          }
+
+          console.log('✨ Signup successful!');
+          console.log('User:', data.user);
+          console.log('Session:', data.session);
+
+          // Check if email confirmation is required
+          if (data.user && !data.session) {
+            console.log('📧 Email confirmation required');
+            alert('Please check your email to confirm your account');
+            console.log('🔄 Redirecting to /login...');
+            history.push("/login");
+            console.log('✅ history.push("/login") called');
+          } else if (data.session) {
+            console.log('🏠 Session created! Redirecting to /home...');
+            history.push("/home");
+            console.log('✅ history.push("/home") called');
+          } else {
+            console.log('⚠️ Unexpected state - no session and no user');
+          }
+        } catch (error) {
+          console.error('💥 Exception during signup:', error);
+          setEmailError('An error occurred during signup');
+        }
+      } else {
+        console.log('❌ Validation failed');
       }
-    }
-
-    // Validate password
-    if (!password) {
-      setPasswordError("Please enter your password");
-      isValid = false;
-    } else if (password.length < 6) {
-      setPasswordError("Password must be at least 6 characters long");
-      isValid = false;
-    }
-
-    // Validate confirm password
-    if (!confirmPassword) {
-      setConfirmPasswordError("Please confirm your password");
-      isValid = false;
-    } else if (password !== confirmPassword) {
-      setConfirmPasswordError("Passwords do not match");
-      isValid = false;
-    }
-
-    // If all validations pass, proceed with signup
-    if (isValid) {
-      console.log("Sign up successful", { fullname, email, password });
-      history.push("/login");
-    }
   };
 
   return (
@@ -156,17 +244,49 @@ const GetStarted: React.FC = () => {
                   {/* Password */}
                   <div className="input-group">
                     <label className="input-label">Password</label>
-                    <IonInput
-                      className={`custom-input ${passwordError ? 'input-error' : ''}`}
-                      type="password"
-                      placeholder="Enter your password"
-                      value={password}
-                      onIonInput={(e) => {
-                        setPassword(e.detail.value!);
-                        if (passwordError) setPasswordError("");
-                      }}
-                      required
-                    />
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <IonInput
+                        className={`custom-input ${passwordError ? 'input-error' : ''}`}
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={password}
+                        onIonInput={(e) => {
+                          setPassword(e.detail.value!);
+                          if (passwordError) setPasswordError("");
+                        }}
+                        required
+                        style={{ paddingRight: '40px' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '12px',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#666',
+                          zIndex: 10
+                        }}
+                      >
+                        {showPassword ? (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                            <line x1="1" y1="1" x2="23" y2="23" />
+                          </svg>
+                        ) : (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                     {passwordError && (
                       <div className="error-message">{passwordError}</div>
                     )}
@@ -175,17 +295,48 @@ const GetStarted: React.FC = () => {
                   {/* Confirm Password */}
                   <div className="input-group">
                     <label className="input-label">Confirm Password</label>
-                    <IonInput
-                      className={`custom-input ${confirmPasswordError ? 'input-error' : ''}`}
-                      type="password"
-                      placeholder="Confirm your password"
-                      value={confirmPassword}
-                      onIonInput={(e) => {
-                        setConfirmPassword(e.detail.value!);
-                        if (confirmPasswordError) setConfirmPasswordError("");
-                      }}
-                      required
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <IonInput
+                        className={`custom-input ${confirmPasswordError ? 'input-error' : ''}`}
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Confirm your password"
+                        value={confirmPassword}
+                        onIonInput={(e) => {
+                          setConfirmPassword(e.detail.value!);
+                          if (confirmPasswordError) setConfirmPasswordError("");
+                        }}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '12px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          color: '#666'
+                        }}
+                      >
+                        {showConfirmPassword ? (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                            <line x1="1" y1="1" x2="23" y2="23" />
+                          </svg>
+                        ) : (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                     {confirmPasswordError && (
                       <div className="error-message">{confirmPasswordError}</div>
                     )}
@@ -206,6 +357,7 @@ const GetStarted: React.FC = () => {
                   <IonButton
                     fill="solid"
                     className="social-button google-button"
+                    onClick={() => handleOAuthLogin('google')}
                   >
                     <div className="social-content">
                       <svg className="social-icon" viewBox="0 0 24 24">
@@ -233,6 +385,7 @@ const GetStarted: React.FC = () => {
                   <IonButton
                     fill="solid"
                     className="social-button apple-button"
+                    onClick={() => handleOAuthLogin('apple')}
                   >
                     <div className="social-content">
                       <svg

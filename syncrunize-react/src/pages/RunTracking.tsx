@@ -8,7 +8,7 @@ import Laptop from "../assets/RT LAPTOP.png";
 import '../components/RunTracking/RunTracking.css';
 
 
-const RunTracking: React.FC = () => {
+const RunTracking: React.FC = () => { 
 return (
     <IonPage>
       <IonContent className="ion-padding">

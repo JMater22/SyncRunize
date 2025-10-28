@@ -11,11 +11,11 @@
   gap: 24px;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 24px 20px 80px; 
+  padding: 24px 20px 80px;  
   align-items: start;
   min-height: 100vh;
 }
-
+ 
 /* ================= Enhanced Left Sidebar ================= */
 .left-sidebar {
   position: sticky;
@@ -193,33 +193,6 @@ h2.profile-name {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.post-section {
-  margin-top: 16px;
-}
-
-.post-input {
-  --background: white;
-  --border-radius: 12px;
-  color: #000;
-  border: 2px solid #e2e8f0;
-  --inner-border-width: 0;
-  --padding-start: 16px;
-  --padding-end: 16px;
-  transition: all 0.3s ease;
-}
-
-.post-input:hover,
-.post-input.item-has-focus {
-  border-color: #92C628;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-}
-
-.input-avatar {
-  width: 40px;
-  height: 40px;
-  margin-right: 12px;
-  flex-shrink: 0;
-}
 
 /* ================= Enhanced Activity Cards ================= */
 .activity-feed {
@@ -314,16 +287,17 @@ span.activity-handle {
 
 .activity-stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0;
   border-bottom: 1px solid #e2e8f0;
 }
 
 .stat-card {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 20px;
+  gap: 8px;
+  padding: 24px 16px;
   border-right: 1px solid #e2e8f0;
   transition: all 0.3s ease;
   text-align: center;
@@ -339,32 +313,29 @@ span.activity-handle {
 }
 
 .stat-card ion-icon {
-  font-size: 20px;
-  flex-shrink: 0;
+  display: none;
 }
-
-.stat-card.distance ion-icon { color: #3b82f6; }
-.stat-card.time ion-icon { color: #10b981; }
-.stat-card.calories ion-icon { color: #ef4444; }
 
 .stat-card div {
   display: flex;
   flex-direction: column;
-}
-
-.stat-value {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1e293b;
-  line-height: 1;
+  gap: 4px;
 }
 
 .stat-label {
-  font-size: 11px;
+  font-size: 13px;
   color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 2px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  order: -1;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1;
 }
 
 .activity-map-container {
@@ -514,6 +485,7 @@ span.activity-handle {
 }
 
 /* ================= Enhanced Right Sidebar ================= */
+/* ================= Enhanced Right Sidebar ================= */
 .right-sidebar {
   position: sticky;
   top: 24px;
@@ -588,6 +560,91 @@ p.sidebar-subtitle {
   font-size: 0.95rem;
   color: #475569;
   margin: 0 0 12px 0;
+}
+
+/* === Strava-style Challenge Items === */
+.challenge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.strava-challenge-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.strava-challenge-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transform: translateX(2px);
+}
+
+.challenge-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: #f1f5f9;
+}
+
+.challenge-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.challenge-info {
+  flex: 1;
+  min-width: 0;
+}
+
+h4.challenge-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.challenge-days-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.challenge-days-left ion-icon {
+  font-size: 14px;
+}
+
+/* === Button Styling === */
+.sidebar-cta {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: none;
+  --color: #f59e0b;
+}
+
+.sidebar-cta:hover {
+  --color: #d97706;
 }
 
 /* Challenge Section */
@@ -728,6 +785,229 @@ p.sidebar-subtitle {
   color: #111827;
 }
 
+/* =============================================
+   NOTIFICATIONS MODAL STYLES
+   ============================================= */
+
+/* Modal Container */
+.notifications-modal {
+  --width: 500px;
+  --max-width: 90%;
+  --height: 80%;
+  --border-radius: 16px;
+}
+
+.notifications-modal ion-header {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.notifications-modal ion-toolbar {
+  --background: #92C628;
+  --border-width: 0;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  margin-bottom: -45px;
+}
+
+.notifications-modal ion-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.notifications-modal ion-buttons ion-button {
+  --color: #666;
+  --padding-start: 8px;
+  --padding-end: 8px;
+}
+
+.notifications-modal ion-buttons ion-icon {
+  font-size: 24px;
+}
+
+/* Notification List */
+.notifications-modal ion-list {
+  background: transparent;
+  padding: 0;
+}
+
+.notifications-modal ion-content {
+  --background: #f5f7fa;
+}
+
+/* Notification Item */
+.notification-item {
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  --inner-padding-end: 0;
+  --background: #fff;
+  --border-color: transparent;
+  margin-bottom: 3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.notification-item:hover {
+  --background: #f8f9fa;
+}
+
+.notification-item.unread {
+  --background: #e0e0e0;
+  border-left: 4px solid #92C628;
+  --padding-start: 12px;
+}
+
+.notification-item.unread:hover {
+  --background: #e6f2ff;
+}
+
+/* Icon Wrapper */
+.notification-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Avatar in Notification */
+.notification-avatar {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.notification-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Icon in Notification */
+.notification-icon {
+  font-size: 24px;
+  transition: transform 0.2s ease;
+}
+
+.notification-item:hover .notification-icon {
+  transform: scale(1.1);
+}
+
+/* Notification Content */
+.notification-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notification-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  line-height: 1.4;
+}
+
+.notification-user {
+  font-size: 14px;
+  color: #1a1a1a;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.notification-message {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.4;
+}
+
+.notification-description {
+  font-size: 13px;
+  color: #777;
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+  display: block;
+  font-weight: 500;
+}
+
+/* Unread Dot Indicator */
+.notification-unread-dot {
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  min-height: 10px;
+  border-radius: 50%;
+  background-color: #ff0202;
+  flex-shrink: 0;
+  margin-left: 20dddddddddddddddddddddddddpx;
+  animation: pulse-dot 2s infinite;
+}
+
+/* FAB Badge */
+.fab-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+/* Empty State (if needed) */
+.notifications-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.notifications-empty ion-icon {
+  font-size: 64px;
+  color: #ccc;
+  margin-bottom: 16px;
+}
+
+.notifications-empty h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #666;
+  margin: 0 0 8px 0;
+}
+
+.notifications-empty p {
+  font-size: 14px;
+  color: #999;
+  margin: 0;
+}
 /* ================= Responsive Fix for Mobile ================= */
 @media (max-width: 1024px) {
   .page-layout-enhanced {
