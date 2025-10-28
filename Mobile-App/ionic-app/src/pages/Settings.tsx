@@ -168,9 +168,9 @@ export default function Settings() {
       </IonCard>
 
     {/* Log Out */}
-    <div style={{ padding: "16px" }}>
-      <IonButton expand="block" color="danger">
-        Log Out →
+    <div >
+      <IonButton className="logout-btn" routerLink="/log-in" expand="block" color="danger">
+        Log Out 
       </IonButton>
     </div>
 
