@@ -20,7 +20,7 @@ import {
   IonLabel,
   IonAccordion,
   IonAccordionGroup,
-  IonItem
+  IonItem, IonSearchbar
 } from "@ionic/react";
 import { arrowBack, bookmark, pencil, pin } from "ionicons/icons";
 import Map from '../components/assets/map.png';
@@ -51,7 +51,10 @@ const RouteSuggestion: React.FC = () => {
       <IonContent fullscreen>
         {/* Search Bar */}
         <div className="search-bar" style={{ padding: "10px" }}>
-          <IonInput placeholder="Search locations"></IonInput>
+         <IonSearchbar
+                         placeholder="Search location"
+                         className="challenge-search"
+                       />
         </div>
 
         {/* Map Area */}

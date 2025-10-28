@@ -16,12 +16,13 @@ import {
   IonIcon,
   IonTabBar,
   IonTabButton,
-  IonLabel,
+  IonLabel, IonImg
 } from "@ionic/react";
 import { homeOutline, mapOutline, peopleOutline, analyticsOutline } from "ionicons/icons";
 import { useHistory } from "react-router-dom";
 import '../theme/Analytics.css';
-
+import GoldBadge from "../components/assets/badges/Gold Animated-modified.png"
+import SilverBadge from "../components/assets/badges/Silver Animated-modified.png"
 
 export default function Analytics() {
   const history = useHistory();
@@ -43,7 +44,7 @@ export default function Analytics() {
 
         {/* Activity Summary */}
         <section >
-          <h2>Activity Summary</h2>
+          <h2 >Activity Summary</h2>
           <IonGrid >
             <IonRow>
               <IonCol>
@@ -79,7 +80,7 @@ export default function Analytics() {
 
         {/* Weekly Activity */}
         <section>
-          <h2>Weekly Activity</h2>
+          <h2 >Weekly Activity</h2>
           <IonCard>
             <IonCardContent>
               <div className="activity-metrics">
@@ -106,7 +107,7 @@ export default function Analytics() {
             <IonCardContent>
               <div className="efforts-list">
                 <div className="effort-item">
-                  <div className="effort-icon">📈</div>
+                  <div className="badge"><IonImg src={SilverBadge}/></div>
                   <div className="effort-content">
                     <div className="effort-title">Fastest 5K</div>
                     <div className="effort-subtitle">Achieved on March 12, 2025</div>
@@ -114,7 +115,7 @@ export default function Analytics() {
                   <div className="effort-value">23:45</div>
                 </div>
                 <div className="effort-item">
-                  <div className="effort-icon">🏃</div>
+                  <div className="badge"><IonImg src={GoldBadge}/></div>
                   <div className="effort-content">
                     <div className="effort-title">Longest Run</div>
                     <div className="effort-subtitle">Achieved on April 2, 2025</div>
@@ -127,31 +128,13 @@ export default function Analytics() {
               <div className="badge-section">
                 <h3>Badge Achievement</h3>
                 <div className="badges">
-                  <div className="badge">☀️ Early Bird</div>
-                  <div className="badge">🏃 10K Master</div>
-                  <div className="badge">👑 Streak King</div>
-                  <div className="badge">💪 Endurance</div>
+                 
+                  <div className="badge"><IonImg src={GoldBadge}/> Early Bird</div>
+                  <div className="badge"><IonImg src={GoldBadge}/> 10K Master</div>
+                  <div className="badge"><IonImg src={GoldBadge}/> Streak King</div>
+                  <div className="badge"><IonImg src={GoldBadge}/> Endurance</div>
+                  
                 </div>
-              </div>
-            </IonCardContent>
-          </IonCard>
-        </section>
-
-        {/* Recent Activities */}
-        <section>
-          <h2>Recent Activities</h2>
-          <IonCard>
-            <IonCardHeader>
-              <IonCardTitle>Evening Run</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <div className="activity-stats">
-                <div>📏 6.8 km</div>
-                <div>⏱️ 30:41</div>
-              </div>
-              <div className="activity-metrics-small">
-                <span>❤️ 23</span>
-                <span>💬 51</span>
               </div>
             </IonCardContent>
           </IonCard>

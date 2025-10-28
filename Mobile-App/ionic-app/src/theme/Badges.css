@@ -58,7 +58,7 @@
 .badge-icon {
   font-size: 60px;
   color: #ffffff;
-  transform: rotate(180deg);
+ 
 }
 
 .badge-icon::before {

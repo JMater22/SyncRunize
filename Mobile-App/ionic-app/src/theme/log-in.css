@@ -75,3 +75,7 @@
   text-transform: uppercase;
   letter-spacing: 1px;
 }
+
+.password-input{
+  padding-left: 20px;
+}

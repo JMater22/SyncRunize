@@ -1,0 +1,29 @@
+.create-post-page {
+  --background: #000;
+  color: #fff;
+}
+
+.image-upload-section {
+  margin: 20px 0;
+  text-align: center;
+}
+
+.preview-container {
+  margin-top: 15px;
+}
+
+.preview-image {
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(127, 255, 0, 0.4);
+}
+
+.create-post-btn {
+   --background: #84cc16;
+  --color: #000000;
+  --border-radius: 12px;
+  height: 48px;
+  font-size: 16px;
+  font-weight: 600;
+  
+}

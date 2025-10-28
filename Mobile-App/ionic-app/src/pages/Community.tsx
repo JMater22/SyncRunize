@@ -44,6 +44,9 @@ const Community: React.FC = () => {
   const [challengeName, setChallengeName] = useState("");
   const [challengeDescription, setChallengeDescription] = useState("");
   
+  // Challenge join state with progress tracking
+  const [joinedChallenges, setJoinedChallenges] = useState<{[key: string]: {joined: boolean, progress: number}}>({});
+  
   // Create Group Modal state
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -110,6 +113,27 @@ const Community: React.FC = () => {
     }
   };
 
+  const handleJoinChallenge = (challengeId: string) => {
+    setJoinedChallenges(prev => {
+      const isCurrentlyJoined = prev[challengeId]?.joined;
+      
+      if (isCurrentlyJoined) {
+        // Leave the challenge - remove from state
+        const { [challengeId]: removed, ...rest } = prev;
+        return rest;
+      } else {
+        // Join the challenge
+        return {
+          ...prev,
+          [challengeId]: {
+            joined: true,
+            progress: 0 // Start with 0% progress
+          }
+        };
+      }
+    });
+  };
+
   return (
     <IonPage className="community-page">
       <IonHeader className="community-header">
@@ -158,12 +182,13 @@ const Community: React.FC = () => {
                 className="challenge-search"
               />
             </div>
-
+              
+           
             <IonCard className="current-challenge-card">
               <div className="challenge-image-container">
                 <IonImg src={ChallengePic} alt="Running Challenge" />
                 <div className="challenge-overlay">
-                  <h3 className="challenge-title">Running Challenge</h3>
+                  <h3 className="challenge-title">Couch to 5k</h3>
                   <div className="participants">
                     <IonIcon icon={people} className="participants-icon" />
                     <span>1,341 participants</span>
@@ -172,22 +197,15 @@ const Community: React.FC = () => {
               </div>
               <IonCardContent className="challenge-content">
                 <div className="progress-section">
-                  <span className="progress-label">Current Progress: 65km</span>
+                  <span className="progress-label">Current Progress: 5km</span>
                   <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: "65%" }}></div>
+                    <div className="progress-fill" style={{ width: "80%" }}></div>
                   </div>
                 </div>
               </IonCardContent>
             </IonCard>
-
-            <IonButton
-              expand="block"
-              className="create-challenge-btn"
-              onClick={() => setIsCreateModalOpen(true)}
-            >
-              <IonIcon icon={addOutline} slot="start" />
-              Create Challenge
-            </IonButton>
+          
+           
 
             <div className="suggested-section">
               <h2 className="section-title">Suggested Challenge</h2>
@@ -196,17 +214,31 @@ const Community: React.FC = () => {
                 <div className="challenge-image-container">
                   <IonImg src={ChallengePic} alt="April Elevation Challenge" />
                   <div className="suggested-overlay">
-                    <IonButton size="small" className="join-challenge-btn">
-                      Join Challenge
+                    <IonButton 
+                      size="small" 
+                      className="join-challenge-btn"
+                      onClick={() => handleJoinChallenge('challenge-1')}
+                      
+                    >
+                      {joinedChallenges['challenge-1']?.joined ? 'Leave Challenged' : 'Join Challenge'}
                     </IonButton>
                   </div>
                 </div>
                 <IonCardContent className="suggested-content">
-                  <h3 className="suggested-title">April Elevation Challenge</h3>
+                  <h3 className="suggested-title">Couch to 5k</h3>
                   <p className="suggested-description">
-                    Climb a total of 2,000 m (6,561.7 ft) in a month.
+                   Build from walking to running 5K continuously with intervals.
                   </p>
-                  <p className="suggested-date">Apr 1, 2025 to Apr 30, 2025</p>
+                  <p className="suggested-date"> <span>Target Distance: 5km</span> • Duration: 56 days</p>
+                  
+                  {joinedChallenges['challenge-1']?.joined && (
+                    <div className="progress-section" style={{marginTop: '15px'}}>
+                      <span className="progress-label">Your Progress: {joinedChallenges['challenge-1'].progress}%</span>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${joinedChallenges['challenge-1'].progress}%` }}></div>
+                      </div>
+                    </div>
+                  )}
                 </IonCardContent>
               </IonCard>
 
@@ -214,31 +246,380 @@ const Community: React.FC = () => {
                 <div className="challenge-image-container">
                   <IonImg src={ChallengePic} alt="April Run 300K Challenge" />
                   <div className="suggested-overlay">
-                    <IonButton size="small" className="join-challenge-btn">
-                      Join Challenge
+                    <IonButton 
+                      size="small" 
+                      className="join-challenge-btn"
+                      onClick={() => handleJoinChallenge('challenge-2')}
+                      
+                    >
+                      {joinedChallenges['challenge-2']?.joined ? 'Leave Challenge' : 'Join Challenge'}
                     </IonButton>
                   </div>
                 </div>
                 <IonCardContent className="suggested-content">
-                  <h3 className="suggested-title">April Run 300K Challenge</h3>
+                  <h3 className="suggested-title">The 7-Day Starter</h3>
                   <p className="suggested-description">
-                    Run a total of 300 km (186.4 mi) in a month.
+                  Run at least 1 kilometer every day for a week.
                   </p>
-                  <p className="suggested-date">Apr 1, 2025 to Apr 30, 2025</p>
+                  <p className="suggested-date"> <span>Target Distance: 1km daily</span> • Duration: 7 days</p>
+                  
+                  {joinedChallenges['challenge-2']?.joined && (
+                    <div className="progress-section" style={{marginTop: '15px'}}>
+                      <span className="progress-label">Your Progress: {joinedChallenges['challenge-2'].progress}%</span>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${joinedChallenges['challenge-2'].progress}%` }}></div>
+                      </div>
+                    </div>
+                  )}
                 </IonCardContent>
               </IonCard>
+
+              <IonCard className="suggested-challenge-card">
+                <div className="challenge-image-container">
+                  <IonImg src={ChallengePic} alt="April Run 300K Challenge" />
+                  <div className="suggested-overlay">
+                    <IonButton 
+                      size="small" 
+                      className="join-challenge-btn"
+                      onClick={() => handleJoinChallenge('challenge-3')}
+                      
+                    >
+                      {joinedChallenges['challenge-3']?.joined ? 'Leave Challenge' : 'Join Challenge'}
+                    </IonButton>
+                  </div>
+                </div>
+                <IonCardContent className="suggested-content">
+                  <h3 className="suggested-title">30-Day Streak</h3>
+                  <p className="suggested-description">
+                 Run at least 1 mile every day for a month.
+                  </p>
+                  <p className="suggested-date"> <span>Target Distance: 1.6km</span> • Duration: 30 days</p>
+                  
+                  {joinedChallenges['challenge-3']?.joined && (
+                    <div className="progress-section" style={{marginTop: '15px'}}>
+                      <span className="progress-label">Your Progress: {joinedChallenges['challenge-3'].progress}%</span>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${joinedChallenges['challenge-3'].progress}%` }}></div>
+                      </div>
+                    </div>
+                  )}
+                </IonCardContent>
+              </IonCard>
+
+
+              <IonCard className="suggested-challenge-card">
+                <div className="challenge-image-container">
+                  <IonImg src={ChallengePic} alt="April Run 300K Challenge" />
+                  <div className="suggested-overlay">
+                    <IonButton 
+                      size="small" 
+                      className="join-challenge-btn"
+                      onClick={() => handleJoinChallenge('challenge-4')}
+                      
+                    >
+                      {joinedChallenges['challenge-4']?.joined ? 'Leave Challenge' : 'Join Challenge'}
+                    </IonButton>
+                  </div>
+                </div>
+                <IonCardContent className="suggested-content">
+                  <h3 className="suggested-title">5K Improver</h3>
+                  <p className="suggested-description">
+                 Work on improving your 5K time with structured training.
+                  </p>
+                  <p className="suggested-date"> <span>Target Distance: 5 km </span> • Duration: 42 days</p>
+                  
+                  {joinedChallenges['challenge-4']?.joined && (
+                    <div className="progress-section" style={{marginTop: '15px'}}>
+                      <span className="progress-label">Your Progress: {joinedChallenges['challenge-4'].progress}%</span>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${joinedChallenges['challenge-4'].progress}%` }}></div>
+                      </div>
+                    </div>
+                  )}
+                </IonCardContent>
+              </IonCard>
+
+
+
+              <IonCard className="suggested-challenge-card">
+                <div className="challenge-image-container">
+                  <IonImg src={ChallengePic} alt="April Run 300K Challenge" />
+                  <div className="suggested-overlay">
+                    <IonButton 
+                      size="small" 
+                      className="join-challenge-btn"
+                      onClick={() => handleJoinChallenge('challenge-5')}
+                      
+                    >
+                      {joinedChallenges['challenge-5']?.joined ? 'Leave Challenge' : 'Join Challenge'}
+                    </IonButton>
+                  </div>
+                </div>
+                <IonCardContent className="suggested-content">
+                  <h3 className="suggested-title">Weekend Long Run</h3>
+                  <p className="suggested-description">
+                  Do one longer run each weekend, adding distance progressively.
+                  </p>
+                  <p className="suggested-date"> <span>Target Distance: Build to 10km</span> • Duration: 56 days</p>
+                  
+                  {joinedChallenges['challenge-5']?.joined && (
+                    <div className="progress-section" style={{marginTop: '15px'}}>
+                      <span className="progress-label">Your Progress: {joinedChallenges['challenge-5'].progress}%</span>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${joinedChallenges['challenge-5'].progress}%` }}></div>
+                      </div>
+                    </div>
+                  )}
+                </IonCardContent>
+              </IonCard>
+
+
+
+              <IonCard className="suggested-challenge-card">
+                <div className="challenge-image-container">
+                  <IonImg src={ChallengePic} alt="April Run 300K Challenge" />
+                  <div className="suggested-overlay">
+                    <IonButton 
+                      size="small" 
+                      className="join-challenge-btn"
+                      onClick={() => handleJoinChallenge('challenge-6')}
+                      
+                    >
+                      {joinedChallenges['challenge-6']?.joined ? 'Leave Challenge' : 'Join Challenge'}
+                    </IonButton>
+                  </div>
+                </div>
+                <IonCardContent className="suggested-content">
+                  <h3 className="suggested-title">The 50K Month</h3>
+                  <p className="suggested-description">
+                  Accumulate 50 kilometers total over the month at your pace.
+                  </p>
+                  <p className="suggested-date"> <span>Target Distance: 50km total</span> • Duration: 30 days</p>
+                  
+                  {joinedChallenges['challenge-6']?.joined && (
+                    <div className="progress-section" style={{marginTop: '15px'}}>
+                      <span className="progress-label">Your Progress: {joinedChallenges['challenge-6'].progress}%</span>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${joinedChallenges['challenge-6'].progress}%` }}></div>
+                      </div>
+                    </div>
+                  )}
+                </IonCardContent>
+              </IonCard>
+
+
+
+
+              <IonCard className="suggested-challenge-card">
+                <div className="challenge-image-container">
+                  <IonImg src={ChallengePic} alt="April Run 300K Challenge" />
+                  <div className="suggested-overlay">
+                    <IonButton 
+                      size="small" 
+                      className="join-challenge-btn"
+                      onClick={() => handleJoinChallenge('challenge-7')}
+                      
+                    >
+                      {joinedChallenges['challenge-7']?.joined ? 'Leave Challenge' : 'Join Challenge'}
+                    </IonButton>
+                  </div>
+                </div>
+                <IonCardContent className="suggested-content">
+                  <h3 className="suggested-title">Three Times a Week</h3>
+                  <p className="suggested-description">
+                  Run three days per week with rest days between.
+                  </p>
+                  <p className="suggested-date"> <span>Target Distance: 3-5km per run</span> • Duration: 30 days</p>
+                  
+                  {joinedChallenges['challenge-7']?.joined && (
+                    <div className="progress-section" style={{marginTop: '15px'}}>
+                      <span className="progress-label">Your Progress: {joinedChallenges['challenge-7'].progress}%</span>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${joinedChallenges['challenge-7'].progress}%` }}></div>
+                      </div>
+                    </div>
+                  )}
+                </IonCardContent>
+              </IonCard>
+
+
+              <IonCard className="suggested-challenge-card">
+                <div className="challenge-image-container">
+                  <IonImg src={ChallengePic} alt="April Run 300K Challenge" />
+                  <div className="suggested-overlay">
+                    <IonButton 
+                      size="small" 
+                      className="join-challenge-btn"
+                      onClick={() => handleJoinChallenge('challenge-8')}
+                      
+                    >
+                      {joinedChallenges['challenge-8']?.joined ? 'Leave Challenge' : 'Join Challenge'}
+                    </IonButton>
+                  </div>
+                </div>
+                <IonCardContent className="suggested-content">
+                  <h3 className="suggested-title">10K Beginner</h3>
+                  <p className="suggested-description">
+                  Progress from 5K to completing 10K distance.
+                  </p>
+                  <p className="suggested-date"> <span>Target Distance: 10km daily</span> • Duration: 63 days</p>
+                  
+                  {joinedChallenges['challenge-8']?.joined && (
+                    <div className="progress-section" style={{marginTop: '15px'}}>
+                      <span className="progress-label">Your Progress: {joinedChallenges['challenge-8'].progress}%</span>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${joinedChallenges['challenge-8'].progress}%` }}></div>
+                      </div>
+                    </div>
+                  )}
+                </IonCardContent>
+              </IonCard>
+
+
+
+
+              <IonCard className="suggested-challenge-card">
+                <div className="challenge-image-container">
+                  <IonImg src={ChallengePic} alt="April Run 300K Challenge" />
+                  <div className="suggested-overlay">
+                    <IonButton 
+                      size="small" 
+                      className="join-challenge-btn"
+                      onClick={() => handleJoinChallenge('challenge-9')}
+                      
+                    >
+                      {joinedChallenges['challenge-9']?.joined ? 'Leave Challenge' : 'Join Challenge'}
+                    </IonButton>
+                  </div>
+                </div>
+                <IonCardContent className="suggested-content">
+                  <h3 className="suggested-title">15-Minute Daily Run</h3>
+                  <p className="suggested-description">
+                  Run for 15 minutes every day.
+                  </p>
+                  <p className="suggested-date"> <span>Target Distance: 1.5-2.5km daily</span> • Duration: 30 days</p>
+                  
+                  {joinedChallenges['challenge-9']?.joined && (
+                    <div className="progress-section" style={{marginTop: '15px'}}>
+                      <span className="progress-label">Your Progress: {joinedChallenges['challenge-9'].progress}%</span>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${joinedChallenges['challenge-9'].progress}%` }}></div>
+                      </div>
+                    </div>
+                  )}
+                </IonCardContent>
+              </IonCard>
+
+              <IonCard className="suggested-challenge-card">
+                <div className="challenge-image-container">
+                  <IonImg src={ChallengePic} alt="April Run 300K Challenge" />
+                  <div className="suggested-overlay">
+                    <IonButton 
+                      size="small" 
+                      className="join-challenge-btn"
+                      onClick={() => handleJoinChallenge('challenge-10')}
+                      
+                    >
+                      {joinedChallenges['challenge-10']?.joined ? 'Leave Challenge' : 'Join Challenge'}
+                    </IonButton>
+                  </div>
+                </div>
+                <IonCardContent className="suggested-content">
+                  <h3 className="suggested-title">The 100K Quarter</h3>
+                  <p className="suggested-description">
+                 Accumulate 100 kilometers over three months.
+                  </p>
+                  <p className="suggested-date"> <span>Target Distance: 100km total</span> • Duration: 90 days</p>
+                  
+                  {joinedChallenges['challenge-10']?.joined && (
+                    <div className="progress-section" style={{marginTop: '15px'}}>
+                      <span className="progress-label">Your Progress: {joinedChallenges['challenge-10'].progress}%</span>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${joinedChallenges['challenge-10'].progress}%` }}></div>
+                      </div>
+                    </div>
+                  )}
+                </IonCardContent>
+              </IonCard>
+
+
+              <IonCard className="suggested-challenge-card">
+                <div className="challenge-image-container">
+                  <IonImg src={ChallengePic} alt="April Run 300K Challenge" />
+                  <div className="suggested-overlay">
+                    <IonButton 
+                      size="small" 
+                      className="join-challenge-btn"
+                      onClick={() => handleJoinChallenge('challenge-11')}
+                      
+                    >
+                      {joinedChallenges['challenge-11']?.joined ? 'Leave Challenge' : 'Join Challenge'}
+                    </IonButton>
+                  </div>
+                </div>
+                <IonCardContent className="suggested-content">
+                  <h3 className="suggested-title">10K in 60 Minutes</h3>
+                  <p className="suggested-description">
+                  Train to complete 10 kilometers in under 60 minutes.
+                  </p>
+                  <p className="suggested-date"> <span>Target Distance: 10km (under 60 min)</span> • Duration: 56 days</p>
+                  
+                  {joinedChallenges['challenge-11']?.joined && (
+                    <div className="progress-section" style={{marginTop: '15px'}}>
+                      <span className="progress-label">Your Progress: {joinedChallenges['challenge-11'].progress}%</span>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${joinedChallenges['challenge-11'].progress}%` }}></div>
+                      </div>
+                    </div>
+                  )}
+                </IonCardContent>
+              </IonCard>
+
+
+              <IonCard className="suggested-challenge-card">
+                <div className="challenge-image-container">
+                  <IonImg src={ChallengePic} alt="April Run 300K Challenge" />
+                  <div className="suggested-overlay">
+                    <IonButton 
+                      size="small" 
+                      className="join-challenge-btn"
+                      onClick={() => handleJoinChallenge('challenge-12')}
+                      
+                    >
+                      {joinedChallenges['challenge-12']?.joined ? 'Leave Challenge' : 'Join Challenge'}
+                    </IonButton>
+                  </div>
+                </div>
+                <IonCardContent className="suggested-content">
+                  <h3 className="suggested-title">Marathon Prep</h3>
+                  <p className="suggested-description">
+                  16-week program to build endurance for a full marathon.
+                  </p>
+                  <p className="suggested-date"> <span>Target Distance: 42.2km</span> • Duration: 112 days</p>
+                  
+                  {joinedChallenges['challenge-12']?.joined && (
+                    <div className="progress-section" style={{marginTop: '15px'}}>
+                      <span className="progress-label">Your Progress: {joinedChallenges['challenge-12'].progress}%</span>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${joinedChallenges['challenge-12'].progress}%` }}></div>
+                      </div>
+                    </div>
+                  )}
+                </IonCardContent>
+              </IonCard>
+
             </div>
           </div>
         )}
 
         {tab === "feed" && (
           <div className="feed-tab">
-            <IonCard className="post-input-card">
+            <IonCard className="post-input-card" routerLink="/create-post">
               <IonItem lines="none">
                 <IonAvatar slot="start">
                   <IonImg src={ProfilePic} />
                 </IonAvatar>
-                <input type="text" placeholder="What's on your mind?" className="post-input" />
+                <input type="text" placeholder="What's on your mind?" className="post-input" readOnly />
               </IonItem>
             </IonCard>
 
@@ -378,74 +759,6 @@ const Community: React.FC = () => {
           </div>
         )}
 
-        {/* Create Challenge Modal */}
-        <IonModal isOpen={isCreateModalOpen} onDidDismiss={() => setIsCreateModalOpen(false)}>
-          <IonHeader>
-            <IonToolbar>
-              <IonTitle>Create Challenge</IonTitle>
-              <IonButton 
-                slot="end" 
-                fill="clear" 
-                onClick={() => setIsCreateModalOpen(false)}
-              >
-                Cancel
-              </IonButton>
-            </IonToolbar>
-          </IonHeader>
-          <IonContent className="modal-content">
-            <div className="create-form">
-              <IonItem>
-                <IonLabel position="stacked">Challenge Name</IonLabel>
-                <IonInput
-                  value={challengeName}
-                  onIonInput={e => setChallengeName(e.detail.value!)}
-                  placeholder="Enter challenge name"
-                />
-              </IonItem>
-              
-              <IonItem>
-                <IonLabel position="stacked">Description</IonLabel>
-                <IonTextarea
-                  value={challengeDescription}
-                  onIonInput={e => setChallengeDescription(e.detail.value!)}
-                  placeholder="Describe your challenge"
-                  rows={4}
-                />
-              </IonItem>
-
-              <IonItem>
-                <IonLabel position="stacked">Privacy</IonLabel>
-                <IonSelect
-                  value={groupPrivacy}
-                  onIonChange={e => setGroupPrivacy(e.detail.value!)}
-                  placeholder="Select privacy"
-                >
-                  <IonSelectOption value="public">Public</IonSelectOption>
-                  <IonSelectOption value="private">Private</IonSelectOption>
-                </IonSelect>
-              </IonItem>
-
-              <IonButton 
-                expand="block" 
-                fill="outline"
-              >
-                <IonIcon slot="start" icon="camera" />
-                Add Photo
-              </IonButton>
-              
-              <div className="form-actions">
-                <IonButton 
-                  expand="block" 
-                  className="create-challenge-final-btn"
-                  onClick={() => setIsCreateModalOpen(false)}
-                >
-                  Create Challenge
-                </IonButton>
-              </div>
-            </div>
-          </IonContent>
-        </IonModal>
-
         {/* Create Group Modal */}
         <IonModal isOpen={isCreateGroupModalOpen} onDidDismiss={() => setIsCreateGroupModalOpen(false)}>
           <IonHeader>
@@ -481,17 +794,7 @@ const Community: React.FC = () => {
                 />
               </IonItem>
 
-              <IonItem>
-                <IonLabel position="stacked">Privacy</IonLabel>
-                <IonSelect
-                  value={groupPrivacy}
-                  onIonChange={e => setGroupPrivacy(e.detail.value!)}
-                  placeholder="Select privacy"
-                >
-                  <IonSelectOption value="public">Public</IonSelectOption>
-                  <IonSelectOption value="private">Private</IonSelectOption>
-                </IonSelect>
-              </IonItem>
+             
 
               <IonButton 
                 expand="block" 

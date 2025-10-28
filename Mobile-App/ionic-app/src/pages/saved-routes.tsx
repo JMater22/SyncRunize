@@ -39,20 +39,7 @@ const SavedRoutes: React.FC = () => {
         <IonSearchbar placeholder="Search by keywords"></IonSearchbar>
 
         {/* Filter Buttons */}
-        <IonSegment value="all" scrollable>
-          <IonSegmentButton value="all">
-            <IonLabel>All</IonLabel>
-          </IonSegmentButton>
-          <IonSegmentButton value="length">
-            <IonLabel>Length</IonLabel>
-          </IonSegmentButton>
-          <IonSegmentButton value="difficulty">
-            <IonLabel>Difficulty</IonLabel>
-          </IonSegmentButton>
-          <IonSegmentButton value="elevation">
-            <IonLabel>Elevation</IonLabel>
-          </IonSegmentButton>
-        </IonSegment>
+       
 
         {/* Route List */}
         <div style={{ padding: "12px" }}>
@@ -70,7 +57,7 @@ const SavedRoutes: React.FC = () => {
                 </IonCardHeader>
                 <IonCardContent>
                   <div style={{ marginBottom: "6px" }}>
-                    <IonLabel color="medium">Med</IonLabel>
+                    
                     <span> 🏃 10.1 km : 14m : 2h 4m</span>
                   </div>
                   <p>Capas, Tarlac, Philippines</p>
@@ -94,7 +81,7 @@ const SavedRoutes: React.FC = () => {
                 </IonCardHeader>
                 <IonCardContent>
                   <div style={{ marginBottom: "6px" }}>
-                    <IonLabel color="success">Easy</IonLabel>
+                   
                     <span> 🏃 5.21 km : 5m : 1h 12m</span>
                   </div>
                   <p>Capas, Tarlac, Philippines</p>
