@@ -139,7 +139,6 @@ ion-searchbar.activities-searchbar {
 }
 
 .activities-table ion-button {
-  --color: #3498db;
   font-size: 14px;
   text-transform: none;
   --padding-start: 8px;
@@ -150,7 +149,12 @@ ion-searchbar.activities-searchbar {
 }
 
 .activities-table ion-button:hover {
-  --color: #1d6fa5;
+  --color: #000000;
+}
+
+.delete-button ion-button {
+  --color: #444444 !important;
+  background-color: violet;
 }
 
 /* ===== Mobile Card View ===== */
@@ -223,19 +227,21 @@ ion-searchbar.activities-searchbar {
   color: #2c3e50 !important;
 }
 
-.card-actions {
+.delete-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
 }
 
-.card-actions ion-button {
+.delete-actions ion-button {
   --padding-start: 12px;
   --padding-end: 12px;
   --padding-top: 8px;
   --padding-bottom: 8px;
   font-size: 14px;
   text-transform: none;
+  font-weight: 600;
+  color: #ffffff !important;
 }
 
 /* ===== Responsive Controls ===== */
@@ -245,6 +251,95 @@ ion-searchbar.activities-searchbar {
 
 .mobile-only {
   display: none;
+}
+
+/* ===== Delete Confirmation Alert Styles ===== */
+.delete-confirmation-alert {
+  --background: #ffffff;
+  --max-width: 400px;
+}
+
+.delete-confirmation-alert .alert-wrapper {
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.delete-confirmation-alert .alert-head {
+  padding: 24px 24px 16px;
+}
+
+.delete-confirmation-alert .alert-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #2c3e50;
+  text-align: center;
+}
+
+.delete-confirmation-alert .alert-message {
+  font-size: 15px;
+  color: #555;
+  line-height: 1.6;
+  padding: 0 24px 24px;
+  text-align: center;
+}
+
+.delete-confirmation-alert .alert-button-group {
+  padding: 0 16px 16px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* Base Alert Button Styles */
+.delete-confirmation-alert .alert-button {
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 12px 24px;
+  text-transform: none;
+  letter-spacing: 0.3px;
+  transition: all 0.3s ease;
+  flex: 1;
+  max-width: 150px;
+  
+}
+
+/* Cancel Button */
+.alert-cancel-button,
+.delete-confirmation-alert .alert-button-role-cancel {
+  background-color: #ecf0f1 !important;
+  color: #2c3e50 !important;
+  border: 1px solid #d0d7de !important;
+  
+}
+
+.alert-cancel-button:hover,
+.delete-confirmation-alert .alert-button-role-cancel:hover {
+  background-color: #dfe4e8 !important;
+  transform: translateY(-1px);
+}
+
+/* Delete Button (Destructive) */
+.alert-delete-button,
+.delete-confirmation-alert .alert-button-role-destructive {
+  background-color: #e74c3c !important;
+  color: #ffffff !important;
+  border: none !important;
+  text-align: center !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.alert-delete-button:hover,
+.delete-confirmation-alert .alert-button-role-destructive:hover {
+  background-color: #c0392b !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+.alert-button-inner.sc-ion-alert-md{
+  justify-content: center !important;
+  align-items: center !important;
 }
 
 /* ===== Responsive Breakpoints ===== */
@@ -325,5 +420,35 @@ ion-searchbar.activities-searchbar {
   .activity-card ion-card-content {
     background: #ffffff !important;
     color: #333333 !important;
+  }
+
+  /* Mobile Alert Styles */
+  .delete-confirmation-alert {
+    --max-width: 90%;
+  }
+
+  .delete-confirmation-alert .alert-wrapper {
+    margin: 0 5%;
+  }
+
+  .delete-confirmation-alert .alert-title {
+    font-size: 20px;
+  }
+
+  .delete-confirmation-alert .alert-message {
+    font-size: 14px;
+    padding: 0 20px 20px;
+  }
+
+  .delete-confirmation-alert .alert-button-group {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .delete-confirmation-alert .alert-button,
+  .alert-cancel-button,
+  .alert-delete-button {
+    max-width: 100% !important;
+    width: 100% !important;
   }
 }

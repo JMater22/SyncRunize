@@ -68,6 +68,7 @@ const Profile: React.FC = () => {
       runs: 1,
       time: '45m',
       distance: '5.2 km',
+      pace: '8:39 /km',
       calories: '420 kcal'
     },
     week: {
@@ -75,6 +76,7 @@ const Profile: React.FC = () => {
       runs: 3,
       time: '4h 22m',
       distance: '7.2 km',
+      pace: '7:15 /km',
       calories: '850 kcal'
     },
     month: {
@@ -82,6 +84,7 @@ const Profile: React.FC = () => {
       runs: 12,
       time: '18h 45m',
       distance: '28.5 km',
+      pace: '6:58 /km',
       calories: '3,420 kcal'
     }
   };
@@ -352,6 +355,12 @@ const Profile: React.FC = () => {
                       </div>
                       <div className="stats-item">
                         <div className="stats-content">
+                          <span className="stats-label">Pace</span>
+                          <span className="stats-value">{currentStats.distance}</span>
+                        </div>
+                      </div>
+                      <div className="stats-item">
+                        <div className="stats-content">
                           <span className="stats-label">Calories</span>
                           <span className="stats-value">{currentStats.calories}</span>
                         </div>
@@ -463,9 +472,6 @@ const Profile: React.FC = () => {
                               <p className="challenge-duration">{challenge.duration}</p>
                               <div className="challenge-footer">
                                 <span className="challenge-time">{challenge.timeLeft}</span>
-                                <IonButton size="small" className="join-challenge-btn">
-                                  Continue
-                                </IonButton>
                               </div>
                             </IonCardContent>
                           </IonCard>
