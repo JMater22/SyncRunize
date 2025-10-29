@@ -49,10 +49,50 @@ import "@ionic/react/css/palettes/dark.system.css";
 
 import "./theme/variables.css";
 import "./theme/tabs.css";
-
+import { supabase } from "./supabaseClient"; 
+import React, { useEffect, useState } from "react";
 setupIonicReact();
 
 const App: React.FC = () => {
+  const [session, setSession] = useState<any>(null);
+    const [userData, setUserData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      // Fetch current session
+      supabase.auth.getSession().then(async ({ data }) => {
+        const currentSession = data.session;
+        setSession(currentSession);
+
+        if (currentSession?.user) {
+          // Fetch matching user record from your custom table
+          const { data: userRecord } = await supabase
+            .from("users")
+            .select("*")
+            .eq("auth_id", currentSession.user.id)
+            .single();
+
+          setUserData(userRecord);
+        }
+
+        setLoading(false);
+      });
+
+      // Listen for auth state changes
+      const { data: listener } = supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          setSession(session);
+        }
+      );
+
+      return () => {
+        listener.subscription.unsubscribe();
+      };
+    }, []);
+
+    if (loading) return null; // or a loading spinner
+
+
   return (
     <IonApp>
       <IonReactRouter>
@@ -104,27 +144,84 @@ const App: React.FC = () => {
 
           <IonTabs>
             <IonRouterOutlet>
-              {/* <Route exact path="/">
-                <Redirect to="/get-started" />
-              </Route> */}
-              <Route exact path="/get-started" component={GetStarted} />
-              <Route exact path="/login" component={Login} />
-              <Route exact path="/home" component={Home} />
-              <Route exact path="/community" component={Community} />
-              <Route exact path="/challenges" component={Challenges} />
-              <Route exact path="/run-tracking" component={RunTracking} />
-              <Route exact path="/routes" component={RoutesPage} />
-              <Route exact path="/saved-routes" component={SavedRoutesPage} />
-              <Route exact path="/activities" component={Activities} />
-              <Route exact path="/profile" component={Profile} />
+              <Route
+                exact
+                path="/"
+                render={() => session ? <Redirect to="/home" /> : <Redirect to="/login" />}
+              />
+              <Route
+                exact
+                path="/home"
+                render={(props) =>
+                      //{...props} userData={userData}
+                      session ? <Home/> : <Redirect to="/login" />
+                    }
+                  />
+              <Route 
+                exact 
+                path="/get-started" 
+                component={GetStarted} />
+              <Route 
+                exact 
+                path="/login" 
+                component={Login} />
+              <Route 
+                exact 
+                path="/community" 
+                render = { () =>
+                session ? <Community/> : <Redirect to="/login" />
+                } />
+              <Route 
+                exact 
+                path="/challenges" 
+                render = { () =>
+                session ? <Challenges/> : <Redirect to="/login" />
+                } />
+              <Route 
+                exact 
+                path="/run-tracking" 
+                render = { () => session ? <RunTracking/> : <Redirect to="/login" />
+                } />
+              <Route exact 
+                path="/routes" 
+                render = { () => session ? <RoutesPage/> : <Redirect to="/login" />
+                } />
+              <Route 
+                exact 
+                path="/saved-routes" 
+                render = { () =>
+                session ? <SavedRoutesPage/> : <Redirect to="/login" />
+                } />
+              <Route
+                exact
+                path="/activities"
+                render={() => (session ? <Activities /> : <Redirect to="/login" />)}
+              />
+              <Route
+                exact
+                path="/profile"
+                render={() => (session ? <Profile /> : <Redirect to="/login" />)}
+              />
               <Route
                 exact
                 path="/recently-deleted"
-                component={RecentlyDeleted}
+                render={() => (session ? <RecentlyDeleted /> : <Redirect to="/login" />)}
               />
-              <Route exact path="/create-group" component={CreateGroup} />
-              <Route exact path="/group-feed" component={GroupFeed} />
-              <Route exact path="/create-route" component={CreateRouteMap} />
+              <Route
+                exact
+                path="/create-group"
+                render={() => (session ? <CreateGroup /> : <Redirect to="/login" />)}
+              />
+              <Route
+                exact
+                path="/group-feed"
+                render={() => (session ? <GroupFeed /> : <Redirect to="/login" />)}
+              />
+              <Route
+                exact
+                path="/create-route"
+                render={() => (session ? <CreateRouteMap /> : <Redirect to="/login" />)}
+              />
 
             </IonRouterOutlet>
 

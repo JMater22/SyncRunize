@@ -10,17 +10,51 @@ import {
 import "./LoginForm.css";
 import LogInImage from "../../assets/Authen Image.png";
 import LogoIcon from "../../assets/SycnRunize-Logo.png";
-
+import { supabase } from "../../supabaseClient";
 const LoginForm: React.FC = () => {
   const history = useHistory();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login attempted");
-    history.push("/home");
-  }; 
+    setError("");
+
+    if (!email.trim() || !password.trim()) {
+      setError("Please enter your email and password.");
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error("Login error:", error);
+        setError("Invalid email or password.");
+        console.log("Supabase response:", { data, error });
+        return;
+      }
+
+      if (data.session) {
+        console.log("Login successful:", data);
+        history.push("/home"); // redirect after login
+      } else {
+        setError("No active session. Please verify your email first.");
+      }
+    } catch (err) {
+      console.error("Unexpected error during login:", err);
+      setError("An unexpected error occurred.");
+    }
+  };
+
+
 
   const [isMobile, setIsMobile] = useState(false);
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -59,10 +93,12 @@ const LoginForm: React.FC = () => {
                   <div className="input-group2">
                     <label className="input-label2">Email</label>
                     <IonInput
-                      className="custom-input2"
-                      type="email"
-                      placeholder="Enter your email"
-                      required
+                        className="custom-input2"
+                        type="email"
+                        placeholder="Enter your email"
+                        value={email}
+                        onIonInput={(e: any) => setEmail(e.target.value)}
+                        required
                     />
                   </div>
 
@@ -70,10 +106,12 @@ const LoginForm: React.FC = () => {
                   <div className="input-group2">
                     <label className="input-label2">Password</label>
                     <IonInput
-                      className="custom-input2"
-                      type="password"
-                      placeholder="Enter your password"
-                      required
+                        className="custom-input2"
+                        type="password"
+                        placeholder="Enter your password"
+                        value={password}
+                        onIonInput={(e: any) => setPassword(e.target.value)}
+                        required
                     />
                   </div>
 
@@ -93,7 +131,8 @@ const LoginForm: React.FC = () => {
                 >
                   Log in
                 </IonButton>
-
+                {error && <p style={{ color: "red", textAlign: "center" }}>{error}</p>}
+                
                
                 <div className="social-login2">
                   <IonButton

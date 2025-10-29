@@ -61,12 +61,6 @@ const GetStarted: React.FC = () => {
           history.push('/home');
           return;
         }
-
-        // 2. Check if OAuth redirected with token in URL
-        const { data: { session: oauthSession } } = await supabase.auth.getSessionFromUrl();
-        if (oauthSession) {
-          history.push('/home');
-        }
       };
 
       checkSession();
@@ -78,106 +72,75 @@ const GetStarted: React.FC = () => {
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
 
-  // Reset all errors
   setFullnameError("");
   setEmailError("");
   setPasswordError("");
   setConfirmPasswordError("");
 
-  let isValid = true;
+  // Basic validation
+  if (!fullname.trim()) return setFullnameError("Please enter your full name");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setEmailError("Invalid email");
+  if (password.length < 6) return setPasswordError("At least 6 characters required");
+  if (password !== confirmPassword) return setConfirmPasswordError("Passwords do not match");
 
-  // Validate fullname
-  if (!fullname.trim()) {
-    setFullnameError("Please enter your fullname");
-    isValid = false;
-  }
+  try {
+    // 1️⃣ Register user in Supabase Auth
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
 
-  // Validate email
-  if (!email.trim()) {
-    setEmailError("Please enter your email");
-    isValid = false;
-  } else {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setEmailError("Please enter a valid email address");
-      isValid = false;
+    if (signUpError) {
+      console.error("Signup error:", signUpError.message);
+      setEmailError(signUpError.message);
+      return;
     }
-  }
 
-  // Validate password
-  if (!password) {
-    setPasswordError("Please enter your password");
-    isValid = false;
-  } else if (password.length < 6) {
-    setPasswordError("Password must be at least 6 characters long");
-    isValid = false;
-  }
+    const user = data.user;
+    if (!user) throw new Error("Signup failed. No user returned.");
 
-  // Validate confirm password
-  if (!confirmPassword) {
-    setConfirmPasswordError("Please confirm your password");
-    isValid = false;
-  } else if (password !== confirmPassword) {
-    setConfirmPasswordError("Passwords do not match");
-    isValid = false;
-  }
+    // 2️⃣ Add profile to 'users' table (linked by auth_id)
+    const { error: insertError } = await supabase
+      .from("users")
+      .upsert([
+        {
+          auth_id: user.id,   // Link to Supabase Auth UUID
+          email: user.email || email,
+          name: fullname,
+        },
+      ], { onConflict: "auth_id" }); // Avoid duplicates
 
-  // If all validations pass, proceed with signup
-  if (isValid) {
-        console.log('✅ Validation passed');
-        console.log('Attempting signup with:', { email, fullname });
-        
-        try {
-          console.log('🔄 Calling supabase.auth.signUp...');
-          
-          const { data, error } = await supabase.auth.signUp({
-            email: email,
-            password: password,
-            options: {
-              data: {
-                full_name: fullname,
-              }
-            }
-          });
-
-          console.log('📦 Supabase response:', { data, error });
-
-          if (error) {
-            console.error('❌ Signup error:', error.message);
-            if (error.message.includes('already registered')) {
-              setEmailError('This email is already registered');
-            } else {
-              setEmailError(error.message);
-            }
-            return;
-          }
-
-          console.log('✨ Signup successful!');
-          console.log('User:', data.user);
-          console.log('Session:', data.session);
-
-          // Check if email confirmation is required
-          if (data.user && !data.session) {
-            console.log('📧 Email confirmation required');
-            alert('Please check your email to confirm your account');
-            console.log('🔄 Redirecting to /login...');
-            history.push("/login");
-            console.log('✅ history.push("/login") called');
-          } else if (data.session) {
-            console.log('🏠 Session created! Redirecting to /home...');
-            history.push("/home");
-            console.log('✅ history.push("/home") called');
-          } else {
-            console.log('⚠️ Unexpected state - no session and no user');
-          }
-        } catch (error) {
-          console.error('💥 Exception during signup:', error);
-          setEmailError('An error occurred during signup');
-        }
-      } else {
-        console.log('❌ Validation failed');
+      if (insertError) {
+        console.error("Insert error:", insertError);
+        alert(`Signup succeeded, but profile creation failed: ${insertError.message}`);
+        return;
       }
-  };
+        const { data: profileRaw, error: profileError } = await supabase
+          .from("users")
+          .select("*")
+          .eq("auth_id", user.id)
+          .single();
+
+        if (profileError) {
+          console.error("Profile fetch error:", profileError.message);
+        } else {
+          console.log("👤 profileRaw:", profileRaw);
+        }
+
+    // 3️⃣ Redirect or confirm email
+    if (data.session) {
+      history.push("/home");
+    } else {
+      alert("Check your email to confirm your account before logging in.");
+      history.push("/login");
+    }
+  } catch (err) {
+    console.error("Unexpected signup error:", err);
+    setEmailError("Unexpected error during signup. Try again.");
+  }
+};
+
+
 
   return (
     <IonPage>

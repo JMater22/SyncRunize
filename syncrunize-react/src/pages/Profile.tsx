@@ -42,7 +42,7 @@ import SilverBadge from "../assets/badges/Silver.png";
 import GoldBadge from "../assets/badges/Gold.png";
 
 import "../components/UserProfile/UserProfile.css";
-
+import { supabase } from "../supabaseClient";
 const Profile: React.FC = () => {
   const history = useHistory();
   const [activeTab, setActiveTab] = useState<"activities" | "badges" | "challenges">("activities");
@@ -222,10 +222,15 @@ const Profile: React.FC = () => {
     setIsActionSheetOpen(false);
   };
 
-  const handleLogout = () => {
-    console.log("User logged out");
-    setShowLogoutAlert(false);
-    history.push('/get-started');
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Error logging out:", error.message);
+    } else {
+      console.log("User logged out and session cleared");
+      setShowLogoutAlert(false);
+      history.push("/login");
+    }
   };
 
   return ( 

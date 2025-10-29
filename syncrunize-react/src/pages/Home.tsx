@@ -48,6 +48,7 @@ import Map from "../assets/MAP 1.png";
 import Couch5K from "../assets/Couch to 5K.jpg";
 import SevenDayStarter from "../assets/The 7-Day Starter.jpg";
 import ThreeTimesAWeek from "../assets/Three Times a Week.jpg";
+import { supabase } from "../supabaseClient";
 
 const Home: React.FC = () => {
   const [openComments, setOpenComments] = useState<number | null>(null);
