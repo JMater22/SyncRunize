@@ -36,15 +36,19 @@ export const createUserProfile = async (req, res) => {
 // ✅ Get own profile (protected)
 export const getMyProfile = async (req, res) => {
   try {
-    const user = req.user;
-    const profile = await UserModel.getUserByAuthId(user.id);
+    const supabaseUserId = req.user.id; // This is Supabase's 'sub' equivalent
+    const profile = await UserModel.getUserByAuthId(supabaseUserId);
     if (!profile) return res.status(404).json({ error: "Profile not found" });
     res.json(profile);
   } catch (err) {
+    console.log("Authorization header:", req.headers.authorization);
+    console.log("Supabase user:", req.user);
+
     console.error("Get Profile Error:", err);
     res.status(500).json({ error: "Failed to fetch profile" });
   }
 };
+
 
 // ✅ Get public profile (by params)
 export const getPublicProfile = async (req, res) => {

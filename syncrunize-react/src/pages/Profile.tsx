@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect} from "react";
 import { useHistory } from "react-router-dom";
 import {
   IonPage,
@@ -43,6 +43,35 @@ import GoldBadge from "../assets/badges/Gold.png";
 
 import "../components/UserProfile/UserProfile.css";
 import { supabase } from "../supabaseClient";
+import axios from "axios";
+
+const fetchUserData = async () => {
+  try {
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+
+    if (!session) {
+      console.log("No active session");
+      return;
+    }
+
+    const token = session.access_token; // use this for authorization header
+
+    const response = await axios.get("https://localhost:5000/api/users", {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    console.log(response.data);
+  } catch (error) {
+    console.error("Error fetching user data:", error);
+  }
+};
+
+
+
 const Profile: React.FC = () => {
   const history = useHistory();
   const [activeTab, setActiveTab] = useState<"activities" | "badges" | "challenges">("activities");
@@ -56,8 +85,7 @@ const Profile: React.FC = () => {
   
   // Profile data state
   const [profileData, setProfileData] = useState({
-    firstName: "Alexander",
-    lastName: "Smith",
+    Name: "Alexander",
     description: "Running enthusiast • Fitness lover • Goal crusher",
     profilePic: ProfilePic
   });
@@ -88,6 +116,33 @@ const Profile: React.FC = () => {
       calories: '3,420 kcal'
     }
   };
+
+    // Fetch user data on mount
+  useEffect(() => {
+  const fetchUserData = async () => {
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+
+      if (!session) return;
+
+      const token = session.access_token;
+      const response = await axios.get("http://localhost:5000/api/users/me", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setProfileData({
+        Name: response.data.name || "Unknown User",
+        description: response.data.description || "",
+        profilePic: response.data.profilePic || ProfilePic
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  fetchUserData();
+}, []);
 
   const currentStats = statsData[timeRange];
 
@@ -229,6 +284,7 @@ const Profile: React.FC = () => {
     } else {
       console.log("User logged out and session cleared");
       setShowLogoutAlert(false);
+      
       history.push("/login");
     }
   };
@@ -252,8 +308,8 @@ const Profile: React.FC = () => {
               
               <div className="profile-details">
                 <div className="profile-text">
-                  <h1 className="profile-name">{profileData.firstName} {profileData.lastName}</h1>
-                  <p className="profile-username">@{profileData.firstName.toLowerCase()}{profileData.lastName.toLowerCase()}</p>
+                  <h1 className="profile-name">{profileData.Name}</h1>
+                  <p className="profile-username">@{profileData.Name.toLowerCase()}</p>
                   <div className="profile-bio">
                     <span>{profileData.description}</span>
                   </div>
@@ -661,25 +717,12 @@ const Profile: React.FC = () => {
                 <IonItem className="edit-form-item">
                   <IonLabel position="stacked">First Name</IonLabel>
                   <IonInput
-                    value={editForm.firstName}
+                    value={editForm.Name}
                     onIonInput={(e) => setEditForm({
                       ...editForm,
-                      firstName: e.detail.value!
+                      Name: e.detail.value!
                     })}
                     placeholder="Enter your first name"
-                    className="edit-input"
-                  />
-                </IonItem>
-
-                <IonItem className="edit-form-item">
-                  <IonLabel position="stacked">Last Name</IonLabel>
-                  <IonInput
-                    value={editForm.lastName}
-                    onIonInput={(e) => setEditForm({
-                      ...editForm,
-                      lastName: e.detail.value!
-                    })}
-                    placeholder="Enter your last name"
                     className="edit-input"
                   />
                 </IonItem>

@@ -8,7 +8,7 @@ const { Pool } = pkg;
 
 // Use Supabase connection string with SSL enabled
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.SUPABASE_URL,
   ssl: false,
 });
 
