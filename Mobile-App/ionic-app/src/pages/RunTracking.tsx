@@ -13,6 +13,7 @@ import {
   IonSpinner,
   IonToast,
   IonBadge,
+  IonAlert,
 } from "@ionic/react";
 import { arrowBack, walk, locate, locationOutline } from "ionicons/icons";
 import { Geolocation } from '@capacitor/geolocation';
@@ -34,6 +35,7 @@ export default function RunMap() {
   const [error, setError] = useState<string>("");
   const [showToast, setShowToast] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(false);
+  const [showPermissionAlert, setShowPermissionAlert] = useState(false);
 
   // Get current position on component mount
   useEffect(() => {
@@ -52,19 +54,19 @@ export default function RunMap() {
       if (permission.location !== 'granted') {
         const requested = await Geolocation.requestPermissions();
         if (requested.location !== 'granted') {
-          setError("Location permission denied. Please enable location to track your run.");
-          setShowToast(true);
+          setError("Location permission denied");
+          setShowPermissionAlert(true);
           setLoading(false);
           setLocationEnabled(false);
           return;
         }
       }
 
-      // Get current position
+      // Get current position with optimized settings for Android
       const position = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+        timeout: 15000, // Increased timeout for Android
+        maximumAge: 5000 // Allow cached position up to 5 seconds old
       });
 
       setCurrentPosition({
@@ -76,10 +78,22 @@ export default function RunMap() {
       });
 
       setLocationEnabled(true);
+    
       console.log('Current position:', position.coords);
     } catch (err: any) {
       console.error('Error getting location:', err);
-      setError(err.message || "Failed to get location");
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to get location";
+      if (err.message.includes('location unavailable')) {
+        errorMessage = "Location unavailable. Please enable GPS.";
+      } else if (err.message.includes('timeout')) {
+        errorMessage = "Location request timed out. Try again.";
+      } else if (err.message.includes('permission')) {
+        errorMessage = "Location permission denied.";
+      }
+      
+      setError(errorMessage);
       setShowToast(true);
       setLocationEnabled(false);
     } finally {
@@ -216,6 +230,26 @@ export default function RunMap() {
             </div>
           )}
         </div>
+
+        {/* Permission Alert */}
+        <IonAlert
+          isOpen={showPermissionAlert}
+          onDidDismiss={() => setShowPermissionAlert(false)}
+          header="Location Permission Required"
+          message="This app needs location permission to track your run. Please enable location permissions in your device settings."
+          buttons={[
+            {
+              text: 'Cancel',
+              role: 'cancel'
+            },
+            {
+              text: 'Retry',
+              handler: () => {
+                getCurrentPosition();
+              }
+            }
+          ]}
+        />
 
         {/* Toast for errors */}
         <IonToast
