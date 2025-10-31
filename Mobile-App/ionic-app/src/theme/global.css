@@ -14,3 +14,13 @@
   --background: #000000;
   --color: #ffffff;
 }
+
+.logout-btn{
+   --background: #e60404;
+  --color: #fafafa;
+  --border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 20px 0 40px 0;
+  height: 50px;
+}

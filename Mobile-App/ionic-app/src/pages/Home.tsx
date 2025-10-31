@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   IonPage,
   IonHeader,
@@ -19,34 +20,76 @@ import {
   IonTabBar,
   IonTabButton,
   IonImg,
-  IonProgressBar, IonSelect, IonSelectOption, 
+  IonProgressBar,
+  IonSelect,
+  IonSelectOption,
+  IonSearchbar,SearchbarCustomEvent 
 } from "@ionic/react";
-import { notifications, search, trophy, homeOutline, mapOutline, peopleOutline, calendarOutline, analyticsOutline } from "ionicons/icons";
-import '../theme/Home.css';
-import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
-import ChallengePic from '../components/assets/istockphoto-143920084-612x612.jpg';
+import {
+  notifications,
+  search,
+  trophy,
+  homeOutline,
+  mapOutline,
+  peopleOutline,
+  calendarOutline,
+  analyticsOutline,
+  close,
+} from "ionicons/icons";
+import "../theme/Home.css";
+import ProfilePic from "../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg";
+import ChallengePic from "../components/assets/istockphoto-143920084-612x612.jpg";
 import "../theme/global.css";
 
 export default function Dashboard() {
+  const [showSearchbar, setShowSearchbar] = useState(false);
+  const [searchText, setSearchText] = useState("");
+
+  const toggleSearchbar = () => {
+    setShowSearchbar(!showSearchbar);
+    if (showSearchbar) {
+      setSearchText(""); // Clear search when closing
+    }
+  };
+
   return (
-    <IonPage >
+    <IonPage>
       {/* Header */}
       <IonHeader className="dark-header">
         <IonToolbar className="dashboard-toolbar">
-          <IonTitle className="dashboard-title">SyncRunize</IonTitle>
-          <IonButtons slot="end">
-            <IonButton routerLink="/notification">
-              <IonIcon  className="header-icon"  icon={notifications} />
-            </IonButton>
-            <IonButton>
-              <IonIcon className="header-icon" icon={search} />
-            </IonButton>
-            <IonButton routerLink="/profile">
-              <IonAvatar className="header-avatar">
-                <img src={ProfilePic} alt="Profile" />
-              </IonAvatar>
-            </IonButton>
-          </IonButtons>
+          {!showSearchbar ? (
+            <>
+              <IonTitle className="dashboard-title">SyncRunize</IonTitle>
+              <IonButtons slot="end">
+                <IonButton routerLink="/notification">
+                  <IonIcon className="header-icon" icon={notifications} />
+                </IonButton>
+                <IonButton onClick={toggleSearchbar}>
+                  <IonIcon className="header-icon" icon={search} />
+                </IonButton>
+                <IonButton routerLink="/profile">
+                  <IonAvatar className="header-avatar">
+                    <img src={ProfilePic} alt="Profile" />
+                  </IonAvatar>
+                </IonButton>
+              </IonButtons>
+            </>
+          ) : (
+            <>
+              <IonSearchbar
+                value={searchText}
+               onIonInput={(e: SearchbarCustomEvent) => setSearchText(e.detail.value!)}
+                placeholder="Search athletes"
+                animated={true}
+                showCancelButton="never"
+              />
+              <IonButtons slot="end">
+                <IonButton onClick={toggleSearchbar}>
+                  <IonIcon className="header-icon" icon={close} />
+                </IonButton>
+              </IonButtons>
+            </>
+          )}
         </IonToolbar>
       </IonHeader>
 
@@ -54,10 +97,9 @@ export default function Dashboard() {
       <IonContent fullscreen className="dark-content">
         {/* Personal Records */}
         <div className="section-header">
-         
           <span>Personal Records</span>
         </div>
-        
+
         <IonCard className="records-card">
           <IonCardContent>
             <div className="stats-container">
@@ -75,65 +117,91 @@ export default function Dashboard() {
 
         {/* Distance Chart */}
         <div className="section-header">Distance</div>
-        
-        
+
         <IonCard className="chart-card">
           <IonCardContent>
-          
-           <div className="distance-header">
-      <h3 className="section-subtitle">Distance covered per month</h3>
-      <IonSelect slot="end" value="per-month" interface="action-sheet">
-        <IonSelectOption value="per-week">Per Week</IonSelectOption>
-        <IonSelectOption value="per-month">Per Month</IonSelectOption>
-        <IonSelectOption value="per-year">Per Year</IonSelectOption>
-      </IonSelect>
-    </div>
-          
+            <div className="distance-header">
+              <h3 className="section-subtitle">Distance covered per month</h3>
+              <IonSelect slot="end" value="per-month" interface="action-sheet">
+                <IonSelectOption value="per-week">Per Week</IonSelectOption>
+                <IonSelectOption value="per-month">Per Month</IonSelectOption>
+                <IonSelectOption value="per-year">Per Year</IonSelectOption>
+              </IonSelect>
+            </div>
+
             <div className="chart-container">
               <div className="chart-row">
                 <span className="month-label">Jan</span>
                 <div className="bar-container">
-                  <IonProgressBar value={0.25} color="success" className="distance-bar"></IonProgressBar>
+                  <IonProgressBar
+                    value={0.25}
+                    color="success"
+                    className="distance-bar"
+                  ></IonProgressBar>
                 </div>
               </div>
               <div className="chart-row">
                 <span className="month-label">Feb</span>
                 <div className="bar-container">
-                  <IonProgressBar value={0.35} color="success" className="distance-bar"></IonProgressBar>
+                  <IonProgressBar
+                    value={0.35}
+                    color="success"
+                    className="distance-bar"
+                  ></IonProgressBar>
                 </div>
               </div>
               <div className="chart-row">
                 <span className="month-label">Mar</span>
                 <div className="bar-container">
-                  <IonProgressBar value={0.5} color="success" className="distance-bar"></IonProgressBar>
+                  <IonProgressBar
+                    value={0.5}
+                    color="success"
+                    className="distance-bar"
+                  ></IonProgressBar>
                 </div>
               </div>
               <div className="chart-row">
                 <span className="month-label">April</span>
                 <div className="bar-container">
-                  <IonProgressBar value={0.75} color="success" className="distance-bar"></IonProgressBar>
+                  <IonProgressBar
+                    value={0.75}
+                    color="success"
+                    className="distance-bar"
+                  ></IonProgressBar>
                 </div>
               </div>
               <div className="chart-row">
                 <span className="month-label">May</span>
                 <div className="bar-container">
-                  <IonProgressBar value={0.6} color="success" className="distance-bar"></IonProgressBar>
+                  <IonProgressBar
+                    value={0.6}
+                    color="success"
+                    className="distance-bar"
+                  ></IonProgressBar>
                 </div>
               </div>
               <div className="chart-row">
                 <span className="month-label">June</span>
                 <div className="bar-container">
-                  <IonProgressBar value={0.4} color="success" className="distance-bar"></IonProgressBar>
+                  <IonProgressBar
+                    value={0.4}
+                    color="success"
+                    className="distance-bar"
+                  ></IonProgressBar>
                 </div>
               </div>
               <div className="chart-row">
                 <span className="month-label">July</span>
                 <div className="bar-container">
-                  <IonProgressBar value={0.3} color="success" className="distance-bar"></IonProgressBar>
+                  <IonProgressBar
+                    value={0.3}
+                    color="success"
+                    className="distance-bar"
+                  ></IonProgressBar>
                 </div>
               </div>
             </div>
-            
+
             <div className="chart-labels">
               <span>0</span>
               <span>5km</span>
@@ -149,7 +217,7 @@ export default function Dashboard() {
           <IonIcon icon={calendarOutline} className="section-icon" />
           <span>Recent Activity</span>
         </div>
-        
+
         <IonCard className="activity-card">
           <IonCardContent>
             <IonList className="activity-list">
@@ -160,9 +228,15 @@ export default function Dashboard() {
                 <IonLabel>
                   <h2 className="activity-title">Morning Run!</h2>
                   <p className="activity-details">
-                    <span className="activity-stat">Distance: <strong>14.3km</strong></span>
-                    <span className="activity-stat">Pace: <strong>5:18/km</strong></span>
-                    <span className="activity-stat">Time: <strong>1h 16m</strong></span>
+                    <span className="activity-stat">
+                      Distance: <strong>14.3km</strong>
+                    </span>
+                    <span className="activity-stat">
+                      Pace: <strong>5:18/km</strong>
+                    </span>
+                    <span className="activity-stat">
+                      Time: <strong>1h 16m</strong>
+                    </span>
                   </p>
                 </IonLabel>
               </IonItem>
@@ -173,9 +247,15 @@ export default function Dashboard() {
                 <IonLabel>
                   <h2 className="activity-title">Quick Run!</h2>
                   <p className="activity-details">
-                    <span className="activity-stat">Distance: <strong>3.3km</strong></span>
-                    <span className="activity-stat">Pace: <strong>6:58/km</strong></span>
-                    <span className="activity-stat">Time: <strong>23m</strong></span>
+                    <span className="activity-stat">
+                      Distance: <strong>3.3km</strong>
+                    </span>
+                    <span className="activity-stat">
+                      Pace: <strong>6:58/km</strong>
+                    </span>
+                    <span className="activity-stat">
+                      Time: <strong>23m</strong>
+                    </span>
                   </p>
                 </IonLabel>
               </IonItem>
@@ -185,20 +265,28 @@ export default function Dashboard() {
 
         {/* Suggested Challenges */}
         <div className="section-header">
-          <IonIcon icon={trophy}  className="section-icon"/>
+          <IonIcon icon={trophy} className="section-icon" />
           <span>Suggested Challenges</span>
         </div>
         <div className="section-subtitle">Make accountability more fun!</div>
 
         <IonCard className="challenge-card">
           <div className="challenge-image-container">
-            <img src={ChallengePic} alt="Challenge" className="challenge-image" />
+            <img
+              src={ChallengePic}
+              alt="Challenge"
+              className="challenge-image"
+            />
           </div>
           <IonCardHeader>
-            <IonCardTitle className="challenge-title">April Elevation Challenge</IonCardTitle>
+            <IonCardTitle className="challenge-title">
+              April Elevation Challenge
+            </IonCardTitle>
           </IonCardHeader>
           <IonCardContent>
-            <p className="challenge-description">Climb a total of 2,000 m (6,561.7 ft) in a month.</p>
+            <p className="challenge-description">
+              Climb a total of 2,000 m (6,561.7 ft) in a month.
+            </p>
             <div className="challenge-footer">
               <span className="challenge-date">Apr 1, 2025 - Apr 30, 2025</span>
               <IonButton className="join-button" color="success" size="small">
@@ -209,13 +297,13 @@ export default function Dashboard() {
         </IonCard>
 
         {/* Leaderboard */}
-        <div className="section-header" >
+        <div className="section-header">
           <IonIcon icon={analyticsOutline} className="section-icon" />
           <span>Leaderboard</span>
         </div>
-        
-        <IonCard  className="leaderboard-card">
-          <IonCardContent >
+
+        <IonCard className="leaderboard-card">
+          <IonCardContent>
             <div className="leaderboard-header">
               <span>Rank</span>
               <span>Distance</span>
@@ -266,7 +354,13 @@ export default function Dashboard() {
                 <span className="leader-distance">241 km</span>
               </IonItem>
             </IonList>
-          <IonButton color="success" className="view-more" routerLink="/leaderboards"><div > View Full Leaderboard</div></IonButton>
+            <IonButton
+              color="success"
+              className="view-more"
+              routerLink="/leaderboards"
+            >
+              <div> View Full Leaderboard</div>
+            </IonButton>
           </IonCardContent>
         </IonCard>
       </IonContent>

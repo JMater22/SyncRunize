@@ -11,16 +11,14 @@ import {
   IonLabel,
   IonInput
 } from "@ionic/react";
-import { arrowBack, eye, eyeOff  } from "ionicons/icons";
+import { arrowBack, eye, eyeOff } from "ionicons/icons";
 import '../theme/log-in.css';
-
-
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showError, setShowError] = useState(false);
-   const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,27 +70,45 @@ const Login: React.FC = () => {
             <IonLabel position="stacked">
               Enter your mobile number or email:
             </IonLabel>
-            <IonInput  
+            <IonInput
               type="email"
-              placeholder="abcd@gmail.com"
+              placeholder="Enter your email"
               value={email}
               onIonInput={(e) => setEmail(e.detail.value!)}
               required
-               style={{ "--padding-start": "13px"}}
+             style={{ "--padding-start": "20px" }}
             ></IonInput>
           </IonItem>
 
           {/* Password */}
           <IonItem className="form-item">
             <IonLabel position="stacked">Enter your password:</IonLabel>
-            <IonInput 
-              type="password"
+            <IonInput
+              type={showPassword ? "text" : "password"}
               placeholder="••••••••••••••••"
               value={password}
               onIonInput={(e) => setPassword(e.detail.value!)}
               required
-               style={{ "--padding-start": "13px"}}
-            ></IonInput>
+              style={{ "--padding-start": "20px", "--padding-end": "10px" }}
+            >
+              <IonButton
+                slot="end"
+                fill="clear"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ 
+                  margin: 0,
+                  height: '100%',
+                  color: '#0c0c0cff',
+                  '--padding-start': '8px',
+                  '--padding-end': '8px'
+                }}
+              >
+                <IonIcon 
+                  icon={showPassword ? eyeOff : eye} 
+                  style={{ fontSize: '20px' }}
+                />
+              </IonButton>
+            </IonInput>
           </IonItem>
 
           {/* Forgot Password */}
