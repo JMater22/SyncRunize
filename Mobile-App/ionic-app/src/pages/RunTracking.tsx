@@ -16,10 +16,10 @@ import {
   IonAlert,
 } from "@ionic/react";
 import { arrowBack, walk, locate, locationOutline } from "ionicons/icons";
-import { Geolocation } from '@capacitor/geolocation';
-import Map from '../components/assets/map.png';
-import '../theme/global.css';
-import '../theme/Run-Main.css';
+import { Geolocation } from "@capacitor/geolocation";
+import Map from "../components/assets/map.png";
+import "../theme/global.css";
+import "../theme/Run-Main.css";
 
 interface Position {
   latitude: number;
@@ -37,23 +37,43 @@ export default function RunMap() {
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [showPermissionAlert, setShowPermissionAlert] = useState(false);
 
-  // Get current position on component mount
+  // Ask for permission on startup
   useEffect(() => {
-    getCurrentPosition();
+    const initLocation = async () => {
+      try {
+        setLoading(true);
+        // Request permission — triggers Android popup if needed
+        const { location } = await Geolocation.requestPermissions();
+
+        if (location === "granted") {
+          await getCurrentPosition();
+        } else {
+          setLocationEnabled(false);
+          setShowPermissionAlert(true);
+        }
+      } catch (err) {
+        console.error("Permission request error:", err);
+        setError("Failed to request location permission.");
+        setShowToast(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initLocation();
   }, []);
 
-  // Request permission and get current position
+  // Get the current location
   const getCurrentPosition = async () => {
     setLoading(true);
     setError("");
 
     try {
-      // Check and request permissions
       const permission = await Geolocation.checkPermissions();
-      
-      if (permission.location !== 'granted') {
+
+      if (permission.location !== "granted") {
         const requested = await Geolocation.requestPermissions();
-        if (requested.location !== 'granted') {
+        if (requested.location !== "granted") {
           setError("Location permission denied");
           setShowPermissionAlert(true);
           setLoading(false);
@@ -62,11 +82,10 @@ export default function RunMap() {
         }
       }
 
-      // Get current position with optimized settings for Android
       const position = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
-        timeout: 15000, // Increased timeout for Android
-        maximumAge: 5000 // Allow cached position up to 5 seconds old
+        timeout: 15000,
+        maximumAge: 5000,
       });
 
       setCurrentPosition({
@@ -78,21 +97,19 @@ export default function RunMap() {
       });
 
       setLocationEnabled(true);
-    
-      console.log('Current position:', position.coords);
+      console.log("Current position:", position.coords);
     } catch (err: any) {
-      console.error('Error getting location:', err);
-      
-      // Provide more specific error messages
-      let errorMessage = "Failed to get location";
-      if (err.message.includes('location unavailable')) {
+      console.error("Error getting location:", err);
+
+      let errorMessage = "Failed to get location.";
+      if (err.message?.includes("location unavailable")) {
         errorMessage = "Location unavailable. Please enable GPS.";
-      } else if (err.message.includes('timeout')) {
+      } else if (err.message?.includes("timeout")) {
         errorMessage = "Location request timed out. Try again.";
-      } else if (err.message.includes('permission')) {
+      } else if (err.message?.includes("permission")) {
         errorMessage = "Location permission denied.";
       }
-      
+
       setError(errorMessage);
       setShowToast(true);
       setLocationEnabled(false);
@@ -103,7 +120,7 @@ export default function RunMap() {
 
   return (
     <IonPage>
-      {/* Top Header */}
+      {/* Header */}
       <IonHeader className="dark-header">
         <IonToolbar>
           <IonButtons slot="start">
@@ -120,7 +137,10 @@ export default function RunMap() {
               {loading ? (
                 <IonSpinner name="crescent" />
               ) : (
-                <IonIcon icon={locate} color={locationEnabled ? "success" : "medium"} />
+                <IonIcon
+                  icon={locate}
+                  color={locationEnabled ? "success" : "medium"}
+                />
               )}
             </IonButton>
           </IonButtons>
@@ -129,7 +149,7 @@ export default function RunMap() {
 
       {/* Main Content */}
       <IonContent fullscreen className="run-map-content">
-        {/* Location Status Bar */}
+        {/* Location Info Bar */}
         {currentPosition && (
           <div
             style={{
@@ -150,20 +170,23 @@ export default function RunMap() {
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <IonIcon icon={locationOutline} color="success" />
               <span>
-                {currentPosition.latitude.toFixed(6)}, {currentPosition.longitude.toFixed(6)}
+                {currentPosition.latitude.toFixed(6)},{" "}
+                {currentPosition.longitude.toFixed(6)}
               </span>
             </div>
             {currentPosition.accuracy && (
-              <IonBadge color="success">±{currentPosition.accuracy.toFixed(0)}m</IonBadge>
+              <IonBadge color="success">
+                ±{currentPosition.accuracy.toFixed(0)}m
+              </IonBadge>
             )}
           </div>
         )}
 
-        {/* Map container */}
+        {/* Map Background */}
         <div className="map-container">
           <IonImg src={Map} alt="Running Map" className="map-image" />
 
-          {/* Location indicator on map */}
+          {/* Location Marker */}
           {currentPosition && (
             <div
               style={{
@@ -180,7 +203,6 @@ export default function RunMap() {
                 zIndex: 5,
               }}
             >
-              {/* Pulse animation */}
               <div
                 style={{
                   position: "absolute",
@@ -208,7 +230,7 @@ export default function RunMap() {
             {locationEnabled ? "START" : "ENABLE LOCATION"}
           </IonButton>
 
-          {/* Location status message */}
+          {/* Info Message */}
           {!locationEnabled && !loading && (
             <div
               style={{
@@ -236,18 +258,18 @@ export default function RunMap() {
           isOpen={showPermissionAlert}
           onDidDismiss={() => setShowPermissionAlert(false)}
           header="Location Permission Required"
-          message="This app needs location permission to track your run. Please enable location permissions in your device settings."
+          message="This app needs location permission to track your run. Please enable it in settings or tap Retry."
           buttons={[
             {
-              text: 'Cancel',
-              role: 'cancel'
+              text: "Cancel",
+              role: "cancel",
             },
             {
-              text: 'Retry',
+              text: "Retry",
               handler: () => {
                 getCurrentPosition();
-              }
-            }
+              },
+            },
           ]}
         />
 
@@ -261,7 +283,7 @@ export default function RunMap() {
           position="top"
         />
 
-        {/* CSS for pulse animation */}
+        {/* Pulse Animation */}
         <style>{`
           @keyframes pulse {
             0% {
