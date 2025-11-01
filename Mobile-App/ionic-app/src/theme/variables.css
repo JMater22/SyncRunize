@@ -145,3 +145,43 @@ ion-tab-bar {
   left: 50%;
   transform: translateX(-50%);
 }
+
+/* Tab Bar Styling */
+ion-tab-bar {
+  --background: #0e0c0c;
+  margin-bottom: 0;
+  height: 60px;
+
+}
+
+/* Tab Button - Remove default colors */
+ion-tab-button {
+  --color: #999999;
+  --color-selected: #92C628;
+}
+
+/* SVG Icon Styling - Default (unselected) state */
+.nav-icon {
+  width: 30px;
+  height: 30px;
+  transition: 0.2s ease;
+  filter: brightness(0) saturate(100%) invert(60%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(90%) contrast(90%);
+}
+
+ion-tab-button.tab-selected .nav-icon {
+  filter: brightness(0) saturate(100%) invert(73%) sepia(28%) saturate(1289%) hue-rotate(33deg) brightness(95%) contrast(85%);
+}
+
+/* Tab Button Label - Default state */
+ion-tab-button {
+  color: #999999;
+  font-size: 10px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+}
+
+/* Tab Button Label - Selected state */
+ion-tab-button.tab-selected {
+  color: #92C628;
+  font-weight: 600;
+}

@@ -1,25 +1,18 @@
 import React, { useState, useEffect } from "react";
 import {
   IonPage,
-  IonHeader,
-  IonToolbar,
-  IonButtons,
-  IonBackButton,
-  IonTitle,
   IonContent,
-  IonButton,
   IonIcon,
-  IonImg,
   IonSpinner,
   IonToast,
-  IonBadge,
   IonAlert,
 } from "@ionic/react";
-import { arrowBack, walk, locate, locationOutline } from "ionicons/icons";
-import { Geolocation } from '@capacitor/geolocation';
-import Map from '../components/assets/map.png';
-import '../theme/global.css';
-import '../theme/Run-Main.css';
+import { arrowBack, navigateCircleOutline } from "ionicons/icons";
+import { Geolocation } from "@capacitor/geolocation";
+import PlayCircle from "../components/assets/play_circle.svg";
+import { useHideTabBar } from "../hooks/useHideTabBar";
+import "../theme/global.css";
+import "../theme/Run-Main.css";
 
 interface Position {
   latitude: number;
@@ -29,7 +22,9 @@ interface Position {
   speed?: number | null;
 }
 
-export default function RunMap() {
+const RunMap: React.FC = () => {
+  useHideTabBar();
+
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -37,23 +32,20 @@ export default function RunMap() {
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [showPermissionAlert, setShowPermissionAlert] = useState(false);
 
-  // Get current position on component mount
   useEffect(() => {
     getCurrentPosition();
   }, []);
 
-  // Request permission and get current position
   const getCurrentPosition = async () => {
     setLoading(true);
     setError("");
 
     try {
-      // Check and request permissions
       const permission = await Geolocation.checkPermissions();
-      
-      if (permission.location !== 'granted') {
+
+      if (permission.location !== "granted") {
         const requested = await Geolocation.requestPermissions();
-        if (requested.location !== 'granted') {
+        if (requested.location !== "granted") {
           setError("Location permission denied");
           setShowPermissionAlert(true);
           setLoading(false);
@@ -62,11 +54,10 @@ export default function RunMap() {
         }
       }
 
-      // Get current position with optimized settings for Android
       const position = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
-        timeout: 15000, // Increased timeout for Android
-        maximumAge: 5000 // Allow cached position up to 5 seconds old
+        timeout: 15000,
+        maximumAge: 5000,
       });
 
       setCurrentPosition({
@@ -78,21 +69,19 @@ export default function RunMap() {
       });
 
       setLocationEnabled(true);
-    
-      console.log('Current position:', position.coords);
+      console.log("Current position:", position.coords);
     } catch (err: any) {
-      console.error('Error getting location:', err);
-      
-      // Provide more specific error messages
+      console.error("Error getting location:", err);
+
       let errorMessage = "Failed to get location";
-      if (err.message.includes('location unavailable')) {
+      if (err.message?.includes("location unavailable")) {
         errorMessage = "Location unavailable. Please enable GPS.";
-      } else if (err.message.includes('timeout')) {
+      } else if (err.message?.includes("timeout")) {
         errorMessage = "Location request timed out. Try again.";
-      } else if (err.message.includes('permission')) {
+      } else if (err.message?.includes("permission")) {
         errorMessage = "Location permission denied.";
       }
-      
+
       setError(errorMessage);
       setShowToast(true);
       setLocationEnabled(false);
@@ -103,135 +92,98 @@ export default function RunMap() {
 
   return (
     <IonPage>
-      {/* Top Header */}
-      <IonHeader className="dark-header">
-        <IonToolbar>
-          <IonButtons slot="start">
-            <IonBackButton defaultHref="/HomeModule/homeM1" icon={arrowBack} />
-          </IonButtons>
-          <IonTitle className="header-title">
-            <div className="title-container">
-              <IonIcon className="run-icon" icon={walk}></IonIcon>
-              <span>Run</span>
-            </div>
-          </IonTitle>
-          <IonButtons slot="end">
-            <IonButton onClick={getCurrentPosition} disabled={loading}>
-              {loading ? (
-                <IonSpinner name="crescent" />
-              ) : (
-                <IonIcon icon={locate} color={locationEnabled ? "success" : "medium"} />
-              )}
-            </IonButton>
-          </IonButtons>
-        </IonToolbar>
-      </IonHeader>
-
-      {/* Main Content */}
       <IonContent fullscreen className="run-map-content">
-        {/* Location Status Bar */}
-        {currentPosition && (
-          <div
-            style={{
-              padding: "8px 12px",
-              backgroundColor: "rgba(0, 0, 0, 0.7)",
-              color: "white",
-              fontSize: "12px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              zIndex: 10,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <IonIcon icon={locationOutline} color="success" />
-              <span>
-                {currentPosition.latitude.toFixed(6)}, {currentPosition.longitude.toFixed(6)}
-              </span>
+        <div className="map-container">
+          {/* Back Button - Icon Only */}
+           <button
+          onClick={() => window.location.href = "/routes"}
+          className="back-button-icon"
+        >
+          <IonIcon icon={arrowBack} className="back-icon" />
+        </button>
+
+          {/* Google Maps Iframe */}
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d27403.697792075374!2d120.58200860881004!3d15.48705054784102!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3396c63f4ab68e0d%3A0x13f9415d7a5bfd4b!2sTarlac%20City%2C%20Tarlac!5e0!3m2!1sen!2sph!4v1761910044713!5m2!1sen!2sph"
+            className="map-iframe"
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title="Running Map"
+          />
+
+          {currentPosition && (
+            <div className="location-indicator">
+              <div className="location-pulse" /> 
             </div>
-            {currentPosition.accuracy && (
-              <IonBadge color="success">±{currentPosition.accuracy.toFixed(0)}m</IonBadge>
+          )}
+
+          <button
+            onClick={getCurrentPosition}
+            disabled={loading}
+            className="gps-button"
+          >
+            {loading ? (
+              <IonSpinner name="crescent" className="gps-spinner" />
+            ) : (
+              <IonIcon
+                icon={navigateCircleOutline}
+                className={`gps-icon ${locationEnabled ? 'gps-enabled' : ''}`}
+              />
+            )}
+          </button>
+
+          <div className="stats-panel">
+            <div className={`gps-status-bar ${locationEnabled ? 'gps-acquired' : 'gps-disabled'}`}>
+              <div className="gps-signal-bars">
+                <div className="signal-bar bar-1" />
+                <div className="signal-bar bar-2" />
+                <div className="signal-bar bar-3" />
+                <div className="signal-bar bar-4" />
+                <span className="gps-status-text">
+                  {locationEnabled ? "GPS Acquired" : "No GPS Signal"}
+                </span>
+              </div>
+              <button className="gps-expand-button">⛶</button>
+            </div>
+
+            <div className="stats-row">
+              <div className="stat-item">
+                <div className="stat-value">00:00</div>
+                <div className="stat-label">Time</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-value">--:--</div>
+                <div className="stat-label">Split avg. (/km)</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-value">0</div>
+                <div className="stat-label">Distance (km)</div>
+              </div>
+            </div>
+
+            <div className="start-button-container">
+              <button
+                onClick={() => locationEnabled && (window.location.href = "/notice")}
+                disabled={!locationEnabled}
+                className={`start-run-button ${!locationEnabled ? 'disabled' : ''}`}
+              >
+                <img
+                  src={PlayCircle}
+                  alt="Start Run"
+                  className="start-button-icon"
+                />
+              </button>
+            </div>
+
+            {!locationEnabled && !loading && (
+              <div className="location-prompt">
+                Enable location to start tracking
+              </div>
             )}
           </div>
-        )}
-
-        {/* Map container */}
-        <div className="map-container">
-          <IonImg src={Map} alt="Running Map" className="map-image" />
-
-          {/* Location indicator on map */}
-          {currentPosition && (
-            <div
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                width: "20px",
-                height: "20px",
-                backgroundColor: "#4CAF50",
-                border: "3px solid white",
-                borderRadius: "50%",
-                boxShadow: "0 0 10px rgba(76, 175, 80, 0.8)",
-                zIndex: 5,
-              }}
-            >
-              {/* Pulse animation */}
-              <div
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  width: "40px",
-                  height: "40px",
-                  backgroundColor: "rgba(76, 175, 80, 0.3)",
-                  borderRadius: "50%",
-                  animation: "pulse 2s infinite",
-                }}
-              />
-            </div>
-          )}
-
-          {/* Start Button */}
-          <IonButton
-            className="start-button"
-            color="success"
-            size="large"
-            routerLink="/notice"
-            disabled={!locationEnabled}
-          >
-            {locationEnabled ? "START" : "ENABLE LOCATION"}
-          </IonButton>
-
-          {/* Location status message */}
-          {!locationEnabled && !loading && (
-            <div
-              style={{
-                position: "absolute",
-                bottom: "100px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                backgroundColor: "rgba(0, 0, 0, 0.8)",
-                color: "white",
-                padding: "12px 20px",
-                borderRadius: "8px",
-                fontSize: "14px",
-                textAlign: "center",
-                maxWidth: "80%",
-              }}
-            >
-              <IonIcon icon={locationOutline} style={{ marginRight: "8px" }} />
-              Enable location to start tracking
-            </div>
-          )}
         </div>
 
-        {/* Permission Alert */}
         <IonAlert
           isOpen={showPermissionAlert}
           onDidDismiss={() => setShowPermissionAlert(false)}
@@ -239,19 +191,16 @@ export default function RunMap() {
           message="This app needs location permission to track your run. Please enable location permissions in your device settings."
           buttons={[
             {
-              text: 'Cancel',
-              role: 'cancel'
+              text: "Cancel",
+              role: "cancel",
             },
             {
-              text: 'Retry',
-              handler: () => {
-                getCurrentPosition();
-              }
-            }
+              text: "Retry",
+              handler: () => getCurrentPosition(),
+            },
           ]}
         />
 
-        {/* Toast for errors */}
         <IonToast
           isOpen={showToast}
           onDidDismiss={() => setShowToast(false)}
@@ -260,25 +209,9 @@ export default function RunMap() {
           color="danger"
           position="top"
         />
-
-        {/* CSS for pulse animation */}
-        <style>{`
-          @keyframes pulse {
-            0% {
-              transform: translate(-50%, -50%) scale(1);
-              opacity: 0.7;
-            }
-            50% {
-              transform: translate(-50%, -50%) scale(1.5);
-              opacity: 0.3;
-            }
-            100% {
-              transform: translate(-50%, -50%) scale(2);
-              opacity: 0;
-            }
-          }
-        `}</style>
       </IonContent>
     </IonPage>
   );
-}
+};
+
+export default RunMap;

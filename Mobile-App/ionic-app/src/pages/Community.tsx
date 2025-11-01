@@ -139,7 +139,6 @@ const Community: React.FC = () => {
       <IonHeader className="community-header">
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/HomeModule/homeM1" />
           </IonButtons>
           <IonTitle>Community</IonTitle>
         </IonToolbar>
@@ -183,30 +182,24 @@ const Community: React.FC = () => {
               />
             </div>
               
-           
-            <IonCard className="current-challenge-card">
-              <div className="challenge-image-container">
-                <IonImg src={ChallengePic} alt="Running Challenge" />
-                <div className="challenge-overlay">
-                  <h3 className="challenge-title">Couch to 5k</h3>
-                  <div className="participants">
-                    <IonIcon icon={people} className="participants-icon" />
-                    <span>1,341 participants</span>
-                  </div>
-                </div>
+          <IonCard className="current-challenge-card">
+            <div className="challenge-image-container">
+              <IonImg src={ChallengePic} alt="Running Challenge" />
+              <div className="challenge-badge">
+                <span>Join Challenge</span>
               </div>
-              <IonCardContent className="challenge-content">
-                <div className="progress-section">
-                  <span className="progress-label">Current Progress: 5km</span>
-                  <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: "80%" }}></div>
-                  </div>
-                </div>
-              </IonCardContent>
-            </IonCard>
+            </div>
+            <IonCardContent className="challenge-content">
+              <h3 className="challenge-title">Couch to 5k</h3>
+              <p className="challenge-description">
+                Build from walking to running 5K continuously with intervals.
+              </p>
+              <div className="challenge-details">
+                <span>Target Distance: 5km • Duration: 56 days</span>
+              </div>
+            </IonCardContent>
+          </IonCard>
           
-           
-
             <div className="suggested-section">
               <h2 className="section-title">Suggested Challenge</h2>
               

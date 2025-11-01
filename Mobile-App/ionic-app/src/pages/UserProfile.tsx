@@ -14,7 +14,7 @@ import {
   IonLabel,
   IonAvatar,
   IonGrid,
-  IonRow,
+  IonRow, 
   IonCol,
   IonSelect,
   IonSelectOption,
@@ -36,7 +36,10 @@ export default function Profile() {
       <IonHeader className="dark-header">
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/HomeModule/homeM1/index.html" />
+            <IonBackButton defaultHref="/HomeModule/homeM1/index.html" 
+            className="back-button"
+            text="" />
+          
           </IonButtons>
           <IonTitle>Profile</IonTitle>
           <IonButtons slot="end">

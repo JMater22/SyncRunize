@@ -5,21 +5,28 @@ import {
   IonButton,
   IonIcon
 } from "@ionic/react";
-import { locationSharp } from "ionicons/icons";
-import "../theme/Notice.css"; // custom styles if needed
-import Map from '../components/assets/map.png';
-
+import { useHideTabBar } from "../hooks/useHideTabBar";
+import Recenter from "../components/assets/recenter.svg";
+import "../theme/Notice.css";
 
 const InRunActivity: React.FC = () => {
+  useHideTabBar();
+
   return (
     <IonPage>
       <IonContent fullscreen className="inrun-container">
-        {/* Background Map */}
-        <img
-          src={Map}
-          alt="Running Map Background"
-          className="map-background"
+        {/* Google Maps Iframe */}
+        <iframe
+          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d27403.697792075374!2d120.58200860881004!3d15.48705054784102!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3396c63f4ab68e0d%3A0x13f9415d7a5bfd4b!2sTarlac%20City%2C%20Tarlac!5e0!3m2!1sen!2sph!4v1761910044713!5m2!1sen!2sph"
+          className="map-iframe"
+          allowFullScreen
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          title="Running Map"
         />
+
+        {/* Dark Overlay for Better Readability */}
+        <div className="map-overlay"></div>
 
         {/* Overlay Content */}
         <div className="overlay">
@@ -43,13 +50,25 @@ const InRunActivity: React.FC = () => {
 
           {/* Notice Buttons */}
           <div className="notice-buttons">
-            <IonButton routerLink="/traffic-notice" expand="block" className="notice-btn red">
+            <IonButton
+              routerLink="/traffic-notice"
+              expand="block"
+              className="notice-btn red"
+            >
               TRAFFIC NOTICE
             </IonButton>
-            <IonButton routerLink="/hazard-notice" expand="block" className="notice-btn orange">
+            <IonButton
+              routerLink="/hazard-notice"
+              expand="block"
+              className="notice-btn orange"
+            >
               HAZARD NOTICE
             </IonButton>
-            <IonButton routerLink="/hazard-report" expand="block" className="notice-btn green">
+            <IonButton
+              routerLink="/hazard-report"
+              expand="block"
+              className="notice-btn green"
+            >
               REPORT HAZARD
             </IonButton>
           </div>
@@ -61,7 +80,7 @@ const InRunActivity: React.FC = () => {
             STOP
           </IonButton>
           <IonButton shape="round" className="map-btn">
-            <IonIcon icon={locationSharp} />
+            <IonIcon icon={Recenter} />
           </IonButton>
         </div>
       </IonContent>

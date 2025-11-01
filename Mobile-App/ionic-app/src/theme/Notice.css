@@ -3,23 +3,34 @@
   --background: transparent;
 }
 
-.map-background {
+/* Map Iframe */
+.map-iframe {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  opacity: 0.3; /* faded */
+  border: none;
   z-index: 0;
+}
+
+/* Dark Overlay for Better Readability */
+.map-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* 50% black overlay */
+  z-index: 1;
+  pointer-events: none; /* Allow clicking through to the map */
 }
 
 .overlay {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   text-align: center;
   padding: 20px;
-
 }
 
 /* Metrics */
@@ -40,15 +51,15 @@
 }
 
 .metric-label.time {
-  color: #7FFF00; /* green */
+  color: #92C628; /* green */
 }
 
 .metric-label.pace {
-  color: #ADFF2F; /* yellow-green */
+  color: #92C628; /* yellow-green */
 }
 
 .metric-label.distance {
-  color: #32CD32; /* bright green */
+  color: #92C628; /* bright green */
 }
 
 .metric-value {
@@ -56,11 +67,13 @@
   font-size: 42px;
   font-weight: 800;
   color: white;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8); /* Better text visibility */
 }
 
 .metric-unit {
   font-size: 14px;
   color: white;
+  text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.8);
 }
 
 /* Notice Buttons */
@@ -100,17 +113,17 @@
   display: flex;
   justify-content: center;
   gap: 20px;
-  z-index: 2;
+  z-index: 3;
 }
 
 .stop-btn {
-  --background: #32cd32; /* green */
+  --background: #92C628; /* green */
   --color: black;
   font-weight: bold;
   font-size: 14px;
   border-radius: 50%;
-  width: 70px;   /* fixed size */
-  height: 70px;  /* fixed size */
+  width: 70px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -125,4 +138,10 @@
   border-radius: 50%;
   width: 70px;
   height: 70px;
+}
+
+.recenter-icon {
+  width: 40px;
+  height: 40px;
+  filter: brightness(0) saturate(100%) invert(70%) sepia(89%) saturate(583%) hue-rotate(45deg) brightness(101%) contrast(91%);
 }
