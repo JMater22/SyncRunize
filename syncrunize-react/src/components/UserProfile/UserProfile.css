@@ -77,32 +77,39 @@
   text-align: center;
 }
 
+/* Make the avatar container round */
 .profile-avatar-container {
-  position: absolute;
-  top: -50px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%; /* This makes it round */
+  overflow: hidden; /* Ensures image stays within circle */
 }
 
+/* Make the image itself round */
 .profile-avatar {
-  width: 100px;
-  height: 100px;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  border: 4px solid #ffffff;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  object-fit: cover;
+  object-fit: cover; /* Ensures image fills the circle properly */
 }
 
+/* Optional: Add a border */
+.profile-avatar-container {
+  border: 4px solid white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Online indicator positioning */
 .online-indicator {
   position: absolute;
   bottom: 8px;
   right: 8px;
-  width: 18px;
-  height: 18px;
-  background: #10b981;
-  border: 3px solid #ffffff;
+  width: 20px;
+  height: 20px;
+  background-color: #44d62c;
+  border: 3px solid white;
   border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .profile-details {
@@ -599,6 +606,31 @@ h3.activity-title {
 
 /* ====== Enhanced Badges Grid ====== */
 
+.activities-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem; /* space between cards */
+  margin-top: 1rem;
+}
+
+/* 1-column layout for mobile screens */
+@media (max-width: 768px) {
+  .activities-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Optional: clean card styling */
+.activity-card-modern {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease;
+}
+
+.activity-card-modern:hover {
+  transform: translateY(-4px);
+}
 
 .badges-grid {
   display: grid;
@@ -693,8 +725,9 @@ h3.activity-title {
 }
 
 .badge-image {
-  width: 100px;
-  height: 100px;
+  width: 80%;
+  max-width: 120px;
+  height: auto;
   margin: 16px auto 20px auto;
   filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.15));
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -739,9 +772,41 @@ h3.activity-title {
 
 /* ====== Enhanced Challenges Grid ====== */
 .challenges-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 24px;
+  display: flex;
+  flex-wrap: wrap; /* allow multiple cards per row */
+  gap: 1rem;       /* space between cards */
+  justify-content: flex-start; /* start from left */
+}
+
+.challenge-card-modern {
+  width: 250px;      /* fixed, reasonable width */
+  min-width: 200px;  /* responsive minimum */
+  max-width: 300px;  /* optional max size */
+  flex-shrink: 0;    /* prevent shrinking */
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.challenge-image-container {
+  position: relative;
+  height: 120px;
+  overflow: hidden;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+.challenge-image-container img,
+.challenge-image-container ion-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.challenge-progress-overlay {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
 }
 
 .challenge-card-modern {

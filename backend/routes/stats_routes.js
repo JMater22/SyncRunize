@@ -1,25 +1,14 @@
 // routes/stats_routes.js
 import express from "express";
 import * as StatsController from "../controllers/stats_controller.js";
-import { authenticate } from "../utils/auth_middleware.js";
 
 const router = express.Router();
 
-/**
- * GET /api/stats/current
- * Get current period stats (today/this week/this month)
- * Query params: period=day|week|month (default: month)
- */
-router.get("/current", authenticate, StatsController.getCurrentStats);
+// Example routes:
+// GET /stats/:userId?period=week&start_date=2025-10-01&end_date=2025-10-31
+router.get("/:userId", StatsController.getStats);
 
-/**
- * GET /api/stats
- * Get stats with optional date range filtering
- * Query params: 
- *   - period=day|week|month (default: month)
- *   - start_date=YYYY-MM-DD (optional)
- *   - end_date=YYYY-MM-DD (optional)
- */
-router.get("/", authenticate, StatsController.getStats);
+// GET /stats/:userId/current?period=day
+router.get("/:userId/current", StatsController.getCurrentStats);
 
 export default router;

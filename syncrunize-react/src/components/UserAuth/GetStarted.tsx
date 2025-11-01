@@ -66,9 +66,6 @@ const GetStarted: React.FC = () => {
       checkSession();
     }, [history]);
 
-
-
-
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
 
@@ -91,9 +88,16 @@ const handleSubmit = async (e: React.FormEvent) => {
     });
 
     if (signUpError) {
-      console.error("Signup error:", signUpError.message);
-      setEmailError(signUpError.message);
-      return;
+        console.error("Signup error:", signUpError.message);
+
+        // ✅ Handle already registered case
+        if (signUpError.message.includes("User already registered")) {
+          setEmailError("User already registered. Please log in instead.");
+        } else {
+          setEmailError(signUpError.message);
+        }
+
+        return;
     }
 
     const user = data.user;
@@ -111,9 +115,12 @@ const handleSubmit = async (e: React.FormEvent) => {
       ], { onConflict: "auth_id" }); // Avoid duplicates
 
       if (insertError) {
-        console.error("Insert error:", insertError);
-        alert(`Signup succeeded, but profile creation failed: ${insertError.message}`);
-        return;
+        if (insertError.message.includes("duplicate key value")) {
+            setEmailError("User already registered. Please log in instead.");
+          } else {
+            alert(`Signup succeeded, but profile creation failed: ${insertError.message}`);
+          }
+          return;
       }
         const { data: profileRaw, error: profileError } = await supabase
           .from("users")

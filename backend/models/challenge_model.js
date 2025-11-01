@@ -1,19 +1,23 @@
 // models/challenge_model.js
-import pool from "../utils/db.js";
+import { supabase } from "../utils/supabase.js";
 
 export const getAllChallenges = async () => {
-  const { rows } = await pool.query(
-    `SELECT challenge_id, slug, name, description, target_distance_km, duration_days, intensity
-     FROM challenges ORDER BY created_at DESC`
-  );
-  return rows;
+  const { data, error } = await supabase
+    .from("challenges")
+    .select("challenge_id, slug, name, description, target_distance_km, duration_days, intensity")
+    .order("created_at", { ascending: false });
+  
+  if (error) throw error;
+  return data;
 };
 
 export const getChallengeById = async (challengeId) => {
-  const { rows } = await pool.query(
-    `SELECT challenge_id, slug, name, description, target_distance_km, duration_days, intensity
-     FROM challenges WHERE challenge_id = $1`,
-    [challengeId]
-  );
-  return rows[0];
+  const { data, error } = await supabase
+    .from("challenges")
+    .select("challenge_id, slug, name, description, target_distance_km, duration_days, intensity")
+    .eq("challenge_id", challengeId)
+    .single();
+  
+  if (error) throw error;
+  return data;
 };

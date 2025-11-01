@@ -29,6 +29,7 @@
   import { fileURLToPath } from "url";
   import { swaggerUi, swaggerSpec } from "./utils/swagger.js";
 
+  import emailRoutes from "./routes/email_routes.js";
 
 
   dotenv.config();
@@ -63,8 +64,10 @@
 
   app.use("/api/stats", statsRoutes);
   app.use("/api/routes", userRouteRoutes);
-
+  app.use("/api", emailRoutes);
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+  
   // -----------------------------------------
 console.log('🔍 MAP_SNAPSHOT_PROVIDER:', process.env.MAP_SNAPSHOT_PROVIDER);
   const PORT = process.env.PORT || 5000;

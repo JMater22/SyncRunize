@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   IonPage,
   IonContent,
@@ -13,34 +13,102 @@ import {
 } from "@ionic/react";
 
 import '../components/Activities/Activities.css'; 
+import { supabase } from "../supabaseClient";
+import axios from "axios";
+
+ interface Activity {
+  id: number;
+  date: string;
+  title: string;
+  distance: string;
+  pace: string;
+  time: string;
+  calories: number;
+}
 
 const Activities: React.FC = () => {
+ 
+  const [userRoutes, setUserRoutes] = useState<any[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [showAlert, setShowAlert] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
-  const [activityList, setActivityList] = useState([
-    { date: "Fri, 4/4/2025", title: "Afternoon Run", distance: "4.11 km", pace: "11:58", time: "49:14", calories: 312 },
-    { date: "Sat, 4/5/2025", title: "Morning Run", distance: "13.11 km", pace: "8:20", time: "1:49:14", calories: 892 },
-    { date: "Tues, 4/1/2025", title: "Evening Run", distance: "2.11 km", pace: "4:42", time: "9:54", calories: 156 },
-    { date: "Mon, 3/31/2025", title: "5K Run", distance: "5.12 km", pace: "5:44", time: "29:23", calories: 387 },
-    { date: "Sun, 3/30/2025", title: "Recovery Run", distance: "3.25 km", pace: "7:00", time: "22:45", calories: 245 },
-    { date: "Fri, 3/28/2025", title: "Tempo Run", distance: "8.50 km", pace: "5:00", time: "42:30", calories: 612 },
-    { date: "Wed, 3/26/2025", title: "Hill Training", distance: "6.75 km", pace: "5:40", time: "38:15", calories: 521 },
-    { date: "Mon, 3/24/2025", title: "Long Run", distance: "15.00 km", pace: "6:09", time: "1:32:20", calories: 1043 },
-  ]);
+  const [activityList, setActivityList] = useState<Activity[]>([]);
 
   const handleDeleteClick = (index: number) => {
     setActivityToDelete(index);
     setShowAlert(true);
   };
 
-  const handleConfirmDelete = () => {
-    if (activityToDelete !== null) {
-      // Remove the activity from the list
+  const handleConfirmDelete = async () => {
+    if (activityToDelete === null) return;
+
+    try {
+      // Get the route object to delete
+      const route = activityList[activityToDelete];
+
+      // Call the backend DELETE API
+      await axios.delete(`${import.meta.env.VITE_API_URL}/routes/${route.id}`);
+
+      // Remove from local state only after successful deletion
       const updatedActivities = activityList.filter((_, index) => index !== activityToDelete);
       setActivityList(updatedActivities);
+
+    } catch (error) {
+      console.error("Failed to delete route:", error);
+      alert("Failed to delete activity. Please try again.");
+    } finally {
       setActivityToDelete(null);
+      setShowAlert(false);
     }
   };
+  useEffect(() => {
+    const fetchUserRoutes = async () => {
+      try {
+        // 1. Get Supabase session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!session) return;
+
+        const token = session.access_token;
+
+        // 2. Get current user info
+        const { data: user } = await axios.get(`${import.meta.env.VITE_API_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const userId = user.user_id;
+        setCurrentUserId(userId);
+
+        // 3. Fetch user routes
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/routes/user/${userId}`, {
+          params: { limit: 20, offset: 0 }
+        });
+
+        const routes = Array.isArray(response.data) ? response.data : [];
+
+        setUserRoutes(routes);
+
+        // 4. Map API data to activityList shape
+        const mappedActivities: Activity[] = routes.map((route: any) => ({
+          id: route.route_id,
+          date: new Date(route.created_at).toDateString(),
+          title: route.route_name,
+          distance: `${route.distance_km.toFixed(2)} km`,
+          pace: route.average_pace,
+          time: route.duration_seconds,
+          calories: route.estimated_calories
+        }));
+
+        setActivityList(mappedActivities);
+
+       
+      } catch (error) {
+        console.error("Error fetching user routes:", error);
+      }
+    };
+
+    fetchUserRoutes();
+  }, []);
 
   return (
     <IonPage>

@@ -4,12 +4,19 @@ import { authenticate } from "../utils/auth_middleware.js";
 
 const router = express.Router();
 
+
+// Public: get counts
+router.get("/:userId/followers/count", FollowController.getFollowerCount);
+router.get("/:userId/following/count", FollowController.getFollowingCount);
+router.get("/:userId/counts", FollowController.getFollowCounts); // Get both at once
+
+
 // Public: view followers/following
 router.get("/:userId/followers", FollowController.getFollowers);
 router.get("/:userId/following", FollowController.getFollowing);
 
 // Protected: follow/unfollow
 router.post("/:userId/follow", authenticate, FollowController.followUser);
-router.delete("/:userId/follow", authenticate, FollowController.unfollowUser);
+router.delete("/:userId/unfollow", authenticate, FollowController.unfollowUser); // ⚠️ Changed from /follow to /unfollow
 
 export default router;

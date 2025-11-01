@@ -17,7 +17,7 @@ export const createUserProfile = async (auth_id, name, email, gender = null, age
 export const getUserByAuthId = async (auth_id) => {
   const { data, error } = await supabase
     .from("users")
-    .select("user_id, auth_id, name, email, gender, age, weight_kg, created_at")
+    .select("user_id, auth_id, name, email, gender, age, weight_kg, created_at, profile_picture, description")
     .eq("auth_id", auth_id)
     .single();
 
@@ -29,7 +29,7 @@ export const getUserByAuthId = async (auth_id) => {
 export const getPublicUserById = async (id) => {
   const { data, error } = await supabase
     .from("users")
-    .select("user_id, name, gender, age, created_at")
+    .select("user_id, name, gender, age, created_at, profile_picture, description")
     .eq("user_id", id)
     .single();
 
@@ -39,18 +39,44 @@ export const getPublicUserById = async (id) => {
 
 // Update own profile (by auth_id)
 export const updateUserProfile = async (auth_id, updates) => {
-  const { name, gender, age, weight_kg } = updates;
+  // Destructure only known editable fields to prevent injection or unwanted updates
+  const {
+    name,
+    profile_picture,
+    gender,
+    age,
+    weight_kg,
+    description,
+  } = updates;
+
+  // Construct the update object dynamically to avoid overwriting with undefined values
+  const updateFields = {};
+  if (name !== undefined) updateFields.name = name;
+  if (profile_picture !== undefined) updateFields.profile_picture = profile_picture;
+  if (gender !== undefined) updateFields.gender = gender;
+  if (age !== undefined) updateFields.age = age;
+  if (weight_kg !== undefined) updateFields.weight_kg = weight_kg;
+  if (description !== undefined) updateFields.description = description;
+
+  // Ensure there's at least one field to update
+  if (Object.keys(updateFields).length === 0) {
+    throw new Error("No valid fields provided for update.");
+  }
 
   const { data, error } = await supabase
     .from("users")
-    .update({ name, gender, age, weight_kg })
+    .update(updateFields)
     .eq("auth_id", auth_id)
     .select()
     .single();
 
   if (error) throw error;
+
   return data;
 };
+
+
+
 
 // Delete own profile (by auth_id)
 export const deleteUserProfile = async (auth_id) => {

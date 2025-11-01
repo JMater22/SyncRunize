@@ -22,7 +22,8 @@ import {
   IonAvatar,  
   IonActionSheet,
   IonToast, 
-  IonAlert
+  IonAlert,
+  IonSpinner
 } from "@ionic/react";
 import { settings, trophy, flame, statsChart, close, camera, checkmark, person, logOut } from "ionicons/icons";
 
@@ -37,42 +38,53 @@ import WeekendLongRun from "../assets/Weekend Long Run.jpg";
 import FiftyKMonth from "../assets/The 50K Month.jpg"; 
 import ThreeTimesAWeek from "../assets/Three Times a Week.jpg"; 
 import TenKBeginner from "../assets/10K Beginner.jpg";
-import BronzeBadge from "../assets/badges/Bronze.png";
-import SilverBadge from "../assets/badges/Silver.png";
-import GoldBadge from "../assets/badges/Gold.png";
+// import BronzeBadge from "../assets/badges/Bronze.png";
+// import SilverBadge from "../assets/badges/Silver.png";
+// import GoldBadge from "../assets/badges/Gold.png";
+
 
 import "../components/UserProfile/UserProfile.css";
 import { supabase } from "../supabaseClient";
 import axios from "axios";
 
-const fetchUserData = async () => {
-  try {
-    // Get the current session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) throw sessionError;
-
-    if (!session) {
-      console.log("No active session");
-      return;
-    }
-
-    const token = session.access_token; // use this for authorization header
-
-    const response = await axios.get("https://localhost:5000/api/users", {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-
-    console.log(response.data);
-  } catch (error) {
-    console.error("Error fetching user data:", error);
-  }
-};
 
 
 
 const Profile: React.FC = () => {
+
+  const [badgeImages, setBadgeImages] = useState<{
+    Bronze?: string;
+    Silver?: string;
+    Gold?: string;
+  }>({});
+  // New state for earned badges from user_challenges
+  const [earnedBadges, setEarnedBadges] = useState<any[]>([]);
+  const [loadingBadges, setLoadingBadges] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
+  useEffect(() => {
+  const fetchBadges = async () => {
+    const bucket = 'assets';
+    const folder = 'badges';
+    const badges = ['Bronze.png', 'Silver.png', 'Gold.png'];
+    const badgeUrls: Record<string, string> = {};
+
+    for (const badge of badges) {
+      const { data } = supabase
+        .storage
+        .from(bucket)
+        .getPublicUrl(`${folder}/${badge}`);
+        
+      badgeUrls[badge.split('.')[0]] = data.publicUrl;
+    }
+
+    setBadgeImages(badgeUrls);
+  };
+
+  fetchBadges();
+}, []);
+
+
   const history = useHistory();
   const [activeTab, setActiveTab] = useState<"activities" | "badges" | "challenges">("activities");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -83,39 +95,126 @@ const Profile: React.FC = () => {
   const [followersModalType, setFollowersModalType] = useState<"followers" | "following">("followers");
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month'>('day');
   
+  const [userRoutes, setUserRoutes] = useState<any[]>([]);
+  const [loadingRoutes, setLoadingRoutes] = useState(false);
+
   // Profile data state
   const [profileData, setProfileData] = useState({
-    Name: "Alexander",
-    description: "Running enthusiast • Fitness lover • Goal crusher",
-    profilePic: ProfilePic
+    Name: "",
+    description: "",
+    profilePic: "https://ionicframework.com/docs/img/demos/avatar.svg"
   });
+
+  const [followersCount, setFollowersCount] = useState(1);
+  const [followingCount, setFollowingCount] = useState(0);
   
-  const statsData = {
-    day: {
-      title: 'Today',
-      runs: 1,
-      time: '45m',
-      distance: '5.2 km',
-      pace: '8:39 /km',
-      calories: '420 kcal'
-    },
-    week: {
-      title: 'This Week',
-      runs: 3,
-      time: '4h 22m',
-      distance: '7.2 km',
-      pace: '7:15 /km',
-      calories: '850 kcal'
-    },
-    month: {
-      title: 'This Month',
-      runs: 12,
-      time: '18h 45m',
-      distance: '28.5 km',
-      pace: '6:58 /km',
-      calories: '3,420 kcal'
-    }
+  // const statsData = {
+  //   day: {
+  //     title: 'Today',
+  //     runs: 1,
+  //     time: '45m',
+  //     distance: '5.2 km',
+  //     pace: '8:39 /km',
+  //     calories: '420 kcal'
+  //   },
+  //   week: {
+  //     title: 'This Week',
+  //     runs: 3,
+  //     time: '4h 22m',
+  //     distance: '7.2 km',
+  //     pace: '7:15 /km',
+  //     calories: '850 kcal'
+  //   },
+  //   month: {
+  //     title: 'This Month',
+  //     runs: 12,
+  //     time: '18h 45m',
+  //     distance: '28.5 km',
+  //     pace: '6:58 /km',
+  //     calories: '3,420 kcal'
+  //   }
+  // };
+
+interface Route {
+  distance_km: number;
+  duration_seconds: number;
+  calories: number;
+  created_at: string;
+}
+  
+interface StatSummary {
+  title: string;
+  runs_count: number;
+  total_distance: string;
+  avg_pace: string;
+  total_calories: string;
+}
+
+const [statsData, setStatsData] = useState<{
+  day: StatSummary;
+  week: StatSummary;
+  month: StatSummary;
+}>({
+  day: { title: "Today", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+  week: { title: "This Week", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+  month: { title: "This Month", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+});
+
+
+//statistics
+useEffect(() => {
+  if (!userRoutes || userRoutes.length === 0) return;
+
+  // Helper function to calculate pace (min/km)
+  const calculatePace = (durationSeconds: number, distanceKm: number) => {
+    if (distanceKm === 0) return "0:00 /km";
+    const pace = durationSeconds / 60 / distanceKm; // min per km
+    const minutes = Math.floor(pace);
+    const seconds = Math.round((pace - minutes) * 60);
+    return `${minutes}:${seconds.toString().padStart(2, "0")} /km`;
   };
+
+  const now = new Date();
+
+  // Helper to filter routes by time period
+  const filterByPeriod = (routes: any[], days: number) =>
+    routes.filter(route => {
+      const created = new Date(route.created_at);
+      const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+      return diffDays <= days;
+    });
+
+  const calcStats = (filteredRoutes: any[]) => {
+    const runs_count = filteredRoutes.length;
+    const total_distance = filteredRoutes.reduce((sum, r) => sum + (r.distance_km || 0), 0);
+    const total_duration = filteredRoutes.reduce((sum, r) => sum + (r.duration_seconds || 0), 0);
+    const estimated_calories = filteredRoutes.reduce((sum, r) => sum + (r.estimated_calories || 0), 0);
+    const avg_pace = total_duration && total_distance
+      ? calculatePace(total_duration, total_distance)
+      : "0:00 /km";
+
+    return {
+      runs_count,
+      total_distance: `${total_distance.toFixed(1)} km`,
+      avg_pace,
+      total_calories: `${Math.round(estimated_calories)} kcal`
+    };
+  };
+
+  // Compute by period
+  const dayRoutes = filterByPeriod(userRoutes, 1);
+  const weekRoutes = filterByPeriod(userRoutes, 7);
+  const monthRoutes = filterByPeriod(userRoutes, 30);
+
+  setStatsData({
+    day: { title: "Today", ...calcStats(dayRoutes) },
+    week: { title: "This Week", ...calcStats(weekRoutes) },
+    month: { title: "This Month", ...calcStats(monthRoutes) },
+  });
+}, [userRoutes]);
+
+
+  
 
     // Fetch user data on mount
   useEffect(() => {
@@ -123,26 +222,67 @@ const Profile: React.FC = () => {
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
-
       if (!session) return;
 
       const token = session.access_token;
-      const response = await axios.get("http://localhost:5000/api/users/me", {
-        headers: { Authorization: `Bearer ${token}` }
+      const { data: user } = await axios.get(`${import.meta.env.VITE_API_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
+      setCurrentUserId(user.user_id);
+
       setProfileData({
-        Name: response.data.name || "Unknown User",
-        description: response.data.description || "",
-        profilePic: response.data.profilePic || ProfilePic
+        Name: user.name || "Unknown User",
+        description: user.description || "",
+        profilePic: user.profile_picture || profileData.profilePic,
       });
+      console.log(user.description);
+      // Fetch both counts at once (more efficient!)
+      const { data: counts } = await axios.get(
+        `${import.meta.env.VITE_API_URL}/follows/${user.user_id}/counts`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setFollowersCount(counts.followers);
+      setFollowingCount(counts.following); // If you need following count too
+      await fetchEarnedBadges(user.user_id, token);
     } catch (error) {
-      console.error(error);
+      console.error("Error fetching user data or counts:", error);
     }
   };
 
   fetchUserData();
+
 }, []);
+
+  const fetchEarnedBadges = async (userId: number, token: string) => {
+    try {
+      setLoadingBadges(true);
+      
+      const { data: response } = await axios.get(
+        `${import.meta.env.VITE_API_URL}/routes/badges/${userId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Filter only completed challenges with badges
+      const badges = response.data
+        .filter((challenge: any) => challenge.completed && challenge.badge_image_url)
+        .map((challenge: any) => ({
+          title: challenge.badge_name || "Badge",
+          description: challenge.badge_description || "Achievement unlocked",
+          tier: challenge.badge_tier || "Bronze",
+          earned: true,
+          date: new Date(challenge.updated_at).toLocaleDateString(),
+          image: challenge.badge_image_url
+        }));
+
+      setEarnedBadges(badges);
+      setLoadingBadges(false);
+    } catch (error) {
+      console.error("Error fetching earned badges:", error);
+      setLoadingBadges(false);
+    }
+  };
 
   const currentStats = statsData[timeRange];
 
@@ -150,72 +290,35 @@ const Profile: React.FC = () => {
   const [editForm, setEditForm] = useState({ ...profileData });
 
   // Active challenges data aligned with new challenges
-  const activeChallengesData = [
-    { 
-      title: "Couch to 5K", 
-      progress: 45, 
-      target: "Build from walking to running 5K continuously", 
-      timeLeft: "38 days left",
-      duration: "56 days (8 weeks)",
-      image: Challenges
-    },
-    { 
-      title: "The 7-Day Starter", 
-      progress: 71, 
-      target: "Run at least 1 kilometer every day for a week", 
-      timeLeft: "2 days left",
-      duration: "7 days",
-      image: SevenDayStarter
-    },
-    { 
-      title: "30-Day Streak", 
-      progress: 53, 
-      target: "Run at least 1 mile every day for a month", 
-      timeLeft: "14 days left",
-      duration: "30 days",
-      image: ThirtyDayStreak
-    },
-    { 
-      title: "5K Improver", 
-      progress: 60, 
-      target: "Work on improving your 5K time with structured training", 
-      timeLeft: "17 days left",
-      duration: "42 days (6 weeks)",
-      image: FiveKImprover
-    },
-    { 
-      title: "Weekend Long Run", 
-      progress: 35, 
-      target: "Do one longer run each weekend, building to 10 km", 
-      timeLeft: "36 days left",
-      duration: "56 days (8 weeks)",
-      image: WeekendLongRun
-    },
-    { 
-      title: "The 50K Month", 
-      progress: 48, 
-      target: "Accumulate 50 kilometers total over the month at your pace", 
-      timeLeft: "16 days left",
-      duration: "30 days",
-      image: FiftyKMonth
-    },
-    { 
-      title: "Three Times a Week", 
-      progress: 67, 
-      target: "Run three days per week with rest days between", 
-      timeLeft: "10 days left",
-      duration: "30 days",
-      image: ThreeTimesAWeek
-    },
-    { 
-      title: "10K Beginner", 
-      progress: 30, 
-      target: "Progress from 5K to completing 10K distance", 
-      timeLeft: "44 days left",
-      duration: "63 days (9 weeks)",
-      image: TenKBeginner
+const [userChallenges, setUserChallenges] = useState<any[]>([]);
+
+useEffect(() => {
+  const fetchUserChallenges = async () => {
+    if (!currentUserId) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/routes/challenges/${currentUserId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Use response.data.challenges instead of response.data
+      setUserChallenges(
+        Array.isArray(response.data.challenges) ? response.data.challenges : []
+      );
+
+    } catch (error) {
+      console.error("Error fetching user challenges:", error);
     }
-  ];
+  };
+
+  fetchUserChallenges();
+}, [currentUserId]);
+
+
 
   // Mock data for followers and following
   const [followersData, setFollowersData] = useState([
@@ -240,6 +343,88 @@ const Profile: React.FC = () => {
     { id: 8, name: "Jane Smith", username: "jane_triathlon", avatar: ProfilePic, isFollowing: true, mutualFollows: 4 }
   ]);
 
+
+
+  // Add this useEffect to fetch user routes
+useEffect(() => {
+  const fetchUserRoutes = async () => {
+    if (!currentUserId) return;
+
+    try {
+      setLoadingRoutes(true);
+      
+      // No need for authentication token
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/routes/user/${currentUserId}`,
+        { 
+          params: {
+            limit: 20,
+            offset: 0
+          }
+        }
+      );
+
+      setUserRoutes(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error("Error fetching user routes:", error);
+    } finally {
+      setLoadingRoutes(false);
+    }
+  };
+
+  fetchUserRoutes();
+}, [currentUserId]);
+
+
+// Helper function to format duration from seconds or string
+const formatDuration = (duration: any) => {
+  if (!duration) return '00:00:00';
+  
+  // If duration is already a string in HH:MM:SS format
+  if (typeof duration === 'string' && duration.includes(':')) {
+    return duration;
+  }
+  
+  // If duration is in seconds
+  const totalSeconds = typeof duration === 'number' ? duration : parseInt(duration);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};
+
+// Helper function to format distance
+const formatDistance = (distance: number) => {
+  if (!distance) return '0.0 km';
+  return `${(distance / 1000).toFixed(1)} km`;
+};
+
+// Helper function to format date
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  if (date.toDateString() === today.toDateString()) {
+    return 'Today';
+  } else if (date.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday';
+  } else {
+    const daysAgo = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysAgo < 7) {
+      return `${daysAgo} days ago`;
+    }
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+};
+
+
+
+const [showAllActivities, setShowAllActivities] = useState(false);
+
+
   const handleFollowToggle = (userId: number, currentType: "followers" | "following") => {
     if (currentType === "followers") {
       setFollowersData(prevData => 
@@ -261,22 +446,91 @@ const Profile: React.FC = () => {
     setIsFollowersModalOpen(true);
   };
 
-  const handleSaveProfile = () => {
-    setProfileData({ ...editForm });
+const handleSaveProfile = async () => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) throw new Error("No active session");
+
+    // Prepare payload (match backend field names)
+    const updateData = {
+      name: editForm.Name,
+      description: editForm.description,
+      profile_picture: editForm.profilePic,
+    };
+
+    // Send update request
+    const response = await axios.put(
+      `${import.meta.env.VITE_API_URL}/users/update-me`,
+      updateData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    // Update frontend state on success
+    setProfileData({
+      Name: response.data.name || editForm.Name,
+      description: response.data.description || editForm.description,
+      profilePic: response.data.profile_picture || editForm.profilePic,
+    });
+
     setIsEditModalOpen(false);
     setShowToast(true);
-  };
+  } catch (error) {
+    console.error("Error updating profile:", error);
+  }
+};
+
 
   const handleCancelEdit = () => {
     setEditForm({ ...profileData });
     setIsEditModalOpen(false);
   };
 
-  const handleImageSelection = (source: string) => {
-    console.log(`Image selected from: ${source}`);
-    setIsActionSheetOpen(false);
-  };
+  const handleImageSelection = async (source: string) => {
+    try {
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = "image/*";
+      fileInput.click();
 
+      fileInput.onchange = async () => {
+        const file = fileInput.files?.[0];
+        if (!file) return;
+
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+        const filePath = `profile-pictures/${fileName}`;
+
+        // Upload to Supabase Storage (bucket: assets)
+        const { data, error } = await supabase.storage
+          .from("assets")
+          .upload(filePath, file, { upsert: true });
+
+        if (error) throw error;
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from("assets")
+          .getPublicUrl(filePath);
+
+        const publicUrl = urlData.publicUrl;
+
+        // Update the edit form preview
+        setEditForm((prev) => ({ ...prev, profilePic: publicUrl }));
+
+        console.log("Profile picture uploaded:", publicUrl);
+      };
+
+      setIsActionSheetOpen(false);
+    } catch (err) {
+      console.error("Error uploading profile picture:", err);
+    }
+  };
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -303,7 +557,6 @@ const Profile: React.FC = () => {
             <div className="profile-info-card">
               <div className="profile-avatar-container">
                 <IonImg src={profileData.profilePic} alt="Profile" className="profile-avatar" />
-                <div className="online-indicator"></div>
               </div>
               
               <div className="profile-details">
@@ -320,20 +573,20 @@ const Profile: React.FC = () => {
                     className="stat-item clickable-stat" 
                     onClick={() => openFollowersModal("followers")}
                   >
-                    <span className="stat-number">32</span>
+                        <span className="stat-number">{followersCount}</span>
                     <span className="stat-label">Followers</span>
                   </div>
                   <div className="stat-divider"></div>
-                  <div 
+                  <div  
                     className="stat-item clickable-stat" 
                     onClick={() => openFollowersModal("following")}
                   >
-                    <span className="stat-number">21</span>
+                    <span className="stat-number">{followingCount}</span>
                     <span className="stat-label">Following</span>
                   </div>
                   <div className="stat-divider"></div>
                   <div className="stat-item">
-                    <span className="stat-number">156</span>
+                    <span className="stat-number">{userRoutes.length}</span>
                     <span className="stat-label">Activities</span>
                   </div>
                 </div>
@@ -399,31 +652,25 @@ const Profile: React.FC = () => {
                       <div className="stats-item">
                         <div className="stats-content">
                           <span className="stats-label">Runs</span>
-                          <span className="stats-value">{currentStats.runs}</span>
-                        </div>
-                      </div>
-                      <div className="stats-item">
-                        <div className="stats-content">
-                          <span className="stats-label">Time</span>
-                          <span className="stats-value">{currentStats.time}</span>
+                          <span className="stats-value">{currentStats.runs_count}</span>
                         </div>
                       </div>
                       <div className="stats-item">
                         <div className="stats-content">
                           <span className="stats-label">Distance</span>
-                          <span className="stats-value">{currentStats.distance}</span>
+                          <span className="stats-value">{currentStats.total_distance}</span>
                         </div>
                       </div>
                       <div className="stats-item">
                         <div className="stats-content">
                           <span className="stats-label">Pace</span>
-                          <span className="stats-value">{currentStats.distance}</span>
+                          <span className="stats-value">{currentStats.avg_pace}</span>
                         </div>
                       </div>
                       <div className="stats-item">
                         <div className="stats-content">
                           <span className="stats-label">Calories</span>
-                          <span className="stats-value">{currentStats.calories}</span>
+                          <span className="stats-value">{currentStats.total_calories}</span>
                         </div>
                       </div>
                     </div>
@@ -434,112 +681,178 @@ const Profile: React.FC = () => {
               {/* Enhanced Main Content */}
               <IonCol size="12" sizeLg="9" className="main-content-col">
                 {/* Activities Section */}
-                {activeTab === "activities" && (
-                  <div className="content-section">
-                    <div className="section-header">
-                      <h2>All Activities</h2>
-                      <IonButton fill="clear" className="view-all-btn">View All</IonButton>
-                    </div>
+{activeTab === "activities" && (
+  <div className="content-section">
+    <div className="section-header">
+      <h2>Your Activities</h2>
+      {userRoutes.length > 3 && (
+        <IonButton
+          fill="clear"
+          className="view-all-btn"
+          onClick={() => setShowAllActivities(!showAllActivities)}
+        >
+          {showAllActivities ? "Show Less" : "View All"}
+        </IonButton>
+      )}
+    </div>
 
-                    <div className="activities-grid">
-                      {[
-                        { title: "Morning Run", distance: "16.3 km", time: "02:43:51", badges: 5, type: "run" },
-                        { title: "Evening Jog", distance: "8.5 km", time: "01:15:23", badges: 3, type: "jog" },
-                        { title: "Trail Run", distance: "12.1 km", time: "02:05:12", badges: 4, type: "trail" },
-                        { title: "Morning Run", distance: "16.3 km", time: "02:43:51", badges: 5, type: "run" },
-                        { title: "Evening Jog", distance: "8.5 km", time: "01:15:23", badges: 3, type: "jog" },
-                        { title: "Trail Run", distance: "12.1 km", time: "02:05:12", badges: 4, type: "trail" }
-                      ].map((activity, i) => (
-                        <IonCard key={i} className="activity-card-modern">
-                          <div className="activity-header">
-                            <div className="activity-type-badge">{activity.type}</div>
-                            <div className="activity-date">Today</div>
-                          </div>
-                          <IonCardContent className="activity-content">
-                            <h3 className="activity-title">{activity.title}</h3>
-                            <div className="activity-stats">
-                              <div className="activity-stat">
-                                <span>{activity.distance}</span>
-                              </div>
-                              <div className="activity-stat">
-                                <span>{activity.time}</span>
-                              </div>
-                              <div className="activity-stat">
-                                <span>{activity.badges} badges</span>
-                              </div>
-                            </div>
-                            <div className="activity-map">
-                              <IonImg src={MapImage} alt="Activity Map" />
-                            </div>
-                          </IonCardContent>
-                        </IonCard>
-                      ))}
-                    </div>
-                  </div>
-                )}
+    {loadingRoutes ? (
+      <div className="loading-center">
+        <IonSpinner name="crescent" />
+        <p>Loading activities...</p>
+      </div>
+    ) : userRoutes.length === 0 ? (
+      <div className="loading-center">
+        <p>No activities yet. Start running to see your progress here!</p>
+      </div>
+    ) : (
+      <div className="activities-list">
+        {(showAllActivities ? userRoutes : userRoutes.slice(0, 3)).map((route, index) => (
+          <IonCard key={route.route_id || index} className="activity-card-modern">
+            <IonCardContent>
+              <div className="activity-top">
+                <div className="activity-meta">
+                  <span className="activity-type">
+                    {route.route_type?.charAt(0).toUpperCase() + route.route_type?.slice(1) || "Run"}
+                  </span>
+                  <span className="activity-date">{formatDate(route.created_at)}</span>
+                </div>
+
+                <h3 className="activity-title">
+                  {route.route_name || "Untitled Route"}
+                </h3>
+              </div>
+
+              <div className="activity-stats-row">
+                <div className="activity-stat">
+                  <strong>{route.distance_km}</strong>
+                  <span>Distance</span>
+                </div>
+                <div className="activity-stat">
+                  <strong>{formatDuration(route.duration_seconds)}</strong>
+                  <span>Duration</span>
+                </div>
+                <div className="activity-stat">
+                  <strong>{route.average_pace || "N/A"}</strong>
+                  <span>Pace</span>
+                </div>
+              </div>
+
+              <div className="activity-map">
+                <IonImg src={route.map_image_url || MapImage} alt="Activity Map" />
+              </div>
+            </IonCardContent>
+          </IonCard>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
               {/* Badges Section - Only 3 Animated Badges */}
               {activeTab === "badges" && (
                 <div className="content-section">
                   <div className="section-header">
                     <h2>Achievement Badges</h2>
+                    <span className="badge-count">{earnedBadges.length} earned</span>
                   </div>
 
-                  <div className="badges-grid">
-                    {[
-                      { title: "Bronze", description: "Your first animated achievement", tier: "Bronze", earned: true, date: "2 days ago", image: BronzeBadge },
-                      { title: "Silver", description: "Unlocked through dedication", tier: "Silver", earned: true, date: "1 week ago", image: SilverBadge },
-                      { title: "Gold", description: "Elite achievement unlocked", tier: "Gold", earned: true, date: "3 weeks ago", image: GoldBadge }
-                    ].map((badge, i) => (
-                      <IonCard key={i} className={`badge-card-modern ${!badge.earned ? 'locked' : ''}`}>
-                        <div className={`badge-glow ${badge.tier.toLowerCase()}`}></div>
-                        <div className={`badge-tier-label ${badge.tier.toLowerCase()}`}>{badge.tier}</div>
-                        <IonImg src={badge.image} alt={badge.title} className="badge-image" />
-                        <IonCardContent>
-                          <h4 className="badge-title">{badge.title}</h4>
-                          <p className="badge-description">{badge.description}</p>
-                          <div className={`badge-earned ${!badge.earned ? 'locked-text' : ''}`}>
-                            {badge.earned ? `Earned ${badge.date}` : badge.date}
-                          </div>
-                        </IonCardContent>
-                      </IonCard>
-                    ))}
-                  </div>
+                  {loadingBadges ? (
+                    <div className="loading-center">
+                      <IonSpinner name="crescent" />
+                      <p>Loading badges...</p>
+                    </div>
+                  ) : earnedBadges.length === 0 ? (
+                    <div className="loading-center">
+                      <p>No badges earned yet. Complete challenges to earn badges!</p>
+                    </div>
+                  ) : (
+                    <div className="badges-grid">
+                      {earnedBadges.map((badge, i) => (
+                        <IonCard key={i} className={`badge-card-modern ${!badge.earned ? 'locked' : ''}`}>
+                          <div className={`badge-glow ${badge.tier.toLowerCase()}`}></div>
+                          <IonImg src={badge.image} alt={badge.title} className="badge-image" />
+                          <IonCardContent>
+                            <h4 className="badge-title">{badge.title}</h4>
+                            <p className="badge-description">{badge.description}</p>
+                            <div className={`badge-earned ${!badge.earned ? 'locked-text' : ''}`}>
+                              Earned {badge.date}
+                            </div>
+                          </IonCardContent>
+                        </IonCard>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
                {/* Challenges Section - Updated with new challenge data */}
-                  {activeTab === "challenges" && (
-                    <div className="content-section">
-                      <div className="section-header">
-                        <h2>Active Challenges</h2>
-                        <IonButton fill="clear" className="browse-challenges">Browse More</IonButton>
-                      </div>
+                {activeTab === "challenges" && (
+                  <div className="content-section">
 
-                      <div className="challenges-grid">
-                        {activeChallengesData.map((challenge, i) => (
-                          <IonCard key={i} className="challenge-card-modern">
-                            <div className="challenge-image-container">
-                              <IonImg src={challenge.image} alt={challenge.title} />
-                              <div className="challenge-progress-overlay">
-                                <div className="progress-circle">
-                                  <span className="progress-text">{challenge.progress}%</span>
+                    {/* Active Challenges */}
+                    <div className="section-header">
+                      <h2>Active Challenges</h2>
+                      <IonButton fill="clear" className="browse-challenges">Browse More</IonButton>
+                    </div>
+
+                    <div className="challenges-grid">
+                      {userChallenges.filter((challenge) => challenge.progress_percent < 100).length === 0 ? (
+                        <p>No active challenges yet.</p>
+                      ) : (
+                        userChallenges
+                          .filter((challenge) => challenge.progress_percent < 100)
+                          .map((challenge, i) => (
+                            <IonCard key={i} className="challenge-card-modern">
+                              <div className="challenge-image-container">
+                                <IonImg src={challenge.challenge_image} alt={challenge.challenge_name} />
+                                <div className="challenge-progress-overlay">
+                                  <div className="progress-circle">
+                                    <span className="progress-text">{Math.round(challenge.progress_percent) || 0}%</span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <IonCardContent>
-                              <h4 className="challenge-title">{challenge.title}</h4>
-                              <p className="challenge-target">{challenge.target}</p>
-                              <p className="challenge-duration">{challenge.duration}</p>
-                              <div className="challenge-footer">
-                                <span className="challenge-time">{challenge.timeLeft}</span>
-                              </div>
-                            </IonCardContent>
-                          </IonCard>
-                        ))}
-                      </div>
+                              <IonCardContent>
+                                <h4 className="challenge-title">{challenge.challenge_name}</h4>
+                                <p className="challenge-target">{challenge.challenge_description}</p>
+                                <p className="challenge-duration">{challenge.challenge_duration_days} days</p>
+                              </IonCardContent>
+                            </IonCard>
+                          ))
+                      )}
                     </div>
-                  )}
+
+                    {/* Completed Challenges */}
+                    <div className="section-header completed-header">
+                      <h2>Completed Challenges</h2>
+                    </div>
+
+                    <div className="challenges-grid">
+                      {userChallenges.filter((challenge) => challenge.progress_percent >= 100).length === 0 ? (
+                        <p>No completed challenges yet.</p>
+                      ) : (
+                        userChallenges
+                          .filter((challenge) => challenge.progress_percent >= 100)
+                          .map((challenge, i) => (
+                            <IonCard key={i} className="challenge-card-modern completed">
+                              <div className="challenge-image-container">
+                                <IonImg src={challenge.challenge_image} alt={challenge.challenge_name} />
+                                <div className="challenge-completed-overlay">
+                                  <span className="completed-text">Completed</span>
+                                </div>
+                              </div>
+                              <IonCardContent>
+                                <h4 className="challenge-title">{challenge.challenge_name}</h4>
+                                <p className="challenge-target">{challenge.challenge_description}</p>
+                                <p className="challenge-duration">{challenge.challenge_duration_days} days</p>
+                              </IonCardContent>
+                            </IonCard>
+                          ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
               </IonCol>
             </IonRow>
           </IonGrid>
@@ -715,7 +1028,7 @@ const Profile: React.FC = () => {
               {/* Form Fields */}
               <div className="edit-form-fields">
                 <IonItem className="edit-form-item">
-                  <IonLabel position="stacked">First Name</IonLabel>
+                  <IonLabel position="stacked">Full Name</IonLabel>
                   <IonInput
                     value={editForm.Name}
                     onIonInput={(e) => setEditForm({
@@ -740,6 +1053,7 @@ const Profile: React.FC = () => {
                     className="edit-textarea"
                   />
                 </IonItem>
+                
               </div>
 
               {/* Action Buttons */}
