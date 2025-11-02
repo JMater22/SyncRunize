@@ -1,0 +1,480 @@
+/* ===== Challenges Page ===== */
+.challenges-page {
+  background-color: #ffffff;
+}
+
+/* Main Challenge Section */
+.main-challenge-row {
+  margin: 40px 0;
+  justify-content: center;
+  gap: 32px;
+  margin-bottom: 120px;
+}
+ 
+/* Suggested Challenges Container */
+.suggested-container { 
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  padding: 20px; 
+  margin-top: 100px;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ===== Main Challenge Card ===== */
+.challenge-card {
+  background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  padding: 32px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 480px;
+  width: 100%;
+  border: 1px solid rgba(146, 198, 40, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.challenge-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 20px 20px 0 0;
+}
+
+.challenge-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+}
+
+.challenge-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: #161515;
+  margin-bottom: 16px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+ion-card-content .friends-info {
+  font-size: 18px;
+  margin-bottom: 24px;
+  color: #6b7280;
+  font-weight: 500;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ===== BUTTON ANIMATION CONTAINER ===== */
+.button-animation-container {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 100px;
+  position: relative;
+}
+
+.button-animation-container.joined {
+  min-height: 140px;
+}
+
+/* Join Challenge Button Styles */
+.join-challenge-btn,
+.main-challenge-btn,
+.suggested-join-btn {
+  --background: #92C628;
+  --color: #fff;
+  border-radius: 24px;
+  font-weight: bold;
+  padding: 12px 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.suggested-join-btn {
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 0;
+  margin-top: 12px;
+  text-transform: none;
+}
+
+.join-challenge-btn:hover:not(:disabled),
+.suggested-join-btn:hover:not(:disabled) {
+  --background: #7aa820;
+  transform: scale(1.02);
+}
+
+/* "Joined" state animation */
+.join-challenge-btn.show-joined,
+.suggested-join-btn.show-joined {
+  --background: #2ecc71;
+  animation: pulseJoined 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes pulseJoined {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Leave Challenge Button Styles */
+.leave-challenge-btn {
+  --background: #e74c3c;
+  --color: #fff;
+  border-radius: 24px;
+  font-weight: bold;
+  padding: 12px 0;
+  margin-top: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.suggested-join-btn.leave-challenge-btn {
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 0;
+}
+
+.leave-challenge-btn:hover {
+  --background: #c0392b;
+  transform: scale(1.02);
+}
+
+@keyframes slideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== PROGRESS SECTION STYLES ===== */
+.progress-section {
+  animation: slideDown 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  animation-fill-mode: forwards;
+  padding-top: 8px;
+  margin-bottom: 8px;
+}
+
+@keyframes slideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.progress-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.progress-percentage {
+  font-size: 14px;
+  font-weight: 700;
+  color: #92C628;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: #e1e8ed;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #92C628 0%, #a0d468 100%);
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.progress-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #8899a6;
+  margin: 0;
+  text-align: center;
+}
+
+/* Challenge Details */
+.challenge-details .detail-item {
+  gap: 1px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 16px;
+  color: #333;
+}
+
+.detail-icon {
+  font-size: 20px;
+  color: #92C628;
+}
+
+/* Challenge Image */ 
+.challenge-image-col ion-img {
+  border-radius: 30px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  object-fit: cover;
+}
+
+/* Suggested Challenges Section */
+.suggested-header {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 30px 0 20px 0;
+  color: #2c3e50;
+}
+
+.suggested-row {
+  margin-top: 20px;
+  gap: 0;
+  margin-bottom: 100px;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.suggested-row ion-col {
+  padding: 10px;
+  flex: 0 0 25%;
+  max-width: 25%;
+}
+
+.suggested-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+  height: 100%;
+  margin: 0;
+}
+
+.suggested-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.suggested-card ion-img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.suggested-card .challenge-subtitle {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #161515;
+  line-height: 1.3;
+}
+
+.suggested-card .challenge-description {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
+
+.suggested-card .challenge-date {
+  font-size: 13px;
+  color: #888;
+  margin-top: 0;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1024px) {
+  .main-challenge-row {
+    margin-left: 20px;
+    margin-right: 20px;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .suggested-container {
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+
+  .suggested-row {
+    gap: 16px;
+  }
+
+  .suggested-row ion-col {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+
+  .challenge-image-col ion-img {
+    width: 100%;
+    height: auto;
+  }
+}
+
+/* ✅ Mobile & Small Tablets */
+@media (max-width: 768px) {
+  /* Main challenge section */
+  .main-challenge-row {
+    flex-direction: column;
+    align-items: center;
+    margin: 20px 0 60px 0;
+    gap: 20px;
+  }
+
+  .challenge-card {
+    max-width: 100%;
+    padding: 20px;
+    margin-top: 50px;
+  }
+
+  .challenge-title {
+    font-size: 22px;
+    white-space: normal;
+  }
+
+  ion-card-content .friends-info {
+    font-size: 14px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    text-align: center;
+  }
+
+  .challenge-details .detail-item {
+    font-size: 14px;
+  }
+
+  .detail-icon {
+    font-size: 18px;
+  }
+
+  .challenge-image-col ion-img {
+    width: 100%;
+    height: auto;
+    border-radius: 20px;
+    display: none;
+  }
+
+  /* Suggested section */
+  .suggested-container {
+    margin-top: -50px;
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+
+  .suggested-header {
+    font-size: 20px;
+    text-align: center;
+    margin: 20px 0 10px 0;
+    padding: 0 12px;
+  }
+
+  .suggested-row {
+    margin: 0 0 60px 0;
+    gap: 16px;
+  }
+
+  .suggested-row ion-col {
+    padding: 8px;
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .suggested-card {
+    width: 100%;
+  }
+
+  .suggested-card .challenge-subtitle {
+    font-size: 16px;
+  }
+
+  .suggested-card .challenge-description {
+    font-size: 13px;
+  }
+
+  .suggested-card .challenge-date {
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
+  .suggested-join-btn {
+    font-size: 13px;
+    padding: 8px 0;
+  }
+
+  /* Adjust progress section for mobile */
+  .button-animation-container.joined {
+    min-height: 130px;
+  }
+
+  .progress-label,
+  .progress-percentage {
+    font-size: 12px;
+  }
+
+  .progress-text {
+    font-size: 11px;
+  }
+
+  .leave-challenge-btn {
+    font-size: 13px;
+    padding: 8px 0;
+  }
+}

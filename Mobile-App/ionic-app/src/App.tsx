@@ -1,82 +1,68 @@
-import { Redirect, Route } from 'react-router-dom';
+import { Redirect, Route } from "react-router-dom";
 import {
   IonApp,
-  IonIcon,
-  IonLabel,
   IonRouterOutlet,
   IonTabBar,
   IonTabButton,
   IonTabs,
-  setupIonicReact
-} from '@ionic/react';
-import { IonReactRouter } from '@ionic/react-router';
-import {  homeOutline, mapOutline, peopleOutline, analyticsOutline, walk, logIn } from 'ionicons/icons';
-import Home from './pages/Home';
-import Community from './pages/Community';
-import RunTracking from './pages/RunTracking';
-import RoutesPage from './pages/RoutesPage';
-import Analytics from './pages/Analytics';
-import UserProfile from './pages/UserProfile';
-import Settings from './pages/Settings';
-import Leaderboards from './pages/leaderboards';
-import Notification from './pages/notification';
-import EditProfile from './pages/Edit-Profile';
-import Notice from './pages/Notice';
-import PausedRun from './pages/Paused-Run';
-import CreateRoute from './pages/create-route';
-import Following from './pages/Following';
-import SearchRunners from './pages/Search-Runners';
-import SavedRoutes from './pages/saved-routes';
-import EstimatedTime from './pages/Estimated-Time';
-import TrafficNotice from './pages/Traffic-Notice';
-import HazardNotice from './pages/Hazard-Notice';
-import HazardReport from './pages/Hazard-Report';
-import ActivitySummary from './pages/Activity-Summary';
-import Information from './pages/Profile-Information';
-import PasswordSecurity from './pages/Password-Security';
-import CreateAccount from './pages/create-account';
-import LogIn from './pages/log-in';
-import Authentication from './pages/user-authentication';
-import GroupFeed from './pages/Group-feed';
-import ViewPost from './pages/View-Posts';
-import ViewActivity from './pages/View-Activity';
-import Badges from './pages/Badges';
-import CreatePost from './pages/Create-Post';
+  setupIonicReact,
+} from "@ionic/react";
+import { IonReactRouter } from "@ionic/react-router";
 
+import Home from "./pages/Home";
+import Community from "./pages/Community";
+import RunTracking from "./pages/RunTracking";
+import RoutesPage from "./pages/RoutesPage";
+import Analytics from "./pages/Analytics";
+import UserProfile from "./pages/UserProfile";
+import Settings from "./pages/Settings";
+import Leaderboards from "./pages/leaderboards";
+import Notification from "./pages/notification";
+import EditProfile from "./pages/Edit-Profile";
+import Notice from "./pages/Notice";
+import PausedRun from "./pages/Paused-Run";
+import CreateRoute from "./pages/create-route";
+import Following from "./pages/Following";
+import SearchRunners from "./pages/Search-Runners";
+import SavedRoutes from "./pages/saved-routes";
+import EstimatedTime from "./pages/Estimated-Time";
+import TrafficNotice from "./pages/Traffic-Notice";
+import HazardNotice from "./pages/Hazard-Notice";
+import HazardReport from "./pages/Hazard-Report";
+import ActivitySummary from "./pages/Activity-Summary";
+import Information from "./pages/Profile-Information";
+import PasswordSecurity from "./pages/Password-Security";
+import CreateAccount from "./pages/create-account";
+import LogIn from "./pages/log-in";
+import Authentication from "./pages/user-authentication";
+import GroupFeed from "./pages/Group-feed";
+import ViewPost from "./pages/View-Posts";
+import ViewActivity from "./pages/View-Activity";
+import Badges from "./pages/Badges";
+import CreatePost from "./pages/Create-Post";
 
+import HomeIcon from "./components/assets/icons/home.svg";
+import RouteIcon from "./components/assets/icons/conversion_path.svg";
+import RunIcon from "./components/assets/icons/open_run.svg";
+import GroupsIcon from "./components/assets/icons/groups.svg";
+import StatsIcon from "./components/assets/icons/query_stats.svg";
 
-/* Core CSS required for Ionic components to work properly */
-import '@ionic/react/css/core.css';
-import './theme/variables.css'
+/* Ionic Core & CSS */
+import "@ionic/react/css/core.css";
+import "@ionic/react/css/normalize.css";
+import "@ionic/react/css/structure.css";
+import "@ionic/react/css/typography.css";
+import "@ionic/react/css/padding.css";
+import "@ionic/react/css/float-elements.css";
+import "@ionic/react/css/text-alignment.css";
+import "@ionic/react/css/text-transformation.css";
+import "@ionic/react/css/flex-utils.css";
+import "@ionic/react/css/display.css";
+import "@ionic/react/css/palettes/dark.system.css";
 
-/* Basic CSS for apps built with Ionic */
-import '@ionic/react/css/normalize.css';
-import '@ionic/react/css/structure.css';
-import '@ionic/react/css/typography.css';
-
-/* Optional CSS utils that can be commented out */
-import '@ionic/react/css/padding.css';
-import '@ionic/react/css/float-elements.css';
-import '@ionic/react/css/text-alignment.css';
-import '@ionic/react/css/text-transformation.css';
-import '@ionic/react/css/flex-utils.css';
-import '@ionic/react/css/display.css';
-
-/**
- * Ionic Dark Mode
- * -----------------------------------------------------
- * For more info, please see:
- * https://ionicframework.com/docs/theming/dark-mode
- */
-
-/* import '@ionic/react/css/palettes/dark.always.css'; */
-/* import '@ionic/react/css/palettes/dark.class.css'; */
-import '@ionic/react/css/palettes/dark.system.css';
-
-/* Theme variables */
-import './theme/variables.css';
-import Profile from './pages/UserProfile';
-import ProfileInfo from './pages/Profile-Information';
+/* Theme Variables */
+import "./theme/variables.css";
+import "./theme/global.css";
 
 setupIonicReact();
 
@@ -94,9 +80,9 @@ const App: React.FC = () => (
           <Route exact path="/settings" component={Settings} />
           <Route exact path="/leaderboards" component={Leaderboards} />
           <Route exact path="/notification" component={Notification} />
-           <Route exact path="/edit-profile" component={EditProfile} />
-            <Route exact path="/paused" component={PausedRun} />
-           <Route exact path="/notice" component={Notice} />
+          <Route exact path="/edit-profile" component={EditProfile} />
+          <Route exact path="/paused" component={PausedRun} />
+          <Route exact path="/notice" component={Notice} />
           <Route exact path="/create-route" component={CreateRoute} />
           <Route exact path="/following" component={Following} />
           <Route exact path="/search-runners" component={SearchRunners} />
@@ -110,44 +96,43 @@ const App: React.FC = () => (
           <Route exact path="/security" component={PasswordSecurity} />
           <Route exact path="/create-account" component={CreateAccount} />
           <Route exact path="/log-in" component={LogIn} />
-           <Route exact path="/authentication" component={Authentication} />
-           <Route exact path="/group-feed" component={GroupFeed} />
-           <Route exact path="/posts" component={ViewPost} />
-           <Route exact path="/activities" component={ViewActivity} />
-           <Route exact path="/badges" component={Badges} />
-           <Route exact path="/create-post" component={CreatePost} />
-          
+          <Route exact path="/authentication" component={Authentication} />
+          <Route exact path="/group-feed" component={GroupFeed} />
+          <Route exact path="/posts" component={ViewPost} />
+          <Route exact path="/activities" component={ViewActivity} />
+          <Route exact path="/badges" component={Badges} />
+          <Route exact path="/create-post" component={CreatePost} />
+
           <Route exact path="/">
             <Redirect to="/home" />
           </Route>
         </IonRouterOutlet>
 
-        {/* ✅ Corrected IonTabBar */}
+        {/* ✅ SVG Icon Tab Bar */}
         <IonTabBar slot="bottom">
           <IonTabButton tab="home" href="/home">
-           <IonIcon className='nav-icon' icon={homeOutline} />
+            <img src={HomeIcon} alt="Home" className="nav-icon" />
+            Home
           </IonTabButton>
 
           <IonTabButton tab="routes" href="/routes">
-          <IonIcon className='nav-icon' icon={mapOutline}/>
-            
+            <img src={RouteIcon} alt="Routes" className="nav-icon" />
+            Route
           </IonTabButton>
 
           <IonTabButton tab="run-tracking" href="/run-tracking">
-            <IonIcon className='nav-icon' icon={walk}/>
+            <img src={RunIcon} alt="Run Tracking" className="nav-icon" />
+            Run
           </IonTabButton>
-
-      
 
           <IonTabButton tab="community" href="/community">
-          <IonIcon className='nav-icon' icon={peopleOutline}/>
-            
+            <img src={GroupsIcon} alt="Community" className="nav-icon" />
+            Groups
           </IonTabButton>
 
-
           <IonTabButton tab="analytics" href="/analytics">
-          <IonIcon className='nav-icon' icon={analyticsOutline}/>
-            
+            <img src={StatsIcon} alt="Analytics" className="nav-icon" />
+            Analytics
           </IonTabButton>
         </IonTabBar>
       </IonTabs>

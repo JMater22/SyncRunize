@@ -1,83 +1,261 @@
-.login-page {
-  --background: #0d0f0a; /* dark background */
-  color: #fff;
-  font-family: Arial, sans-serif;
+/* Import Inter font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* Main layout */
+.login-page-content2 { 
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background: #fff;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
 }
 
-.header-toolbar {
-  --background: transparent;
-  --border-width: 0;
+/* ----------------------------- */
+/* Container */
+/* ----------------------------- */
+.form-container2 { 
+  flex: 1;
+  max-width: 820px;
+  min-width: 400px;
+  padding: 3rem 2rem;
+  background: #2a2a2a;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+ 
+.form-content2 {
+  max-width: 420px;
+  width: 100%;
+  margin-top: -50px;
 }
 
-.login-form {
-  padding: 24px;
-  padding-right: 20px;
+/* ----------------------------- */
+/* Logo */
+/* ----------------------------- */
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 3rem;
 }
 
-/* Title */
-.login-form h1 {
-  font-size: 34px;
-  font-weight: 900;
+.logo-image {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+
+.logo-text {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  letter-spacing: -0.02em;
+}
+
+/* ----------------------------- */
+/* Header */
+/* ----------------------------- */
+.form-header2 {
+  margin-bottom: 2rem;
+}
+
+.form-title2 {
+  font-size: 1.5rem;
+  font-weight: 800;
   color: #ffffff;
-  margin-bottom: 40px;
-  text-align: left;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
   line-height: 1.2;
 }
 
-/* Remove default IonItem styles */
-.form-item {
-  --background: transparent;
-  border: none !important;
-  box-shadow: none !important;
-  margin-bottom: 20px;
-  padding-right: 20px;
-  
+.form-subtitle2 {
+  color: #6b7280;
+  font-size: 12px;
+  margin: 0;
+  line-height: 1.5;
+  font-weight: 400;
 }
 
-.form-item ion-label {
-  font-size: 14px;
-  font-weight: 600;
+/* ----------------------------- */
+/* Fields */
+/* ----------------------------- */
+.form-fields2 {
+  margin-bottom: 1.5rem;
+}
+
+.input-group2 {
+  margin-bottom: 1.25rem;
+}
+
+label.input-label2 {
+  display: block;
   color: #ffffff;
-  margin-bottom: 6px;
-  margin-top: 1rem;
-  
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.01em;
 }
 
-.form-item ion-input {
-  background: #ffffff;
-  color: #000000;
-  border-radius: 12px;
-  font-size: 15px;
-  padding: 12px;
-  border: none;
-  outline: none;
-  margin-top: 1rem;
+/* Inputs */
+ion-input.custom-input2 {
+  --background: #f8f8f8;
+  color: #1a1a1a;
+  --border-color: #e5e7eb;
+  --border-radius: 8px;
+  --border-style: solid;
+  --border-width: 1.5px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --min-height: 48px;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  transition: all 0.2s ease;
 }
 
-/* Forgot password */
-.forgot-password {
-  margin: 10px 0 20px;
+ion-input.custom-input2::part(native) {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+ion-input.custom-input2.ion-focused {
+  --border-color: #92C628;
+  --box-shadow: 0 0 0 3px rgba(146, 198, 40, 0.1);
+}
+
+/* ----------------------------- */
+/* Forgot Password */
+/* ----------------------------- */
+.forgot-password-container {
   text-align: right;
+  margin-top: -0.5rem;
+  margin-bottom: 1.5rem;
 }
 
-.forgot-link {
-  font-size: 14px;
-  color: #8fd92b;
+.forgot-link2 {
+  color: #92C628;
   text-decoration: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: color 0.2s ease;
+  letter-spacing: -0.01em;
 }
 
-/* Login button */
-.login-btn {
-  --background: #8fd92b;
-  --color: #000000;
-  font-size: 16px;
-  font-weight: 800;
-  border-radius: 8px;
+.forgot-link2:hover {
+  color: #7ba920;
+}
+
+/* ----------------------------- */
+/* Buttons */
+/* ----------------------------- */
+ion-button.submit-button2 {
+  --background: #92C628;
+  --background-hover: #7ba920;
+  --background-activated: #6d9618;
+  --color: #ffffff;
+  --border-radius: 8px;
   height: 48px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-transform: none;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-.password-input{
-  padding-left: 20px;
+ion-button.submit-button2:hover {
+  transform: translateY(-1px);
+  --box-shadow: 0 4px 12px rgba(146, 198, 40, 0.3);
+}
+
+/* ----------------------------- */
+/* Social Buttons */
+/* ----------------------------- */
+.social-login2 {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+ion-button.social-button {
+  --border-color: #e5e7eb;
+  --border-style: solid;
+  --border-width: 1.5px;
+  --color: #1a1a1a;
+  --background: #ffffff;
+  --border-radius: 8px;
+  height: 48px;
+  font-weight: 500;
+  text-transform: none;
+  flex: 1;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: -0.01em;
+}
+
+ion-button.social-button:hover {
+  --border-color: #92C628;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.social-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.social-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* ----------------------------- */
+/* Signup Section */
+/* ----------------------------- */
+.signup-section2 {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.signup-link2 {
+  color: #92C628;
+  font-weight: 600;
+  text-decoration: none;
+  margin-left: 0.25rem;
+  transition: color 0.2s ease;
+  letter-spacing: -0.01em;
+}
+
+.signup-link2:hover {
+  color: #7ba920;
+  text-decoration: underline;
+}
+/* ----------------------------- */
+/* Animations */
+/* ----------------------------- */
+.form-container2 {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.visual-container2 {
+  animation: fadeIn 0.8s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

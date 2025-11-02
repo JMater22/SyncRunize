@@ -137,7 +137,6 @@ const Community: React.FC = () => {
       <IonHeader className="community-header">
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/HomeModule/homeM1" />
           </IonButtons>
           <IonTitle>Community</IonTitle>
         </IonToolbar>

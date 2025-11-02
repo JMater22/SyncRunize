@@ -1,0 +1,269 @@
+/* Header Styling */
+        .custom-header {
+          --background: #92C628;
+          --color: white;
+        }
+
+        .header-title {
+          font-weight: 700;
+          font-size: 1.2rem;
+        }
+
+        /* Content Styling */
+
+
+        /* Grid Layout */
+        .main-grid {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 2rem 1rem;
+        }
+
+        .left-column, .right-column {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        /* Card Styling */
+        .cover-photo-card, .privacy-card, .form-card {
+          --background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(10px);
+          border-radius: 16px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+          margin: 0;
+        }
+
+        /* Section Headers */
+        .section-header {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .section-icon {
+          font-size: 1.5rem;
+          color: #92C628;
+        }
+
+        h3.section-title {
+          font-size: 14px;
+          font-weight: 700;
+          color: #1a202c;
+          margin: 0;
+        }
+
+        /* Cover Photo Upload */
+        .cover-photo-upload {
+          width: 100%;
+          height: 200px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: #f8fafc;
+          border: 2px dashed #cbd5e0;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          position: relative;
+          background-size: cover;
+          background-position: center;
+        }
+
+        .cover-photo-upload:hover {
+          border-color: #202516;
+          background-color: rgba(146, 198, 40, 0.05);
+          transform: translateY(-2px);
+        }
+
+        .cover-photo-upload.has-image {
+          border-style: solid;
+          border-color: #92C628;
+        }
+
+        .upload-icon {
+          font-size: 3rem;
+          color: #92C628;
+          margin-bottom: 1rem;
+        }
+
+        .upload-text {
+          font-weight: 600;
+          color: #4a5568;
+          margin-bottom: 0.5rem;
+        }
+
+        .upload-subtext {
+          color: #718096;
+          font-size: 0.9rem;
+        }
+
+        .photo-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+
+        .cover-photo-upload.has-image:hover .photo-overlay {
+          opacity: 1;
+        }
+
+        /* Privacy Options */
+        .privacy-radio-group {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .privacy-option {
+          border-radius: 12px;
+          border: 2px solid #e2e8f0;
+          transition: all 0.3s ease;
+          overflow: hidden;
+        }
+
+        .privacy-option:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .privacy-option.selected {
+          border-color: #92C628;
+          background: rgba(146, 198, 40, 0.05);
+        }
+
+        .privacy-item {
+          --background: transparent;
+          --inner-padding-start: 1rem;
+          --inner-padding-end: 1rem;
+          --padding-top: 1rem;
+          --padding-bottom: 1rem;
+        }
+
+        .privacy-icon {
+          color: #92C628;
+          font-size: 1.25rem;
+        }
+
+        h3.privacy-title {
+          font-weight: 600;
+          color: #1a202c;
+          margin: 0 0 0.25rem 0;
+        }
+
+        p.privacy-desc {
+          color: #718096;
+          font-size: 0.9rem;
+          margin: 0;
+        }
+
+        /* Form Fields */
+        .form-fields {
+          display: flex;
+          flex-direction: column;
+          gap: 2rem;
+          margin-bottom: 2rem;
+        }
+
+        .form-field {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .field-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .field-icon {
+          color: #92C628;
+          font-size: 1.25rem;
+        }
+
+        .field-label {
+          font-weight: 600;
+          color: #000000;
+          font-size: 14px;
+        }
+
+        .custom-input, .custom-textarea {
+          --background: white;
+          --border-color: #e2e8f0;
+          --border-radius: 12px;
+          --padding-start: 1rem;
+          --padding-end: 1rem;
+          --padding-top: 1rem;
+          --padding-bottom: 1rem;
+          font-size: 1rem;
+          border: 2px solid var(--border-color);
+          transition: all 0.3s ease;
+          --color: #000000;
+          color: #000000;
+        }
+
+        .custom-input:focus-within, .custom-textarea:focus-within {
+          --border-color: #92C628;
+          box-shadow: 0 0 0 3px rgba(146, 198, 40, 0.2);
+          transform: translateY(-1px);
+        }
+
+        .field-hint {
+          color: #718096;
+          font-size: 0.9rem;
+          margin: 0;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+          display: flex;
+          gap: 1rem;
+          justify-content: flex-end;
+          padding-top: 1.5rem;
+          border-top: 1px solid #e2e8f0;
+        }
+
+        .cancel-btn {
+          --color: #4a5568;
+          --border-color: #e2e8f0;
+        }
+
+        .create-btn {
+          --background: linear-gradient(135deg, #92C628, #7aad23);
+          --color: white;
+          font-weight: 600;
+          --box-shadow: 0 4px 15px rgba(146, 198, 40, 0.3);
+        }
+
+        .create-btn:hover {
+          transform: translateY(-1px);
+          --box-shadow: 0 8px 25px rgba(146, 198, 40, 0.4);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+          .hero-title {
+            font-size: 1.5rem;
+          }
+
+          .action-buttons {
+            flex-direction: column;
+          }
+
+          .cancel-btn, .create-btn {
+            width: 100%;
+          }
+        }

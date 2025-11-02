@@ -19,13 +19,17 @@
 ion-content {
   --background: #121212;
   color: #fff;
-  font-family: "Inter", sans-serif;
+  font-family: "Inter", sans-serif; 
 }
 
 /* Header Toolbar */
 ion-toolbar {
   --background: #1e1e1e;
   --color: #fff;
+}
+
+.back-button {
+  margin-left: 15px;
 }
 
 /* Profile Card */
