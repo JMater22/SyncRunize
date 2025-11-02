@@ -33,7 +33,28 @@ const RunMap: React.FC = () => {
   const [showPermissionAlert, setShowPermissionAlert] = useState(false);
 
   useEffect(() => {
-    getCurrentPosition();
+    const initLocation = async () => {
+      try {
+        setLoading(true);
+        // Request permission — triggers Android popup if needed
+        const { location } = await Geolocation.requestPermissions();
+
+        if (location === "granted") {
+          await getCurrentPosition();
+        } else {
+          setLocationEnabled(false);
+          setShowPermissionAlert(true);
+        }
+      } catch (err) {
+        console.error("Permission request error:", err);
+        setError("Failed to request location permission.");
+        setShowToast(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initLocation();
   }, []);
 
   const getCurrentPosition = async () => {
@@ -188,7 +209,7 @@ const RunMap: React.FC = () => {
           isOpen={showPermissionAlert}
           onDidDismiss={() => setShowPermissionAlert(false)}
           header="Location Permission Required"
-          message="This app needs location permission to track your run. Please enable location permissions in your device settings."
+          message="This app needs location permission to track your run. Please enable it in settings or tap Retry."
           buttons={[
             {
               text: "Cancel",
