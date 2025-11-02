@@ -21,12 +21,12 @@ import {
   IonItem,
   IonSearchbar,
   IonSpinner,
-  IonToast
+  IonToast,
+  IonAlert,
+  IonModal
 } from "@ionic/react";
-import { arrowBack, bookmark, pencil, pin, locate } from "ionicons/icons";
+import { bookmark, pencil, locate, locationOutline } from "ionicons/icons";
 import { Geolocation } from "@capacitor/geolocation";
-import { usePushNotifications } from "../components/push-notification";
-import "../theme/Routes.css";
 
 interface Position {
   latitude: number;
@@ -41,54 +41,74 @@ const RouteSuggestion: React.FC = () => {
   const [toastMessage, setToastMessage] = useState("");
   const [toastColor, setToastColor] = useState<"success" | "danger" | "primary">("danger");
   const [accordionValue, setAccordionValue] = useState<string | undefined>(undefined);
-
-  // Initialize push notifications
-  usePushNotifications({
-    onNotificationReceived: (notification) => {
-      console.log('Notification received on Routes:', notification);
-      
-      const notifType = notification.data?.type;
-      
-      if (notifType === 'route') {
-        setToastMessage(`📍 ${notification.title || 'New Route Available'}`);
-        setToastColor("primary");
-      } else if (notifType === 'saved-route') {
-        setToastMessage(`⭐ ${notification.title || 'Route Saved Successfully'}`);
-        setToastColor("success");
-      } else if (notifType === 'nearby') {
-        setToastMessage(`📌 ${notification.title || 'Nearby Route Suggestion'}`);
-        setToastColor("primary");
-      } else {
-        setToastMessage(notification.title || 'New notification');
-        setToastColor("primary");
-      }
-      
-      setShowToast(true);
-    },
-    onNotificationActionPerformed: (notification) => {
-      console.log('Notification tapped on Routes:', notification);
-      
-      const data = notification.notification.data;
-      
-      if (data?.type === 'route' || data?.type === 'nearby') {
-        // Expand the suggested routes accordion
-        setAccordionValue('routes');
-        
-        // Scroll to suggested routes
-        setTimeout(() => {
-          const routesAccordion = document.querySelector('.accordion-content');
-          routesAccordion?.scrollIntoView({ behavior: 'smooth' });
-        }, 300);
-      } else if (data?.type === 'saved-route') {
-        // Navigate to saved routes page
-        window.location.href = '/saved-routes';
-      }
-    }
-  });
+  const [showPermissionAlert, setShowPermissionAlert] = useState(false);
+  const [showInitialPrompt, setShowInitialPrompt] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<string>("prompt");
+  const [hasCheckedPermission, setHasCheckedPermission] = useState(false);
 
   useEffect(() => {
-    getCurrentPosition();
+    checkInitialPermissions();
   }, []);
+
+  const checkInitialPermissions = async () => {
+    try {
+      const permission = await Geolocation.checkPermissions();
+      setPermissionStatus(permission.location);
+      setHasCheckedPermission(true);
+
+      if (permission.location === "granted") {
+        // Already have permission, get location
+        await getCurrentPosition();
+      } else if (permission.location === "denied") {
+        // Permission was previously denied
+        console.log("Location permission denied");
+      }
+      // If prompt, we don't show anything yet - user can click locate button
+    } catch (err) {
+      console.error("Error checking permissions:", err);
+      setHasCheckedPermission(true);
+    }
+  };
+
+  const requestLocationAccess = async () => {
+    setShowInitialPrompt(false);
+    setLoading(true);
+
+    try {
+      const { location } = await Geolocation.requestPermissions();
+      setPermissionStatus(location);
+
+      if (location === "granted") {
+        await getCurrentPosition();
+        setToastMessage("✅ Location access granted!");
+        setToastColor("success");
+        setShowToast(true);
+      } else if (location === "denied") {
+        setShowPermissionAlert(true);
+      }
+    } catch (err) {
+      console.error("Permission request error:", err);
+      setError("Failed to request location permission.");
+      setToastMessage("Failed to request location permission.");
+      setToastColor("danger");
+      setShowToast(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLocateClick = async () => {
+    const permission = await Geolocation.checkPermissions();
+    
+    if (permission.location === "granted") {
+      getCurrentPosition();
+    } else if (permission.location === "denied") {
+      setShowPermissionAlert(true);
+    } else {
+      // Show prompt
+      setShowInitialPrompt(true);
+    }
+  };
 
   const getCurrentPosition = async () => {
     setLoading(true);
@@ -98,15 +118,9 @@ const RouteSuggestion: React.FC = () => {
       const permission = await Geolocation.checkPermissions();
 
       if (permission.location !== "granted") {
-        const requested = await Geolocation.requestPermissions();
-        if (requested.location !== "granted") {
-          setError("Location permission denied");
-          setToastColor("danger");
-          setToastMessage("Location permission denied");
-          setShowToast(true);
-          setLoading(false);
-          return;
-        }
+        setShowInitialPrompt(true);
+        setLoading(false);
+        return;
       }
 
       const position = await Geolocation.getCurrentPosition({
@@ -119,12 +133,25 @@ const RouteSuggestion: React.FC = () => {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude
       });
+      
+      setToastMessage("📍 Location acquired!");
+      setToastColor("success");
+      setShowToast(true);
+      
       console.log("Current position:", position.coords);
     } catch (err: any) {
       console.error("Error getting location:", err);
-      setError(err.message || "Failed to get location");
+      
+      let errorMessage = "Failed to get location";
+      if (err.message?.includes("location unavailable")) {
+        errorMessage = "Location unavailable. Please enable GPS.";
+      } else if (err.message?.includes("timeout")) {
+        errorMessage = "Location request timed out. Try again.";
+      }
+      
+      setError(errorMessage);
       setToastColor("danger");
-      setToastMessage(err.message || "Failed to get location");
+      setToastMessage(errorMessage);
       setShowToast(true);
     } finally {
       setLoading(false);
@@ -133,180 +160,282 @@ const RouteSuggestion: React.FC = () => {
 
   return (
     <IonPage>
-      {/* Header */}
-        <IonHeader className="route-header">
-          <IonToolbar className="route-toolbar">
-            <IonButtons slot="start" className="route-back-buttons">
-              <IonBackButton
-                defaultHref="/HomeModule/homeM1/index.html"
-                className="route-back-button"
-                text=""
-              />
-            </IonButtons>
+      <IonHeader style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <IonToolbar>
+          <IonButtons slot="start">
+            <IonBackButton defaultHref="/home" text="" />
+          </IonButtons>
 
-            <IonTitle className="route-title">Route Suggestion</IonTitle>
+          <IonTitle>Route Suggestion</IonTitle>
 
-            <IonButtons slot="end" className="route-action-buttons">
-              <IonButton
-                onClick={getCurrentPosition}
-                disabled={loading}
-                className="route-locate-button"
-              >
-                {loading ? (
-                  <IonSpinner name="crescent" className="route-loading-spinner" />
-                ) : (
-                  <IonIcon icon={locate} className="route-locate-icon" />
-                )}
-              </IonButton>
+          <IonButtons slot="end">
+            <IonButton
+              onClick={handleLocateClick}
+              disabled={loading}
+            >
+              {loading ? (
+                <IonSpinner name="crescent" />
+              ) : (
+                <IonIcon 
+                  icon={locate} 
+                  style={{ 
+                    color: currentPosition ? '#34a853' : '#666',
+                    fontSize: '24px'
+                  }} 
+                />
+              )}
+            </IonButton>
 
-              <IonButton
-                routerLink="/saved-routes"
-                className="route-bookmark-button"
-              >
-                <IonIcon icon={bookmark} className="route-bookmark-icon" />
-              </IonButton>
-            </IonButtons>
-          </IonToolbar>
-        </IonHeader>
+            <IonButton routerLink="/saved-routes">
+              <IonIcon icon={bookmark} style={{ fontSize: '24px' }} />
+            </IonButton>
+          </IonButtons>
+        </IonToolbar>
+      </IonHeader>
 
-      {/* Main Content */}
       <IonContent fullscreen>
-        {/* Search */}
-        <div className="search-bar">
-          <IonSearchbar placeholder="Search location" className="challenge-search" />
+        <div style={{ padding: '16px 16px 8px' }}>
+          <IonSearchbar 
+            placeholder="Search location" 
+            style={{ 
+              '--background': '#f5f5f5',
+              '--border-radius': '12px'
+            }}
+          />
         </div>
 
-        {/* Current Location Info */}
         {currentPosition && (
-          <div className="current-location-info">
-            <small>
-               Lat: {currentPosition.latitude.toFixed(6)}, Lng: {currentPosition.longitude.toFixed(6)}
-            </small>
+          <div style={{
+            padding: '8px 16px',
+            background: '#e8f5e9',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '13px',
+            color: '#1b5e20'
+          }}>
+            <IonIcon icon={locationOutline} />
+            <span>
+              Lat: {currentPosition.latitude.toFixed(6)}, Lng: {currentPosition.longitude.toFixed(6)}
+            </span>
           </div>
         )}
 
-        {/* Map Area - hides when accordion is expanded */}
         {accordionValue !== "routes" && (
-          <div className="map-area">
+          <div style={{ position: 'relative', height: '300px', margin: '0' }}>
             <iframe
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d27403.697792075374!2d120.58200860881004!3d15.48705054784102!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3396c63f4ab68e0d%3A0x13f9415d7a5bfd4b!2sTarlac%20City%2C%20Tarlac!5e0!3m2!1sen!2sph!4v1761910044713!5m2!1sen!2sph"
-              className="map-iframe"
+              style={{ width: '100%', height: '100%', border: 'none' }}
               allowFullScreen
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
-              title="Main Map" 
-            ></iframe>
+              title="Main Map"
+            />
 
-          <IonFab vertical="bottom" horizontal="end" slot="fixed" className="create-route-fab">
-            <IonFabButton  routerLink="/create-route" className="create-route-fab-button">
-              <IonIcon icon={pencil} className="create-route-fab-icon" />
-            </IonFabButton>
-          </IonFab>
+            <IonFab vertical="bottom" horizontal="end" slot="fixed">
+              <IonFabButton routerLink="/create-route" color="primary">
+                <IonIcon icon={pencil} />
+              </IonFabButton>
+            </IonFab>
           </div>
         )}
 
-        {/* Suggested Routes - positioned at bottom, expands on click */}
-        <IonAccordionGroup value={accordionValue} onIonChange={(e) => setAccordionValue(e.detail.value)}>
+        <IonAccordionGroup 
+          value={accordionValue} 
+          onIonChange={(e) => setAccordionValue(e.detail.value)}
+        >
           <IonAccordion value="routes">
-            <IonItem slot="header" lines="none" className="accordion-header">
-              <IonLabel className="custom-size">
-                   Suggested Routes For You
-              </IonLabel>
+            <IonItem slot="header" lines="none" style={{ fontWeight: '600' }}>
+              <IonLabel>Suggested Routes For You</IonLabel>
             </IonItem>
 
-            <div slot="content" className="accordion-content">
+            <div slot="content" style={{ padding: '16px' }}>
               {/* Route Card 1 */}
-              <IonCard className="route-card">
-                <div className="route-card-inner">
-                  <IonCardHeader>
-                    <IonCardTitle className="route-card-title">Capas Route</IonCardTitle>
-                  </IonCardHeader>
+              <IonCard style={{ marginBottom: '16px' }}>
+                <IonCardHeader>
+                  <IonCardTitle>Capas Route</IonCardTitle>
+                </IonCardHeader>
 
-                  <IonCardContent>
-                    <div className="route-meta">
-                      <span>5.21 km : 1h 12m</span>
-                    </div>
-                    <p className="route-location">Capas, Tarlac, Philippines</p>
+                <IonCardContent>
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '8px', 
+                    fontSize: '14px', 
+                    color: '#666',
+                    marginBottom: '8px' 
+                  }}>
+                    <span>🏃 5.21 km</span>
+                    <span>⏱️ 1h 12m</span>
+                  </div>
+                  <p style={{ fontSize: '14px', color: '#888', marginBottom: '16px' }}>
+                    Capas, Tarlac, Philippines
+                  </p>
 
-                    <div className="route-buttons">
-                      <IonButton 
-                        size="small" 
-                        color="success" 
-                        className="route-action-btn"
-                        onClick={() => {
-                          setToastMessage("Route saved successfully!");
-                          setToastColor("success");
-                          setShowToast(true);
-                        }}
-                      >
-                        Save
-                      </IonButton>
-                      <IonButton size="small" color="success" disabled={!currentPosition} className="route-action-btn">
-                        From your location
-                      </IonButton>
-                    </div>
-                  </IonCardContent>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                    <IonButton 
+                      size="small" 
+                      color="success"
+                      onClick={() => {
+                        setToastMessage("✅ Route saved successfully!");
+                        setToastColor("success");
+                        setShowToast(true);
+                      }}
+                    >
+                      Save
+                    </IonButton>
+                    <IonButton 
+                      size="small" 
+                      color="success" 
+                      fill="outline"
+                      disabled={!currentPosition}
+                      onClick={() => {
+                        if (!currentPosition) {
+                          setShowInitialPrompt(true);
+                        }
+                      }}
+                    >
+                      From your location
+                    </IonButton>
+                  </div>
 
-                  <div className="route-map-container">
+                  <div style={{ borderRadius: '8px', overflow: 'hidden', height: '200px' }}>
                     <iframe
                       src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d27403.697792075374!2d120.58200860881004!3d15.48705054784102!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3396c63f4ab68e0d%3A0x13f9415d7a5bfd4b!2sTarlac%20City%2C%20Tarlac!5e0!3m2!1sen!2sph!4v1761910044713!5m2!1sen!2sph"
-                      className="route-map-iframe"
+                      style={{ width: '100%', height: '100%', border: 'none' }}
                       allowFullScreen
                       loading="lazy"
                       referrerPolicy="no-referrer-when-downgrade"
                       title="Route Map 1"
-                    ></iframe>
+                    />
                   </div>
-                </div>
+                </IonCardContent>
               </IonCard>
 
               {/* Route Card 2 */}
-              <IonCard className="route-card">
-                <div className="route-card-inner">
-                  <IonCardHeader>
-                    <IonCardTitle className="route-card-title">San. Roque Route </IonCardTitle>
-                  </IonCardHeader>
+              <IonCard>
+                <IonCardHeader>
+                  <IonCardTitle>San. Roque Route</IonCardTitle>
+                </IonCardHeader>
 
-                  <IonCardContent>
-                    <div className="route-meta">
-                      <span>7.5 km : 1h 45m</span>
-                    </div>
-                    <p className="route-location">Tarlac City, Tarlac, Philippines</p>
+                <IonCardContent>
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '8px', 
+                    fontSize: '14px', 
+                    color: '#666',
+                    marginBottom: '8px' 
+                  }}>
+                    <span>🏃 7.5 km</span>
+                    <span>⏱️ 1h 45m</span>
+                  </div>
+                  <p style={{ fontSize: '14px', color: '#888', marginBottom: '16px' }}>
+                    Tarlac City, Tarlac, Philippines
+                  </p>
 
-                    <div className="route-buttons">
-                      <IonButton 
-                        size="small" 
-                        color="success" 
-                        className="route-action-btn"
-                        onClick={() => {
-                          setToastMessage("Route saved successfully!");
-                          setToastColor("success");
-                          setShowToast(true);
-                        }}
-                      >
-                        Save
-                      </IonButton>
-                      <IonButton size="small" color="success" disabled={!currentPosition} className="route-action-btn">
-                        From your location
-                      </IonButton>
-                    </div>
-                  </IonCardContent>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                    <IonButton 
+                      size="small" 
+                      color="success"
+                      onClick={() => {
+                        setToastMessage("✅ Route saved successfully!");
+                        setToastColor("success");
+                        setShowToast(true);
+                      }}
+                    >
+                      Save
+                    </IonButton>
+                    <IonButton 
+                      size="small" 
+                      color="success" 
+                      fill="outline"
+                      disabled={!currentPosition}
+                      onClick={() => {
+                        if (!currentPosition) {
+                          setShowInitialPrompt(true);
+                        }
+                      }}
+                    >
+                      From your location
+                    </IonButton>
+                  </div>
 
-                  <div className="route-map-container">
+                  <div style={{ borderRadius: '8px', overflow: 'hidden', height: '200px' }}>
                     <iframe
                       src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d27403.697792075374!2d120.58200860881004!3d15.48705054784102!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3396c63f4ab68e0d%3A0x13f9415d7a5bfd4b!2sTarlac%20City%2C%20Tarlac!5e0!3m2!1sen!2sph!4v1761910044713!5m2!1sen!2sph"
-                      className="route-map-iframe"
+                      style={{ width: '100%', height: '100%', border: 'none' }}
                       allowFullScreen
                       loading="lazy"
                       referrerPolicy="no-referrer-when-downgrade"
                       title="Route Map 2"
-                    ></iframe>
+                    />
                   </div>
-                </div>
+                </IonCardContent>
               </IonCard>
             </div>
           </IonAccordion>
         </IonAccordionGroup>
+
+        {/* Initial Location Prompt Modal */}
+        <IonModal isOpen={showInitialPrompt} backdropDismiss={false}>
+          <div style={{
+            padding: '32px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            textAlign: 'center'
+          }}>
+            <IonIcon
+              icon={locationOutline}
+              style={{
+                fontSize: '80px',
+                color: '#4285f4',
+                marginBottom: '24px'
+              }}
+            />
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>
+              Allow Location Access
+            </h2>
+            <p style={{ fontSize: '16px', color: '#666', marginBottom: '32px', lineHeight: '1.5' }}>
+              Allow RunTracker to access your location to find nearby routes and personalize route suggestions based on your area.
+            </p>
+            <IonButton
+              expand="block"
+              onClick={requestLocationAccess}
+              style={{ marginBottom: '12px', width: '100%' }}
+            >
+              Allow Location Access
+            </IonButton>
+            <IonButton
+              expand="block"
+              fill="clear"
+              onClick={() => setShowInitialPrompt(false)}
+            >
+              Not Now
+            </IonButton>
+          </div>
+        </IonModal>
+
+        {/* Permission Denied Alert */}
+        <IonAlert
+          isOpen={showPermissionAlert}
+          onDidDismiss={() => setShowPermissionAlert(false)}
+          header="Location Permission Required"
+          message="Location access is needed to show routes near you. Please enable it in your device settings."
+          buttons={[
+            {
+              text: "Cancel",
+              role: "cancel"
+            },
+            {
+              text: "Open Settings",
+              handler: () => {
+                alert("Please enable location in your device settings");
+              }
+            }
+          ]}
+        />
 
         <IonToast
           isOpen={showToast}
