@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   IonContent,
   IonHeader,
@@ -14,15 +14,13 @@ import {
   IonIcon,
   IonBackButton,
   IonButtons,
-  IonCard,
-  IonCardContent,
   IonGrid,
   IonRow,
   IonCol,
   IonText,
   IonImg,
-  IonToast
-} from '@ionic/react';
+  IonToast,
+} from "@ionic/react";
 import {
   cameraOutline,
   locationOutline,
@@ -33,77 +31,108 @@ import {
   carOutline,
   warningOutline,
   buildOutline,
-  closeCircle
-} from 'ionicons/icons';
-import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
-import { useHistory } from 'react-router-dom';
-import '../theme/Hazard-Report.css';
+  closeCircle, imageOutline
+} from "ionicons/icons";
+import { useHistory } from "react-router-dom";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+
+
+import "../theme/Hazard-Report.css";
 
 const ReportHazard: React.FC = () => {
   const history = useHistory();
 
-  const [selectedHazard, setSelectedHazard] = useState<string>('pothole');
-  const [otherHazardText, setOtherHazardText] = useState<string>('');
+  const [selectedHazard, setSelectedHazard] = useState<string>("pothole");
+  const [otherHazardText, setOtherHazardText] = useState<string>("");
   const [confidenceRating, setConfidenceRating] = useState<number>(4);
   const [hazardPhoto, setHazardPhoto] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string>('');
+  const [toastMessage, setToastMessage] = useState<string>("");
   const [showToast, setShowToast] = useState<boolean>(false);
+    const [image, setImage] = useState<string | null>(null);
 
-  // 📸 Open camera or gallery
+  /** 📸 Add Photo (Camera or Gallery) - Integrated from CreatePost */
   const handleAddPhoto = async () => {
     try {
       const photo = await Camera.getPhoto({
         quality: 90,
         allowEditing: false,
         resultType: CameraResultType.DataUrl,
-        source: CameraSource.Prompt, // gives user the choice between camera or gallery
+        source: CameraSource.Prompt, // Allows choosing camera or gallery
       });
-      if (photo?.dataUrl) setHazardPhoto(photo.dataUrl);
-    } catch (error) {
-      console.error('Camera error:', error);
-      showToastMessage('Unable to get photo.');
+
+      if (photo?.dataUrl) {
+        setHazardPhoto(photo.dataUrl);
+        showToastMessage("Photo added successfully!");
+      }
+    } catch (error: any) {
+      // Silently ignore if user cancels
+      if (error?.message?.includes("cancel") || error?.message?.includes("User cancelled")) {
+        return;
+      }
+      console.error("Camera error:", error);
+      showToastMessage("Failed to select photo.");
     }
   };
 
-  const removePhoto = () => setHazardPhoto(null);
+  /** 🗑️ Remove photo */
+  const handleRemovePhoto = () => {
+    setHazardPhoto(null);
+    showToastMessage("Photo removed");
+  };
 
+  /** 🚀 Submit logic */
   const handleSubmit = () => {
-    console.log('Submitting hazard report:', {
+    if (!hazardPhoto) {
+      showToastMessage("Please add a photo of the hazard");
+      return;
+    }
+
+    if (selectedHazard === "other" && !otherHazardText.trim()) {
+      showToastMessage("Please describe the hazard");
+      return;
+    }
+
+    console.log("Submitting hazard report:", {
       hazardType: selectedHazard,
       otherHazard: otherHazardText,
       confidence: confidenceRating,
       photo: hazardPhoto,
     });
 
-    showToastMessage('Hazard report submitted!');
-    history.push('/run-tracking');
+    showToastMessage("Hazard report submitted!");
+
+    setTimeout(() => {
+      history.push("/run-tracking");
+    }, 800);
   };
 
   const handleUseMyLocation = () => {
-    console.log('Using current location');
-    showToastMessage('Using current location...');
+    showToastMessage("Using current location...");
+    // TODO: implement geolocation
   };
 
   const handlePinOnMap = () => {
-    console.log('Opening map to pin location');
-    showToastMessage('Opening map to pin location...');
+    showToastMessage("Opening map to pin location...");
+    // TODO: implement map picker
   };
 
+  /** ⭐ Confidence Rating Stars */
   const renderStars = () =>
     Array.from({ length: 5 }, (_, index) => (
       <IonIcon
         key={index}
         icon={index < confidenceRating ? star : starOutline}
         style={{
-          fontSize: '24px',
-          color: index < confidenceRating ? '#ffd700' : '#ccc',
-          cursor: 'pointer',
-          margin: '0 2px',
+          fontSize: "24px",
+          color: index < confidenceRating ? "#ffd700" : "#ccc",
+          cursor: "pointer",
+          margin: "0 2px",
         }}
         onClick={() => setConfidenceRating(index + 1)}
       />
     ));
 
+  /** 🔔 Toast handler */
   const showToastMessage = (message: string) => {
     setToastMessage(message);
     setShowToast(true);
@@ -125,59 +154,30 @@ const ReportHazard: React.FC = () => {
           <h2>Report Hazard</h2>
         </IonText>
 
-        {/* 📸 Add Photo Section */}
-        <IonCard style={{ marginBottom: '20px' }}>
-          <IonCardContent style={{ textAlign: 'center', padding: '20px' }}>
-            {!hazardPhoto ? (
-              <IonButton
-                fill="clear"
-                size="large"
-                onClick={handleAddPhoto}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                }}
-              >
-                <IonIcon icon={cameraOutline} style={{ fontSize: '48px' }} />
-                <IonLabel>Add Photo</IonLabel>
-              </IonButton>
-            ) : (
-              <div style={{ position: 'relative' }}>
-                <IonImg
-                  src={hazardPhoto}
-                  alt="Hazard photo"
-                  style={{
-                    maxHeight: '300px',
-                    objectFit: 'cover',
-                    borderRadius: '8px',
-                  }}
-                />
-                <IonButton
-                  fill="clear"
-                  style={{
-                    position: 'absolute',
-                    top: '8px',
-                    right: '8px',
-                    '--background': 'rgba(0,0,0,0.5)',
-                  }}
-                  onClick={removePhoto}
-                >
-                  <IonIcon
-                    icon={closeCircle}
-                    style={{ fontSize: '32px', color: 'white' }}
-                  />
-                </IonButton>
-              </div>
-            )}
-          </IonCardContent>
-        </IonCard>
+       {/* Image Upload Section */}
+               <div className="image-upload-section">
+                 {!image ? (
+                   <IonButton expand="block" fill="outline" onClick={handleAddPhoto}>
+                     <IonIcon slot="start" icon={imageOutline} />
+                     Add Image
+                   </IonButton>
+                 ) : (
+                   <div className="preview-container">
+                     <IonImg src={image} alt="Preview" className="preview-image" />
+                     <IonButton
+                       fill="clear"
+                       className="remove-image-btn"
+                       onClick={handleRemovePhoto}
+                     >
+                       <IonIcon icon={closeCircle} color="light" style={{ fontSize: "32px" }} />
+                     </IonButton>
+                   </div>
+                 )}
+               </div>
 
-        {/* 🚧 Hazard Type Selection */}
+        {/* 🚧 Hazard Type */}
         <IonText color="medium">
-          <h3 style={{ margin: '20px 0 16px 0' }}>
+          <h3 style={{ margin: "20px 0 16px 0" }}>
             Select the type of hazard you'd like to report:
           </h3>
         </IonText>
@@ -217,19 +217,19 @@ const ReportHazard: React.FC = () => {
           </IonItem>
         </IonRadioGroup>
 
-        {selectedHazard === 'other' && (
-          <IonItem style={{ marginTop: '8px' }}>
+        {selectedHazard === "other" && (
+          <IonItem style={{ marginTop: "8px" }}>
             <IonInput
               value={otherHazardText}
               placeholder="Enter and describe the hazard"
-              onIonInput={(e) => setOtherHazardText(e.detail.value ?? '')}
+              onIonInput={(e) => setOtherHazardText(e.detail.value ?? "")}
             />
           </IonItem>
         )}
 
-        {/* 📍 Location Options */}
+        {/* 📍 Location */}
         <IonText color="medium">
-          <h3 style={{ margin: '24px 0 16px 0' }}>Select Location Method</h3>
+          <h3 style={{ margin: "24px 0 16px 0" }}>Select Location Method</h3>
         </IonText>
 
         <IonGrid>
@@ -239,7 +239,7 @@ const ReportHazard: React.FC = () => {
                 expand="block"
                 fill="outline"
                 onClick={handleUseMyLocation}
-                style={{ height: '60px' }}
+                style={{ height: "60px" }}
               >
                 <IonIcon icon={locationOutline} slot="start" />
                 Use My Location
@@ -250,7 +250,7 @@ const ReportHazard: React.FC = () => {
                 expand="block"
                 fill="outline"
                 onClick={handlePinOnMap}
-                style={{ height: '60px' }}
+                style={{ height: "60px" }}
               >
                 <IonIcon icon={pinOutline} slot="start" />
                 Pin on Map
@@ -259,35 +259,29 @@ const ReportHazard: React.FC = () => {
           </IonRow>
         </IonGrid>
 
-        {/* ⭐ Confidence Rating */}
+        {/* ⭐ Confidence */}
         <IonText color="medium">
-          <h3 style={{ margin: '24px 0 16px 0' }}>
+          <h3 style={{ margin: "24px 0 16px 0" }}>
             How confident are you about this report?
           </h3>
         </IonText>
 
         <div
           style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginBottom: '32px',
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            marginBottom: "32px",
           }}
         >
           {renderStars()}
         </div>
 
-        {/* 🚀 Submit Button */}
-        <IonButton
-          expand="block"
-          size="large"
-          onClick={handleSubmit}
-          className="submit-button"
-        >
+        {/* 🚀 Submit */}
+        <IonButton expand="block" size="large" onClick={handleSubmit}>
           Submit
         </IonButton>
 
-        {/* Toast Feedback */}
         <IonToast
           isOpen={showToast}
           message={toastMessage}
