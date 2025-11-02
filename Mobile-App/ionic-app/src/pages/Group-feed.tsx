@@ -18,7 +18,9 @@ import {
   IonModal,
   IonTextarea,
   IonActionSheet,
-  IonAlert
+  IonAlert,
+  IonToast,
+  IonBadge
 } from "@ionic/react";
 import {
   heartOutline,
@@ -30,6 +32,16 @@ import {
 import { useHistory } from "react-router-dom";
 import ChallengePic from '../components/assets/istockphoto-143920084-612x612.jpg';
 import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
+import { usePushNotifications } from "../components/push-notification";
+import { PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
+
+interface Post {
+  id: number;
+  user: string;
+  time: string;
+  text: string;
+  image: string;
+}
 
 const GroupFeed: React.FC = () => {
   const history = useHistory();
@@ -56,9 +68,93 @@ const GroupFeed: React.FC = () => {
     3: { count: 150, isLiked: false }
   });
 
+  // Posts state for dynamic additions
+  const [posts, setPosts] = useState<Post[]>([
+    { id: 1, user: "Adams Smith", time: "3 hrs ago", text: "Just completed my first 10K! 🏃 Feeling amazing!", image: ChallengePic },
+    { id: 2, user: "Adams Smith", time: "4 hrs ago", text: "Great run with the team today! Marathon training is on track! 🏃‍♀️🏃‍♂️", image: ChallengePic },
+    { id: 3, user: "Adams Smith", time: "5 hrs ago", text: "Morning jog in the park. So refreshing! 🌳", image: ChallengePic }
+  ]);
+
+  // Push notification state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [newPostsCount, setNewPostsCount] = useState(0);
+
   // Leave Group state
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [showLeaveAlert, setShowLeaveAlert] = useState(false);
+
+  // Initialize push notifications
+  usePushNotifications({
+    onTokenReceived: (token) => {
+      console.log("[GroupFeed] FCM Token received:", token);
+      // Send token to your backend to register for group activity notifications
+      // e.g., sendTokenToBackend(token, 'group_feed', groupId);
+    },
+    onNotificationReceived: (notification: PushNotificationSchema) => {
+      console.log("[GroupFeed] Notification received:", notification);
+      
+      // Handle different types of group notifications
+      if (notification.data?.type === 'new_post') {
+        setToastMessage(`${notification.data.username} posted in the group`);
+        setShowToast(true);
+        setNewPostsCount(prev => prev + 1);
+        
+        // Add new post to feed
+        const newPost: Post = {
+          id: Date.now(),
+          user: notification.data.username || "Group Member",
+          time: "Just now",
+          text: notification.body || "New post",
+          image: notification.data.imageUrl || ChallengePic
+        };
+        setPosts(prev => [newPost, ...prev]);
+        
+        // Initialize likes and comments for new post
+        setLikes(prev => ({ ...prev, [newPost.id]: { count: 0, isLiked: false } }));
+        setComments(prev => ({ ...prev, [newPost.id]: [] }));
+      } 
+      else if (notification.data?.type === 'new_comment') {
+        setToastMessage(`${notification.data.username} commented on a post`);
+        setShowToast(true);
+        
+        // Add comment to the specific post
+        const postId = parseInt(notification.data.postId);
+        if (postId) {
+          const newCommentObj = {
+            id: Date.now(),
+            user: notification.data.username,
+            text: notification.body || "",
+            time: "Just now"
+          };
+          setComments(prev => ({
+            ...prev,
+            [postId]: [...(prev[postId] || []), newCommentObj]
+          }));
+        }
+      }
+      else if (notification.data?.type === 'post_like') {
+        setToastMessage(`${notification.data.username} liked your post`);
+        setShowToast(true);
+      }
+      else if (notification.data?.type === 'group_announcement') {
+        setToastMessage(`Group Admin: ${notification.body}`);
+        setShowToast(true);
+      }
+    },
+    onNotificationActionPerformed: (notification: ActionPerformed) => {
+      console.log("[GroupFeed] Notification tapped:", notification);
+      
+      // Navigate to specific post if postId is provided
+      if (notification.notification.data?.postId) {
+        const postId = parseInt(notification.notification.data.postId);
+        openComments(postId);
+      }
+      
+      // Clear new posts count when user opens the app
+      setNewPostsCount(0);
+    }
+  });
 
   const handleLike = (postId: number) => {
     setLikes(prev => ({
@@ -99,22 +195,25 @@ const GroupFeed: React.FC = () => {
   };
 
   const handleLeaveGroup = () => {
-    // Add your leave group logic here (API call, etc.)
     console.log("User left the group");
-    
-    // Navigate back to home or groups list
     history.push("/HomeModule/homeM1");
   };
 
   return (
     <IonPage>
-      {/* Top Header */}
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
             <IonBackButton defaultHref="/HomeModule/homeM1" />
           </IonButtons>
-          <IonTitle>Group Feed</IonTitle>
+          <IonTitle>
+            Group Feed
+            {newPostsCount > 0 && (
+              <IonBadge color="danger" style={{ marginLeft: '8px', verticalAlign: 'super' }}>
+                {newPostsCount}
+              </IonBadge>
+            )}
+          </IonTitle>
           <IonButtons slot="end">
             <IonButton onClick={() => setShowActionSheet(true)}>
               <IonIcon icon={ellipsisVertical} />
@@ -123,9 +222,7 @@ const GroupFeed: React.FC = () => {
         </IonToolbar>
       </IonHeader>
 
-      {/* Content */}
       <IonContent fullscreen className="ion-padding">
-        
         <div className="feed-tab">
           {/* Post Creation Input */}
           <IonCard className="post-input-card" routerLink="/create-post">
@@ -133,122 +230,58 @@ const GroupFeed: React.FC = () => {
               <IonAvatar slot="start">
                 <IonImg src={ProfilePic} />
               </IonAvatar>
-              <input type="text" placeholder="What's on your mind?" className="post-input" style={{border: 'none', outline: 'none', width: '100%', padding: '10px'}} readOnly />
+              <input 
+                type="text" 
+                placeholder="What's on your mind?" 
+                className="post-input" 
+                style={{border: 'none', outline: 'none', width: '100%', padding: '10px'}} 
+                readOnly 
+              />
             </IonItem>
           </IonCard>
 
           {/* Feed Posts */}
           <div className="feed-posts">
-            {/* Post 1 */}
-            <IonCard className="post-card">
-              <IonCardHeader>
-                <div className="post-header" style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                  <IonAvatar>
-                    <IonImg src={ProfilePic} />
-                  </IonAvatar>
-                  <div className="user-info">
-                    <div style={{fontWeight: 'bold'}}>Adams Smith</div>
-                    <div style={{fontSize: '0.85rem', color: '#666'}}>3 hrs ago</div>
+            {posts.map((post) => (
+              <IonCard key={post.id} className="post-card">
+                <IonCardHeader>
+                  <div className="post-header" style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                    <IonAvatar>
+                      <IonImg src={ProfilePic} />
+                    </IonAvatar>
+                    <div className="user-info">
+                      <div style={{fontWeight: 'bold'}}>{post.user}</div>
+                      <div style={{fontSize: '0.85rem', color: '#666'}}>{post.time}</div>
+                    </div>
                   </div>
-                </div>
-              </IonCardHeader>
-              <IonCardContent>
-                <p className="post-text">Just completed my first 10K! 🏃 Feeling amazing!</p>
-                <IonImg src={ChallengePic} className="post-image" style={{borderRadius: '8px', marginTop: '10px'}} />
-                <div className="post-actions" style={{display: 'flex', gap: '20px', marginTop: '15px', padding: '10px 0', borderTop: '1px solid #eee'}}>
-                  <div 
-                    className="action-item" 
-                    onClick={() => handleLike(1)}
-                    style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
-                  >
-                    <IonIcon icon={likes[1].isLiked ? heart : heartOutline} color={likes[1].isLiked ? "danger" : "medium"} /> 
-                    <span>{likes[1].count}</span>
+                </IonCardHeader>
+                <IonCardContent>
+                  <p className="post-text">{post.text}</p>
+                  <IonImg src={post.image} className="post-image" style={{borderRadius: '8px', marginTop: '10px'}} />
+                  <div className="post-actions" style={{display: 'flex', gap: '20px', marginTop: '15px', padding: '10px 0', borderTop: '1px solid #eee'}}>
+                    <div 
+                      className="action-item" 
+                      onClick={() => handleLike(post.id)}
+                      style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
+                    >
+                      <IonIcon 
+                        icon={likes[post.id]?.isLiked ? heart : heartOutline} 
+                        color={likes[post.id]?.isLiked ? "danger" : "medium"} 
+                      /> 
+                      <span>{likes[post.id]?.count || 0}</span>
+                    </div>
+                    <div 
+                      className="action-item" 
+                      onClick={() => openComments(post.id)}
+                      style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
+                    >
+                      <IonIcon icon={chatbubbleOutline} color="medium" /> 
+                      <span>{comments[post.id]?.length || 0}</span>
+                    </div>
                   </div>
-                  <div 
-                    className="action-item" 
-                    onClick={() => openComments(1)}
-                    style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
-                  >
-                    <IonIcon icon={chatbubbleOutline} color="medium" /> 
-                    <span>{comments[1].length}</span>
-                  </div>
-                </div>
-              </IonCardContent>
-            </IonCard>
-
-            {/* Post 2 */}
-            <IonCard className="post-card">
-              <IonCardHeader>
-                <div className="post-header" style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                  <IonAvatar>
-                    <IonImg src={ProfilePic} />
-                  </IonAvatar>
-                  <div className="user-info">
-                    <div style={{fontWeight: 'bold'}}>Adams Smith</div>
-                    <div style={{fontSize: '0.85rem', color: '#666'}}>4 hrs ago</div>
-                  </div>
-                </div>
-              </IonCardHeader>
-              <IonCardContent>
-                <p className="post-text">Great run with the team today! Marathon training is on track! 🏃‍♀️🏃‍♂️</p>
-                <IonImg src={ChallengePic} className="post-image" style={{borderRadius: '8px', marginTop: '10px'}} />
-                <div className="post-actions" style={{display: 'flex', gap: '20px', marginTop: '15px', padding: '10px 0', borderTop: '1px solid #eee'}}>
-                  <div 
-                    className="action-item" 
-                    onClick={() => handleLike(2)}
-                    style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
-                  >
-                    <IonIcon icon={likes[2].isLiked ? heart : heartOutline} color={likes[2].isLiked ? "danger" : "medium"} /> 
-                    <span>{likes[2].count}</span>
-                  </div>
-                  <div 
-                    className="action-item" 
-                    onClick={() => openComments(2)}
-                    style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
-                  >
-                    <IonIcon icon={chatbubbleOutline} color="medium" /> 
-                    <span>{comments[2].length}</span>
-                  </div>
-                </div>
-              </IonCardContent>
-            </IonCard>
-
-            {/* Post 3 */}
-            <IonCard className="post-card">
-              <IonCardHeader>
-                <div className="post-header" style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                  <IonAvatar>
-                    <IonImg src={ProfilePic} />
-                  </IonAvatar>
-                  <div className="user-info">
-                    <div style={{fontWeight: 'bold'}}>Adams Smith</div>
-                    <div style={{fontSize: '0.85rem', color: '#666'}}>5 hrs ago</div>
-                  </div>
-                </div>
-              </IonCardHeader>
-              <IonCardContent>
-                <p className="post-text">Morning jog in the park. So refreshing! 🌳</p>
-                <IonImg src={ChallengePic} className="post-image" style={{borderRadius: '8px', marginTop: '10px'}} />
-                <div className="post-actions" style={{display: 'flex', gap: '20px', marginTop: '15px', padding: '10px 0', borderTop: '1px solid #eee'}}>
-                  <div 
-                    className="action-item" 
-                    onClick={() => handleLike(3)}
-                    style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
-                  >
-                    <IonIcon icon={likes[3].isLiked ? heart : heartOutline} color={likes[3].isLiked ? "danger" : "medium"} /> 
-                    <span>{likes[3].count}</span>
-                  </div>
-                  <div 
-                    className="action-item" 
-                    onClick={() => openComments(3)}
-                    style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
-                  >
-                    <IonIcon icon={chatbubbleOutline} color="medium" /> 
-                    <span>{comments[3].length}</span>
-                  </div>
-                </div>
-              </IonCardContent>
-            </IonCard>
+                </IonCardContent>
+              </IonCard>
+            ))}
           </div>
         </div>
 
@@ -303,7 +336,6 @@ const GroupFeed: React.FC = () => {
               }
             },
             {
-              
               text: 'Cancel',
               role: 'cancel'
             }
@@ -327,6 +359,16 @@ const GroupFeed: React.FC = () => {
               handler: handleLeaveGroup
             }
           ]}
+        />
+
+        {/* Toast for Push Notifications */}
+        <IonToast
+          isOpen={showToast}
+          onDidDismiss={() => setShowToast(false)}
+          message={toastMessage}
+          duration={3000}
+          position="top"
+          color="primary"
         />
       </IonContent>
     </IonPage>

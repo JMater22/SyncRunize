@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   IonPage,
   IonHeader,
@@ -13,14 +14,70 @@ import {
   IonGrid,
   IonRow, 
   IonCol,
-  IonImg
+  IonImg,
+  IonToast
 } from "@ionic/react";
 import '../theme/Analytics.css';
 import GoldBadge from "../components/assets/badges/Gold Animated-modified.png";
 import SilverBadge from "../components/assets/badges/Silver Animated-modified.png";
 import BronzeBadge from "../components/assets/badges/Bronze Animated-modified.png";
+import { usePushNotifications } from "../components/push-notification";
 
 export default function Analytics() {
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastColor, setToastColor] = useState<"primary" | "success" | "warning">("primary");
+
+  // Initialize push notifications
+  usePushNotifications({
+    onNotificationReceived: (notification) => {
+      // Handle notification received while app is in foreground
+      console.log('Notification received on Analytics:', notification);
+      
+      // Customize toast based on notification type
+      const notifType = notification.data?.type;
+      
+      if (notifType === 'achievement') {
+        setToastMessage(`🏆 ${notification.title || 'New Achievement Unlocked!'}`);
+        setToastColor("success");
+      } else if (notifType === 'challenge') {
+        setToastMessage(`🎯 ${notification.title || 'Challenge Update'}`);
+        setToastColor("warning");
+      } else if (notifType === 'milestone') {
+        setToastMessage(`🎉 ${notification.title || 'New Milestone Reached!'}`);
+        setToastColor("success");
+      } else {
+        setToastMessage(notification.title || 'New notification');
+        setToastColor("primary");
+      }
+      
+      setShowToast(true);
+    },
+    onNotificationActionPerformed: (notification) => {
+      // Handle notification tap
+      console.log('Notification tapped on Analytics:', notification);
+      
+      const data = notification.notification.data;
+      
+      // Navigate based on notification type
+      if (data?.type === 'achievement') {
+        // Scroll to achievements section or show achievement details
+        console.log('Navigate to achievement:', data?.achievementId);
+        const achievementsSection = document.querySelector('.achievements');
+        achievementsSection?.scrollIntoView({ behavior: 'smooth' });
+      } else if (data?.type === 'challenge') {
+        // Scroll to challenges section
+        console.log('Navigate to challenge:', data?.challengeId);
+        const challengesSection = document.querySelector('.challenges');
+        challengesSection?.scrollIntoView({ behavior: 'smooth' });
+      } else if (data?.type === 'goal') {
+        // Scroll to weekly activity section
+        const weeklySection = document.querySelector('.weekly-activity');
+        weeklySection?.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  });
+
   return (
     <IonPage className="analytics-page">
       <IonHeader className="analytics-header">
@@ -163,7 +220,30 @@ export default function Analytics() {
             </IonCardContent>
           </IonCard>
         </section>
+
+        {/* Toast for notifications */}
+        <IonToast
+          isOpen={showToast}
+          onDidDismiss={() => setShowToast(false)}
+          message={toastMessage}
+          duration={4000}
+          position="top"
+          color={toastColor}
+          buttons={[
+            {
+              text: 'View',
+              role: 'info',
+              handler: () => {
+                console.log('View notification clicked');
+              }
+            },
+            {
+              text: 'Dismiss',
+              role: 'cancel'
+            }
+          ]}
+        />
       </IonContent>
     </IonPage>
-  );
-}
+  )
+};

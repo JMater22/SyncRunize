@@ -25,6 +25,7 @@ import {
 } from "@ionic/react";
 import { arrowBack, bookmark, pencil, pin, locate } from "ionicons/icons";
 import { Geolocation } from "@capacitor/geolocation";
+import { usePushNotifications } from "../components/push-notification";
 import "../theme/Routes.css";
 
 interface Position {
@@ -37,7 +38,53 @@ const RouteSuggestion: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastColor, setToastColor] = useState<"success" | "danger" | "primary">("danger");
   const [accordionValue, setAccordionValue] = useState<string | undefined>(undefined);
+
+  // Initialize push notifications
+  usePushNotifications({
+    onNotificationReceived: (notification) => {
+      console.log('Notification received on Routes:', notification);
+      
+      const notifType = notification.data?.type;
+      
+      if (notifType === 'route') {
+        setToastMessage(`📍 ${notification.title || 'New Route Available'}`);
+        setToastColor("primary");
+      } else if (notifType === 'saved-route') {
+        setToastMessage(`⭐ ${notification.title || 'Route Saved Successfully'}`);
+        setToastColor("success");
+      } else if (notifType === 'nearby') {
+        setToastMessage(`📌 ${notification.title || 'Nearby Route Suggestion'}`);
+        setToastColor("primary");
+      } else {
+        setToastMessage(notification.title || 'New notification');
+        setToastColor("primary");
+      }
+      
+      setShowToast(true);
+    },
+    onNotificationActionPerformed: (notification) => {
+      console.log('Notification tapped on Routes:', notification);
+      
+      const data = notification.notification.data;
+      
+      if (data?.type === 'route' || data?.type === 'nearby') {
+        // Expand the suggested routes accordion
+        setAccordionValue('routes');
+        
+        // Scroll to suggested routes
+        setTimeout(() => {
+          const routesAccordion = document.querySelector('.accordion-content');
+          routesAccordion?.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
+      } else if (data?.type === 'saved-route') {
+        // Navigate to saved routes page
+        window.location.href = '/saved-routes';
+      }
+    }
+  });
 
   useEffect(() => {
     getCurrentPosition();
@@ -54,6 +101,8 @@ const RouteSuggestion: React.FC = () => {
         const requested = await Geolocation.requestPermissions();
         if (requested.location !== "granted") {
           setError("Location permission denied");
+          setToastColor("danger");
+          setToastMessage("Location permission denied");
           setShowToast(true);
           setLoading(false);
           return;
@@ -74,6 +123,8 @@ const RouteSuggestion: React.FC = () => {
     } catch (err: any) {
       console.error("Error getting location:", err);
       setError(err.message || "Failed to get location");
+      setToastColor("danger");
+      setToastMessage(err.message || "Failed to get location");
       setShowToast(true);
     } finally {
       setLoading(false);
@@ -118,7 +169,7 @@ const RouteSuggestion: React.FC = () => {
           </IonToolbar>
         </IonHeader>
 
-      {/* Main Content */}s
+      {/* Main Content */}
       <IonContent fullscreen>
         {/* Search */}
         <div className="search-bar">
@@ -178,7 +229,16 @@ const RouteSuggestion: React.FC = () => {
                     <p className="route-location">Capas, Tarlac, Philippines</p>
 
                     <div className="route-buttons">
-                      <IonButton size="small" color="success" className="route-action-btn">
+                      <IonButton 
+                        size="small" 
+                        color="success" 
+                        className="route-action-btn"
+                        onClick={() => {
+                          setToastMessage("Route saved successfully!");
+                          setToastColor("success");
+                          setShowToast(true);
+                        }}
+                      >
                         Save
                       </IonButton>
                       <IonButton size="small" color="success" disabled={!currentPosition} className="route-action-btn">
@@ -214,7 +274,16 @@ const RouteSuggestion: React.FC = () => {
                     <p className="route-location">Tarlac City, Tarlac, Philippines</p>
 
                     <div className="route-buttons">
-                      <IonButton size="small" color="success" className="route-action-btn">
+                      <IonButton 
+                        size="small" 
+                        color="success" 
+                        className="route-action-btn"
+                        onClick={() => {
+                          setToastMessage("Route saved successfully!");
+                          setToastColor("success");
+                          setShowToast(true);
+                        }}
+                      >
                         Save
                       </IonButton>
                       <IonButton size="small" color="success" disabled={!currentPosition} className="route-action-btn">
@@ -242,9 +311,10 @@ const RouteSuggestion: React.FC = () => {
         <IonToast
           isOpen={showToast}
           onDidDismiss={() => setShowToast(false)}
-          message={error}
+          message={toastMessage}
           duration={3000}
-          color="danger"
+          color={toastColor}
+          position="top"
         />
       </IonContent>
     </IonPage>

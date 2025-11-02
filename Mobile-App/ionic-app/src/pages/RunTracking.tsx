@@ -9,6 +9,7 @@ import {
 } from "@ionic/react";
 import { arrowBack, navigateCircleOutline } from "ionicons/icons";
 import { Geolocation } from "@capacitor/geolocation";
+import { usePushNotifications } from "../components/push-notification";
 import PlayCircle from "../components/assets/play_circle.svg";
 import { useHideTabBar } from "../hooks/useHideTabBar";
 import "../theme/global.css";
@@ -29,8 +30,56 @@ const RunMap: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastColor, setToastColor] = useState<"success" | "danger" | "warning" | "primary">("danger");
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [showPermissionAlert, setShowPermissionAlert] = useState(false);
+
+  // Initialize push notifications
+  usePushNotifications({
+    onNotificationReceived: (notification) => {
+      console.log('Notification received on Run Map:', notification);
+      
+      const notifType = notification.data?.type;
+      
+      if (notifType === 'milestone') {
+        setToastMessage(`🎯 ${notification.title || 'Milestone Achieved!'}`);
+        setToastColor("success");
+      } else if (notifType === 'pace-alert') {
+        setToastMessage(`⚡ ${notification.title || 'Pace Alert'}`);
+        setToastColor("warning");
+      } else if (notifType === 'distance') {
+        setToastMessage(`📏 ${notification.title || 'Distance Update'}`);
+        setToastColor("primary");
+      } else if (notifType === 'safety') {
+        setToastMessage(`🚨 ${notification.title || 'Safety Alert'}`);
+        setToastColor("danger");
+      } else {
+        setToastMessage(notification.title || 'New notification');
+        setToastColor("primary");
+      }
+      
+      setShowToast(true);
+    },
+    onNotificationActionPerformed: (notification) => {
+      console.log('Notification tapped on Run Map:', notification);
+      
+      const data = notification.notification.data;
+      
+      if (data?.type === 'milestone' || data?.type === 'distance') {
+        // User can see the notification, no action needed as they're already on the run screen
+        console.log('Achievement notification:', data);
+      } else if (data?.type === 'pace-alert') {
+        // Show pace alert
+        setToastMessage("Check your pace!");
+        setToastColor("warning");
+        setShowToast(true);
+      } else if (data?.type === 'safety') {
+        // Safety notification - maybe pause or alert user
+        console.log('Safety alert:', data);
+      }
+    }
+  });
 
   useEffect(() => {
     const initLocation = async () => {
@@ -48,6 +97,8 @@ const RunMap: React.FC = () => {
       } catch (err) {
         console.error("Permission request error:", err);
         setError("Failed to request location permission.");
+        setToastMessage("Failed to request location permission.");
+        setToastColor("danger");
         setShowToast(true);
       } finally {
         setLoading(false);
@@ -68,6 +119,8 @@ const RunMap: React.FC = () => {
         const requested = await Geolocation.requestPermissions();
         if (requested.location !== "granted") {
           setError("Location permission denied");
+          setToastMessage("Location permission denied");
+          setToastColor("danger");
           setShowPermissionAlert(true);
           setLoading(false);
           setLocationEnabled(false);
@@ -91,6 +144,11 @@ const RunMap: React.FC = () => {
 
       setLocationEnabled(true);
       console.log("Current position:", position.coords);
+      
+      // Show success toast when GPS is acquired
+      setToastMessage("GPS signal acquired!");
+      setToastColor("success");
+      setShowToast(true);
     } catch (err: any) {
       console.error("Error getting location:", err);
 
@@ -104,6 +162,8 @@ const RunMap: React.FC = () => {
       }
 
       setError(errorMessage);
+      setToastMessage(errorMessage);
+      setToastColor("danger");
       setShowToast(true);
       setLocationEnabled(false);
     } finally {
@@ -225,9 +285,9 @@ const RunMap: React.FC = () => {
         <IonToast
           isOpen={showToast}
           onDidDismiss={() => setShowToast(false)}
-          message={error}
+          message={toastMessage}
           duration={3000}
-          color="danger"
+          color={toastColor}
           position="top"
         />
       </IonContent>
