@@ -76,7 +76,7 @@ const Login: React.FC = () => {
                       placeholder="Enter your password"
                       required
                     />
-                  </div>
+                  </div> 
 
                  
                   <div className="forgot-password-container">
@@ -86,7 +86,7 @@ const Login: React.FC = () => {
                   </div>
                 </div>
 
-                
+                 
                 <IonButton
                   expand="block"
                   type="submit"

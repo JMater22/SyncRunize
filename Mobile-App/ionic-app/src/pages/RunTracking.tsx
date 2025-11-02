@@ -17,12 +17,12 @@ import "../theme/Run-Main.css";
 interface Position {
   latitude: number;
   longitude: number;
-  accuracy?: number;
+  accuracy?: number; 
   altitude?: number | null;
   speed?: number | null;
 }
 
-const RunMap: React.FC = () => {
+const RunMap: React.FC = () => { 
   useHideTabBar();
 
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
