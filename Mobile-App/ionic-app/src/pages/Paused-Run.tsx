@@ -7,8 +7,13 @@ import {
 } from "@ionic/react";
 import { arrowBack } from "ionicons/icons";
 import "../theme/Paused-Run.css";
+import { useHideTabBar } from "../hooks/useHideTabBar";
+
 
 export default function PausedRun() {
+
+  useHideTabBar();
+  
   return (
     <IonPage>
       {/* Content */}
