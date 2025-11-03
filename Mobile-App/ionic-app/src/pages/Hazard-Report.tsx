@@ -78,7 +78,7 @@ const ReportHazard: React.FC = () => {
   const handleRemovePhoto = () => {
     setHazardPhoto(null);
     showToastMessage("Photo removed");
-  };
+  }; 
 
   /** 🚀 Submit logic */
   const handleSubmit = () => {
