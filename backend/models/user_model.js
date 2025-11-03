@@ -20,7 +20,7 @@ export const createUserProfile = async (
       age,
       weight_kg,
     })
-    .select("id, auth_id, name, email, gender, age, weight_kg, created_at")
+    .select("user_id, auth_id, name, email, gender, age, weight_kg, created_at")
     .single();
 
   if (error) throw error;
@@ -31,7 +31,7 @@ export const createUserProfile = async (
 export const getUserByAuthId = async (auth_id) => {
   const { data, error } = await supabase
     .from("users")
-    .select("id, auth_id, name, email, gender, age, weight_kg, created_at")
+    .select("user_id, auth_id, name, email, gender, age, weight_kg, created_at")
     .eq("auth_id", auth_id)
     .single();
 
@@ -46,8 +46,8 @@ export const getUserByAuthId = async (auth_id) => {
 export const getPublicUserById = async (id) => {
   const { data, error } = await supabase
     .from("users")
-    .select("id, name, gender, age, created_at")
-    .eq("id", id)
+    .select("user_id, name, gender, age, created_at")
+    .eq("user_id", id)
     .single();
 
   if (error) {
@@ -72,7 +72,7 @@ export const updateUserProfile = async (auth_id, updates) => {
     .from("users")
     .update(updateData)
     .eq("auth_id", auth_id)
-    .select("id, auth_id, name, email, gender, age, weight_kg, created_at")
+    .select("user_id, auth_id, name, email, gender, age, weight_kg, created_at")
     .single();
 
   if (error) throw error;
@@ -85,7 +85,7 @@ export const deleteUserProfile = async (auth_id) => {
     .from("users")
     .delete()
     .eq("auth_id", auth_id)
-    .select("id, auth_id")
+    .select("user_id, auth_id")
     .single();
 
   if (error) throw error;

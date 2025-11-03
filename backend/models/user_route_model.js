@@ -155,7 +155,7 @@ export const getRouteById = async (routeId) => {
   const { data, error } = await supabase
     .from("user_routes")
     .select("*")
-    .eq("id", routeId)
+    .eq("route_id", routeId)
     .single();
 
   if (error) {

@@ -106,7 +106,7 @@ BEGIN
   RETURN QUERY
   SELECT
     DATE_TRUNC(p_period, created_at) AS period_start,
-    SUM(distance) AS total_distance,
+    SUM(distance_km) AS total_distance,
     AVG(average_pace) AS avg_pace,
     SUM(estimated_calories) AS total_calories,
     COUNT(*) AS runs_count
@@ -142,7 +142,7 @@ RETURNS TABLE (
 BEGIN
   RETURN QUERY
   SELECT
-    SUM(distance) AS total_distance,
+    SUM(distance_km) AS total_distance,
     AVG(average_pace) AS avg_pace,
     SUM(estimated_calories) AS total_calories,
     COUNT(*) AS runs_count,
