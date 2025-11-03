@@ -78,3 +78,38 @@ export const deleteGroup = async (req, res) => {
     res.status(500).json({ error: "Failed to delete group" });
   }
 };
+
+
+// ✅ Get weekly leaderboard
+// GET /api/groups/:groupId/leaderboard/weekly?week=current|last
+export const getWeeklyLeaderboard = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { week } = req.query; // "current" or "last"
+
+    const leaderboard = await GroupModel.getWeeklyLeaderboard(
+      parseInt(groupId, 10),
+      week || "current"
+    );
+
+    res.json(leaderboard);
+  } catch (err) {
+    console.error("❌ Error fetching weekly leaderboard:", err);
+    res.status(500).json({ error: "Failed to fetch weekly leaderboard" });
+  }
+};
+
+// ✅ Get last week's leaders (top 3)
+// GET /api/groups/:groupId/leaderboard/last-week/leaders
+export const getLastWeekLeaders = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+
+    const leaders = await GroupModel.getLastWeekLeaders(parseInt(groupId, 10));
+
+    res.json(leaders);
+  } catch (err) {
+    console.error("❌ Error fetching last week's leaders:", err);
+    res.status(500).json({ error: "Failed to fetch last week's leaders" });
+  }
+};

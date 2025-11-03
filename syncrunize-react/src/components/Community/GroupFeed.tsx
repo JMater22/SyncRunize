@@ -20,7 +20,8 @@ import {
   closeCircle, 
   arrowBack,
   heartOutline,
-  heart 
+  heart,
+  sendOutline
 } from "ionicons/icons";
 import { useParams } from "react-router-dom";
 import axios from "axios";
@@ -75,7 +76,6 @@ interface Member {
   };
 }
 
-
 interface Post {
   post_id: number;
   author: string;
@@ -94,6 +94,7 @@ interface Comment {
   comment_id: number;
   user_id: number;
   username: string;
+  name: string;
   avatar: string;
   content: string;
   timestamp: string;
@@ -108,6 +109,8 @@ const GroupFeed: React.FC = () => {
   // User & Auth
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [authToken, setAuthToken] = useState<string>("");
+  const [currentUserName, setCurrentUserName] = useState<string>("You");
+  const [currentUserAvatar, setCurrentUserAvatar] = useState<string>(DefaultProfileImage);
 
   // Group Data
   const [groupDetails, setGroupDetails] = useState<GroupDetails | null>(null);
@@ -137,6 +140,12 @@ const GroupFeed: React.FC = () => {
   const [postImages, setPostImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Comments
+  const [postComments, setPostComments] = useState<{ [postId: number]: Comment[] }>({});
+  const [commentInput, setCommentInput] = useState<{ [postId: number]: string }>({});
+  const [showComments, setShowComments] = useState<{ [postId: number]: boolean }>({});
+  const [isPostingComment, setIsPostingComment] = useState<{ [postId: number]: boolean }>({});
 
   // Loading States
   const [isLoading, setIsLoading] = useState(true);
@@ -173,6 +182,8 @@ const GroupFeed: React.FC = () => {
         );
 
         setCurrentUserId(user.user_id);
+        setCurrentUserName(user.name || "You");
+        setCurrentUserAvatar(user.profile_picture || DefaultProfileImage);
       } catch (error) {
         console.error("Error fetching current user:", error);
       }
@@ -188,24 +199,8 @@ const GroupFeed: React.FC = () => {
     const fetchGroupDetails = async () => {
       try {
         setIsLoading(true);
-
-        // TODO: Implement this endpoint
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/groups/${groupId}`);
         setGroupDetails(response.data);
-
-        // PLACEHOLDER - Remove when API is ready
-        // setGroupDetails({
-        //   group_id: parseInt(groupId),
-        //   name: "Tarlac City Runners",
-        //   description: "Let's Run Tarlakenos",
-        //   location: "Tarlac City, Tarlac, Philippines",
-        //   group_picture: DefaultGroupImage,
-        //   banner_link: "https://hooceemtoyucadhxuevx.supabase.co/storage/v1/object/public/assets/Default-banner/Banner%20UP.png",
-        //   privacy: false,
-        //   created_by: 1,
-        //   member_count: 698
-        // });
-
       } catch (error) {
         console.error("Error fetching group details:", error);
         showToastMessage("Failed to load group details", "danger");
@@ -223,18 +218,12 @@ const GroupFeed: React.FC = () => {
 
     const checkMembership = async () => {
       try {
-        // TODO: Implement this endpoint
         const response = await axios.get(
           `${import.meta.env.VITE_API_URL}/group-members/${groupId}/check/${currentUserId}`,
           { headers: { Authorization: `Bearer ${authToken}` } }
         );
         setIsMember(response.data.isMember);
         setUserRole(response.data.role);
-
-        // PLACEHOLDER - Remove when API is ready
-        // setIsMember(false);
-        // setUserRole(null);
-
       } catch (error) {
         console.error("Error checking membership:", error);
       }
@@ -249,39 +238,15 @@ const GroupFeed: React.FC = () => {
 
     const fetchLeaderboard = async () => {
       try {
-        // TODO: Implement these endpoints
-        // Weekly Leaderboard
-        // const weeklyResponse = await axios.get(
-        //   `${import.meta.env.VITE_API_URL}/groups/${groupId}/leaderboard/weekly?week=${leaderboardWeek}`
-        // );
-        // setThisWeekLeaderboard(weeklyResponse.data);
+        const weeklyResponse = await axios.get(
+          `${import.meta.env.VITE_API_URL}/groups/${groupId}/leaderboard/weekly?week=${leaderboardWeek}`
+        );
+        setThisWeekLeaderboard(weeklyResponse.data);
 
-        // Last Week's Leaders
-        // const leadersResponse = await axios.get(
-        //   `${import.meta.env.VITE_API_URL}/groups/${groupId}/leaderboard/last-week/leaders`
-        // );
-        // setLastWeekLeaders(leadersResponse.data);
-
-        // PLACEHOLDER - Remove when API is ready
-        setLastWeekLeaders({
-          distance: [
-            { user_id: 1, name: "Amir Haha", avatar: DefaultProfileImage, value: "130.5 km" },
-            { user_id: 2, name: "Hero Berms", avatar: DefaultProfileImage, value: "70.9 km" },
-            { user_id: 3, name: "Carl Tayag", avatar: DefaultProfileImage, value: "66.6 km" },
-          ],
-          time: [
-            { user_id: 4, name: "Jam Losañez", avatar: DefaultProfileImage, value: "96:10:49" },
-            { user_id: 1, name: "Amir Haha", avatar: DefaultProfileImage, value: "22:55:10" },
-            { user_id: 5, name: "PATRICK JARV", avatar: DefaultProfileImage, value: "7:51:55" },
-          ],
-        });
-
-        setThisWeekLeaderboard([
-          { rank: 1, user_id: 1, name: "Amir Haha", avatar: DefaultProfileImage, distance: "69.9 km", runs: 6, longest: "21.2 km" },
-          { rank: 2, user_id: 3, name: "Carl Tayag", avatar: DefaultProfileImage, distance: "49.3 km", runs: 5, longest: "12.3 km" },
-          { rank: 3, user_id: 6, name: "Darrell Castro", avatar: DefaultProfileImage, distance: "48.4 km", runs: 4, longest: "18.0 km" },
-        ]);
-
+        const leadersResponse = await axios.get(
+          `${import.meta.env.VITE_API_URL}/groups/${groupId}/leaderboard/last-week/leaders`
+        );
+        setLastWeekLeaders(leadersResponse.data);
       } catch (error) {
         console.error("Error fetching leaderboard:", error);
       }
@@ -296,7 +261,6 @@ const GroupFeed: React.FC = () => {
 
     const fetchMembers = async () => {
       try {
-        // TODO: Implement this endpoint
         const response = await axios.get(
           `${import.meta.env.VITE_API_URL}/group-members/${groupId}/members`,
           { headers: { Authorization: `Bearer ${authToken}` } }
@@ -304,16 +268,6 @@ const GroupFeed: React.FC = () => {
         const allMembers = response.data;
         setAdmins(allMembers.filter((m: Member) => m.role === 'admin'));
         setMembers(allMembers.filter((m: Member) => m.role === 'member'));
-
-        // PLACEHOLDER - Remove when API is ready
-        // setAdmins([
-        //   { user_id: 1, name: "Yobs V. Cabrera", username: "yobs", location: "Tarlac City, Tarlac", avatar: DefaultProfileImage, role: 'admin' }
-        // ]);
-        // setMembers([
-        //   { user_id: 2, name: "Aaron Andres", username: "aaron", location: "Mabalacat, Pampanga", avatar: DefaultProfileImage, role: 'member' },
-        //   { user_id: 3, name: "Carl Tayag", username: "carl", location: "Tarlac City", avatar: DefaultProfileImage, role: 'member' },
-        // ]);
-
       } catch (error) {
         console.error("Error fetching members:", error);
       }
@@ -324,51 +278,44 @@ const GroupFeed: React.FC = () => {
 
   // ==================== FETCH POSTS ====================
   useEffect(() => {
-    if (!groupId || activeSegment !== 'posts') return;
+    if (!groupId || activeSegment !== 'posts' || !currentUserId) return;
 
     const fetchPosts = async () => {
       try {
-        // TODO: Implement this endpoint
-        // const response = await axios.get(
-        //   `${import.meta.env.VITE_API_URL}/group-posts/${groupId}?limit=20&offset=0`,
-        //   { headers: { Authorization: `Bearer ${authToken}` } }
-        // );
-        // setPosts(response.data);
-
-        // PLACEHOLDER - Remove when API is ready
-        setPosts([
-          {
-            post_id: 1,
-            author: "Masao de Guzman",
-            author_id: 7,
-            avatar: DefaultProfileImage,
-            timestamp: "July 9, 2025 at 5:05 PM",
-            content: "Hello friends, please join us on August 24.",
-            images: [DefaultBanner],
-            likes: 18,
-            comments: 5,
-            isLiked: false
-          },
-          {
-            post_id: 2,
-            author: "Vincent Reyla",
-            author_id: 8,
-            avatar: DefaultProfileImage,
-            timestamp: "October 4, 2025 at 7:50 PM",
-            content: "Any suggestions here in Tarlac City guys... 😊",
-            likes: 8,
-            comments: 0,
-            isLiked: false
-          }
-        ]);
-
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/group-posts/${groupId}?limit=20&offset=0&userId=${currentUserId}`,
+          { headers: { Authorization: `Bearer ${authToken}` } }
+        );
+        setPosts(response.data || []);
       } catch (error) {
         console.error("Error fetching posts:", error);
+        setPosts([]);
       }
     };
 
     fetchPosts();
-  }, [groupId, activeSegment, authToken]);
+  }, [groupId, activeSegment, authToken, currentUserId]);
+
+  // ==================== FETCH COMMENTS ====================
+  const fetchComments = async (postId: number) => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/group-comments/${postId}/comments`
+      );
+      setPostComments(prev => ({ ...prev, [postId]: response.data || [] }));
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+    }
+  };
+
+  const toggleComments = async (postId: number) => {
+    const isCurrentlyShown = showComments[postId];
+    setShowComments(prev => ({ ...prev, [postId]: !isCurrentlyShown }));
+    
+    if (!isCurrentlyShown && !postComments[postId]) {
+      await fetchComments(postId);
+    }
+  };
 
   // ==================== JOIN GROUP ====================
   const handleJoinGroup = async () => {
@@ -376,19 +323,15 @@ const GroupFeed: React.FC = () => {
 
     try {
       setIsJoining(true);
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/group-members/${groupId}/join`,
+        { userId: currentUserId },
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
 
-      // TODO: Implement this endpoint
-      // await axios.post(
-      //   `${import.meta.env.VITE_API_URL}/group-members/${groupId}/join`,
-      //   { userId: currentUserId },
-      //   { headers: { Authorization: `Bearer ${authToken}` } }
-      // );
-
-      // PLACEHOLDER - Remove when API is ready
       setIsMember(true);
       setUserRole('member');
       showToastMessage("Successfully joined the group!", "success");
-
     } catch (error: any) {
       console.error("Error joining group:", error);
       showToastMessage(error.response?.data?.error || "Failed to join group", "danger");
@@ -403,18 +346,14 @@ const GroupFeed: React.FC = () => {
 
     try {
       setIsJoining(true);
+      await axios.delete(
+        `${import.meta.env.VITE_API_URL}/group-members/${groupId}/leave/${currentUserId}`,
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
 
-      // TODO: Implement this endpoint
-      // await axios.delete(
-      //   `${import.meta.env.VITE_API_URL}/group-members/${groupId}/leave/${currentUserId}`,
-      //   { headers: { Authorization: `Bearer ${authToken}` } }
-      // );
-
-      // PLACEHOLDER - Remove when API is ready
       setIsMember(false);
       setUserRole(null);
       showToastMessage("You have left the group", "success");
-
     } catch (error: any) {
       console.error("Error leaving group:", error);
       showToastMessage(error.response?.data?.error || "Failed to leave group", "danger");
@@ -472,34 +411,19 @@ const GroupFeed: React.FC = () => {
         setIsUploadingImages(false);
       }
 
-      // TODO: Implement this endpoint
-      // const response = await axios.post(
-      //   `${import.meta.env.VITE_API_URL}/group-posts/${groupId}`,
-      //   {
-      //     userId: currentUserId,
-      //     title: postTitle.trim() || null,
-      //     content: postContent.trim(),
-      //     images: imageUrls
-      //   },
-      //   { headers: { Authorization: `Bearer ${authToken}` } }
-      // );
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/group-posts/${groupId}`,
+        {
+          userId: currentUserId,
+          title: postTitle.trim() || null,
+          content: postContent.trim(),
+          images: imageUrls.length > 0 ? imageUrls : null
+        },
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
 
-      // PLACEHOLDER - Add post locally
-      const newPost: Post = {
-        post_id: Date.now(),
-        author: "Current User", // Replace with actual user name
-        author_id: currentUserId,
-        avatar: DefaultProfileImage,
-        timestamp: new Date().toLocaleString(),
-        content: postContent.trim(),
-        title: postTitle.trim() || undefined,
-        images: imageUrls.length > 0 ? imageUrls : undefined,
-        likes: 0,
-        comments: 0,
-        isLiked: false
-      };
-
-      setPosts(prev => [newPost, ...prev]);
+      // Add new post to the beginning of the list
+      setPosts(prev => [response.data, ...prev]);
       
       // Reset form
       setPostTitle('');
@@ -523,20 +447,19 @@ const GroupFeed: React.FC = () => {
     if (!currentUserId) return;
 
     try {
-      // TODO: Implement this endpoint
-      // const response = await axios.post(
-      //   `${import.meta.env.VITE_API_URL}/group-posts/${postId}/like`,
-      //   { userId: currentUserId },
-      //   { headers: { Authorization: `Bearer ${authToken}` } }
-      // );
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/group-likes/${postId}/toggle`,
+        { userId: currentUserId },
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
 
-      // PLACEHOLDER - Toggle like locally
+      // Update post in state with new like status
       setPosts(prev => prev.map(post => {
         if (post.post_id === postId) {
           return {
             ...post,
-            isLiked: !post.isLiked,
-            likes: post.isLiked ? post.likes - 1 : post.likes + 1
+            isLiked: response.data.liked,
+            likes: response.data.likes
           };
         }
         return post;
@@ -548,13 +471,54 @@ const GroupFeed: React.FC = () => {
     }
   };
 
+  // ==================== POST COMMENT ====================
+  const handlePostComment = async (postId: number) => {
+    if (!currentUserId || !commentInput[postId]?.trim()) return;
+
+    try {
+      setIsPostingComment(prev => ({ ...prev, [postId]: true }));
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/group-comments/${postId}/comments`,
+        {
+          userId: currentUserId,
+          content: commentInput[postId].trim()
+        },
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+
+      // Add comment to list
+      setPostComments(prev => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), response.data]
+      }));
+
+      // Update comment count in post
+      setPosts(prev => prev.map(post => {
+        if (post.post_id === postId) {
+          return { ...post, comments: post.comments + 1 };
+        }
+        return post;
+      }));
+
+      // Clear input
+      setCommentInput(prev => ({ ...prev, [postId]: '' }));
+      showToastMessage("Comment posted!", "success");
+
+    } catch (error: any) {
+      console.error("Error posting comment:", error);
+      showToastMessage(error.response?.data?.error || "Failed to post comment", "danger");
+    } finally {
+      setIsPostingComment(prev => ({ ...prev, [postId]: false }));
+    }
+  };
+
   // ==================== FILE HANDLING ====================
   const handleFileSelect = (files: FileList | null) => {
     if (!files) return;
 
     const newFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
 
-    // Validate file size (max 5MB per image)
     const validFiles = newFiles.filter(file => {
       if (file.size > 5 * 1024 * 1024) {
         showToastMessage(`${file.name} is too large (max 5MB)`, "warning");
@@ -864,9 +828,9 @@ const GroupFeed: React.FC = () => {
 
                       <div className="post-creator-info">
                         <IonAvatar className="creator-avatar">
-                          <img src={DefaultProfileImage} alt="You" />
+                          <img src={currentUserAvatar} alt="You" />
                         </IonAvatar>
-                        <div className="creator-name">You</div>
+                        <div className="creator-name">{currentUserName}</div>
                       </div>
 
                       <div className="post-form">
@@ -963,7 +927,7 @@ const GroupFeed: React.FC = () => {
                               <div className="post-content">
                                 {post.title && <h3 className="post-title">{post.title}</h3>}
                                 <p>{post.content}</p>
-                                {post.images && post.images.length > 0 && (
+                                {post.images && Array.isArray(post.images) && post.images.length > 0 && (
                                   <div className="post-images">
                                     {post.images.map((img, idx) => (
                                       <img key={idx} src={img} alt="Post content" className="post-image" />
@@ -981,28 +945,64 @@ const GroupFeed: React.FC = () => {
 
                                 <div className="post-actions">
                                   <button 
-                                    className="post-action-btn"
+                                    className={`post-action-btn ${post.isLiked ? 'liked' : ''}`}
                                     onClick={() => handleLikePost(post.post_id)}
                                   >
                                     <IonIcon icon={post.isLiked ? heart : heartOutline} />
                                     <span>{post.isLiked ? 'Liked' : 'Like'}</span>
                                   </button>
-                                  <button className="post-action-btn">
+                                  <button 
+                                    className="post-action-btn"
+                                    onClick={() => toggleComments(post.post_id)}
+                                  >
                                     <IonIcon icon={chatbubbles} />
                                     <span>Comment</span>
                                   </button>
                                 </div>
                               </div>
 
+                              {/* Comments Section */}
+                              {showComments[post.post_id] && (
+                                <div className="comments-section">
+                                  {postComments[post.post_id]?.map((comment) => (
+                                    <div key={comment.comment_id} className="comment-item">
+                                      <img src={comment.avatar || DefaultProfileImage} alt={comment.name} className="comment-avatar" />
+                                      <div className="comment-content">
+                                        <div className="comment-header">
+                                          <span className="comment-author">{comment.name}</span>
+                                          <span className="comment-timestamp">{comment.timestamp}</span>
+                                        </div>
+                                        <p className="comment-text">{comment.content}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Add Comment */}
                               {isMember && (
                                 <div className="add-comment-section">
-                                  <img src={DefaultProfileImage} alt="You" className="comment-avatar" />
+                                  <img src={currentUserAvatar} alt="You" className="comment-avatar" />
                                   <input 
                                     type="text" 
-                                    placeholder="Add a comment, @ to mention" 
-                                    className="comment-input" 
+                                    placeholder="Add a comment..." 
+                                    className="comment-input"
+                                    value={commentInput[post.post_id] || ''}
+                                    onChange={(e) => setCommentInput(prev => ({ ...prev, [post.post_id]: e.target.value }))}
+                                    onKeyPress={(e) => e.key === 'Enter' && handlePostComment(post.post_id)}
+                                    disabled={isPostingComment[post.post_id]}
                                   />
-                                  <button className="comment-post-btn">Post</button>
+                                  <button 
+                                    className="comment-post-btn"
+                                    onClick={() => handlePostComment(post.post_id)}
+                                    disabled={isPostingComment[post.post_id] || !commentInput[post.post_id]?.trim()}
+                                  >
+                                    {isPostingComment[post.post_id] ? (
+                                      <IonSpinner name="crescent" style={{ width: '16px', height: '16px' }} />
+                                    ) : (
+                                      <IonIcon icon={sendOutline} />
+                                    )}
+                                  </button>
                                 </div>
                               )}
                             </div>
@@ -1030,7 +1030,7 @@ const GroupFeed: React.FC = () => {
                 </h3>
                 <div className="members-avatars">
                   {members.slice(0, 3).map((member, idx) => (
-                    <img key={idx} src={member.avatar} alt={member.name} />
+                    <img key={idx} src={member.users.profile_picture} alt={member.users.name} />
                   ))}
                   {members.length > 3 && (
                     <span className="more-members-text">

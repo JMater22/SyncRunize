@@ -12,7 +12,9 @@
   import groupRoutes from "./routes/group_routes.js";
   import groupMemberRoutes from "./routes/group_member_routes.js";
   import groupPostRoutes from "./routes/group_post_routes.js";
-
+  import groupLikes from "./routes/group_like_routes.js";
+  import groupComments from "./routes/group_comment_routes.js";
+  
   import hazardRoutes from "./routes/hazard_routes.js";
   import officialIncidentRoutes from "./routes/official_incident_routes.js";
 
@@ -52,6 +54,8 @@
   app.use("/api/groups", groupRoutes);
   app.use("/api/group-members", groupMemberRoutes);
   app.use("/api/group-posts", groupPostRoutes); // NOT YET INTEGRATED ON POSTMAN
+  app.use("/api/group-likes", groupLikes)
+  app.use("/api/group-comments", groupComments);
 
   app.use("/api/hazards", hazardRoutes); // GOODS GUMANA
   app.use("/api/official-incidents", officialIncidentRoutes);
