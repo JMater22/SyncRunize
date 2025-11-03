@@ -21,13 +21,19 @@ import {
   IonBackButton,
   IonButtons,
   IonCardContent,
-  IonToast
+  IonToast,
+  IonActionSheet
 } from "@ionic/react";
 import {
   trophy,
   chatboxEllipses,
-  people
+  people,
+  camera,
+  images,
+  close,
+  closeCircle
 } from "ionicons/icons";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import ChallengeCard from "../components/challenge-card";
 import PostCard from "../components/post-card";
 import GroupCard from "../components/group-card";
@@ -49,6 +55,8 @@ const Community: React.FC = () => {
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
+  const [groupPhoto, setGroupPhoto] = useState<string | null>(null);
+  const [showPhotoActionSheet, setShowPhotoActionSheet] = useState(false);
   
   // Comments state
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
@@ -85,7 +93,7 @@ const Community: React.FC = () => {
       setShowToast(true);
     },
     onNotificationActionPerformed: (notification) => {
-      // Handle notification tap
+      // Handle notification tapped
       console.log('Notification tapped:', notification);
       
       // Navigate based on notification data
@@ -99,6 +107,69 @@ const Community: React.FC = () => {
       }
     }
   });
+
+  /** 📸 Select Photo for Group - Android Platform */
+  const selectGroupPhoto = async (source: CameraSource) => {
+    try {
+      const photo = await Camera.getPhoto({
+        resultType: CameraResultType.Uri,
+        source: source,
+        quality: 90,
+        allowEditing: true,
+        width: 600,
+        height: 600,
+      });
+
+      if (photo.webPath) {
+        setGroupPhoto(photo.webPath);
+        setToastMessage("Group photo added!");
+        setShowToast(true);
+      }
+    } catch (error) {
+      console.error("Camera error:", error);
+      setToastMessage("Failed to select photo.");
+      setShowToast(true);
+    }
+  };
+
+  const handleAddGroupPhoto = () => {
+    setShowPhotoActionSheet(true);
+  };
+
+  const handleRemoveGroupPhoto = () => {
+    setGroupPhoto(null);
+    setToastMessage("Photo removed.");
+    setShowToast(true);
+  };
+
+  const handleCreateGroup = () => {
+    if (!groupName.trim()) {
+      setToastMessage("Please enter a group name");
+      setShowToast(true);
+      return;
+    }
+
+    if (!groupPhoto) {
+      setToastMessage("Please add a group photo");
+      setShowToast(true);
+      return;
+    }
+
+    console.log("Creating group:", {
+      name: groupName,
+      description: groupDescription,
+      photo: groupPhoto
+    });
+
+    setToastMessage("Group created successfully!");
+    setShowToast(true);
+
+    // Reset form and close modal
+    setGroupName("");
+    setGroupDescription("");
+    setGroupPhoto(null);
+    setIsCreateGroupModalOpen(false);
+  };
 
   const handleLike = (postId: number) => {
     setLikes(prev => ({
@@ -353,19 +424,81 @@ const Community: React.FC = () => {
                 />
               </IonItem>
 
-              <IonButton 
-                expand="block" 
-                fill="outline"
-              >
-                <IonIcon slot="start" icon="camera" />
-                Add Group Photo
-              </IonButton>
+              {/* Group Photo Upload Section */}
+              <div style={{ margin: "16px 0" }}>
+                {!groupPhoto ? (
+                  <IonButton 
+                    expand="block" 
+                    fill="outline"
+                    onClick={handleAddGroupPhoto}
+                  >
+                    <IonIcon slot="start" icon={camera} />
+                    Add Group Photo
+                  </IonButton>
+                ) : (
+                  <div style={{ position: "relative", marginBottom: "16px" }}>
+                    <IonImg
+                      src={groupPhoto}
+                      alt="Group Photo Preview"
+                      style={{ 
+                        width: "100%", 
+                        height: "200px", 
+                        objectFit: "cover", 
+                        borderRadius: "8px" 
+                      }}
+                    />
+                    <IonButton
+                      fill="clear"
+                      style={{
+                        position: "absolute",
+                        top: "8px",
+                        right: "8px",
+                        "--background": "rgba(0,0,0,0.5)"
+                      }}
+                      onClick={handleRemoveGroupPhoto}
+                    >
+                      <IonIcon
+                        icon={closeCircle}
+                        color="light"
+                        style={{ fontSize: "32px" }}
+                      />
+                    </IonButton>
+                  </div>
+                )}
+              </div>
+
+              {/* Android Action Sheet for Photo Selection */}
+              <IonActionSheet
+                isOpen={showPhotoActionSheet}
+                onDidDismiss={() => setShowPhotoActionSheet(false)}
+                buttons={[
+                  {
+                    text: "Take Photo",
+                    icon: camera,
+                    handler: () => {
+                      selectGroupPhoto(CameraSource.Camera);
+                    },
+                  },
+                  {
+                    text: "Choose from Gallery",
+                    icon: images,
+                    handler: () => {
+                      selectGroupPhoto(CameraSource.Photos);
+                    },
+                  },
+                  {
+                    text: "Cancel",
+                    icon: close,
+                    role: "cancel",
+                  },
+                ]}
+              />
               
               <div className="form-actions">
                 <IonButton 
                   expand="block" 
                   className="create-challenge-final-btn"
-                  onClick={() => setIsCreateGroupModalOpen(false)}
+                  onClick={handleCreateGroup}
                 >
                   Create Group
                 </IonButton>
