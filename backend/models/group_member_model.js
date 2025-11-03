@@ -1,42 +1,60 @@
-import pool from "../utils/db.js";
+import { supabase } from "../utils/supabase.js";
 
-// List members
+// ✅ List group members
 export const getGroupMembers = async (groupId) => {
-  const result = await pool.query(
-    `SELECT gm.user_id, gm.role, u.username, u.profile_picture
-     FROM group_members gm
-     JOIN users u ON gm.user_id = u.user_id
-     WHERE gm.group_id = $1`,
-    [groupId]
-  );
-  return result.rows;
+  const { data, error } = await supabase
+    .from("group_members")
+    .select(`
+      user_id,
+      role,
+      joined_at,
+      users:user_id (
+        username,
+        profile_picture
+      )
+    `)
+    .eq("group_id", groupId);
+
+  if (error) throw error;
+  return data;
 };
 
-// Add member
+// ✅ Add a member to a group
 export const addMember = async (groupId, userId, role = "member") => {
-  const result = await pool.query(
-    `INSERT INTO group_members (group_id, user_id, role, joined_at)
-     VALUES ($1, $2, $3, NOW())
-     RETURNING *`,
-    [groupId, userId, role]
-  );
-  return result.rows[0];
+  const { data, error } = await supabase
+    .from("group_members")
+    .insert([
+      { group_id: groupId, user_id: userId, role, joined_at: new Date().toISOString() },
+    ])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 };
 
-// Update role
+// ✅ Update member role
 export const updateRole = async (groupId, userId, role) => {
-  const result = await pool.query(
-    `UPDATE group_members SET role=$1 WHERE group_id=$2 AND user_id=$3 RETURNING *`,
-    [role, groupId, userId]
-  );
-  return result.rows[0];
+  const { data, error } = await supabase
+    .from("group_members")
+    .update({ role })
+    .eq("group_id", groupId)
+    .eq("user_id", userId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 };
 
-// Remove member
+// ✅ Remove a member from a group
 export const removeMember = async (groupId, userId) => {
-  await pool.query(`DELETE FROM group_members WHERE group_id=$1 AND user_id=$2`, [
-    groupId,
-    userId,
-  ]);
-  return { message: "Member removed" };
+  const { error } = await supabase
+    .from("group_members")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("user_id", userId);
+
+  if (error) throw error;
+  return { message: "Member removed successfully" };
 };
