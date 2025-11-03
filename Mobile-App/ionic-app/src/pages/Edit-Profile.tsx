@@ -14,9 +14,11 @@ import {
   IonInput,
   IonSelect,
   IonSelectOption,
+  IonToast,
 } from "@ionic/react";
 import '../theme/Edit-Profile.css';
 import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
+import PhotoUpload from '../components/photo-upload';
 
 
 const EditProfile: React.FC = () => {
@@ -26,6 +28,40 @@ const EditProfile: React.FC = () => {
   const [state, setState] = useState("");
   const [birthdate, setBirthdate] = useState("");
   const [gender, setGender] = useState("");
+  const [profilePhoto, setProfilePhoto] = useState(ProfilePic);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+
+  const handlePhotoSelected = (photoUrl: string) => {
+    setProfilePhoto(photoUrl);
+    setToastMessage("Profile photo updated!");
+    setShowToast(true);
+  };
+
+  const handleDone = () => {
+    // Validate and save profile data
+    if (!firstName.trim() || !lastName.trim()) {
+      setToastMessage("Please enter your first and last name");
+      setShowToast(true);
+      return;
+    }
+
+    console.log('Saving profile:', {
+      firstName,
+      lastName,
+      city,
+      state,
+      birthdate,
+      gender,
+      profilePhoto
+    });
+
+    setToastMessage("Profile updated successfully!");
+    setShowToast(true);
+
+    // Navigate back after a short delay
+    // setTimeout(() => history.push('/'), 1500);
+  };
 
   return (
     <IonPage>
@@ -37,7 +73,9 @@ const EditProfile: React.FC = () => {
           </IonButtons>
           <IonTitle>Edit Profile</IonTitle>
           <IonButtons slot="end">
-            <IonButton strong={true}>Done</IonButton>
+            <IonButton strong={true} onClick={handleDone}>
+              Done
+            </IonButton>
           </IonButtons>
         </IonToolbar>
       </IonHeader>
@@ -48,13 +86,17 @@ const EditProfile: React.FC = () => {
         <div className="profile-photo-section">
           <div className="profile-photo-container">
             <IonImg
-              src={ProfilePic}
+              src={profilePhoto}
               alt="Profile Photo"
               className="profile-photo"
             />
-            <IonButton className="edit-photo-btn" size="small" fill="clear">
-              📷
-            </IonButton>
+            <PhotoUpload
+              onPhotoSelected={handlePhotoSelected}
+              buttonClass="edit-photo-btn"
+              buttonSize="small"
+              buttonFill="clear"
+              buttonText="📷"
+            />
           </div>
         </div>
 
@@ -67,7 +109,7 @@ const EditProfile: React.FC = () => {
               <IonInput
                 value={firstName}
                 placeholder="Enter first name"
-                onIonChange={(e) => setFirstName(e.detail.value!)}
+                onIonInput={(e) => setFirstName(e.detail.value!)}
               />
             </IonItem>
 
@@ -76,7 +118,7 @@ const EditProfile: React.FC = () => {
               <IonInput
                 value={lastName}
                 placeholder="Enter last name"
-                onIonChange={(e) => setLastName(e.detail.value!)}
+                onIonInput={(e) => setLastName(e.detail.value!)}
               />
             </IonItem>
           </div>
@@ -88,7 +130,7 @@ const EditProfile: React.FC = () => {
               <IonInput
                 value={city}
                 placeholder="Enter city"
-                onIonChange={(e) => setCity(e.detail.value!)}
+                onIonInput={(e) => setCity(e.detail.value!)}
               />
             </IonItem>
 
@@ -97,7 +139,7 @@ const EditProfile: React.FC = () => {
               <IonInput
                 value={state}
                 placeholder="Enter state"
-                onIonChange={(e) => setState(e.detail.value!)}
+                onIonInput={(e) => setState(e.detail.value!)}
               />
             </IonItem>
           </div>
@@ -108,7 +150,7 @@ const EditProfile: React.FC = () => {
             <IonInput
               type="date"
               value={birthdate}
-              onIonChange={(e) => setBirthdate(e.detail.value!)}
+              onIonInput={(e) => setBirthdate(e.detail.value!)}
             />
           </IonItem>
 
@@ -129,6 +171,14 @@ const EditProfile: React.FC = () => {
             </IonSelect>
           </IonItem>
         </form>
+
+        {/* Toast Feedback */}
+        <IonToast
+          isOpen={showToast}
+          message={toastMessage}
+          duration={2000}
+          onDidDismiss={() => setShowToast(false)}
+        />
       </IonContent>
     </IonPage>
   );

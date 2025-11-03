@@ -13,19 +13,53 @@ import {
   IonItem,
   IonAvatar,
   IonSelect,
-  IonSelectOption
+  IonSelectOption,
+  IonToast,
+  IonBadge
 } from "@ionic/react";
 import { useState } from "react";
 import '../theme/variables.css';
 import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
-
+import { usePushNotifications } from "../components/push-notification";
+import { PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
 
 export default function FollowingFollowers() {
   const [tab, setTab] = useState<"following" | "followers">("following");
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [newFollowersCount, setNewFollowersCount] = useState(0);
+
+  // Initialize push notifications
+  usePushNotifications({
+    onTokenReceived: (token) => {
+      console.log("[FollowingFollowers] FCM Token received:", token);
+      // Send token to your backend to register for follow notifications
+      // e.g., sendTokenToBackend(token, 'follow_notifications');
+    },
+    onNotificationReceived: (notification: PushNotificationSchema) => {
+      console.log("[FollowingFollowers] Notification received:", notification);
+      // Handle new follower notifications
+      if (notification.data?.type === 'new_follower') {
+        setToastMessage(`${notification.data.username} started following you!`);
+        setShowToast(true);
+        setNewFollowersCount(prev => prev + 1);
+      } else if (notification.data?.type === 'follow_back') {
+        setToastMessage(`${notification.data.username} followed you back!`);
+        setShowToast(true);
+      }
+    },
+    onNotificationActionPerformed: (notification: ActionPerformed) => {
+      console.log("[FollowingFollowers] Notification tapped:", notification);
+      // Navigate to followers tab when notification is tapped
+      if (notification.notification.data?.type === 'new_follower') {
+        setTab('followers');
+        setNewFollowersCount(0);
+      }
+    }
+  });
 
   return (
     <IonPage>
-      {/* Header */}
       <IonHeader>
         <IonToolbar >
           <IonButtons slot="start">
@@ -36,20 +70,30 @@ export default function FollowingFollowers() {
       </IonHeader>
 
       <IonContent className="ion-padding" >
-        {/* Tab Navigation */}
         <IonSegment
           value={tab}
-          onIonChange={(e) => setTab(e.detail.value as "following" | "followers")}
+          onIonChange={(e) => {
+            setTab(e.detail.value as "following" | "followers");
+            if (e.detail.value === "followers") {
+              setNewFollowersCount(0);
+            }
+          }}
         >
           <IonSegmentButton value="following">
             <IonLabel>Following</IonLabel>
           </IonSegmentButton>
           <IonSegmentButton value="followers">
-            <IonLabel>Followers</IonLabel>
+            <IonLabel>
+              Followers
+              {newFollowersCount > 0 && (
+                <IonBadge color="danger" style={{ marginLeft: '8px' }}>
+                  {newFollowersCount}
+                </IonBadge>
+              )}
+            </IonLabel>
           </IonSegmentButton>
         </IonSegment>
 
-        {/* Section Header */}
         {tab === "following" && (
           <>
             <div className="space-between" style={{ margin: "16px 0" }}>
@@ -57,9 +101,7 @@ export default function FollowingFollowers() {
               <IonLabel>4</IonLabel>
             </div>
 
-            {/* Users List */}
             <IonList lines="none">
-              {/* User 1 */}
               <IonItem>
                 <IonAvatar slot="start">
                   <img src={ProfilePic} alt="Raen Jun" />
@@ -79,7 +121,6 @@ export default function FollowingFollowers() {
                 </IonSelect>
               </IonItem>
 
-              {/* User 2 */}
               <IonItem>
                 <IonAvatar slot="start">
                   <img src={ProfilePic} alt="Jon Meyu" />
@@ -99,7 +140,6 @@ export default function FollowingFollowers() {
                 </IonSelect>
               </IonItem>
 
-              {/* User 3 */}
               <IonItem>
                 <IonAvatar slot="start">
                   <img src={ProfilePic} alt="Alma Tars" />
@@ -119,7 +159,6 @@ export default function FollowingFollowers() {
                 </IonSelect>
               </IonItem>
 
-              {/* User 4 */}
               <IonItem>
                 <IonAvatar slot="start">
                   <img src={ProfilePic} alt="Ji Anne" />
@@ -142,13 +181,21 @@ export default function FollowingFollowers() {
           </>
         )}
 
-        {/* Followers Tab (Empty for now) */}
         {tab === "followers" && (
           <div style={{ marginTop: "20px" }}>
             <h2>People following you</h2>
             <p>No followers yet.</p>
           </div>
         )}
+
+        <IonToast
+          isOpen={showToast}
+          onDidDismiss={() => setShowToast(false)}
+          message={toastMessage}
+          duration={3000}
+          position="top"
+          color="success"
+        />
       </IonContent>
     </IonPage>
   );

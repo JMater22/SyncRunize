@@ -8,18 +8,47 @@ import {
   IonContent,
   IonCard,
   IonCardContent,
-  IonChip
+  IonChip,
+  IonToast
 } from "@ionic/react";
-import "../theme/Hazard-Notice.css"; // custom styles if needed
+import { useState } from "react";
+import "../theme/Hazard-Notice.css";
 import Map from "../components/assets/map.png";
 import { useHideTabBar } from "../hooks/useHideTabBar";
+import { usePushNotifications } from "../components/push-notification";
+import { PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
 
 export default function HazardNotice() {
   useHideTabBar();
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+
+  // Initialize push notifications
+  usePushNotifications({
+    onTokenReceived: (token) => {
+      console.log("[HazardNotice] FCM Token received:", token);
+      // Send token to your backend to register for hazard alerts
+      // e.g., sendTokenToBackend(token, 'hazard_alerts');
+    },
+    onNotificationReceived: (notification: PushNotificationSchema) => {
+      console.log("[HazardNotice] Notification received:", notification);
+      // Handle incoming hazard notifications
+      if (notification.data?.type === 'hazard') {
+        setToastMessage(`New Hazard: ${notification.body}`);
+        setShowToast(true);
+      }
+    },
+    onNotificationActionPerformed: (notification: ActionPerformed) => {
+      console.log("[HazardNotice] Notification tapped:", notification);
+      // Navigate to specific hazard location if needed
+      if (notification.notification.data?.hazardId) {
+        // Handle navigation to specific hazard
+      }
+    }
+  });
 
   return (
     <IonPage>
-      {/* Top Header */}
       <IonHeader translucent={true}>
         <IonToolbar color="warning">
           <IonButtons slot="start">
@@ -30,7 +59,6 @@ export default function HazardNotice() {
       </IonHeader>
 
       <IonContent fullscreen className="traffic-content">
-        {/* Map Background Container */}
         <div className="map-container">
           <iframe
             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d27403.697792075374!2d120.58200860881004!3d15.48705054784102!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3396c63f4ab68e0d%3A0x13f9415d7a5bfd4b!2sTarlac%20City%2C%20Tarlac!5e0!3m2!1sen!2sph!4v1761910044713!5m2!1sen!2sph"
@@ -44,17 +72,14 @@ export default function HazardNotice() {
           <div className="map-vignette" />
         </div>
 
-                {/* Status Indicator */}
-                <div className="status-indicator">
-                  <IonChip color="warning" className="status-chip">
-                    <div className="pulse-dot" />
-                    <span className="status-text">Hazard Detected</span>
-                  </IonChip>
-                </div>
+        <div className="status-indicator">
+          <IonChip color="warning" className="status-chip">
+            <div className="pulse-dot" />
+            <span className="status-text">Hazard Detected</span>
+          </IonChip>
+        </div>
 
-        {/* Notice Card Overlay */}
         <div className="notice-card">
-          {/* Location Section */}
           <IonCard>
             <IonCardContent>
               <div className="notice-section">
@@ -68,7 +93,6 @@ export default function HazardNotice() {
             </IonCardContent>
           </IonCard>
 
-          {/* Hazard Section */}
           <IonCard>
             <IonCardContent>
               <div className="notice-section">
@@ -84,6 +108,15 @@ export default function HazardNotice() {
             </IonCardContent>
           </IonCard>
         </div>
+
+        <IonToast
+          isOpen={showToast}
+          onDidDismiss={() => setShowToast(false)}
+          message={toastMessage}
+          duration={3000}
+          position="top"
+          color="warning"
+        />
       </IonContent>
     </IonPage>
   );

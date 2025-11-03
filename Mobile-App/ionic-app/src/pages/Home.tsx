@@ -20,7 +20,9 @@ import {
   IonSelectOption,
   IonSearchbar,
   SearchbarCustomEvent,
-  IonImg
+  IonImg,
+  IonToast,
+  IonBadge
 } from "@ionic/react";
 import {
   notifications,
@@ -36,6 +38,7 @@ import "../theme/global.css";
 
 import ProfilePic from "../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg";
 import ChallengePic from "../components/assets/istockphoto-143920084-612x612.jpg";
+import { usePushNotifications } from "../components/push-notification";
 
 // Import Google Fonts
 const fontLink = document.createElement('link');
@@ -256,10 +259,45 @@ const DistanceChart: React.FC = () => {
 export default function Dashboard() {
   const [showSearchbar, setShowSearchbar] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  // Initialize push notifications
+  usePushNotifications({
+    onNotificationReceived: (notification) => {
+      // Handle notification received while app is in foreground
+      console.log('Notification received on Home:', notification);
+      setToastMessage(notification.title || 'New notification');
+      setShowToast(true);
+      setNotificationCount(prev => prev + 1);
+    },
+    onNotificationActionPerformed: (notification) => {
+      // Handle notification tap
+      console.log('Notification tapped on Home:', notification);
+      setNotificationCount(prev => prev + 1);
+      
+      // You can add navigation logic here based on notification type
+      // For example, navigate to specific challenge, activity, or leaderboard
+      const data = notification.notification.data;
+      if (data?.type === 'challenge') {
+        // Navigate to challenge page if needed
+        console.log('Navigate to challenge:', data?.challengeId);
+      } else if (data?.type === 'activity') {
+        // Navigate to activity page
+        console.log('Navigate to activity:', data?.activityId);
+      }
+    }
+  });
 
   const toggleSearchbar = () => {
     setShowSearchbar(!showSearchbar);
     if (showSearchbar) setSearchText("");
+  };
+
+  const handleNotificationClick = () => {
+    // Reset notification count when user opens notifications
+    setNotificationCount(0);
   };
 
   return (
@@ -271,8 +309,29 @@ export default function Dashboard() {
             <>
               <IonTitle slot="start" className="dashboard-title">SyncRunize</IonTitle>
               <IonButtons slot="end">
-                <IonButton routerLink="/notification">
+                <IonButton 
+                  routerLink="/notification"
+                  onClick={handleNotificationClick}
+                  style={{ position: 'relative' }}
+                >
                   <IonIcon className="header-icon" icon={notifications} />
+                  {notificationCount > 0 && (
+                    <IonBadge 
+                      color="danger" 
+                      style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        fontSize: '10px',
+                        minWidth: '16px',
+                        height: '16px',
+                        borderRadius: '8px',
+                        padding: '0 4px'
+                      }}
+                    >
+                      {notificationCount > 9 ? '9+' : notificationCount}
+                    </IonBadge>
+                  )}
                 </IonButton>
                 <IonButton onClick={toggleSearchbar}>
                   <IonIcon className="header-icon" icon={search} />
@@ -442,6 +501,26 @@ export default function Dashboard() {
             </IonButton>
           </IonCardContent>
         </IonCard>
+
+        {/* Toast for notifications */}
+        <IonToast
+          isOpen={showToast}
+          onDidDismiss={() => setShowToast(false)}
+          message={toastMessage}
+          duration={3000}
+          position="top"
+          color="primary"
+          buttons={[
+            {
+              text: 'View',
+              role: 'info',
+              handler: () => {
+                // Navigate to notification page
+                window.location.href = '/notification';
+              }
+            }
+          ]}
+        />
       </IonContent>
     </IonPage>
   );

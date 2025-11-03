@@ -20,7 +20,8 @@ import {
   IonModal,
   IonBackButton,
   IonButtons,
-  IonCardContent
+  IonCardContent,
+  IonToast
 } from "@ionic/react";
 import {
   trophy,
@@ -35,6 +36,7 @@ import { posts } from "../components/post-data";
 import { suggestedGroups, joinedGroups } from "../components/group-data";
 import ChallengePic from "../components/assets/istockphoto-143920084-612x612.jpg";
 import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
+import { usePushNotifications } from "../components/push-notification";
 import "../theme/Community.css";
 
 const Community: React.FC = () => {
@@ -68,6 +70,34 @@ const Community: React.FC = () => {
     1: { count: 324, isLiked: false },
     2: { count: 41, isLiked: false },
     3: { count: 150, isLiked: false }
+  });
+
+  // Toast notification state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+
+  // Initialize push notifications
+  usePushNotifications({
+    onNotificationReceived: (notification) => {
+      // Handle notification received while app is in foreground
+      console.log('Notification received:', notification);
+      setToastMessage(notification.title || 'New notification');
+      setShowToast(true);
+    },
+    onNotificationActionPerformed: (notification) => {
+      // Handle notification tap
+      console.log('Notification tapped:', notification);
+      
+      // Navigate based on notification data
+      const data = notification.notification.data;
+      if (data?.type === 'comment') {
+        setTab('feed');
+      } else if (data?.type === 'challenge') {
+        setTab('challenges');
+      } else if (data?.type === 'group') {
+        setTab('groups');
+      }
+    }
   });
 
   const handleLike = (postId: number) => {
@@ -380,6 +410,16 @@ const Community: React.FC = () => {
             </div>
           </IonContent>
         </IonModal>
+
+        {/* Toast for notifications */}
+        <IonToast
+          isOpen={showToast}
+          onDidDismiss={() => setShowToast(false)}
+          message={toastMessage}
+          duration={3000}
+          position="top"
+          color="primary"
+        />
       </IonContent>
     </IonPage>
   );
