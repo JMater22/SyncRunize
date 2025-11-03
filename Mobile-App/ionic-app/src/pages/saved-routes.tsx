@@ -35,7 +35,7 @@ const SavedRoutes: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/routes" />
+            <IonBackButton defaultHref="/routes" text={''} />
           </IonButtons>
           <IonTitle>Saved Routes</IonTitle>
         </IonToolbar>
@@ -89,7 +89,7 @@ const SavedRoutes: React.FC = () => {
 
         {/* Route Card 2 */}
         <IonCard className="route-card">
-          <div className="route-card-inner">
+          <div className="route-card-inner"> 
             <IonCardHeader>
               <IonCardTitle className="route-card-title">San Roque Route</IonCardTitle>
             </IonCardHeader>

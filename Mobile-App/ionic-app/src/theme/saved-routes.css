@@ -22,7 +22,7 @@ ion-title {
 ion-back-button {
   --color: #ffffff;
   --icon-font-size: 24px;
-  font-size: 16px;
+  font-size: 16px; 
   font-weight: 500;
 }
 
@@ -144,9 +144,9 @@ ion-searchbar::part(placeholder) {
 
 .route-action-btn {
   flex: 1;
-  --background: #28a745;
-  --background-hover: #218838;
-  --background-activated: #1e7e34;
+  --background: #92C628;
+  --background-hover: #92C628;
+  --background-activated: #92C628;
   --border-radius: 8px;
   font-weight: 600;
   text-transform: none;

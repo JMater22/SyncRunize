@@ -18,7 +18,9 @@ import {
   IonCol,
   IonText,
   IonCheckbox,
-  IonImg, IonSelect, IonSelectOption
+  IonImg, 
+  IonSelect, 
+  IonSelectOption
 } from '@ionic/react';
 import {
   arrowBack,
@@ -27,12 +29,16 @@ import {
   saveOutline
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
-import "../theme/Activity-Summary.css"; // custom styles if needed
+import "../theme/Activity-Summary.css";
 import ChallengePic from '../components/assets/istockphoto-143920084-612x612.jpg';
 import Map from '../components/assets/map.png';
 import Challenge1 from '../components/assets/challenge1.jpg';
+import { useHideTabBar } from "../hooks/useHideTabBar";
 
 const Activity: React.FC = () => {
+  // Hide the tab bar on this page
+  useHideTabBar();
+
   const history = useHistory();
   const [activityTitle, setActivityTitle] = useState<string>('Morning Run');
   const [activityDescription, setActivityDescription] = useState<string>('');
@@ -67,17 +73,18 @@ const Activity: React.FC = () => {
     console.log(`Changing ${type} visibility`);
     // Handle visibility changes
   };
+  
   const handleDiscardActivity = () => {
-  console.log('Activity discarded');
-  history.push('/run-tracking'); // or wherever you want to go
-};
+    console.log('Activity discarded');
+    history.push('/run-tracking');
+  };
 
   return (
     <IonPage>
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/run-tracking" />
+            <IonBackButton defaultHref="/run-tracking" text={''}/>
           </IonButtons>
           <IonTitle>Activity</IonTitle>
           <IonButtons slot="end">
@@ -85,7 +92,7 @@ const Activity: React.FC = () => {
               Save
             </IonButton>
           </IonButtons>
-        </IonToolbar>
+        </IonToolbar> 
       </IonHeader>
 
       <IonContent fullscreen className="ion-padding">
@@ -95,18 +102,6 @@ const Activity: React.FC = () => {
             value={activityTitle}
             onIonInput={e => setActivityTitle(e.detail.value!)}
             className="activity-title-input"
-          />
-        </IonItem>
-
-        {/* Activity Description */}
-        <IonItem className="activity-description-item">
-          <IonTextarea
-            value={activityDescription}
-            placeholder="How'd it go? Share more about your activity and use @ to tag someone."
-            onIonInput={e => setActivityDescription(e.detail.value!)}
-            className="activity-description-textarea"
-            autoGrow={true}
-            rows={3}
           />
         </IonItem>
 
@@ -139,15 +134,6 @@ const Activity: React.FC = () => {
           <h2 className="section-heading">Details</h2>
         </IonText>
 
-        <IonItem className="details-item">
-          <IonInput
-            value={activityFeel}
-            placeholder="How did the activity feel?"
-            onIonInput={e => setActivityFeel(e.detail.value!)}
-            className="details-input"
-          />
-        </IonItem>
-
         <IonItem className="private-notes-item">
           <IonTextarea
             value={privateNotes}
@@ -169,37 +155,16 @@ const Activity: React.FC = () => {
           <IonLabel>
             <div className="visibility-content">
               <span className="option-label" slot='start'>Who can see</span>
-              <IonSelect justify="end"  value="friends" interface="action-sheet">
-                          <IonSelectOption value="friends">Friends Only</IonSelectOption>
-                          <IonSelectOption value="everyone">Everyone</IonSelectOption>
-                          <IonSelectOption value="private">Private</IonSelectOption>
-                        </IonSelect>
+              <IonSelect justify="end" value="friends" interface="action-sheet">
+                <IonSelectOption value="friends">Friends Only</IonSelectOption>
+                <IonSelectOption value="everyone">Everyone</IonSelectOption>
+                <IonSelectOption value="private">Private</IonSelectOption>
+              </IonSelect>
             </div>
           </IonLabel>
         </IonItem>
 
-        
-
-        {/* Mute Activity Section */}
-        <div className="section-header">
-          <h2 className="section-heading">Mute Activity</h2>
-        </div>
-
-        <div className="mute-activity-container">
-          <div className="mute-activity-content">
-            <div className="mute-text-container">
-              <p className="mute-text">Don't publish to Home or Group feeds</p>
-              <p className="mute-subtext">This activity will still be visible on your profile</p>
-            </div>
-            <IonCheckbox
-              checked={isMuted}
-              onIonChange={e => setIsMuted(e.detail.checked)}
-              className="mute-checkbox"
-            />
-          </div>
-        </div>
-
-        {/* Save Changes Button */}
+        {/* Discard Activity Button */}
         <IonButton
           expand="block"
           size="large"

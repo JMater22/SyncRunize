@@ -21,12 +21,13 @@ import {
   IonItem,
   IonSearchbar,
   IonSpinner,
-  IonToast,
+  IonToast, 
   IonAlert,
   IonModal
 } from "@ionic/react";
 import { bookmark, pencil, locate, locationOutline } from "ionicons/icons";
 import { Geolocation } from "@capacitor/geolocation";
+import "../theme/Routes.css"
 
 interface Position {
   latitude: number;
@@ -80,7 +81,7 @@ const RouteSuggestion: React.FC = () => {
 
       if (location === "granted") {
         await getCurrentPosition();
-        setToastMessage("✅ Location access granted!");
+        setToastMessage(" Location access granted!");
         setToastColor("success");
         setShowToast(true);
       } else if (location === "denied") {
@@ -134,9 +135,6 @@ const RouteSuggestion: React.FC = () => {
         longitude: position.coords.longitude
       });
       
-      setToastMessage("📍 Location acquired!");
-      setToastColor("success");
-      setShowToast(true);
       
       console.log("Current position:", position.coords);
     } catch (err: any) {
@@ -151,7 +149,7 @@ const RouteSuggestion: React.FC = () => {
       
       setError(errorMessage);
       setToastColor("danger");
-      setToastMessage(errorMessage);
+      setToastMessage(errorMessage); 
       setShowToast(true);
     } finally {
       setLoading(false);
@@ -179,7 +177,7 @@ const RouteSuggestion: React.FC = () => {
                 <IonIcon 
                   icon={locate} 
                   style={{ 
-                    color: currentPosition ? '#34a853' : '#666',
+                    color: currentPosition ? '#92C628' : '#666',
                     fontSize: '24px'
                   }} 
                 />
@@ -187,7 +185,7 @@ const RouteSuggestion: React.FC = () => {
             </IonButton>
 
             <IonButton routerLink="/saved-routes">
-              <IonIcon icon={bookmark} style={{ fontSize: '24px' }} />
+              <IonIcon icon={bookmark} style={{ fontSize: '24px', color: '#92C628'}} />
             </IonButton>
           </IonButtons>
         </IonToolbar>
@@ -222,7 +220,7 @@ const RouteSuggestion: React.FC = () => {
         )}
 
         {accordionValue !== "routes" && (
-          <div style={{ position: 'relative', height: '300px', margin: '0' }}>
+          <div style={{ position: 'relative', height: '630px', margin: '0' }}>
             <iframe
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d27403.697792075374!2d120.58200860881004!3d15.48705054784102!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3396c63f4ab68e0d%3A0x13f9415d7a5bfd4b!2sTarlac%20City%2C%20Tarlac!5e0!3m2!1sen!2sph!4v1761910044713!5m2!1sen!2sph"
               style={{ width: '100%', height: '100%', border: 'none' }}
@@ -233,7 +231,7 @@ const RouteSuggestion: React.FC = () => {
             />
 
             <IonFab vertical="bottom" horizontal="end" slot="fixed">
-              <IonFabButton routerLink="/create-route" color="primary">
+              <IonFabButton routerLink="/create-route" color="success">
                 <IonIcon icon={pencil} />
               </IonFabButton>
             </IonFab>
@@ -262,12 +260,12 @@ const RouteSuggestion: React.FC = () => {
                     gap: '8px', 
                     fontSize: '14px', 
                     color: '#666',
-                    marginBottom: '8px' 
+                    marginBottom: '8px',
                   }}>
-                    <span>🏃 5.21 km</span>
-                    <span>⏱️ 1h 12m</span>
+                    <span> 5.21 km</span>
+                    <span> 1h 12m</span>
                   </div>
-                  <p style={{ fontSize: '14px', color: '#888', marginBottom: '16px' }}>
+                  <p style={{ fontSize: '14px', color: '#888', marginBottom: '16px',}}>
                     Capas, Tarlac, Philippines
                   </p>
 
@@ -323,10 +321,10 @@ const RouteSuggestion: React.FC = () => {
                     gap: '8px', 
                     fontSize: '14px', 
                     color: '#666',
-                    marginBottom: '8px' 
+                    marginBottom: '8px', 
                   }}>
-                    <span>🏃 7.5 km</span>
-                    <span>⏱️ 1h 45m</span>
+                    <span> 7.5 km</span>
+                    <span> 1h 45m</span>
                   </div>
                   <p style={{ fontSize: '14px', color: '#888', marginBottom: '16px' }}>
                     Tarlac City, Tarlac, Philippines
