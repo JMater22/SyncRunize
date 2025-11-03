@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   IonContent,
   IonHeader,
@@ -14,15 +14,14 @@ import {
   IonIcon,
   IonBackButton,
   IonButtons,
-  IonCard,
-  IonCardContent,
   IonGrid,
   IonRow,
   IonCol,
-  IonText
-} from '@ionic/react';
+  IonText,
+  IonImg,
+  IonToast,
+} from "@ionic/react";
 import {
-  arrowBack,
   cameraOutline,
   locationOutline,
   pinOutline,
@@ -31,52 +30,103 @@ import {
   trailSignOutline,
   carOutline,
   warningOutline,
-  buildOutline
-} from 'ionicons/icons';
-import { useHistory } from 'react-router-dom';
-import "../theme/Hazard-Report.css"; // custom styles if needed
+  buildOutline,
+  closeCircle, imageOutline
+} from "ionicons/icons";
+import { useHistory } from "react-router-dom";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { useHideTabBar } from "../hooks/useHideTabBar";
+
+import "../theme/Hazard-Report.css";
 
 const ReportHazard: React.FC = () => {
   const history = useHistory();
-  const [selectedHazard, setSelectedHazard] = useState<string>('pothole');
-  const [otherHazardText, setOtherHazardText] = useState<string>('');
-  const [confidenceRating, setConfidenceRating] = useState<number>(4);
 
+  const [selectedHazard, setSelectedHazard] = useState<string>("pothole");
+  const [otherHazardText, setOtherHazardText] = useState<string>("");
+  const [confidenceRating, setConfidenceRating] = useState<number>(4);
+  const [hazardPhoto, setHazardPhoto] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string>("");
+  const [showToast, setShowToast] = useState<boolean>(false);
+    const [image, setImage] = useState<string | null>(null);
+
+// Take or pick a photo
+  const handleAddPhoto = async () => {
+    try {
+      const photo = await Camera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Prompt, // Allows choosing camera or gallery
+      });
+
+      if (photo?.dataUrl) {
+        setImage(photo.dataUrl);
+      }
+    } catch (error) {
+      console.error("Camera error:", error);
+      showToastMessage("Failed to select photo.");
+    }
+  };
+
+  const handleRemovePhoto = () => setImage(null);
+
+  /** 🚀 Submit logic */
   const handleSubmit = () => {
-    // Handle form submission logic here
-    console.log('Submitting hazard report:', {
+    if (!hazardPhoto) {
+      showToastMessage("Please add a photo of the hazard");
+      return;
+    }
+
+    if (selectedHazard === "other" && !otherHazardText.trim()) {
+      showToastMessage("Please describe the hazard");
+      return;
+    }
+
+    console.log("Submitting hazard report:", {
       hazardType: selectedHazard,
       otherHazard: otherHazardText,
-      confidence: confidenceRating
+      confidence: confidenceRating,
+      photo: hazardPhoto,
     });
-    // Navigate back to run tracking page
-    history.push('/run-tracking');
+
+    showToastMessage("Hazard report submitted!");
+
+    setTimeout(() => {
+      history.push("/run-tracking");
+    }, 800);
   };
 
   const handleUseMyLocation = () => {
-    // Handle geolocation logic
-    console.log('Using current location');
+    showToastMessage("Using current location...");
+    // TODO: implement geolocation
   };
 
   const handlePinOnMap = () => {
-    // Handle map pin logic
-    console.log('Opening map to pin location');
+    showToastMessage("Opening map to pin location...");
+    // TODO: implement map picker
   };
 
-  const renderStars = () => {
-    return Array.from({ length: 5 }, (_, index) => (
+  /** ⭐ Confidence Rating Stars */
+  const renderStars = () =>
+    Array.from({ length: 5 }, (_, index) => (
       <IonIcon
         key={index}
         icon={index < confidenceRating ? star : starOutline}
-        style={{ 
-          fontSize: '24px', 
-          color: index < confidenceRating ? '#ffd700' : '#ccc',
-          cursor: 'pointer',
-          margin: '0 2px'
+        style={{
+          fontSize: "24px",
+          color: index < confidenceRating ? "#ffd700" : "#ccc",
+          cursor: "pointer",
+          margin: "0 2px",
         }}
         onClick={() => setConfidenceRating(index + 1)}
       />
     ));
+
+  /** 🔔 Toast handler */
+  const showToastMessage = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
   };
 
   return (
@@ -95,35 +145,37 @@ const ReportHazard: React.FC = () => {
           <h2>Report Hazard</h2>
         </IonText>
 
-        {/* Add Photo Section */}
-        <IonCard style={{ marginBottom: '20px' }}>
-          <IonCardContent style={{ textAlign: 'center', padding: '20px' }}>
-            <IonButton 
-              fill="clear" 
-              size="large"
-              style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <IonIcon icon={cameraOutline} style={{ fontSize: '48px' }} />
-              <IonLabel>Add Photo</IonLabel>
-            </IonButton>
-          </IonCardContent>
-        </IonCard>
+       {/* Image Upload Section */}
+               <div className="image-upload-section">
+                 {!image ? (
+                   <IonButton expand="block" fill="outline" onClick={handleAddPhoto}>
+                     <IonIcon slot="start" icon={imageOutline} />
+                     Add Image
+                   </IonButton>
+                 ) : (
+                   <div className="preview-container">
+                     <IonImg src={image} alt="Preview" className="preview-image" />
+                     <IonButton
+                       fill="clear"
+                       className="remove-image-btn"
+                       onClick={handleRemovePhoto}
+                     >
+                       <IonIcon icon={closeCircle} color="light" style={{ fontSize: "32px" }} />
+                     </IonButton>
+                   </div>
+                 )}
+               </div>
 
-        {/* Hazard Type Selection */}
+        {/* 🚧 Hazard Type */}
         <IonText color="medium">
-          <h3 style={{ margin: '20px 0 16px 0' }}>
+          <h3 style={{ margin: "20px 0 16px 0" }}>
             Select the type of hazard you'd like to report:
           </h3>
         </IonText>
 
-        <IonRadioGroup 
-          value={selectedHazard} 
-          onIonChange={e => setSelectedHazard(e.detail.value)}
+        <IonRadioGroup
+          value={selectedHazard}
+          onIonChange={(e) => setSelectedHazard(e.detail.value)}
         >
           <IonItem>
             <IonIcon icon={trailSignOutline} slot="start" color="warning" />
@@ -156,42 +208,40 @@ const ReportHazard: React.FC = () => {
           </IonItem>
         </IonRadioGroup>
 
-        {/* Other Hazard Input - Show only when "other" is selected */}
-        {selectedHazard === 'other' && (
-          <IonItem style={{ marginTop: '8px' }}>
+        {selectedHazard === "other" && (
+          <IonItem style={{ marginTop: "8px" }}>
             <IonInput
               value={otherHazardText}
               placeholder="Enter and describe the hazard"
-              onIonInput={e => setOtherHazardText(e.detail.value!)}
-              fill="outline"
+              onIonInput={(e) => setOtherHazardText(e.detail.value ?? "")}
             />
           </IonItem>
         )}
 
-        {/* Location Method Selection */}
+        {/* 📍 Location */}
         <IonText color="medium">
-          <h3 style={{ margin: '24px 0 16px 0' }}>Select Location Method</h3>
+          <h3 style={{ margin: "24px 0 16px 0" }}>Select Location Method</h3>
         </IonText>
 
         <IonGrid>
           <IonRow>
             <IonCol size="6">
-              <IonButton 
-                expand="block" 
-                fill="outline" 
+              <IonButton
+                expand="block"
+                fill="outline"
                 onClick={handleUseMyLocation}
-                style={{ height: '60px' }}
+                style={{ height: "60px" }}
               >
                 <IonIcon icon={locationOutline} slot="start" />
                 Use My Location
               </IonButton>
             </IonCol>
             <IonCol size="6">
-              <IonButton 
-                expand="block" 
-                fill="outline" 
+              <IonButton
+                expand="block"
+                fill="outline"
                 onClick={handlePinOnMap}
-                style={{ height: '60px' }}
+                style={{ height: "60px" }}
               >
                 <IonIcon icon={pinOutline} slot="start" />
                 Pin on Map
@@ -200,31 +250,35 @@ const ReportHazard: React.FC = () => {
           </IonRow>
         </IonGrid>
 
-        {/* Confidence Rating */}
+        {/* ⭐ Confidence */}
         <IonText color="medium">
-          <h3 style={{ margin: '24px 0 16px 0' }}>
+          <h3 style={{ margin: "24px 0 16px 0" }}>
             How confident are you about this report?
           </h3>
         </IonText>
 
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center',
-          marginBottom: '32px'
-        }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            marginBottom: "32px",
+          }}
+        >
           {renderStars()}
         </div>
 
-        {/* Submit Button */}
-        <IonButton 
-          expand="block" 
-          size="large" 
-          onClick={handleSubmit}
-          className="submit-button"
-        >
+        {/* 🚀 Submit */}
+        <IonButton expand="block" size="large" onClick={handleSubmit}>
           Submit
         </IonButton>
+
+        <IonToast
+          isOpen={showToast}
+          message={toastMessage}
+          duration={2000}
+          onDidDismiss={() => setShowToast(false)}
+        />
       </IonContent>
     </IonPage>
   );

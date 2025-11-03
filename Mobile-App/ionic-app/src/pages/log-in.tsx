@@ -1,133 +1,157 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useHistory } from "react-router-dom";
 import {
   IonPage,
   IonContent,
-  IonHeader,
-  IonToolbar,
-  IonButtons,
   IonButton,
-  IonIcon,
-  IonItem,
-  IonLabel,
-  IonInput
+  IonInput,
+  IonText,
 } from "@ionic/react";
-import { arrowBack, eye, eyeOff  } from "ionicons/icons";
-import '../theme/log-in.css';
-
-
+import "../theme/log-in.css";
+import LogoIcon from "../components/assets/SycnRunize-Logo.png";
+import { useHideTabBar } from "../hooks/useHideTabBar";
 
 const Login: React.FC = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showError, setShowError] = useState(false);
-   const [showPassword, setShowPassword] = useState(false);
+  useHideTabBar();
+  const history = useHistory();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    
-    const validateCredentials = async (email: string, password: string): Promise<boolean> => {
-  try {
-    const response = await fetch('YOUR_API_ENDPOINT', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    return response.ok;
-  } catch (error) {
-    return false;
-  }
-};
-    // For demonstration, showing error for any attempt
-    const isValid = false; // Replace with actual validation
-    
-    if (!isValid) {
-      setShowError(true);
-    } else {
-      // Navigate to home on successful login
-      window.location.href = "/HomeModule/homeM1";
-    }
-  };
+    console.log("Login attempted");
+    history.push("/home");
+  }; 
+
+  const [isMobile, setIsMobile] = useState(false); 
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth <= 768); 
+    };
+
+    checkScreenSize();
+    window.addEventListener("resize", checkScreenSize);
+
+    return () => window.removeEventListener("resize", checkScreenSize);
+  }, []);
 
   return (
-    <IonPage className="login-page">
-      {/* Back Button */}
-      <IonHeader>
-        <IonToolbar className="header-toolbar">
-          <IonButtons slot="start">
-            <IonButton routerLink="/UserAuthentication/UserA1">
-              <IonIcon icon={arrowBack} />
-            </IonButton>
-          </IonButtons>
-        </IonToolbar>
-      </IonHeader>
+    <IonPage>
+      <IonContent fullscreen>
+        <div className="login-page-content2">
+         
+          <div className="form-container2">
+            <div className="form-content2">
+             
+              <div className="logo-container">
+                <img src={LogoIcon} alt="SyncRunize" className="logo-image" />
+                <span className="logo-text">SyncRunize</span>
+              </div>
 
-      {/* Login Form */}
-      <IonContent fullscreen className="ion-padding login-form">
-        <h1>LOG IN</h1>
+              
+              <div className="form-header2">
+                <h1 className="form-title2">Log In</h1>
+                <p className="form-subtitle2">Fill the below form to login</p>
+              </div>
 
-        <form onSubmit={handleLogin}>
-          {/* Email */}
-          <IonItem className="form-item">
-            <IonLabel position="stacked">
-              Enter your mobile number or email:
-            </IonLabel>
-            <IonInput  
-              type="email"
-              placeholder="abcd@gmail.com"
-              value={email}
-              onIonInput={(e) => setEmail(e.detail.value!)}
-              required
-               style={{ "--padding-start": "13px"}}
-            ></IonInput>
-          </IonItem>
+              
+              <form onSubmit={handleLogin} noValidate>
+                <div className="form-fields2">
+                  
+                  <div className="input-group2">
+                    <label className="input-label2">Email</label>
+                    <IonInput
+                      className="custom-input2"
+                      type="email"
+                      placeholder="Enter your email"
+                      required
+                    />
+                  </div>
 
-          {/* Password */}
-          <IonItem className="form-item">
-            <IonLabel position="stacked">Enter your password:</IonLabel>
-            <IonInput 
-              type="password"
-              placeholder="••••••••••••••••"
-              value={password}
-              onIonInput={(e) => setPassword(e.detail.value!)}
-              required
-               style={{ "--padding-start": "13px"}}
-            ></IonInput>
-          </IonItem>
+                 
+                  <div className="input-group2">
+                    <label className="input-label2">Password</label>
+                    <IonInput
+                      className="custom-input2"
+                      type="password"
+                      placeholder="Enter your password"
+                      required
+                    />
+                  </div> 
 
-          {/* Forgot Password */}
-          <div className="forgot-password">
-            <a href="#" className="forgot-link">
-              Forgot password?
-            </a>
-          </div>
+                 
+                  <div className="forgot-password-container">
+                    <a href="#" className="forgot-link2">
+                      Forgot Password?
+                    </a>
+                  </div>
+                </div>
 
-          {/* Error Alert */}
-          {showError && (
-            <div style={{
-              backgroundColor: '#ffcdd2',
-              color: '#c62828',
-              padding: '12px 16px',
-              borderRadius: '8px',
-              marginBottom: '16px',
-              textAlign: 'center',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}>
-              Your email or password are incorrect.<br />
-              Please try again!
+                 
+                <IonButton
+                  expand="block"
+                  type="submit"
+                  className="submit-button2"
+                >
+                  Log in
+                </IonButton>
+
+               
+                <div className="social-login2">
+                  <IonButton
+                    fill="solid"
+                    className="social-button google-button"
+                  >
+                    <div className="social-content">
+                      <svg className="social-icon" viewBox="0 0 24 24">
+                        <path
+                          fill="#4285F4"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                        />
+                      </svg>
+                      <span>Sign in with Google</span>
+                    </div>
+                  </IonButton>
+
+                  <IonButton
+                    fill="solid"
+                    className="social-button apple-button"
+                  >
+                    <div className="social-content">
+                      <svg
+                        className="social-icon"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.66-3.74 4.25z" />
+                      </svg>
+                      <span>Sign in with Apple</span>
+                    </div>
+                  </IonButton>
+                </div>
+
+
+                <div className="signup-section2">
+                  <IonText color="medium">Don't have an account?</IonText>
+                  <a href="/authentication" className="signup-link2">
+                    Create New Account
+                  </a>
+                </div>
+              </form>
             </div>
-          )}
-
-          {/* Login Button */}
-          <IonButton
-            expand="block"
-            className="login-btn"
-            type="submit"
-          >
-            LOGIN
-          </IonButton>
-        </form>
+          </div>
+        </div>
       </IonContent>
     </IonPage>
   );

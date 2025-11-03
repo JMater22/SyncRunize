@@ -14,7 +14,12 @@ import {
   IonInput,
   IonSelect,
   IonSelectOption,
+  IonToast,
+  IonActionSheet,
+  IonIcon,
 } from "@ionic/react";
+import { camera, images, close } from "ionicons/icons";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import '../theme/Edit-Profile.css';
 import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
 
@@ -26,6 +31,63 @@ const EditProfile: React.FC = () => {
   const [state, setState] = useState("");
   const [birthdate, setBirthdate] = useState("");
   const [gender, setGender] = useState("");
+  const [profilePhoto, setProfilePhoto] = useState(ProfilePic);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [showActionSheet, setShowActionSheet] = useState(false);
+
+  /** 📸 Select Photo - Android Platform */
+  const selectPhoto = async (source: CameraSource) => {
+    try {
+      const photo = await Camera.getPhoto({
+        resultType: CameraResultType.Uri,
+        source: source,
+        quality: 90,
+        allowEditing: true,
+        width: 600,
+        height: 600,
+      });
+
+      if (photo.webPath) {
+        setProfilePhoto(photo.webPath);
+        setToastMessage("Profile photo updated!");
+        setShowToast(true);
+      }
+    } catch (error) {
+      console.error("Camera error:", error);
+      setToastMessage("Failed to select photo.");
+      setShowToast(true);
+    }
+  };
+
+  const handlePhotoButtonClick = () => {
+    setShowActionSheet(true);
+  };
+
+  const handleDone = () => {
+    // Validate and save profile data
+    if (!firstName.trim() || !lastName.trim()) {
+      setToastMessage("Please enter your first and last name");
+      setShowToast(true);
+      return;
+    }
+
+    console.log('Saving profile:', {
+      firstName,
+      lastName,
+      city,
+      state,
+      birthdate,
+      gender,
+      profilePhoto
+    });
+
+    setToastMessage("Profile updated successfully!");
+    setShowToast(true);
+
+    // Navigate back after a short delay
+    // setTimeout(() => history.push('/'), 1500);
+  };
 
   return (
     <IonPage>
@@ -37,7 +99,9 @@ const EditProfile: React.FC = () => {
           </IonButtons>
           <IonTitle>Edit Profile</IonTitle>
           <IonButtons slot="end">
-            <IonButton strong={true}>Done</IonButton>
+            <IonButton strong={true} onClick={handleDone}>
+              Done
+            </IonButton>
           </IonButtons>
         </IonToolbar>
       </IonHeader>
@@ -48,15 +112,47 @@ const EditProfile: React.FC = () => {
         <div className="profile-photo-section">
           <div className="profile-photo-container">
             <IonImg
-              src={ProfilePic}
+              src={profilePhoto}
               alt="Profile Photo"
               className="profile-photo"
             />
-            <IonButton className="edit-photo-btn" size="small" fill="clear">
+            <IonButton
+              className="edit-photo-btn"
+              size="small"
+              fill="clear"
+              onClick={handlePhotoButtonClick}
+            >
               📷
             </IonButton>
           </div>
         </div>
+
+        {/* Android Action Sheet for Photo Selection */}
+        <IonActionSheet
+          isOpen={showActionSheet}
+          onDidDismiss={() => setShowActionSheet(false)}
+          buttons={[
+            {
+              text: "Take Photo",
+              icon: camera,
+              handler: () => {
+                selectPhoto(CameraSource.Camera);
+              },
+            },
+            {
+              text: "Choose from Gallery",
+              icon: images,
+              handler: () => {
+                selectPhoto(CameraSource.Photos);
+              },
+            },
+            {
+              text: "Cancel",
+              icon: close,
+              role: "cancel",
+            },
+          ]}
+        />
 
         {/* Edit Form */}
         <form className="edit-form">
@@ -67,7 +163,7 @@ const EditProfile: React.FC = () => {
               <IonInput
                 value={firstName}
                 placeholder="Enter first name"
-                onIonChange={(e) => setFirstName(e.detail.value!)}
+                onIonInput={(e) => setFirstName(e.detail.value!)}
               />
             </IonItem>
 
@@ -76,7 +172,7 @@ const EditProfile: React.FC = () => {
               <IonInput
                 value={lastName}
                 placeholder="Enter last name"
-                onIonChange={(e) => setLastName(e.detail.value!)}
+                onIonInput={(e) => setLastName(e.detail.value!)}
               />
             </IonItem>
           </div>
@@ -88,7 +184,7 @@ const EditProfile: React.FC = () => {
               <IonInput
                 value={city}
                 placeholder="Enter city"
-                onIonChange={(e) => setCity(e.detail.value!)}
+                onIonInput={(e) => setCity(e.detail.value!)}
               />
             </IonItem>
 
@@ -97,7 +193,7 @@ const EditProfile: React.FC = () => {
               <IonInput
                 value={state}
                 placeholder="Enter state"
-                onIonChange={(e) => setState(e.detail.value!)}
+                onIonInput={(e) => setState(e.detail.value!)}
               />
             </IonItem>
           </div>
@@ -108,7 +204,7 @@ const EditProfile: React.FC = () => {
             <IonInput
               type="date"
               value={birthdate}
-              onIonChange={(e) => setBirthdate(e.detail.value!)}
+              onIonInput={(e) => setBirthdate(e.detail.value!)}
             />
           </IonItem>
 
@@ -129,6 +225,14 @@ const EditProfile: React.FC = () => {
             </IonSelect>
           </IonItem>
         </form>
+
+        {/* Toast Feedback */}
+        <IonToast
+          isOpen={showToast}
+          message={toastMessage}
+          duration={2000}
+          onDidDismiss={() => setShowToast(false)}
+        />
       </IonContent>
     </IonPage>
   );

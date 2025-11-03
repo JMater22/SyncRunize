@@ -13,14 +13,18 @@ import {
   IonInput,
   IonToggle,
   IonSegment,
-  IonSegmentButton,
+  IonSegmentButton, 
   IonButton,
 } from "@ionic/react";
 import Map from "../components/assets/map.png";
 import '../theme/Routes.css';
 import '../theme/global.css';
+import { useHideTabBar } from "../hooks/useHideTabBar";
 
 const CreateRoute: React.FC = () => {
+  // Hide the tab bar on this page
+  useHideTabBar();
+
   const [isPublic, setIsPublic] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [unit, setUnit] = useState("km");
@@ -31,14 +35,14 @@ const CreateRoute: React.FC = () => {
       <IonHeader className="dark-header">
         <IonToolbar >
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/RouteModule/routeM1/index.html" />
+            <IonBackButton defaultHref="/RouteModule/routeM1/index.html" text={''} />
           </IonButtons>
           <IonTitle>Create Route</IonTitle>
         </IonToolbar>
       </IonHeader>
 
       {/* Main Content */}
-      <IonContent  fullscreen>
+      <IonContent fullscreen>
         <div className="map-container">
           <IonImg src={Map} alt="Map with green route" />
           <div className="runner-icon">🏃</div>
@@ -71,29 +75,29 @@ const CreateRoute: React.FC = () => {
             </div>
 
             {/* Route Name */}
-            <IonItem  lines="none">
+            <IonItem lines="none">
               <IonLabel position="stacked">Name</IonLabel>
               <IonInput placeholder="Enter route name" />
             </IonItem>
 
             {/* Start Point */}
-            <IonItem  lines="none">
+            <IonItem lines="none">
               <IonLabel position="stacked">▶️ Start Point</IonLabel>
               <IonInput placeholder="Start Point" />
             </IonItem>
 
             {/* End Point */}
-            <IonItem  lines="none">
+            <IonItem lines="none">
               <IonLabel position="stacked">⏹️ End Point</IonLabel>
               <IonInput placeholder="End Point" />
             </IonItem>
 
             {/* Map Preferences */}
             <h3 className="section-title">Map Preferences</h3>
-            <IonItem  lines="none">
+            <IonItem lines="none">
               <IonLabel>🌐 Show Heatmap</IonLabel>
               <IonToggle
-              slot="end"
+                slot="end"
                 checked={showHeatmap}
                 onIonChange={(e) => setShowHeatmap(e.detail.checked)}
                 color="success"
@@ -102,22 +106,19 @@ const CreateRoute: React.FC = () => {
 
             {/* Routing Preferences */}
             <h3 className="section-title">Routing Preferences</h3>
-            <IonItem  lines="none">
-            
-               <IonSegment
-              value={unit}
-              onIonChange={(e) => setUnit(e.detail.value as "km" | "mi")}
-              
-            >
-              <IonSegmentButton  value="km">
-                <IonLabel >km</IonLabel>
-              </IonSegmentButton>
-              <IonSegmentButton value="mi">
-                <IonLabel>mi</IonLabel>
-              </IonSegmentButton>
-            </IonSegment>
+            <IonItem lines="none">
+              <IonSegment
+                value={unit}
+                onIonChange={(e) => setUnit(e.detail.value as "km" | "mi")}
+              >
+                <IonSegmentButton value="km">
+                  <IonLabel>km</IonLabel>
+                </IonSegmentButton>
+                <IonSegmentButton value="mi">
+                  <IonLabel>mi</IonLabel>
+                </IonSegmentButton>
+              </IonSegment>
             </IonItem>
-           
 
             {/* Action Buttons */}
             <div className="action-buttons">

@@ -19,13 +19,17 @@
 ion-content {
   --background: #121212;
   color: #fff;
-  font-family: "Inter", sans-serif;
+  font-family: "Inter", sans-serif; 
 }
 
 /* Header Toolbar */
 ion-toolbar {
   --background: #1e1e1e;
   --color: #fff;
+}
+
+.back-button {
+  margin-left: 15px;
 }
 
 /* Profile Card */
@@ -368,4 +372,15 @@ ion-card p {
   margin: 16px 0 8px;
   padding-left: .5rem;
 
+}
+.photo-challenge{
+   display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #2a2a2a;
+  padding: 0.5rem 0.9rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: #ffffff;
+  font-weight: 500;
 }

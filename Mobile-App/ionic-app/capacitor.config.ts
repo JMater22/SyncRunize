@@ -1,9 +1,10 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'io.ionic.starter',
+  appId: 'com.app.syncrunize',
   appName: 'ionic-app',
-  webDir: 'dist'
+  webDir: 'dist', // same as Vite's outDir
+
 };
 
 export default config;
