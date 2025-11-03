@@ -20,7 +20,7 @@ export const usePushNotifications = ({
 }: PushNotificationHookProps = {}) => {
   useEffect(() => {
     const platform = Capacitor.getPlatform();
-    if (platform === 'web') {
+    if (platform === 'android') {
       console.log('[Push] Push notifications are only available on native platforms.');
       return;
     }
