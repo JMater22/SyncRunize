@@ -15,10 +15,13 @@ import {
   IonSelect,
   IonSelectOption,
   IonToast,
+  IonActionSheet,
+  IonIcon,
 } from "@ionic/react";
+import { camera, images, close } from "ionicons/icons";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import '../theme/Edit-Profile.css';
 import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
-import PhotoUpload from '../components/photo-upload';
 
 
 const EditProfile: React.FC = () => {
@@ -31,11 +34,34 @@ const EditProfile: React.FC = () => {
   const [profilePhoto, setProfilePhoto] = useState(ProfilePic);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [showActionSheet, setShowActionSheet] = useState(false);
 
-  const handlePhotoSelected = (photoUrl: string) => {
-    setProfilePhoto(photoUrl);
-    setToastMessage("Profile photo updated!");
-    setShowToast(true);
+  /** 📸 Select Photo - Android Platform */
+  const selectPhoto = async (source: CameraSource) => {
+    try {
+      const photo = await Camera.getPhoto({
+        resultType: CameraResultType.Uri,
+        source: source,
+        quality: 90,
+        allowEditing: true,
+        width: 600,
+        height: 600,
+      });
+
+      if (photo.webPath) {
+        setProfilePhoto(photo.webPath);
+        setToastMessage("Profile photo updated!");
+        setShowToast(true);
+      }
+    } catch (error) {
+      console.error("Camera error:", error);
+      setToastMessage("Failed to select photo.");
+      setShowToast(true);
+    }
+  };
+
+  const handlePhotoButtonClick = () => {
+    setShowActionSheet(true);
   };
 
   const handleDone = () => {
@@ -90,15 +116,43 @@ const EditProfile: React.FC = () => {
               alt="Profile Photo"
               className="profile-photo"
             />
-            <PhotoUpload
-              onPhotoSelected={handlePhotoSelected}
-              buttonClass="edit-photo-btn"
-              buttonSize="small"
-              buttonFill="clear"
-              buttonText="📷"
-            />
+            <IonButton
+              className="edit-photo-btn"
+              size="small"
+              fill="clear"
+              onClick={handlePhotoButtonClick}
+            >
+              📷
+            </IonButton>
           </div>
         </div>
+
+        {/* Android Action Sheet for Photo Selection */}
+        <IonActionSheet
+          isOpen={showActionSheet}
+          onDidDismiss={() => setShowActionSheet(false)}
+          buttons={[
+            {
+              text: "Take Photo",
+              icon: camera,
+              handler: () => {
+                selectPhoto(CameraSource.Camera);
+              },
+            },
+            {
+              text: "Choose from Gallery",
+              icon: images,
+              handler: () => {
+                selectPhoto(CameraSource.Photos);
+              },
+            },
+            {
+              text: "Cancel",
+              icon: close,
+              role: "cancel",
+            },
+          ]}
+        />
 
         {/* Edit Form */}
         <form className="edit-form">

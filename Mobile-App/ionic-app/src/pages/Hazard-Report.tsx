@@ -50,7 +50,7 @@ const ReportHazard: React.FC = () => {
   const [showToast, setShowToast] = useState<boolean>(false);
     const [image, setImage] = useState<string | null>(null);
 
-  /** 📸 Add Photo (Camera or Gallery) - Integrated from CreatePost */
+// Take or pick a photo
   const handleAddPhoto = async () => {
     try {
       const photo = await Camera.getPhoto({
@@ -61,24 +61,15 @@ const ReportHazard: React.FC = () => {
       });
 
       if (photo?.dataUrl) {
-        setHazardPhoto(photo.dataUrl);
-        showToastMessage("Photo added successfully!");
+        setImage(photo.dataUrl);
       }
-    } catch (error: any) {
-      // Silently ignore if user cancels
-      if (error?.message?.includes("cancel") || error?.message?.includes("User cancelled")) {
-        return;
-      }
+    } catch (error) {
       console.error("Camera error:", error);
       showToastMessage("Failed to select photo.");
     }
   };
 
-  /** 🗑️ Remove photo */
-  const handleRemovePhoto = () => {
-    setHazardPhoto(null);
-    showToastMessage("Photo removed");
-  };
+  const handleRemovePhoto = () => setImage(null);
 
   /** 🚀 Submit logic */
   const handleSubmit = () => {
