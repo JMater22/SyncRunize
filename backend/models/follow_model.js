@@ -43,7 +43,8 @@ export const getFollowCounts = async (userId) => {
 
 // Get all followers of a user
 export const getFollowers = async (userId) => {
-  const { data, error } = await supabase
+  // Get all followers (people who follow me)
+  const { data: followers, error } = await supabase
     .from("follows")
     .select(`
       follower_id,
@@ -56,11 +57,23 @@ export const getFollowers = async (userId) => {
 
   if (error) throw error;
 
-  // Transform the nested data to match your original structure
-  return data.map(follow => ({
+  // Get all users I follow
+  const { data: myFollowing, error: followingError } = await supabase
+    .from("follows")
+    .select("followed_id")
+    .eq("follower_id", userId);
+
+  if (followingError) throw followingError;
+
+  // Create a quick lookup set for faster checking
+  const myFollowingSet = new Set(myFollowing.map(f => f.followed_id));
+
+  // Return the list with "isFollowedBack" flag
+  return followers.map(follow => ({
     follower_id: follow.follower_id,
-    username: follow.follower.name, // Using 'name' from database but returning as 'username'
-    profile_picture: follow.follower.profile_picture
+    username: follow.follower.name,
+    profile_picture: follow.follower.profile_picture,
+    isFollowedBack: myFollowingSet.has(follow.follower_id) // true or false
   }));
 };
 

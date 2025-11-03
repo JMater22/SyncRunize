@@ -12,14 +12,16 @@ export const createUserChallenge = async (userId, challengeId) => {
   return data;
 };
 
-export const deleteUserChallenge = async (userChallengeId) => {
+export const deleteUserChallengeByUserAndChallenge = async (userId, challengeId) => {
   const { error } = await supabase
     .from("user_challenges")
     .delete()
-    .eq("user_challenge_id", userChallengeId);
-  
+    .eq("user_id", userId)
+    .eq("challenge_id", challengeId);
+
   if (error) throw error;
 };
+
 
 export const getUserChallenges = async (userId) => {
   const { data, error } = await supabase
@@ -68,6 +70,62 @@ export const getUserChallenges = async (userId) => {
     challenges: undefined
   }));
 };
+
+
+
+export const getAllChallengesWithStatus = async (userId) => {
+  // 1️⃣ Fetch all challenges
+  const { data: challenges, error: challengesError } = await supabase
+    .from("challenges")
+    .select(`
+      challenge_id,
+      slug,
+      name,
+      description,
+      target_distance_km,
+      frequency_type,
+      frequency_value,
+      duration_days,
+      intensity,
+      image_url,
+      created_at
+    `)
+    .order("created_at", { ascending: false });
+
+  if (challengesError) throw challengesError;
+
+  // 2️⃣ Fetch user_challenges of this user (include progress info)
+  const { data: userChallenges, error: userError } = await supabase
+    .from("user_challenges")
+    .select("challenge_id, completed, progress_percent")
+    .eq("user_id", userId);
+
+  if (userError) throw userError;
+
+  // 3️⃣ Build a lookup map for fast matching
+  const joinedMap = new Map();
+  userChallenges.forEach((uc) => {
+    joinedMap.set(uc.challenge_id, {
+      joined: true,
+      completed: uc.completed,
+      progress_percent: uc.progress_percent ?? 0,
+    });
+  });
+
+  // 4️⃣ Merge user progress/status into challenges
+  const challengesWithStatus = challenges.map((ch) => {
+    const userStatus = joinedMap.get(ch.challenge_id);
+    return {
+      ...ch,
+      joined: userStatus?.joined ?? false,
+      completed: userStatus?.completed ?? false,
+      progress_percent: userStatus?.progress_percent ?? 0,
+    };
+  });
+
+  return challengesWithStatus;
+};
+
 
 export const updateProgress = async (userChallengeId, { add_distance, add_runs }) => {
   // First, get the current values

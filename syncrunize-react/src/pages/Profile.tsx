@@ -47,6 +47,20 @@ import "../components/UserProfile/UserProfile.css";
 import { supabase } from "../supabaseClient";
 import axios from "axios";
 
+ interface FollowsFormat {
+  id:number;
+  name : string;
+  username: string;
+  avatar: string;
+  isFollowing: boolean;
+}
+
+ interface FollowingFormat {
+  id:number;
+  name : String;
+  username: String;
+  avatar: String;
+}
 
 
 
@@ -105,7 +119,7 @@ const Profile: React.FC = () => {
     profilePic: "https://ionicframework.com/docs/img/demos/avatar.svg"
   });
 
-  const [followersCount, setFollowersCount] = useState(1);
+  const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   
   // const statsData = {
@@ -216,7 +230,7 @@ useEffect(() => {
 
   
 
-    // Fetch user data on mount
+//Fetch Followers and Following Count
   useEffect(() => {
   const fetchUserData = async () => {
     try {
@@ -243,6 +257,40 @@ useEffect(() => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      // Fetch followers and following lists in parallel
+      const [followersRes, followingRes] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_API_URL}/follows/${user.user_id}/followers`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${import.meta.env.VITE_API_URL}/follows/${user.user_id}/following`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+
+      const followersList = followersRes.data;
+      const followingList = followingRes.data;
+
+      // Map followers
+      const formattedFollowers = followersList.map((follower: any) => ({
+        id: follower.follower_id,
+        name: follower.username,
+        username: `@${follower.username.toLowerCase()}`,
+        avatar: follower.profile_picture,
+        isFollowing: follower.isFollowedBack
+      }));
+
+      // Map following
+      const formattedFollowing = followingList.map((following: any) => ({
+        id: following.followed_id,
+        name: following.username,
+        username: `@${following.username.toLowerCase()}`,
+        avatar: following.profile_picture,
+      }));
+
+      // Save to state
+      setFollowersData(formattedFollowers);
+      setFollowingsData(formattedFollowing);
+
       setFollowersCount(counts.followers);
       setFollowingCount(counts.following); // If you need following count too
       await fetchEarnedBadges(user.user_id, token);
@@ -254,6 +302,7 @@ useEffect(() => {
   fetchUserData();
 
 }, []);
+
 
   const fetchEarnedBadges = async (userId: number, token: string) => {
     try {
@@ -319,30 +368,10 @@ useEffect(() => {
 }, [currentUserId]);
 
 
-
+  //FOLLOWERS DATA
   // Mock data for followers and following
-  const [followersData, setFollowersData] = useState([
-    { id: 1, name: "Sarah Johnson", username: "sarahj_runs", avatar: ProfilePic, isFollowing: true, mutualFollows: 3 },
-    { id: 2, name: "Mike Chen", username: "mike_fitness", avatar: ProfilePic, isFollowing: false, mutualFollows: 1 },
-    { id: 3, name: "Emma Wilson", username: "emma_marathon", avatar: ProfilePic, isFollowing: true, mutualFollows: 7 },
-    { id: 4, name: "David Park", username: "david_trails", avatar: ProfilePic, isFollowing: false, mutualFollows: 2 },
-    { id: 5, name: "Lisa Rodriguez", username: "lisa_5k", avatar: ProfilePic, isFollowing: true, mutualFollows: 5 },
-    { id: 6, name: "Tom Anderson", username: "tom_cycling", avatar: ProfilePic, isFollowing: false, mutualFollows: 0 },
-    { id: 7, name: "Rachel Green", username: "rachel_yoga", avatar: ProfilePic, isFollowing: true, mutualFollows: 4 },
-    { id: 8, name: "James Wilson", username: "james_crossfit", avatar: ProfilePic, isFollowing: false, mutualFollows: 1 }
-  ]);
-
-  const [followingData, setFollowingData] = useState([
-    { id: 1, name: "Nike Running", username: "nike_running", avatar: ProfilePic, isFollowing: true, mutualFollows: 15 },
-    { id: 2, name: "Strava", username: "strava_official", avatar: ProfilePic, isFollowing: true, mutualFollows: 23 },
-    { id: 3, name: "Runner's World", username: "runnersworld", avatar: ProfilePic, isFollowing: true, mutualFollows: 12 },
-    { id: 4, name: "Maria Santos", username: "maria_ultra", avatar: ProfilePic, isFollowing: true, mutualFollows: 8 },
-    { id: 5, name: "Fitness Guru", username: "fitness_guru", avatar: ProfilePic, isFollowing: true, mutualFollows: 6 },
-    { id: 6, name: "Alex Turner", username: "alex_marathoner", avatar: ProfilePic, isFollowing: true, mutualFollows: 9 },
-    { id: 7, name: "Running Coach", username: "coach_running", avatar: ProfilePic, isFollowing: true, mutualFollows: 11 },
-    { id: 8, name: "Jane Smith", username: "jane_triathlon", avatar: ProfilePic, isFollowing: true, mutualFollows: 4 }
-  ]);
-
+  const [followersData, setFollowersData] = useState<FollowsFormat[]>([]);
+  const [followingsData, setFollowingsData] = useState<FollowsFormat[]>([]);
 
 
   // Add this useEffect to fetch user routes
@@ -425,21 +454,53 @@ const formatDate = (dateString: string) => {
 const [showAllActivities, setShowAllActivities] = useState(false);
 
 
-  const handleFollowToggle = (userId: number, currentType: "followers" | "following") => {
-    if (currentType === "followers") {
-      setFollowersData(prevData => 
-        prevData.map(user => 
-          user.id === userId ? { ...user, isFollowing: !user.isFollowing } : user
-        )
-      );
-    } else {
-      setFollowingData(prevData => 
-        prevData.map(user => 
-          user.id === userId ? { ...user, isFollowing: !user.isFollowing } : user
-        )
-      );
-    }
-  };
+    const handleFollowToggle = async (targetUserId: number) => {
+      try {
+        // Get session from Supabase
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!session) return;
+
+        const token = session.access_token;
+
+        // Get current user info (to verify)
+        const { data: currentUser } = await axios.get(
+          `${import.meta.env.VITE_API_URL}/users/me`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        // Check if user is currently following that user
+        const isCurrentlyFollowing = followingsData.some(f => f.id === targetUserId);
+
+        // Decide endpoint based on follow state
+        const endpoint = `${import.meta.env.VITE_API_URL}/follows/${targetUserId}/${isCurrentlyFollowing ? "unfollow" : "follow"}`;
+
+        // Perform follow/unfollow request
+        await axios.post(endpoint, {}, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        // Refresh following list after action
+        const { data: updatedFollowing } = await axios.get(
+          `${import.meta.env.VITE_API_URL}/follows/${currentUser.user_id}/following`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        // Format and update following list
+        const formattedFollowing = updatedFollowing.map((u: any) => ({
+          id: u.followed_id,
+          name: u.username,
+          username: `@${u.username.toLowerCase()}`,
+          profile_picture: u.profile_picture,
+          isFollowing: true
+        }));
+
+        setFollowingsData(formattedFollowing);
+      } catch (error) {
+        console.error("Error toggling follow:", error);
+      }
+    };
+
 
   const openFollowersModal = (type: "followers" | "following") => {
     setFollowersModalType(type);
@@ -908,21 +969,21 @@ const handleSaveProfile = async () => {
                     className={`followers-tab ${followersModalType === "followers" ? "active" : ""}`}
                     onClick={() => setFollowersModalType("followers")}
                   >
-                    <span className="tab-count">32</span>
+                    <span className="tab-count">{followersCount}</span>
                     <span className="tab-label">Followers</span>
                   </button>
                   <button
                     className={`followers-tab ${followersModalType === "following" ? "active" : ""}`}
                     onClick={() => setFollowersModalType("following")}
                   >
-                    <span className="tab-count">21</span>
+                    <span className="tab-count">{followingCount}</span>
                     <span className="tab-label">Following</span>
                   </button>
                 </div>
               </div>
 
               <div className="followers-list">
-                {(followersModalType === "followers" ? followersData : followingData).map((user) => (
+                {(followersModalType === "followers" ? followersData : followingsData).map((user) => (
                   <div key={user.id} className="follower-item">
                     <div className="follower-avatar-container">
                       <IonImg src={user.avatar} alt={user.name} className="follower-avatar" />
@@ -934,20 +995,15 @@ const handleSaveProfile = async () => {
                         <h4 className="follower-name">{user.name}</h4>
                         <p className="follower-username">@{user.username}</p>
                       </div>
-                      {user.mutualFollows > 0 && (
-                        <p className="follower-mutual">
-                          {user.mutualFollows} mutual {user.mutualFollows === 1 ? 'follow' : 'follows'}
-                        </p>
-                      )}
                     </div>
 
                     <div className="follower-actions">
                       <IonButton
-                        className={`follow-btn ${user.isFollowing ? 'following' : 'follow'}`}
+                        className={`follow-btn ${user.isFollowing ? "following" : "follow"}`}
                         size="small"
-                        onClick={() => handleFollowToggle(user.id, followersModalType)}
+                        onClick={() => handleFollowToggle(user.id)}
                       >
-                        {user.isFollowing ? 'Following' : 'Follow'}
+                        {user.isFollowing ? "Following" : "Follow"}
                       </IonButton>
                     </div>
                   </div>
@@ -955,7 +1011,7 @@ const handleSaveProfile = async () => {
               </div>
 
               {/* Load More Section */}
-              <div className="load-more-section">
+              {/* <div className="load-more-section">
                 <IonButton 
                   fill="outline" 
                   expand="block" 
@@ -964,7 +1020,7 @@ const handleSaveProfile = async () => {
                 >
                   Load More
                 </IonButton>
-              </div>
+              </div> */}
             </div>
           </IonContent>
         </IonModal>

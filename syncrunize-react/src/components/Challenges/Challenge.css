@@ -155,6 +155,22 @@ ion-card-content .friends-info {
   transform: scale(1.02);
 }
 
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: #eee;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.progress-bar-fill {
+  height: 8px;
+  background: var(--ion-color-primary);
+  transition: width 0.4s ease-in-out;
+}
+
+
 @keyframes slideIn {
   0% {
     opacity: 0;
