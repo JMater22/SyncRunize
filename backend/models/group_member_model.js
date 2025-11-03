@@ -1,5 +1,46 @@
 import { supabase } from "../utils/supabase.js";
 
+
+
+export const checkMembership = async (groupId, userId) => {
+  const { data, error } = await supabase
+    .from("group_members")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", userId)
+    .single();
+
+  if (error) {
+    // User is not a member
+    if (error.code === "PGRST116") {
+      return { isMember: false, role: null };
+    }
+    throw error;
+  }
+
+  return { isMember: true, role: data.role };
+};
+
+
+export const getJoinedGroupIdsByUser = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from("group_members")
+      .select("group_id")
+      .eq("user_id", userId);
+
+    if (error) throw error;
+
+    // Return array of group IDs only
+    return data.map((row) => row.group_id);
+  } catch (error) {
+    console.error("Supabase error fetching joined groups:", error.message);
+    throw error;
+  }
+};
+
+
+
 // ✅ List group members
 export const getGroupMembers = async (groupId) => {
   const { data, error } = await supabase
@@ -9,6 +50,7 @@ export const getGroupMembers = async (groupId) => {
       role,
       joined_at,
       users:user_id (
+        name,
         username,
         profile_picture
       )

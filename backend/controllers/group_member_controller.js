@@ -1,5 +1,35 @@
 import * as GroupMemberModel from "../models/group_member_model.js";
 
+
+export const checkMembership = async (req, res) => {
+  try {
+    const { groupId, userId } = req.params;
+
+    const result = await GroupMemberModel.checkMembership(
+      parseInt(groupId, 10),
+      parseInt(userId, 10)
+    );
+
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Error checking membership:", err);
+    res.status(500).json({ error: "Failed to check membership" });
+  }
+};
+
+// Get joined groups for a specific user
+export const getJoinedGroupsByUser = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const joinedGroupIds = await GroupMemberModel.getJoinedGroupIdsByUser(userId);
+    res.status(200).json(joinedGroupIds); // array of group IDs
+  } catch (error) {
+    console.error("Error fetching joined groups:", error);
+    res.status(500).json({ error: "Failed to fetch joined groups" });
+  }
+};
+
 // Get all members of a specific group
 export const getGroupMembers = async (req, res) => {
   try {

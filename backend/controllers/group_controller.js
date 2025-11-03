@@ -1,5 +1,6 @@
 import * as GroupModel from "../models/group_model.js";
-
+import * as GroupMemberModel from "../models/group_member_model.js";
+import { supabase } from "../utils/supabase.js";
 // GET all groups
 export const getAllGroups = async (req, res) => {
   try {
@@ -24,9 +25,10 @@ export const getGroupById = async (req, res) => {
 // POST create group
 export const createGroup = async (req, res) => {
   try {
-    const { name, description, group_picture } = req.body;
-    const userId = req.user.id; // Extracted from JWT (ensure authenticate middleware)
-
+    const { name, description, privacy, group_picture } = req.body;
+    const userId = parseInt(req.params.userId, 10);
+    console.log("📤 Controller received:", { name, description, privacy, group_picture, userId });
+    console.log("📤 Full req.body:", req.body);
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized: user not authenticated" });
     }
@@ -37,9 +39,11 @@ export const createGroup = async (req, res) => {
     const group = await GroupModel.createGroup({
       name,
       description,
+      privacy,
       group_picture: group_picture || defaultPicture,
-      created_by: userId,
+      created_by: userId
     });
+
 
     // 2️⃣ Add the creator as admin in group_members
     await GroupMemberModel.addMember(group.group_id, userId, "admin");

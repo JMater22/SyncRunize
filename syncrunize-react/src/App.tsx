@@ -214,7 +214,7 @@ const App: React.FC = () => {
               />
               <Route
                 exact
-                path="/group-feed"
+                path="/group/:groupId"
                 render={() => (session ? <GroupFeed /> : <Redirect to="/login" />)}
               />
               <Route
