@@ -1,38 +1,71 @@
-import pool from "../utils/db.js";
+import { supabase } from "../utils/supabase.js";
 
 // Get all groups
 export const getAllGroups = async () => {
-  const result = await pool.query("SELECT * FROM groups ORDER BY created_at DESC");
-  return result.rows;
+  const { data, error } = await supabase
+    .from("groups")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
 };
 
 // Get a group by ID
 export const getGroupById = async (groupId) => {
-  const result = await pool.query("SELECT * FROM groups WHERE group_id = $1", [groupId]);
-  return result.rows[0];
+  const { data, error } = await supabase
+    .from("groups")
+    .select("*")
+    .eq("group_id", groupId)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") return null; // No rows found
+    throw error;
+  }
+  return data;
 };
 
 // Create group
 export const createGroup = async (name, description, group_picture, createdBy) => {
-  const result = await pool.query(
-    `INSERT INTO groups (name, description, group_picture,created_by)
-     VALUES ($1, $2, $3, $4) RETURNING *`,
-    [name, description, group_picture, createdBy]
-  );
-  return result.rows[0];
+  const { data, error } = await supabase
+    .from("groups")
+    .insert({
+      name,
+      description,
+      group_picture,
+      created_by: createdBy,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 };
 
 // Update group
 export const updateGroup = async (groupId, name, description) => {
-  const result = await pool.query(
-    `UPDATE groups SET name=$1, description=$2 WHERE group_id=$3 RETURNING *`,
-    [name, description, groupId]
-  );
-  return result.rows[0];
+  const { data, error } = await supabase
+    .from("groups")
+    .update({
+      name,
+      description,
+    })
+    .eq("group_id", groupId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 };
 
 // Delete group
 export const deleteGroup = async (groupId) => {
-  await pool.query("DELETE FROM groups WHERE group_id = $1", [groupId]);
+  const { error } = await supabase
+    .from("groups")
+    .delete()
+    .eq("group_id", groupId);
+
+  if (error) throw error;
   return { message: "Group deleted" };
 };

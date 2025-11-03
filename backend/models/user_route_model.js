@@ -1,5 +1,5 @@
 // models/user_route_model.js
-import pool from "../utils/db.js";
+import { supabase } from "../utils/supabase.js";
 import { generateRouteSnapshot } from "../utils/map_snapshot.js";
 import { haversineDistance } from "../utils/geo_utils.js";
 
@@ -94,31 +94,29 @@ export const createRoute = async (data) => {
 
   const pathJson = JSON.stringify(pathArray);
 
-  const result = await pool.query(
-    `INSERT INTO user_routes 
-      (user_id, start_lat, start_lng, end_lat, end_lng, chosen_path, distance_km,
-       duration_seconds, average_pace, risk_score, estimated_calories, 
-       route_name, snapshot_url, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())
-     RETURNING *`,
-    [
+  const { data, error } = await supabase
+    .from("user_routes")
+    .insert({
       user_id,
       start_lat,
       start_lng,
       end_lat,
       end_lng,
-      pathJson,
-      distanceKm,
+      chosen_path: pathJson,
+      distance_km: distanceKm,
       duration_seconds,
       average_pace,
       risk_score,
       estimated_calories,
       route_name,
       snapshot_url,
-    ]
-  );
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
 
-  return result.rows[0];
+  if (error) throw error;
+  return data;
 };
 
 /**
@@ -127,34 +125,42 @@ export const createRoute = async (data) => {
 export const getUserRoutes = async (userId, filters = {}) => {
   const { limit = 20, offset = 0, start_date, end_date } = filters;
 
-  let query = `SELECT * FROM user_routes WHERE user_id = $1`;
-  const values = [userId];
-  let paramIndex = 2;
+  let query = supabase
+    .from("user_routes")
+    .select("*")
+    .eq("user_id", userId);
 
   if (start_date) {
-    query += ` AND created_at >= $${paramIndex++}`;
-    values.push(start_date);
+    query = query.gte("created_at", start_date);
   }
 
   if (end_date) {
-    query += ` AND created_at <= $${paramIndex++}`;
-    values.push(end_date);
+    query = query.lte("created_at", end_date);
   }
 
-  query += ` ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
-  values.push(limit, offset);
+  query = query
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
 
-  const result = await pool.query(query, values);
-  return result.rows;
+  const { data, error } = await query;
+
+  if (error) throw error;
+  return data || [];
 };
 
 /**
  * Get route by ID
  */
 export const getRouteById = async (routeId) => {
-  const result = await pool.query(
-    `SELECT * FROM user_routes WHERE id = $1`,
-    [routeId]
-  );
-  return result.rows[0];
+  const { data, error } = await supabase
+    .from("user_routes")
+    .select("*")
+    .eq("id", routeId)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") return null;
+    throw error;
+  }
+  return data;
 };

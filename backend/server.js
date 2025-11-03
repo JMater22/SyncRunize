@@ -2,7 +2,7 @@
   import bodyParser from "body-parser";
   import cors from "cors";
   import dotenv from "dotenv";
-  import pool from "./utils/db.js";
+  import { supabase } from "./utils/supabase.js";
 
   import userRoutes from "./routes/user_routes.js";
   import postRoutes from "./routes/post_routes.js";
@@ -70,8 +70,16 @@
 
   app.get("/test-db", async (req, res) => {
   try {
-    const result = await pool.query("SELECT NOW()");
-    res.json({ status: "✅ Connected", time: result.rows[0].now });
+    // Test Supabase connection by querying a simple table or using a function
+    const { data, error } = await supabase.from("users").select("count", { count: "exact", head: true });
+
+    if (error) throw error;
+
+    res.json({
+      status: "✅ Connected to Supabase",
+      timestamp: new Date().toISOString(),
+      message: "Supabase client is working properly"
+    });
   } catch (err) {
     console.error("❌ DB Error:", err.message);
     res.status(500).json({ error: err.message });

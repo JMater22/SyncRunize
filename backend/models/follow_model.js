@@ -1,46 +1,60 @@
-import pool from "../utils/db.js";
+import { supabase } from "../utils/supabase.js";
 
 // Get all followers of a user
 export const getFollowers = async (userId) => {
-  const result = await pool.query(
-    `SELECT f.follower_id, u.username, u.profile_picture
-     FROM follows f
-     JOIN users u ON f.follower_id = u.user_id
-     WHERE f.followed_id = $1`,
-    [userId]
-  );
-  return result.rows;
+  const { data, error } = await supabase
+    .from("follows")
+    .select(`
+      follower_id,
+      users!follows_follower_id_fkey(username, profile_picture)
+    `)
+    .eq("followed_id", userId);
+
+  if (error) throw error;
+  return data || [];
 };
 
 // Get all users a person is following
 export const getFollowing = async (userId) => {
-  const result = await pool.query(
-    `SELECT f.followed_id, u.username, u.profile_picture
-     FROM follows f
-     JOIN users u ON f.followed_id = u.user_id
-     WHERE f.follower_id = $1`,
-    [userId]
-  );
-  return result.rows;
+  const { data, error } = await supabase
+    .from("follows")
+    .select(`
+      followed_id,
+      users!follows_followed_id_fkey(username, profile_picture)
+    `)
+    .eq("follower_id", userId);
+
+  if (error) throw error;
+  return data || [];
 };
 
 // Follow a user
 export const followUser = async (followerId, followedId) => {
-  const result = await pool.query(
-    `INSERT INTO follows (follower_id, followed_id)
-     VALUES ($1, $2)
-     ON CONFLICT (follower_id, followed_id) DO NOTHING
-     RETURNING *`,
-    [followerId, followedId]
-  );
-  return result.rows[0]; // null if already followed
+  const { data, error } = await supabase
+    .from("follows")
+    .insert({
+      follower_id: followerId,
+      followed_id: followedId,
+    })
+    .select()
+    .single();
+
+  // Handle duplicate key error (already following)
+  if (error) {
+    if (error.code === "23505") return null; // Unique constraint violation
+    throw error;
+  }
+  return data;
 };
 
 // Unfollow a user
 export const unfollowUser = async (followerId, followedId) => {
-  await pool.query(
-    `DELETE FROM follows WHERE follower_id = $1 AND followed_id = $2`,
-    [followerId, followedId]
-  );
+  const { error } = await supabase
+    .from("follows")
+    .delete()
+    .eq("follower_id", followerId)
+    .eq("followed_id", followedId);
+
+  if (error) throw error;
   return { message: "Unfollowed successfully" };
 };

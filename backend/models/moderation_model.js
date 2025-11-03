@@ -1,20 +1,30 @@
-import pool from "../utils/db.js";
+import { supabase } from "../utils/supabase.js";
 
 // Retrieve moderation history for a hazard report
 export const getModerationLogs = async (reportId) => {
-  const result = await pool.query(
-    `SELECT * FROM moderation_logs WHERE report_id = $1 ORDER BY created_at DESC`,
-    [reportId]
-  );
-  return result.rows;
+  const { data, error } = await supabase
+    .from("moderation_logs")
+    .select("*")
+    .eq("report_id", reportId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
 };
 
 // Insert a new moderation log
 export const addModerationLog = async (reportId, moderatorId, action, reason) => {
-  const result = await pool.query(
-    `INSERT INTO moderation_logs (report_id, moderator_id, action, reason) 
-     VALUES ($1, $2, $3, $4) RETURNING *`,
-    [reportId, moderatorId, action, reason]
-  );
-  return result.rows[0];
+  const { data, error } = await supabase
+    .from("moderation_logs")
+    .insert({
+      report_id: reportId,
+      moderator_id: moderatorId,
+      action,
+      reason,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 };
