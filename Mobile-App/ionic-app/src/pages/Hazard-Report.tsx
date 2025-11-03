@@ -35,7 +35,7 @@ import {
 } from "ionicons/icons";
 import { useHistory } from "react-router-dom";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
-
+import { useHideTabBar } from "../hooks/useHideTabBar";
 
 import "../theme/Hazard-Report.css";
 

@@ -11,6 +11,9 @@ import {
 } from "@ionic/react";
 import { arrowBack, navigateCircleOutline, locationOutline } from "ionicons/icons";
 import { Geolocation } from "@capacitor/geolocation";
+import { useHideTabBar } from "../hooks/useHideTabBar";
+import { useHistory } from "react-router-dom";
+import "../theme/Run-Main.css";
 
 interface Position {
   latitude: number;
@@ -18,9 +21,13 @@ interface Position {
   accuracy?: number;
   altitude?: number | null;
   speed?: number | null;
-}
+} 
 
 const RunMap: React.FC = () => {
+  // Hide the tab bar on this page
+  useHideTabBar();
+  const history = useHistory()
+
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -33,7 +40,7 @@ const RunMap: React.FC = () => {
   const [permissionStatus, setPermissionStatus] = useState<string>("prompt");
 
   useEffect(() => {
-    checkInitialPermissions();
+    checkInitialPermissions(); 
   }, []);
 
   const checkInitialPermissions = async () => {
@@ -42,13 +49,10 @@ const RunMap: React.FC = () => {
       setPermissionStatus(permission.location);
 
       if (permission.location === "granted") {
-        // Already have permission, get location immediately
         await getCurrentPosition();
       } else if (permission.location === "denied") {
-        // Permission was previously denied
         setShowPermissionAlert(true);
       } else {
-        // First time - show friendly prompt
         setShowInitialPrompt(true);
       }
     } catch (err) {
@@ -67,7 +71,6 @@ const RunMap: React.FC = () => {
 
       if (location === "granted") {
         await getCurrentPosition();
-        setToastMessage("✅ Location access granted!");
         setToastColor("success");
         setShowToast(true);
       } else if (location === "denied") {
@@ -115,10 +118,6 @@ const RunMap: React.FC = () => {
 
       setLocationEnabled(true);
       console.log("Current position:", position.coords);
-
-      setToastMessage("📍 GPS signal acquired!");
-      setToastColor("success");
-      setShowToast(true);
     } catch (err: any) {
       console.error("Error getting location:", err);
 
@@ -145,181 +144,95 @@ const RunMap: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen className="run-map-content">
-        <div className="map-container" style={{ position: 'relative', height: '100%' }}>
-          <button
-            onClick={() => window.history.back()}
-            style={{
-              position: 'absolute',
-              top: '20px',
-              left: '20px',
-              zIndex: 1000,
-              background: 'white',
-              border: 'none',
-              borderRadius: '50%',
-              width: '45px',
-              height: '45px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-              cursor: 'pointer'
-            }}
+        <div className="map-container">
+          {/* Back Button */}
+           <button
+            onClick={() => history.push('/routes')}
+            className="custom-back-button-icon"
           >
-            <IonIcon icon={arrowBack} style={{ fontSize: '24px', color: '#333' }} />
+            <IonIcon icon={arrowBack} className="back-icon" />
           </button>
 
+          {/* Map Iframe */}
           <iframe
             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d27403.697792075374!2d120.58200860881004!3d15.48705054784102!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3396c63f4ab68e0d%3A0x13f9415d7a5bfd4b!2sTarlac%20City%2C%20Tarlac!5e0!3m2!1sen!2sph!4v1761910044713!5m2!1sen!2sph"
-            style={{ width: '100%', height: '100%', border: 'none' }}
+            className="map-iframe"
             allowFullScreen
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
             title="Running Map"
           />
 
+          {/* Location Indicator */}
           {currentPosition && (
-            <div style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: '20px',
-              height: '20px',
-              borderRadius: '50%',
-              background: '#4285f4',
-              border: '3px solid white',
-              boxShadow: '0 0 0 4px rgba(66, 133, 244, 0.3)',
-              animation: 'pulse 2s infinite'
-            }} />
+            <>
+              <div className="location-indicator" />
+              <div className="location-pulse" />
+            </>
           )}
 
+          {/* GPS Button */}
           <button
             onClick={getCurrentPosition}
             disabled={loading}
-            style={{
-              position: 'absolute',
-              bottom: '250px',
-              right: '20px',
-              zIndex: 1000,
-              background: 'white',
-              border: 'none',
-              borderRadius: '50%',
-              width: '50px',
-              height: '50px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-              cursor: 'pointer'
-            }}
+            className="gps-button"
           >
             {loading ? (
-              <IonSpinner name="crescent" />
+              <IonSpinner name="crescent" className="gps-spinner" />
             ) : (
               <IonIcon
                 icon={navigateCircleOutline}
-                style={{
-                  fontSize: '28px',
-                  color: locationEnabled ? '#34a853' : '#666'
-                }}
+                className={`gps-icon ${locationEnabled ? 'gps-enabled' : ''}`}
               />
             )}
           </button>
 
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            background: 'white',
-            borderRadius: '24px 24px 0 0',
-            padding: '20px',
-            boxShadow: '0 -4px 12px rgba(0,0,0,0.1)'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 16px',
-              background: locationEnabled ? '#e8f5e9' : '#fff3e0',
-              borderRadius: '12px',
-              marginBottom: '16px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ display: 'flex', gap: '2px' }}>
+          {/* Stats Panel */}
+          <div className="stats-panel">
+            {/* GPS Status Bar */}
+            <div className={`gps-status-bar ${locationEnabled ? 'gps-acquired' : 'gps-disabled'}`}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <div className="gps-signal-bars">
                   {[1, 2, 3, 4].map((bar) => (
-                    <div
-                      key={bar}
-                      style={{
-                        width: '4px',
-                        height: `${bar * 4}px`,
-                        background: locationEnabled ? '#34a853' : '#ccc',
-                        borderRadius: '2px'
-                      }}
-                    />
+                    <div key={bar} className={`signal-bar bar-${bar}`} />
                   ))}
                 </div>
-                <span style={{
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  color: locationEnabled ? '#1b5e20' : '#e65100'
-                }}>
+                <span className="gps-status-text">
                   {locationEnabled ? "GPS Acquired" : "No GPS Signal"}
                 </span>
               </div>
             </div>
 
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '16px',
-              marginBottom: '20px'
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#333' }}>00:00</div>
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>Time</div>
+            {/* Stats Row */}
+            <div className="stats-row">
+              <div className="stat-item">
+                <div className="stat-value">00:00</div>
+                <div className="stat-label">Time</div>
               </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#333' }}>--:--</div>
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>Split avg. (/km)</div>
+              <div className="stat-item">
+                <div className="stat-value">--:--</div>
+                <div className="stat-label">Split avg. (/km)</div>
               </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#333' }}>0</div>
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>Distance (km)</div>
+              <div className="stat-item">
+                <div className="stat-value">0</div>
+                <div className="stat-label">Distance (km)</div>
               </div>
             </div>
 
-            <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+            {/* Start Button */}
+            <div className="start-button-container">
               <button
-                onClick={() => locationEnabled && alert('Start run')}
+                onClick={() => locationEnabled && (window.location.href = '/notice')}
                 disabled={!locationEnabled}
-                style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  border: 'none',
-                  background: locationEnabled ? '#34a853' : '#ccc',
-                  color: 'white',
-                  fontSize: '32px',
-                  cursor: locationEnabled ? 'pointer' : 'not-allowed',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto'
-                }}
+                className={`start-run-button ${!locationEnabled ? 'disabled' : ''}`} 
               >
-                ▶
+                <span style={{ fontSize: '32px' }}>▶</span>
               </button>
             </div>
 
+            {/* Location Prompt */}
             {!locationEnabled && !loading && (
-              <div style={{
-                textAlign: 'center',
-                fontSize: '14px',
-                color: '#666',
-                marginTop: '8px'
-              }}>
+              <div className="location-prompt">
                 Enable location to start tracking
               </div>
             )}
@@ -386,7 +299,6 @@ const RunMap: React.FC = () => {
             {
               text: "Open Settings",
               handler: () => {
-                // On mobile, this would open app settings
                 alert("Please enable location in your device settings");
               }
             }
@@ -401,20 +313,6 @@ const RunMap: React.FC = () => {
           color={toastColor}
           position="top"
         />
-
-        <style>{`
-          @keyframes pulse {
-            0% {
-              box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.7);
-            }
-            70% {
-              box-shadow: 0 0 0 12px rgba(66, 133, 244, 0);
-            }
-            100% {
-              box-shadow: 0 0 0 0 rgba(66, 133, 244, 0);
-            }
-          }
-        `}</style>
       </IonContent>
     </IonPage>
   );
