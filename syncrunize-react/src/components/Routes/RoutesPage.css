@@ -173,3 +173,52 @@ ion-button.saved-routes-btn {
     max-width: 100%;
   }
 }
+
+
+
+
+/* Modal container: dim background and center content */
+.route-modal-container {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* Content box — this defines modal size */
+.route-modal-content {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 900px;     /* ✅ modal size */
+  width: 90%;
+  max-height: 85vh;     /* ✅ fit viewport height */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Image — fills most of the modal space */
+.route-modal-image {
+  width: 100%;
+  height: 100%;
+  max-height: 65vh;     /* ✅ take majority of modal height */
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* Buttons — evenly spaced at bottom */
+.route-modal-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}

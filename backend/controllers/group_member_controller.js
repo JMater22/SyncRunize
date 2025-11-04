@@ -47,7 +47,7 @@ export const addMember = async (req, res) => {
   try {
     const { groupId } = req.params;
     const { userId: bodyUserId, role } = req.body || {};
-    const loggedInUserId = req.user.id;
+    const loggedInUserId = req.user.user_id; // ✅ Integer from users table
 
     const targetUserId = bodyUserId || loggedInUserId;
     if (!targetUserId) {

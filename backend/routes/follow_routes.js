@@ -19,4 +19,8 @@ router.get("/:userId/following", FollowController.getFollowing);
 router.post("/:userId/follow", authenticate, FollowController.followUser);
 router.delete("/:userId/unfollow", authenticate, FollowController.unfollowUser); // ⚠️ Changed from /follow to /unfollow
 
+// ✅ NEW: Check follow status and toggle
+router.get("/status/:userId", authenticate, FollowController.getFollowStatus);
+router.post("/:userId/toggle", authenticate, FollowController.toggleFollow);
+
 export default router;

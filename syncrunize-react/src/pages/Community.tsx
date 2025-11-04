@@ -181,7 +181,7 @@ const Community: React.FC = () => {
       if (joinedGroups.includes(groupId)) {
         // Leave group
         await axios.delete(
-          `${import.meta.env.VITE_API_URL}/group-members/${groupId}/leave/${currentUserId}`,
+          `${import.meta.env.VITE_API_URL}/group-members/${groupId}/members/${currentUserId}`,  // ✅ Fixed: leave → members
           { headers: { Authorization: `Bearer ${authToken}` } }
         );
 
@@ -196,8 +196,8 @@ const Community: React.FC = () => {
       } else {
         // Join group
         await axios.post(
-          `${import.meta.env.VITE_API_URL}/group-members/${groupId}/join`,
-          { userId: currentUserId },
+          `${import.meta.env.VITE_API_URL}/group-members/${groupId}/addMembers`,  // ✅ Fixed: join → addMembers
+          {},  // ✅ No body needed - backend uses req.user.user_id from auth middleware
           { headers: { Authorization: `Bearer ${authToken}` } }
         );
 
@@ -241,13 +241,6 @@ const Community: React.FC = () => {
                     className="club-searchbar"
                     value={searchName}
                     onIonInput={(e) => setSearchName(e.detail.value || "")}
-                    debounce={300}
-                  />
-                  <IonSearchbar
-                    placeholder="Search by Location"
-                    className="loc-searchbar"
-                    value={searchLocation}
-                    onIonInput={(e) => setSearchLocation(e.detail.value || "")}
                     debounce={300}
                   />
                 </div>

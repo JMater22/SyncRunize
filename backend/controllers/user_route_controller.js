@@ -5,10 +5,10 @@ import * as ChallengeModel from "../models/challenge_model.js";
 import { computeProgressPercent, awardBadgeIfQualified } from "../services/award_service.js";
 import { supabase } from '../utils/supabase.js';
 
-export const getUserIdFromAuth = async (req, res) => {
+export const getUserIdFromAuth = async (_req, res) => {
   try {
     // 1. Get the auth user id from Supabase auth
-    const { user } = await supabase.auth.getUser(); // or req.user if you already have session
+    const { user } = await supabase.auth.getUser(); // or _req.user if you already have session
 
     if (!user) return res.status(401).json({ error: 'Not authenticated' });
 
@@ -59,48 +59,41 @@ export const createRoute = async (req, res) => {
   try {
     const userId = await fetchUserIdFromAuth(req);
 
-    // 1️⃣ Create the route (includes distance & snapshot)
+    // ✅ Validate visibility
+    const allowedVisibilities = ["public", "private"];
+    let visibility = req.body.visibility || "private";
+    if (!allowedVisibilities.includes(visibility)) {
+      return res.status(400).json({ error: "Invalid visibility value. Must be 'public' or 'private'." });
+    }
+
+    // ✅ Create route
     const newRoute = await RouteModel.createRoute({
       ...req.body,
       user_id: userId,
+      visibility, // add to payload
     });
 
-    // 2️⃣ Fetch all active (not completed) user challenges
+    // (Keep your existing challenge update logic as is)
     const userChallenges = await UserChallengeModel.getUserChallenges(userId);
     const activeChallenges = userChallenges.filter((uc) => !uc.completed);
-
     const updates = [];
 
     for (const uc of activeChallenges) {
       const challenge = await ChallengeModel.getChallengeById(uc.challenge_id);
-      if (!challenge) {
-        console.warn(`⚠️ No challenge found for ID ${uc.challenge_id}`);
-        continue;
-      }
+      if (!challenge) continue;
 
-      console.log(`📊 Updating progress for userChallenge ${uc.user_challenge_id}`);
-      console.log(`➡️  Current total_distance_km: ${uc.total_distance_km}, challenge target: ${challenge.target_distance_km}`);
-
-      // Step 1: Update cumulative distance & runs
       const updatedProgress = await UserChallengeModel.updateProgress(uc.user_challenge_id, {
         add_distance: newRoute.distance_km,
         add_runs: 1,
       });
 
-      console.log("✅ After updateProgress:", updatedProgress);
-
-      // Step 2: Compute new percent
       const recomputed = computeProgressPercent(updatedProgress, challenge);
-      console.log("🏁 Recomputed progress:", recomputed);
 
-      // Step 3: Award badge if newly completed
       let awardedBadge = null;
       if (recomputed.completed && !updatedProgress.completed) {
         awardedBadge = await awardBadgeIfQualified(updatedProgress, challenge);
-        console.log("🎖️ Badge awarded:", awardedBadge);
       }
 
-      // Step 4: Save recomputed fields
       const final = await UserChallengeModel.setProgress(uc.user_challenge_id, {
         total_distance_km: updatedProgress.total_distance_km,
         total_runs: updatedProgress.total_runs,
@@ -110,8 +103,6 @@ export const createRoute = async (req, res) => {
           ? awardedBadge.badge_id
           : updatedProgress.awarded_badge_id,
       });
-
-      console.log("💾 Final progress saved:", final);
 
       updates.push({
         challenge_id: uc.challenge_id,
@@ -143,7 +134,7 @@ export const getUserRoutes = async (req, res) => {
     console.log('req.user:', req.user);
     console.log('req.query:', req.query);
     
-    const userId = req.user.id;
+    const userId = req.user.user_id; // ✅ Integer from users table
     console.log('Using userId:', userId);
     
     if (!userId) {

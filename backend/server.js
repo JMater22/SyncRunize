@@ -25,7 +25,9 @@
 
   import statsRoutes from "./routes/stats_routes.js";
   import userRouteRoutes from "./routes/user_route_routes.js";
-  
+  import unsavedRoutes from "./routes/route_routes.js";
+  import savedRouteRoutes from "./routes/saved_route_routes.js";
+
 
   import path from "path";
   import { fileURLToPath } from "url";
@@ -65,9 +67,11 @@
   app.use("/api/notifications", notificationRoutes);
   app.use("/api/moderation", moderationRoutes);
 
+  app.use("/api/unsaved", unsavedRoutes);
 
   app.use("/api/stats", statsRoutes);
   app.use("/api/routes", userRouteRoutes);
+  app.use("/api/saved-routes", savedRouteRoutes);
   app.use("/api", emailRoutes);
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 

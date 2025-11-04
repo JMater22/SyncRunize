@@ -390,6 +390,14 @@ span.activity-handle {
   --color: #ef4444;
 }
 
+.like-btn.liked {
+  --color: #ef4444;
+}
+
+.like-btn.liked ion-icon {
+  fill: #ef4444;
+}
+
 .comment-btn:hover {
   --color: #3b82f6;
 }

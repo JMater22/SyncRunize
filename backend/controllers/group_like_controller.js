@@ -1,5 +1,4 @@
 import * as GroupLikeModel from "../models/group_like_model.js";
-import { supabase } from "../utils/supabase.js";
 
 // ✅ GET count likes
 export const countLikes = async (req, res) => {
@@ -22,14 +21,8 @@ export const addLike = async (req, res) => {
     let likeUserId = userId;
     
     if (!likeUserId && req.user) {
-      // Get user_id from Supabase user
-      const { data: userData } = await supabase
-        .from("users")
-        .select("user_id")
-        .eq("auth_id", req.user.id)
-        .single();
-      
-      likeUserId = userData?.user_id;
+      // ✅ Use user_id directly from auth middleware
+      likeUserId = req.user.user_id;
     }
 
     if (!likeUserId) {
@@ -70,13 +63,8 @@ export const removeLike = async (req, res) => {
     let unlikeUserId = userId;
     
     if (!unlikeUserId && req.user) {
-      const { data: userData } = await supabase
-        .from("users")
-        .select("user_id")
-        .eq("auth_id", req.user.id)
-        .single();
-      
-      unlikeUserId = userData?.user_id;
+      // ✅ Use user_id directly from auth middleware
+      unlikeUserId = req.user.user_id;
     }
 
     if (!unlikeUserId) {

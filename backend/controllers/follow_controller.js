@@ -65,7 +65,7 @@ export const getFollowing = async (req, res) => {
 export const followUser = async (req, res) => {
   try {
     const { userId } = req.params; // user being followed
-    const followerId = req.user.userId; // ⚠️ FIXED: Changed from req.user.id to req.user.userId
+    const followerId = req.user.user_id; // ✅ Integer from users table
     
     if (userId === followerId.toString()) { // ⚠️ FIXED: Consistent string comparison
       return res.status(400).json({ error: "You cannot follow yourself" });
@@ -88,11 +88,42 @@ export const followUser = async (req, res) => {
 export const unfollowUser = async (req, res) => {
   try {
     const { userId } = req.params;
-    const followerId = req.user.userId;
+    const followerId = req.user.user_id; // ✅ Integer from users table
     const result = await FollowModel.unfollowUser(followerId, userId);
     res.json(result);
   } catch (err) {
     console.error("Error unfollowing user:", err);
     res.status(500).json({ error: "Failed to unfollow user" });
+  }
+};
+
+// ✅ NEW: GET follow status
+export const getFollowStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const followerId = req.user.user_id;
+    const result = await FollowModel.checkFollowStatus(followerId, userId);
+    res.json(result);
+  } catch (err) {
+    console.error("Error checking follow status:", err);
+    res.status(500).json({ error: "Failed to check follow status" });
+  }
+};
+
+// ✅ NEW: POST toggle follow
+export const toggleFollow = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const followerId = req.user.user_id;
+
+    if (userId === followerId.toString()) {
+      return res.status(400).json({ error: "You cannot follow yourself" });
+    }
+
+    const result = await FollowModel.toggleFollow(followerId, userId);
+    res.json(result);
+  } catch (err) {
+    console.error("Error toggling follow:", err);
+    res.status(500).json({ error: "Failed to toggle follow" });
   }
 };

@@ -1,5 +1,4 @@
 import * as GroupPostModel from "../models/group_post_model.js";
-import { supabase } from "../utils/supabase.js";
 
 // ✅ GET posts
 export const getGroupPosts = async (req, res) => {
@@ -33,14 +32,8 @@ export const createGroupPost = async (req, res) => {
     let authorId = userId;
     
     if (!authorId && req.user) {
-      // Get user_id from Supabase user
-      const { data: userData } = await supabase
-        .from("users")
-        .select("user_id")
-        .eq("auth_id", req.user.id)
-        .single();
-      
-      authorId = userData?.user_id;
+      // ✅ Use user_id directly from auth middleware
+      authorId = req.user.user_id;
     }
 
     if (!authorId) {

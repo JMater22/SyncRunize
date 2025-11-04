@@ -12,7 +12,7 @@ export const createHazard = async (req, res) => {
   let imagePath = null; // Track uploaded file path for cleanup
 
   try {
-    const userId = req.user.id;
+    const userId = req.user.user_id; // ✅ Integer from users table
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
     // ✅ Handle optional image upload
@@ -124,7 +124,7 @@ export const getHazardsNearby = async (req, res) => {
 // GET /api/hazards/my-hazards
 export const getUserHazards = async (req, res) => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.user_id; // ✅ Integer from users table
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
     const hazards = await Hazard.findByUser(userId);
@@ -141,7 +141,7 @@ export const getUserHazards = async (req, res) => {
 // PUT /api/hazards/:id  (with optional file upload)
 export const updateHazard = async (req, res) => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.user_id; // ✅ Integer from users table
     const { id } = req.params;
 
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -192,7 +192,7 @@ export const updateHazard = async (req, res) => {
 // DELETE /api/hazards/:id
 export const deleteHazard = async (req, res) => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.user_id; // ✅ Integer from users table
     const { id } = req.params;
 
     if (!userId) return res.status(401).json({ error: "Unauthorized" });

@@ -15,7 +15,7 @@ export const getLikesCount = async (req, res) => {
 export const likePost = async (req, res) => {
   try {
     const { postId } = req.params;
-    const userId = req.user.id; // from JWT
+    const userId = req.user.user_id; // ✅ Integer from users table
     const like = await LikeModel.addLike(postId, userId);
     if (!like) return res.status(200).json({ message: "Already liked" });
     res.status(201).json(like);
@@ -28,10 +28,23 @@ export const likePost = async (req, res) => {
 export const unlikePost = async (req, res) => {
   try {
     const { postId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.user_id; // ✅ Integer from users table
     const result = await LikeModel.removeLike(postId, userId);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: "Failed to unlike post" });
+  }
+};
+
+// ✅ NEW: Toggle like (like if not liked, unlike if already liked)
+export const toggleLike = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user.user_id;
+    const result = await LikeModel.toggleLike(postId, userId);
+    res.json(result);
+  } catch (err) {
+    console.error("Toggle like error:", err);
+    res.status(500).json({ error: "Failed to toggle like" });
   }
 };

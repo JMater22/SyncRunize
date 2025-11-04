@@ -4,10 +4,18 @@ import { authenticate } from "../utils/auth_middleware.js";
 
 const router = express.Router();
 
-// Public: Get posts
+// Public: Get posts (legacy)
 router.get("/", PostController.getPosts);
 
-// Protected: CRUD
+// ✅ NEW: Protected routes for personalized feed
+router.get("/feed", authenticate, PostController.getFeed);
+router.get("/my", authenticate, PostController.getMyPosts);
+router.get("/user/:userId", PostController.getUserPosts); // Can be public or authenticated
+
+// ✅ NEW: Create post from route
+router.post("/from-route", authenticate, PostController.createPostFromRoute);
+
+// Protected: CRUD (original)
 router.post("/", authenticate, PostController.createPost);
 router.put("/:id", authenticate, PostController.updatePost);
 router.delete("/:id", authenticate, PostController.deletePost);

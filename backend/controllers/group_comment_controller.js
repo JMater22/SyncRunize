@@ -1,5 +1,4 @@
 import * as GroupCommentModel from "../models/group_comment_model.js";
-import { supabase } from "../utils/supabase.js";
 
 // ✅ GET comments
 export const getComments = async (req, res) => {
@@ -39,14 +38,8 @@ export const createComment = async (req, res) => {
     let commentUserId = userId;
     
     if (!commentUserId && req.user) {
-      // Get user_id from Supabase user
-      const { data: userData } = await supabase
-        .from("users")
-        .select("user_id")
-        .eq("auth_id", req.user.id)
-        .single();
-      
-      commentUserId = userData?.user_id;
+      // ✅ Use user_id directly from auth middleware
+      commentUserId = req.user.user_id;
     }
 
     if (!commentUserId) {

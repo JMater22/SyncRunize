@@ -25,6 +25,18 @@ export const getUserByAuthId = async (auth_id) => {
   return data;
 };
 
+// ✅ Get profile by user_id (protected)
+export const getUserById = async (user_id) => {
+  const { data, error } = await supabase
+    .from("users")
+    .select("user_id, auth_id, name, email, username, gender, age, weight_kg, created_at, profile_picture, description")
+    .eq("user_id", user_id)
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
 // Get public user profile by ID (DO NOT include weight_kg)
 export const getPublicUserById = async (id) => {
   const { data, error } = await supabase
@@ -37,8 +49,8 @@ export const getPublicUserById = async (id) => {
   return data;
 };
 
-// Update own profile (by auth_id)
-export const updateUserProfile = async (auth_id, updates) => {
+// ✅ Update own profile (by user_id)
+export const updateUserProfile = async (user_id, updates) => {
   // Destructure only known editable fields to prevent injection or unwanted updates
   const {
     name,
@@ -66,7 +78,7 @@ export const updateUserProfile = async (auth_id, updates) => {
   const { data, error } = await supabase
     .from("users")
     .update(updateFields)
-    .eq("auth_id", auth_id)
+    .eq("user_id", user_id)  // ✅ Changed from auth_id to user_id
     .select()
     .single();
 
@@ -78,12 +90,12 @@ export const updateUserProfile = async (auth_id, updates) => {
 
 
 
-// Delete own profile (by auth_id)
-export const deleteUserProfile = async (auth_id) => {
+// ✅ Delete own profile (by user_id)
+export const deleteUserProfile = async (user_id) => {
   const { data, error } = await supabase
     .from("users")
     .delete()
-    .eq("auth_id", auth_id)
+    .eq("user_id", user_id)  // ✅ Changed from auth_id to user_id
     .select()
     .single();
 

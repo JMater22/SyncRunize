@@ -40,11 +40,12 @@ export const createRoute = async (data) => {
     duration_seconds,
     average_pace,
     risk_score = 0,
-    route_name = 'Unnamed Route',
+    route_name = "Unnamed Route",
     weight_kg = 70,
+    visibility = "private" // ✅ NEW: default
   } = data;
 
-  // 1️⃣ Compute total distance from the path
+  // Compute distance
   let distanceKm = 0;
   for (let i = 1; i < chosen_path.length; i++) {
     const prev = chosen_path[i - 1];
@@ -53,46 +54,30 @@ export const createRoute = async (data) => {
   }
 
   const estimated_calories = estimateCalories(
-    average_pace, 
-    duration_seconds, 
+    average_pace,
+    duration_seconds,
     weight_kg
   );
 
-  // Parse chosen_path if it's a string
+  // Parse path
   let pathArray;
   try {
-    pathArray = typeof chosen_path === 'string' 
-      ? JSON.parse(chosen_path) 
-      : chosen_path;
-    
-    console.log('📍 Parsed path array:', pathArray);
-    console.log('📍 Path array length:', pathArray?.length);
-    console.log('📍 First point:', pathArray?.[0]);
-  } catch (parseError) {
-    console.error('❌ Failed to parse chosen_path:', parseError);
+    pathArray = typeof chosen_path === "string" ? JSON.parse(chosen_path) : chosen_path;
+  } catch {
     pathArray = chosen_path;
   }
 
-  // Generate snapshot URL (will use OSM or Google based on env variable)
+  // Generate snapshot
   let snapshot_url = null;
   try {
-    console.log('🗺️ Attempting to generate snapshot...');
-    console.log('🗺️ Provider:', process.env.MAP_SNAPSHOT_PROVIDER || 'osm');
-    
     snapshot_url = generateRouteSnapshot(pathArray, {
       width: 800,
       height: 600,
-      lineColor: '0080ff',
+      lineColor: "0080ff",
     });
-    
-    console.log('✅ Snapshot URL generated:', snapshot_url);
   } catch (error) {
-    console.error('❌ Failed to generate route snapshot:', error.message);
-    console.error('❌ Full error:', error);
-    // Continue without snapshot - don't block route creation
+    console.error("Snapshot generation failed:", error);
   }
-
-  const pathJson = JSON.stringify(pathArray);
 
   const { data: result, error } = await supabase
     .from("user_routes")
@@ -102,7 +87,7 @@ export const createRoute = async (data) => {
       start_lng,
       end_lat,
       end_lng,
-      chosen_path: pathJson,
+      chosen_path: JSON.stringify(pathArray),
       distance_km: distanceKm,
       duration_seconds,
       average_pace,
@@ -110,7 +95,8 @@ export const createRoute = async (data) => {
       estimated_calories,
       route_name,
       snapshot_url,
-      created_at: new Date().toISOString()
+      visibility, // ✅ included
+      created_at: new Date().toISOString(),
     })
     .select()
     .single();

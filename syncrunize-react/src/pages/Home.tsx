@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useHistory } from 'react-router-dom';
+import axios from 'axios';
 import {
   IonPage,
   IonContent,
@@ -41,10 +42,51 @@ import {
 import CreatePostPage from "../components/Home/CreatePostPage";
 import "../components/Home/Home.css";
 
+// Post interface
+interface Post {
+  post_id: number;
+  user_id: number;
+  route_id?: number;
+  content?: string;
+  route_name?: string;
+  distance_km?: number;
+  duration_seconds?: number;
+  average_pace?: string;
+  estimated_calories?: number;
+  snapshot_url?: string;
+  visibility: 'public' | 'private';
+  created_at: string;
+  author_name: string;
+  author_username: string;
+  author_avatar?: string;
+  likes_count: number;
+  comments_count: number;
+  is_liked: boolean;
+}
+
+// Comment interface
+interface Comment {
+  comment_id: number;
+  content: string;
+  created_at: string;
+  user_id: number;
+  username: string;
+  name: string;
+  profile_picture?: string;
+}
+
+// User search result interface
+interface UserSearchResult {
+  user_id: number;
+  name: string;
+  username: string;
+  profile_picture?: string;
+  location?: string;
+}
+
 // Placeholder images
 import ProfilePic from "../assets/Profile Picture.png";
 import GirlPic from "../assets/GIRL 3.jpg";
-import Map from "../assets/MAP 1.png";
 import Couch5K from "../assets/Couch to 5K.jpg";
 import SevenDayStarter from "../assets/The 7-Day Starter.jpg";
 import ThreeTimesAWeek from "../assets/Three Times a Week.jpg";
@@ -54,12 +96,276 @@ const Home: React.FC = () => {
   const [openComments, setOpenComments] = useState<number | null>(null);
   const [showCreatePostPage, setShowCreatePostPage] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [comments, setComments] = useState<{ [postId: number]: Comment[] }>({});
+  const [loading, setLoading] = useState(true);
+  const [newComment, setNewComment] = useState<{ [postId: number]: string }>({});
 
-  const sampleComments = [
-    { user: "Maria Gonzales", text: "Great run! 🔥🔥", avatar: ProfilePic, time: "2m ago" },
-    { user: "John Doe", text: "Solid effort 👏", avatar: ProfilePic, time: "5m ago" },
-    { user: "Emily Chen", text: "Keep it up, Alexander 💪", avatar: GirlPic, time: "12m ago" },
-  ];
+  // User search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [followingUsers, setFollowingUsers] = useState<Set<number>>(new Set());
+
+  const history = useHistory();
+
+  // Fetch posts feed
+  useEffect(() => {
+    fetchFeed();
+  }, []);
+
+  // Debounced search for users
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchQuery.trim().length >= 2) {
+        searchUsers(searchQuery.trim());
+      } else {
+        setSearchResults([]);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+  // Search users
+  const searchUsers = async (query: string) => {
+    try {
+      setSearchLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) return;
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/users/search?q=${encodeURIComponent(query)}`,
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        }
+      );
+
+      setSearchResults(response.data);
+
+      // Check follow status for each user
+      const userIds = response.data.map((u: UserSearchResult) => u.user_id);
+      const followStatuses = await Promise.all(
+        userIds.map((userId: number) => checkFollowStatus(userId))
+      );
+
+      const following = new Set<number>(
+        userIds.filter((_: number, index: number) => followStatuses[index])
+      );
+      setFollowingUsers(following);
+    } catch (error) {
+      console.error('Failed to search users:', error);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // Check if following a user
+  const checkFollowStatus = async (userId: number): Promise<boolean> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return false;
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/follows/status/${userId}`,
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        }
+      );
+
+      return response.data.isFollowing;
+    } catch (error) {
+      console.error('Failed to check follow status:', error);
+      return false;
+    }
+  };
+
+  // Toggle follow user
+  const handleToggleFollow = async (userId: number) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/follows/${userId}/toggle`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        }
+      );
+
+      // Update following state
+      setFollowingUsers(prev => {
+        const newSet = new Set(prev);
+        if (response.data.isFollowing) {
+          newSet.add(userId);
+        } else {
+          newSet.delete(userId);
+        }
+        return newSet;
+      });
+    } catch (error) {
+      console.error('Failed to toggle follow:', error);
+    }
+  };
+
+  // Navigate to user profile
+  const handleViewProfile = (userId: number) => {
+    history.push(`/profile/${userId}`);
+  };
+
+  const fetchFeed = async () => {
+    try {
+      setLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        console.error('No access token found');
+        setLoading(false);
+        return;
+      }
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/posts/feed`,
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        }
+      );
+
+      setPosts(response.data);
+    } catch (error) {
+      console.error('Failed to fetch feed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch comments for a post
+  const fetchComments = async (postId: number) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) return;
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/comments/${postId}`,
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        }
+      );
+
+      setComments(prev => ({ ...prev, [postId]: response.data }));
+    } catch (error) {
+      console.error('Failed to fetch comments:', error);
+    }
+  };
+
+  // Toggle like on a post
+  const handleToggleLike = async (postId: number) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) return;
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/likes/${postId}/toggle`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        }
+      );
+
+      // Update the post in state
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.post_id === postId
+            ? { ...post, is_liked: response.data.liked, likes_count: response.data.likes }
+            : post
+        )
+      );
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+    }
+  };
+
+  // Add a comment to a post
+  const handleAddComment = async (postId: number) => {
+    const commentText = newComment[postId]?.trim();
+    if (!commentText) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) return;
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/comments/${postId}`,
+        { content: commentText },
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        }
+      );
+
+      // Add the new comment to state
+      setComments(prev => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), response.data]
+      }));
+
+      // Update comments count
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.post_id === postId
+            ? { ...post, comments_count: post.comments_count + 1 }
+            : post
+        )
+      );
+
+      // Clear input
+      setNewComment(prev => ({ ...prev, [postId]: '' }));
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+    }
+  };
+
+  // Handle opening comments section
+  const handleOpenComments = async (postId: number) => {
+    if (openComments === postId) {
+      setOpenComments(null);
+    } else {
+      setOpenComments(postId);
+      if (!comments[postId]) {
+        await fetchComments(postId);
+      }
+    }
+  };
+
+  // Format duration from seconds to HH:MM:SS
+  const formatDuration = (seconds?: number) => {
+    if (!seconds) return 'N/A';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Format relative time
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  };
 
   const notificationsData = [
     {
@@ -136,63 +442,6 @@ const Home: React.FC = () => {
     },
   ];
 
-  const activities = [
-  {
-    user: "Alexander Smith",
-    date: "April 29, 2025",
-    time: "2h ago",
-    distance: "16.3 km",
-    duration: "02:43:51",
-    pace: "10:03/km",
-    calories: "842",
-    likes: 24,
-    comments: 3,
-  },
-  {
-    user: "Maria Gonzales",
-    date: "March 13, 2025",
-    time: "1d ago",
-    distance: "8.2 km",
-    duration: "01:25:30",
-    pace: "10:25/km",
-    calories: "521",
-    likes: 18,
-    comments: 5,
-  },
-  {
-    user: "Emily Chen",
-    date: "May 2, 2025",
-    time: "3d ago",
-    distance: "21.1 km",
-    duration: "03:15:42",
-    pace: "9:16/km",
-    calories: "1,234",
-    likes: 42,
-    comments: 8,
-  },
-  {
-    user: "Alexander Smith",
-    date: "May 2, 2025",
-    time: "3d ago",
-    distance: "21.1 km",
-    duration: "03:15:42",
-    pace: "9:16/km",
-    calories: "1,234",
-    likes: 42,
-    comments: 8,
-  },
-  {
-    user: "John Doe",
-    date: "May 2, 2025",
-    time: "3d ago",
-    distance: "21.1 km",
-    duration: "03:15:42",
-    pace: "9:16/km",
-    calories: "1,234",
-    likes: 42,
-    comments: 8,
-  },
-];
 
 
   const handlePostSubmit = (content: string) => {
@@ -200,8 +449,7 @@ const Home: React.FC = () => {
     // Handle post submission here
   };
 
-  const history = useHistory();
-const handleViewAllChallenges = () => {
+  const handleViewAllChallenges = () => {
     history.push('/challenges');
   };
   
@@ -279,118 +527,255 @@ const handleViewAllChallenges = () => {
             <div className="feed-header">
               <div className="search-section">
                 <IonItem className="search-input">
-                  <IonInput placeholder="Find athletes" />
+                  <IonInput
+                    placeholder="Find athletes"
+                    value={searchQuery}
+                    onIonInput={(e) => setSearchQuery(e.detail.value || '')}
+                  />
                 </IonItem>
               </div>
             </div>
 
+            {/* Find Athletes - Search Results */}
+            {searchQuery.trim().length >= 2 && (
+              <IonCard style={{ marginBottom: '20px' }}>
+                <IonCardContent>
+                  <h3 style={{ marginBottom: '15px', fontWeight: 'bold' }}>Find Athletes</h3>
+
+                  {searchLoading ? (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                      Searching...
+                    </div>
+                  ) : searchResults.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+                      No users found
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {searchResults.map((user) => (
+                        <div
+                          key={user.user_id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            backgroundColor: '#f8fafc',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                        >
+                          <IonAvatar
+                            style={{ width: '50px', height: '50px', marginRight: '12px', cursor: 'pointer' }}
+                            onClick={() => handleViewProfile(user.user_id)}
+                          >
+                            <img src={user.profile_picture || ProfilePic} alt={user.name} />
+                          </IonAvatar>
+
+                          <div
+                            style={{ flex: 1, cursor: 'pointer' }}
+                            onClick={() => handleViewProfile(user.user_id)}
+                          >
+                            <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{user.name}</div>
+                            <div style={{ color: '#666', fontSize: '14px' }}>@{user.username}</div>
+                            {user.location && (
+                              <div style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>
+                                <IonIcon icon={locationOutline} style={{ fontSize: '12px', marginRight: '4px' }} />
+                                {user.location}
+                              </div>
+                            )}
+                          </div>
+
+                          <IonButton
+                            fill={followingUsers.has(user.user_id) ? "outline" : "solid"}
+                            size="small"
+                            onClick={() => handleToggleFollow(user.user_id)}
+                            style={{ minWidth: '100px' }}
+                          >
+                            {followingUsers.has(user.user_id) ? 'Following' : 'Follow'}
+                          </IonButton>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </IonCardContent>
+              </IonCard>
+            )}
+
             {/* Activity Feed */}
             <div className="activity-feed">
-              {activities.map((activity, i) => (
-                <IonCard key={i} className="activity-card-enhanced">
-                  {/* Activity Header */}
-                  <div className="activity-header-enhanced">
-                    <IonAvatar className="activity-user-avatar">
-                      <img src={ProfilePic} alt="Profile" />
-                    </IonAvatar>
-                    <div className="activity-user-info">
-                      <h3 className="activity-user-name">
-                        {activity.user} <span className="activity-handle">@alexsmith</span>
-                      </h3>
-                      <div className="activity-meta">
-                        <span className="activity-time">{activity.time}</span> • {activity.date}
-                      </div>
-                    </div>
-                  </div>
-
-                  <IonCardContent className="activity-content-enhanced">
-                    {/* Stats */}
-                      <div className="activity-stats-grid">
-                        <div className="stat-card distance">
-                          <IonIcon icon={locationOutline} />
-                          <div>
-                            <span className="stat-value">{activity.distance}</span>
-                            <span className="stat-label">Distance</span>
-                          </div>
-                        </div>
-                        <div className="stat-card time">
-                          <IonIcon icon={timeOutline} />
-                          <div>
-                            <span className="stat-value">{activity.duration}</span>
-                            <span className="stat-label">Time</span>
-                          </div>
-                        </div>
-                        <div className="stat-card pace">
-                          <IonIcon icon={speedometerOutline} />
-                          <div>
-                            <span className="stat-value">{activity.pace}</span>
-                            <span className="stat-label">Pace</span>
-                          </div>
-                        </div>
-                        <div className="stat-card calories">
-                          <IonIcon icon={flameOutline} />
-                          <div>
-                            <span className="stat-value">{activity.calories}</span>
-                            <span className="stat-label">Calories</span>
-                          </div>
-                        </div>
-                      </div>
-
-                    {/* Map */}
-                    <div className="activity-map-container">
-                      <img src={Map} alt="Run Map" className="activity-map" />
-                      <div className="map-overlay"></div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="activity-actions-enhanced">
-                      <IonButton fill="clear" size="small" className="action-btn like-btn">
-                        <IonIcon icon={heartOutline} slot="start" />
-                        <span>{activity.likes} Likes</span>
-                      </IonButton>
-
-                      <IonButton
-                        fill="clear"
-                        size="small"
-                        className="action-btn comment-btn"
-                        onClick={() => setOpenComments(openComments === i ? null : i)}
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  Loading feed...
+                </div>
+              ) : posts.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  No posts yet. Follow some users to see their activities!
+                </div>
+              ) : (
+                posts.map((post) => (
+                  <IonCard key={post.post_id} className="activity-card-enhanced">
+                    {/* Activity Header */}
+                    <div className="activity-header-enhanced">
+                      <IonAvatar
+                        className="activity-user-avatar"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => handleViewProfile(post.user_id)}
                       >
-                        <IonIcon icon={chatbubbleEllipses} slot="start" />
-                        <span>{activity.comments} Comments</span>
-                      </IonButton>
+                        <img src={post.author_avatar || ProfilePic} alt="Profile" />
+                      </IonAvatar>
+                      <div className="activity-user-info">
+                        <h3
+                          className="activity-user-name"
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => handleViewProfile(post.user_id)}
+                        >
+                          {post.author_name} <span className="activity-handle">@{post.author_username}</span>
+                        </h3>
+                        <div className="activity-meta">
+                          <span className="activity-time">{formatRelativeTime(post.created_at)}</span> • {new Date(post.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Comments */}
-                    {openComments === i && (
-                      <div className="comments-section-enhanced">
-                        <div className="comments-header">
-                          <h4>Comments ({activity.comments})</h4>
-                        </div>
-                        {sampleComments.map((comment, j) => (
-                          <div key={j} className="comment-enhanced">
-                            <IonAvatar className="comment-avatar">
-                              <img src={comment.avatar} alt={comment.user} />
-                            </IonAvatar>
-                            <div className="comment-content">
-                              <div className="comment-header">
-                                <strong className="comment-user">{comment.user}</strong>
-                                <span className="comment-time">{comment.time}</span>
-                              </div>
-                              <p className="comment-text">{comment.text}</p>
+                    <IonCardContent className="activity-content-enhanced">
+                      {/* Route Name & Content */}
+                      {post.route_name && (
+                        <h4 style={{ marginBottom: '10px', fontWeight: 'bold' }}>{post.route_name}</h4>
+                      )}
+                      {post.content && (
+                        <p style={{ marginBottom: '15px' }}>{post.content}</p>
+                      )}
+
+                      {/* Stats */}
+                      {post.route_id && (
+                        <div className="activity-stats-grid">
+                          <div className="stat-card distance">
+                            <IonIcon icon={locationOutline} />
+                            <div>
+                              <span className="stat-value">{post.distance_km?.toFixed(1)} km</span>
+                              <span className="stat-label">Distance</span>
                             </div>
                           </div>
-                        ))}
-                        <div className="add-comment">
-                          <IonAvatar className="comment-avatar">
-                            <img src={ProfilePic} alt="You" />
-                          </IonAvatar>
-                          <IonInput placeholder="Add a comment..." className="comment-input" />
+                          <div className="stat-card time">
+                            <IonIcon icon={timeOutline} />
+                            <div>
+                              <span className="stat-value">{formatDuration(post.duration_seconds)}</span>
+                              <span className="stat-label">Time</span>
+                            </div>
+                          </div>
+                          <div className="stat-card pace">
+                            <IonIcon icon={speedometerOutline} />
+                            <div>
+                              <span className="stat-value">{post.average_pace || 'N/A'}</span>
+                              <span className="stat-label">Pace</span>
+                            </div>
+                          </div>
+                          <div className="stat-card calories">
+                            <IonIcon icon={flameOutline} />
+                            <div>
+                              <span className="stat-value">{post.estimated_calories || 'N/A'}</span>
+                              <span className="stat-label">Calories</span>
+                            </div>
+                          </div>
                         </div>
+                      )}
+
+                      {/* Map */}
+                      {post.snapshot_url && (
+                        <div className="activity-map-container">
+                          <img src={post.snapshot_url} alt="Run Map" className="activity-map" />
+                          <div className="map-overlay"></div>
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="activity-actions-enhanced">
+                        <IonButton
+                          fill="clear"
+                          size="small"
+                          className={`action-btn like-btn ${post.is_liked ? 'liked' : ''}`}
+                          onClick={() => handleToggleLike(post.post_id)}
+                        >
+                          <IonIcon icon={heartOutline} slot="start" />
+                          <span>{post.likes_count} Likes</span>
+                        </IonButton>
+
+                        <IonButton
+                          fill="clear"
+                          size="small"
+                          className="action-btn comment-btn"
+                          onClick={() => handleOpenComments(post.post_id)}
+                        >
+                          <IonIcon icon={chatbubbleEllipses} slot="start" />
+                          <span>{post.comments_count} Comments</span>
+                        </IonButton>
                       </div>
-                    )}
-                  </IonCardContent>
-                </IonCard>
-              ))}
+
+                      {/* Comments */}
+                      {openComments === post.post_id && (
+                        <div className="comments-section-enhanced">
+                          <div className="comments-header">
+                            <h4>Comments ({post.comments_count})</h4>
+                          </div>
+                          {comments[post.post_id]?.map((comment) => (
+                            <div key={comment.comment_id} className="comment-enhanced">
+                              <IonAvatar
+                                className="comment-avatar"
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => handleViewProfile(comment.user_id)}
+                              >
+                                <img src={comment.profile_picture || ProfilePic} alt={comment.username} />
+                              </IonAvatar>
+                              <div className="comment-content">
+                                <div className="comment-header">
+                                  <strong
+                                    className="comment-user"
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => handleViewProfile(comment.user_id)}
+                                  >
+                                    {comment.name}
+                                  </strong>
+                                  <span className="comment-time">{formatRelativeTime(comment.created_at)}</span>
+                                </div>
+                                <p className="comment-text">{comment.content}</p>
+                              </div>
+                            </div>
+                          ))}
+                          <div className="add-comment">
+                            <IonAvatar className="comment-avatar">
+                              <img src={ProfilePic} alt="You" />
+                            </IonAvatar>
+                            <IonInput
+                              placeholder="Add a comment..."
+                              className="comment-input"
+                              value={newComment[post.post_id] || ''}
+                              onIonInput={(e) => setNewComment(prev => ({
+                                ...prev,
+                                [post.post_id]: e.detail.value || ''
+                              }))}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleAddComment(post.post_id);
+                                }
+                              }}
+                            />
+                            <IonButton
+                              fill="clear"
+                              size="small"
+                              onClick={() => handleAddComment(post.post_id)}
+                            >
+                              Post
+                            </IonButton>
+                          </div>
+                        </div>
+                      )}
+                    </IonCardContent>
+                  </IonCard>
+                ))
+              )}
             </div>
           </main>
 
