@@ -656,10 +656,195 @@ ion-header ion-button {
   line-height: 1.5;
 }
 
-.post-image {
-  width: 100%;
-  border-radius: 8px;
+/* ==================== POST IMAGES - COMPLETE CSS ==================== */
+/* Add this to your GroupFeed.css file */
+
+/* Post Images Container */
+.post-images {
+  display: grid !important;
+  gap: 8px;
   margin-top: 12px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Single image - full width */
+.post-images.single-image {
+  grid-template-columns: 1fr;
+}
+
+/* Two images - side by side */
+.post-images.two-images {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Three images - one large, two small */
+.post-images.three-images {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+}
+
+.post-images.three-images .post-image-container:first-child {
+  grid-column: 1 / -1;
+}
+
+/* Four+ images - 2x2 grid */
+.post-images.four-plus-images {
+  grid-template-columns: 1fr 1fr;
+  max-height: 600px;
+}
+
+/* Image Container (holds placeholder + image) */
+.post-image-container {
+  position: relative;
+  width: 100%;
+  min-height: 250px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  overflow: hidden;
+  display: block !important;
+}
+
+/* Individual post image */
+.post-image {
+  width: 100% !important;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+  min-height: 250px;
+  max-height: 500px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  display: block !important;
+}
+
+.post-image:hover {
+  transform: scale(1.02);
+}
+
+/* Image placeholder while loading */
+.post-image-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 250px;
+  background: linear-gradient(
+    90deg,
+    #e0e0e0 0%,
+    #f0f0f0 20%,
+    #f8f8f8 40%,
+    #f0f0f0 60%,
+    #e0e0e0 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite ease-in-out;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 14px;
+  gap: 12px;
+  z-index: 1;
+}
+
+.post-image-placeholder ion-spinner {
+  --color: #fc4c02;
+  width: 40px;
+  height: 40px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Image counter for 5+ images */
+.post-image-overlay::after {
+  content: attr(data-count);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: bold;
+  border-radius: 4px;
+  z-index: 2;
+}
+
+/* Upload progress overlay */
+.upload-progress-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  color: white;
+}
+
+.upload-progress-content {
+  text-align: center;
+  padding: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.upload-progress-spinner {
+  --color: #fc4c02 !important;
+  width: 60px !important;
+  height: 60px !important;
+  margin-bottom: 20px;
+}
+
+.upload-progress-text {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: white;
+}
+
+.upload-progress-subtext {
+  font-size: 14px;
+  opacity: 0.9;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .post-images.two-images,
+  .post-images.three-images,
+  .post-images.four-plus-images {
+    grid-template-columns: 1fr;
+  }
+
+  .post-images.three-images .post-image-container:first-child {
+    grid-column: 1;
+  }
+
+  .post-image {
+    min-height: 250px;
+    max-height: 400px;
+  }
 }
 
 .post-footer {

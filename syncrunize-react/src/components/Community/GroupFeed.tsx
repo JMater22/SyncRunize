@@ -12,6 +12,7 @@ import {
   IonAvatar,
   IonSpinner,
   IonToast,
+  IonModal
 } from "@ionic/react";
 import { 
   location, 
@@ -147,11 +148,18 @@ const GroupFeed: React.FC = () => {
   const [showComments, setShowComments] = useState<{ [postId: number]: boolean }>({});
   const [isPostingComment, setIsPostingComment] = useState<{ [postId: number]: boolean }>({});
 
+  // Image Loading States
+  const [imageLoadingStates, setImageLoadingStates] = useState<{ [key: string]: boolean }>({});
+
   // Loading States
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [isCreatingPost, setIsCreatingPost] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+
+  //selection of image state
+
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   // Toast
   const [showToast, setShowToast] = useState(false);
@@ -286,7 +294,16 @@ const GroupFeed: React.FC = () => {
           `${import.meta.env.VITE_API_URL}/group-posts/${groupId}?limit=20&offset=0&userId=${currentUserId}`,
           { headers: { Authorization: `Bearer ${authToken}` } }
         );
-        setPosts(response.data || []);
+
+         // ✅ ADD THIS DEBUG
+        console.log('📥 Fetched Posts:', response.data);
+        console.log('📸 First Post Images:', response.data[0]?.images);
+
+        setPosts(response.data.map((post: any) => ({
+          ...post,
+          images: typeof post.images === "string" ? JSON.parse(post.images) : post.images
+        })));
+
       } catch (error) {
         console.error("Error fetching posts:", error);
         setPosts([]);
@@ -375,7 +392,7 @@ const GroupFeed: React.FC = () => {
         const { data, error } = await supabase.storage
           .from("assets")
           .upload(filePath, file, { upsert: true });
-
+        
         if (error) throw error;
 
         const { data: urlData } = supabase.storage
@@ -927,14 +944,64 @@ const GroupFeed: React.FC = () => {
                               <div className="post-content">
                                 {post.title && <h3 className="post-title">{post.title}</h3>}
                                 <p>{post.content}</p>
+                                
+                                {/* Show images with loading placeholders */}
                                 {post.images && Array.isArray(post.images) && post.images.length > 0 && (
-                                  <div className="post-images">
-                                    {post.images.map((img, idx) => (
-                                      <img key={idx} src={img} alt="Post content" className="post-image" />
-                                    ))}
+                                  <div className={`post-images ${
+                                    post.images.length === 1 ? 'single-image' :
+                                    post.images.length === 2 ? 'two-images' :
+                                    post.images.length === 3 ? 'three-images' :
+                                    'four-plus-images'
+                                  }`}>
+                                    {post.images.slice(0, 4).map((img, idx) => {
+                                      const imageKey = `${post.post_id}-${idx}`;
+                                      const isLoading = imageLoadingStates[imageKey] ?? true;
+                                                                            // DEBUG: Log posts with images
+                                      console.log('🎨 RENDER DEBUG:');
+                                      posts.forEach(post => {
+                                        console.log(`Post ${post.post_id}:`, {
+                                          hasImages: !!post.images,
+                                          isArray: Array.isArray(post.images),
+                                          length: post.images?.length,
+                                          images: post.images
+                                        });
+                                      });
+                                      return (
+                                        <div 
+                                          key={idx} 
+                                          className={`post-image-container ${idx === 3 && post.images && post.images.length > 4 ? 'post-image-overlay' : ''}`}
+                                          data-count={post.images && post.images.length > 4 ? `+${post.images.length - 4}` : ''}
+                                        >
+                                          {/* Loading Placeholder */}
+                                          {isLoading && (
+                                            <div className="post-image-placeholder">
+                                              <IonSpinner name="crescent" />
+                                            </div>
+                                          )}
+                                          
+                                          {/* Actual Image */}
+                                          <img 
+                                            src={img} 
+                                            alt={`${post.title || 'Post'} - Image ${idx + 1}`} 
+                                            className="post-image"
+                                            style={{ display: isLoading ? 'none' : 'block' }}
+                                            onLoad={() => {
+                                              setImageLoadingStates(prev => ({ ...prev, [imageKey]: false }));
+                                            }}
+                                            onError={(e) => {
+                                              const target = e.target as HTMLImageElement;
+                                              target.src = DefaultBanner;
+                                              setImageLoadingStates(prev => ({ ...prev, [imageKey]: false }));
+                                            }}
+                                            onClick={() => setSelectedImage(img)}
+                                          />
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 )}
                               </div>
+
 
                               <div className="post-footer">
                                 <div className="post-stats">
@@ -978,7 +1045,7 @@ const GroupFeed: React.FC = () => {
                                   ))}
                                 </div>
                               )}
-
+                              
                               {/* Add Comment */}
                               {isMember && (
                                 <div className="add-comment-section">
@@ -1014,7 +1081,7 @@ const GroupFeed: React.FC = () => {
                 </div>
               )}
             </div>
-
+                
             {/* Right Sidebar */}
             <div className="club-right-sidebar">
               <div className="invite-card">
@@ -1061,7 +1128,38 @@ const GroupFeed: React.FC = () => {
           color={toastColor}
           position="top"
         />
+
+        {/* Upload Progress Overlay */}
+        {isUploadingImages && (
+          <div className="upload-progress-overlay">
+            <div className="upload-progress-content">
+              <IonSpinner name="crescent" className="upload-progress-spinner" />
+              <div className="upload-progress-text">Uploading images...</div>
+              <div className="upload-progress-subtext">
+                Please wait while we upload your images
+              </div>
+            </div>
+          </div>
+        )}
       </IonContent>
+
+      <IonModal isOpen={!!selectedImage} onDidDismiss={() => setSelectedImage(null)}>
+      <div className="flex items-center justify-center h-full bg-black">
+        <IonButton
+          fill="clear"
+          color="dark"
+          className="absolute top-6 right-6 text-3xl"
+          onClick={() => setSelectedImage(null)}
+        >
+          ✕
+        </IonButton>
+        <img
+          src={selectedImage || ""}
+          className="object-contain max-h-full max-w-full"
+        />
+      </div>
+    </IonModal>
+
     </IonPage>
   );
 };
