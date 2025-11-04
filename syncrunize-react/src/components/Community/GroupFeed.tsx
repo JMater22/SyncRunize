@@ -22,7 +22,10 @@ import {
   arrowBack,
   heartOutline,
   heart,
-  sendOutline
+  sendOutline,
+  searchOutline, 
+  peopleOutline, 
+  alertCircleOutline 
 } from "ionicons/icons";
 import { useParams } from "react-router-dom";
 import axios from "axios";
@@ -35,6 +38,16 @@ import DefaultGroupImage from "../../assets/GROUP 1.png";
 import DefaultProfileImage from "../../assets/MAN5.png";
 
 // ==================== INTERFACES ====================
+
+interface User {
+  user_id: number;
+  name: string;
+  username: string | null;
+  profile_picture: string;
+  location?: string;
+}
+
+
 interface GroupDetails {
   group_id: number;
   name: string;
@@ -120,6 +133,15 @@ const GroupFeed: React.FC = () => {
 
   // Navigation
   const [activeSegment, setActiveSegment] = useState<string>("leaderboard");
+  
+  // Invite Modal
+const [showInviteModal, setShowInviteModal] = useState(false);
+const [searchQuery, setSearchQuery] = useState('');
+const [searchResults, setSearchResults] = useState<User[]>([]);
+const [isSearching, setIsSearching] = useState(false);
+const [invitingUsers, setInvitingUsers] = useState<{ [userId: number]: boolean }>({});
+
+
 
   // Leaderboard Data
   const [lastWeekLeaders, setLastWeekLeaders] = useState<{
@@ -172,6 +194,78 @@ const GroupFeed: React.FC = () => {
     setToastColor(color);
     setShowToast(true);
   };
+
+
+  // ==================== ADD SEARCH FUNCTION ====================
+  const searchUsers = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/users/search?q=${encodeURIComponent(query)}`,
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+
+      // Filter out users who are already members
+      const memberIds = [...members, ...admins].map(m => m.user_id);
+      const filteredResults = response.data.filter(
+        (user: User) => !memberIds.includes(user.user_id) && user.user_id !== currentUserId
+      );
+
+      setSearchResults(filteredResults);
+    } catch (error) {
+      console.error("Error searching users:", error);
+      showToastMessage("Failed to search users", "danger");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+
+  // Debounce search
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery) {
+        searchUsers(searchQuery);
+      } else {
+        setSearchResults([]);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+
+
+  // ==================== INVITE USER FUNCTION ====================
+const handleInviteUser = async (userId: number) => {
+  try {
+    setInvitingUsers(prev => ({ ...prev, [userId]: true }));
+
+    await axios.post(
+      `${import.meta.env.VITE_API_URL}/group-members/${groupId}/invite`,
+      { userId },
+      { headers: { Authorization: `Bearer ${authToken}` } }
+    );
+
+    showToastMessage("Invitation sent successfully!", "success");
+
+    // Remove user from search results
+    setSearchResults(prev => prev.filter(user => user.user_id !== userId));
+  } catch (error: any) {
+    console.error("Error inviting user:", error);
+    showToastMessage(
+      error.response?.data?.error || "Failed to send invitation",
+      "danger"
+    );
+  } finally {
+    setInvitingUsers(prev => ({ ...prev, [userId]: false }));
+  }
+};
 
   // ==================== FETCH CURRENT USER ====================
   useEffect(() => {
@@ -341,7 +435,7 @@ const GroupFeed: React.FC = () => {
     try {
       setIsJoining(true);
       await axios.post(
-        `${import.meta.env.VITE_API_URL}/group-members/${groupId}/join`,
+        `${import.meta.env.VITE_API_URL}/group-members/${groupId}/addMembers`,
         { userId: currentUserId },
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
@@ -364,7 +458,7 @@ const GroupFeed: React.FC = () => {
     try {
       setIsJoining(true);
       await axios.delete(
-        `${import.meta.env.VITE_API_URL}/group-members/${groupId}/leave/${currentUserId}`,
+        `${import.meta.env.VITE_API_URL}/group-members/${groupId}/members/${currentUserId}`,
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
 
@@ -761,7 +855,12 @@ const GroupFeed: React.FC = () => {
                   <div className="invite-section">
                     <div className="invite-header">
                       <h2 className="section-heading">Invite Athletes to This Club</h2>
-                      <IonButton className="invite-btn-inline">Invite Athletes</IonButton>
+                      <IonButton 
+                        className="invite-btn-inline"
+                        onClick={() => setShowInviteModal(true)}
+                      >
+                        Invite Athletes
+                      </IonButton>
                     </div>
                     <p className="invite-description">
                       The bigger your Club, the more fun you can have. Compare your training,
@@ -785,7 +884,7 @@ const GroupFeed: React.FC = () => {
                               <span className="member-location">{admin.users.location}</span>
                             )}
                           </div>
-                          <span className="member-badge">Owner</span>
+                          <span className="member-badge">Admin</span>
                         </div>
                       ))}
                     </div>
@@ -1086,7 +1185,11 @@ const GroupFeed: React.FC = () => {
             <div className="club-right-sidebar">
               <div className="invite-card">
                 <h3 className="invite-title">Invite Athletes to This Club</h3>
-                <IonButton className="invite-btn" expand="block">
+                <IonButton 
+                  className="invite-btn" 
+                  expand="block"
+                  onClick={() => setShowInviteModal(true)}
+                >
                   Invite Athletes
                 </IonButton>
               </div>
@@ -1159,7 +1262,120 @@ const GroupFeed: React.FC = () => {
         />
       </div>
     </IonModal>
+     
+    {/* // ==================== RENDER - ADD MODAL AT THE END ====================
+// Add this before the closing </IonPage> tag (after the image modal) */}
 
+      <IonModal 
+        isOpen={showInviteModal} 
+        onDidDismiss={() => {
+          setShowInviteModal(false);
+          setSearchQuery('');
+          setSearchResults([]);
+        }}
+      >
+        <IonContent>
+          <div className="invite-modal-container">
+            {/* Header */}
+            <div className="invite-modal-header">
+              <h2>Invite Athletes to Club</h2>
+              <IonButton 
+                fill="clear" 
+                onClick={() => setShowInviteModal(false)}
+                className="close-modal-btn"
+              >
+                <IonIcon icon={closeCircle} />
+              </IonButton>
+            </div>
+
+            {/* Search Section */}
+            <div className="invite-search-section">
+              <div className="search-input-wrapper">
+                <IonIcon icon={searchOutline} className="search-icon" />
+                <IonInput
+                  placeholder="Search by name or username..."
+                  value={searchQuery}
+                  onIonInput={(e) => setSearchQuery(e.detail.value || '')}
+                  className="invite-search-input"
+                />
+                {isSearching && (
+                  <IonSpinner name="crescent" className="search-spinner" />
+                )}
+              </div>
+              <p className="search-hint">
+                Search for athletes to invite to {groupDetails?.name}
+              </p>
+            </div>
+
+            {/* Search Results */}
+            <div className="invite-search-results">
+              {!searchQuery && (
+                <div className="empty-search-state">
+                  <IonIcon icon={peopleOutline} className="empty-search-icon" />
+                  <p>Start typing to search for athletes</p>
+                </div>
+              )}
+
+              {searchQuery && isSearching && (
+                <div className="searching-state">
+                  <IonSpinner name="crescent" />
+                  <p>Searching...</p>
+                </div>
+              )}
+
+              {searchQuery && !isSearching && searchResults.length === 0 && (
+                <div className="no-results-state">
+                  <IonIcon icon={alertCircleOutline} className="no-results-icon" />
+                  <p>No athletes found</p>
+                  <span>Try a different search term</span>
+                </div>
+              )}
+
+              {searchResults.length > 0 && (
+                <div className="results-list">
+                  <div className="results-header">
+                    <p>{searchResults.length} athlete{searchResults.length !== 1 ? 's' : ''} found</p>
+                  </div>
+                  
+                  {searchResults.map((user) => (
+                    <div key={user.user_id} className="user-result-item">
+                      <img 
+                        src={user.profile_picture || DefaultProfileImage} 
+                        alt={user.name}
+                        className="user-result-avatar"
+                      />
+                      <div className="user-result-info">
+                        <span className="user-result-name">{user.name}</span>
+                        {user.username && (
+                          <span className="user-result-username">@{user.username}</span>
+                        )}
+                        {user.location && (
+                          <span className="user-result-location">
+                            <IonIcon icon={location} />
+                            {user.location}
+                          </span>
+                        )}
+                      </div>
+                      <IonButton
+                        size="small"
+                        onClick={() => handleInviteUser(user.user_id)}
+                        disabled={invitingUsers[user.user_id]}
+                        className="invite-user-btn"
+                      >
+                        {invitingUsers[user.user_id] ? (
+                          <IonSpinner name="crescent" />
+                        ) : (
+                          "Invite"
+                        )}
+                      </IonButton>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </IonContent>
+      </IonModal>
     </IonPage>
   );
 };

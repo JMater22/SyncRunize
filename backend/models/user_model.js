@@ -90,3 +90,21 @@ export const deleteUserProfile = async (auth_id) => {
   if (error) throw error;
   return data;
 };
+
+
+
+export const searchUsers = async (searchQuery) => {
+  const { data, error } = await supabase
+    .from("users")
+    .select(`
+      user_id,
+      name,
+      username,
+      profile_picture
+    `)
+    .or(`name.ilike.%${searchQuery}%,username.ilike.%${searchQuery}%`)
+    .limit(20);
+
+  if (error) throw error;
+  return data || [];
+};

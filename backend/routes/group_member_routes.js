@@ -11,8 +11,12 @@ router.get("/:groupId/check/:userId", authenticate, GroupMemberController.checkM
 router.get("/:userId/joined-groups", GroupMemberController.getJoinedGroupsByUser);
 // Members
 router.get("/:groupId/members", GroupMemberController.getGroupMembers);
-router.post("/:groupId/addMembers", GroupMemberController.addMember);
+router.post("/:groupId/addMembers", authenticate,GroupMemberController.addMember);
 router.put("/:groupId/members/:userId", authenticate, GroupMemberController.updateRole);
 router.delete("/:groupId/members/:userId", authenticate, GroupMemberController.removeMember);
 
+
+
+ // Invite user to group
+router.post("/:groupId/invite", authenticate, GroupMemberController.inviteUserToGroup);
 export default router;

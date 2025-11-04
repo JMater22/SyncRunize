@@ -100,3 +100,45 @@ export const removeMember = async (groupId, userId) => {
   if (error) throw error;
   return { message: "Member removed successfully" };
 };
+
+export const isGroupAdmin = async (groupId, userId) => {
+  const { data, error } = await supabase
+    .from("group_members")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", userId)
+    .single();
+
+  if (error) return false;
+  return data?.role === "admin";
+};
+
+export const isGroupMember = async (groupId, userId) => {
+  const { data, error } = await supabase
+    .from("group_members")
+    .select("user_id")
+    .eq("group_id", groupId)
+    .eq("user_id", userId)
+    .single();
+
+  if (error) return false;
+  return !!data;
+};
+
+export const addGroupMember = async (groupId, userId, role = "member") => {
+  const { data, error } = await supabase
+    .from("group_members")
+    .insert([
+      {
+        group_id: groupId,
+        user_id: userId,
+        role,
+        joined_at: new Date().toISOString()
+      }
+    ])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};

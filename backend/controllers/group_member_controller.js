@@ -92,3 +92,34 @@ export const removeMember = async (req, res) => {
     res.status(500).json({ error: "Failed to remove member" });
   }
 };
+
+export const inviteUserToGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { userId } = req.body;
+    const inviterId = req.user.user_id;
+
+    // Check if inviter is admin
+    const isAdmin = await GroupMemberModel.isGroupAdmin(groupId, inviterId);
+    if (!isAdmin) {
+      return res.status(403).json({ error: "Only admins can invite users" });
+    }
+
+    // Check if user is already a member
+    const isMember = await GroupMemberModel.isGroupMember(groupId, userId);
+    if (isMember) {
+      return res.status(400).json({ error: "User is already a member" });
+    }
+
+    // Add user to group
+    await GroupMemberModel.addGroupMember(groupId, userId, "member");
+
+    res.status(200).json({ 
+      message: "User invited successfully",
+      userId 
+    });
+  } catch (err) {
+    console.error("Error inviting user:", err);
+    res.status(500).json({ error: "Failed to invite user" });
+  }
+};

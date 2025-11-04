@@ -14,4 +14,9 @@ router.get("/me", authenticate, UserController.getMyProfile);
 router.put("/update-me", authenticate, UserController.updateProfile);
 router.delete("/delete-me", authenticate, UserController.deleteProfile);
 
+
+
+
+// Search users
+router.get("/search", authenticate, UserController.searchUsers);
 export default router;
