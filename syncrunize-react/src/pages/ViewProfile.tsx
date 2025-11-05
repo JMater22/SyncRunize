@@ -13,10 +13,15 @@ import {
   IonToolbar,
   IonTitle,
   IonButtons,
-  IonBackButton
+  IonBackButton,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonSpinner,
+  IonImg,
+  IonInput
 } from '@ionic/react';
 import {
-  arrowBackOutline,
   personAddOutline,
   personRemoveOutline,
   heartOutline,
@@ -24,10 +29,21 @@ import {
   locationOutline,
   timeOutline,
   flameOutline,
-  speedometerOutline
+  speedometerOutline,
+  statsChart,
+  trophy,
+  flame,
+  person,
+  eyeOutline,
+  lockClosedOutline
 } from 'ionicons/icons';
 import { supabase } from '../supabaseClient';
 import ProfilePic from '../assets/Profile Picture.png';
+import Banner from '../assets/Banner UP.png';
+import MapImage from '../assets/MAP 1.png';
+
+// Import the same CSS as Profile.tsx
+import '../components/UserProfile/UserProfile.css';
 
 // Post interface
 interface Post {
@@ -65,24 +81,163 @@ interface UserProfile {
   created_at: string;
 }
 
+// Route interface for activities
+interface Route {
+  route_id: number;
+  route_name: string;
+  route_type?: string;
+  distance_km: number;
+  duration_seconds: number;
+  average_pace?: string;
+  estimated_calories?: number;
+  map_image_url?: string;
+  created_at: string;
+}
+
+interface StatSummary {
+  title: string;
+  runs_count: number;
+  total_distance: string;
+  avg_pace: string;
+  total_calories: string;
+}
+
+// Comment interface
+interface Comment {
+  comment_id: number;
+  content: string;
+  created_at: string;
+  user_id: number;
+  username: string;
+  name: string;
+  profile_picture?: string;
+}
+
 const ViewProfile: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
   const history = useHistory();
 
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [userRoutes, setUserRoutes] = useState<Route[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [postsLoading, setPostsLoading] = useState(true);
+  const [routesLoading, setRoutesLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'activities' | 'badges' | 'challenges' | 'posts'>('activities');
+  const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month'>('day');
+
+  // Badges and Challenges state
+  const [earnedBadges, setEarnedBadges] = useState<any[]>([]);
+  const [userChallenges, setUserChallenges] = useState<any[]>([]);
+  const [loadingBadges, setLoadingBadges] = useState(false);
+  const [loadingChallenges, setLoadingChallenges] = useState(false);
+
+  // Comments state
+  const [openComments, setOpenComments] = useState<number | null>(null);
+  const [comments, setComments] = useState<{ [postId: number]: Comment[] }>({});
+  const [newComment, setNewComment] = useState<{ [postId: number]: string }>({});
+
+  const [statsData, setStatsData] = useState<{
+    day: StatSummary;
+    week: StatSummary;
+    month: StatSummary;
+  }>({
+    day: { title: "Today", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+    week: { title: "This Week", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+    month: { title: "This Month", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+  });
+
+  // Redirect to own profile if viewing self
+  useEffect(() => {
+    const checkAndRedirect = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/users/me`,
+          {
+            headers: { Authorization: `Bearer ${session.access_token}` }
+          }
+        );
+
+        const myUserId = response.data.user_id;
+        setCurrentUserId(myUserId);
+
+        // Redirect if viewing own profile
+        if (parseInt(userId) === myUserId) {
+          history.replace('/profile');
+        }
+      } catch (error) {
+        console.error('Failed to check user:', error);
+      }
+    };
+
+    checkAndRedirect();
+  }, [userId, history]);
 
   useEffect(() => {
     fetchUserProfile();
     fetchUserPosts();
+    fetchUserRoutes();
     fetchFollowCounts();
     checkFollowStatus();
+    fetchUserBadges();
+    fetchUserChallenges();
   }, [userId]);
+
+  // Calculate stats from routes
+  useEffect(() => {
+    if (!userRoutes || userRoutes.length === 0) return;
+
+    const calculatePace = (durationSeconds: number, distanceKm: number) => {
+      if (distanceKm === 0) return "0:00 /km";
+      const pace = durationSeconds / 60 / distanceKm;
+      const minutes = Math.floor(pace);
+      const seconds = Math.round((pace - minutes) * 60);
+      return `${minutes}:${seconds.toString().padStart(2, "0")} /km`;
+    };
+
+    const now = new Date();
+
+    const filterByPeriod = (routes: Route[], days: number) =>
+      routes.filter(route => {
+        const created = new Date(route.created_at);
+        const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+        return diffDays <= days;
+      });
+
+    const calcStats = (filteredRoutes: Route[]) => {
+      const runs_count = filteredRoutes.length;
+      const total_distance = filteredRoutes.reduce((sum, r) => sum + (r.distance_km || 0), 0);
+      const total_duration = filteredRoutes.reduce((sum, r) => sum + (r.duration_seconds || 0), 0);
+      const estimated_calories = filteredRoutes.reduce((sum, r) => sum + (r.estimated_calories || 0), 0);
+      const avg_pace = total_duration && total_distance
+        ? calculatePace(total_duration, total_distance)
+        : "0:00 /km";
+
+      return {
+        runs_count,
+        total_distance: `${total_distance.toFixed(1)} km`,
+        avg_pace,
+        total_calories: `${Math.round(estimated_calories)} kcal`
+      };
+    };
+
+    const dayRoutes = filterByPeriod(userRoutes, 1);
+    const weekRoutes = filterByPeriod(userRoutes, 7);
+    const monthRoutes = filterByPeriod(userRoutes, 30);
+
+    setStatsData({
+      day: { title: "Today", ...calcStats(dayRoutes) },
+      week: { title: "This Week", ...calcStats(weekRoutes) },
+      month: { title: "This Month", ...calcStats(monthRoutes) },
+    });
+  }, [userRoutes]);
 
   const fetchUserProfile = async () => {
     try {
@@ -109,6 +264,8 @@ const ViewProfile: React.FC = () => {
       setPostsLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
 
+      console.log(`[ViewProfile] Fetching posts for userId: ${userId}, has token: ${!!session?.access_token}`);
+
       const response = await axios.get(
         `${import.meta.env.VITE_API_URL}/posts/user/${userId}`,
         session?.access_token ? {
@@ -116,11 +273,35 @@ const ViewProfile: React.FC = () => {
         } : undefined
       );
 
+      console.log(`[ViewProfile] Received ${response.data.length} posts`);
       setPosts(response.data);
     } catch (error) {
       console.error('Failed to fetch user posts:', error);
     } finally {
       setPostsLoading(false);
+    }
+  };
+
+  const fetchUserRoutes = async () => {
+    try {
+      setRoutesLoading(true);
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/routes/user/${userId}`,
+        {
+          params: {
+            limit: 20,
+            offset: 0,
+            activities_only: true // ✅ NEW: Only fetch completed routes for activities view
+          }
+        }
+      );
+
+      setUserRoutes(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Failed to fetch user routes:', error);
+    } finally {
+      setRoutesLoading(false);
     }
   };
 
@@ -160,6 +341,8 @@ const ViewProfile: React.FC = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) return;
 
+      console.log(`[ViewProfile] Toggling follow for userId: ${userId}`);
+
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/follows/${userId}/toggle`,
         {},
@@ -167,6 +350,8 @@ const ViewProfile: React.FC = () => {
           headers: { Authorization: `Bearer ${session.access_token}` }
         }
       );
+
+      console.log(`[ViewProfile] Follow toggled. New status: ${response.data.isFollowing}`);
 
       setIsFollowing(response.data.isFollowing);
 
@@ -176,17 +361,203 @@ const ViewProfile: React.FC = () => {
       } else {
         setFollowerCount(prev => Math.max(0, prev - 1));
       }
+
+      // Refetch posts to apply privacy filtering based on new follow status
+      console.log(`[ViewProfile] Refetching posts after follow toggle...`);
+      await fetchUserPosts();
     } catch (error) {
       console.error('Failed to toggle follow:', error);
     }
   };
 
-  const formatDuration = (seconds?: number) => {
-    if (!seconds) return 'N/A';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  const fetchUserBadges = async () => {
+    try {
+      setLoadingBadges(true);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/routes/badges/${userId}`,
+        session?.access_token ? {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        } : undefined
+      );
+
+      // Filter only completed challenges with badges
+      const badges = response.data.data
+        .filter((challenge: any) => challenge.completed && challenge.badge_image_url)
+        .map((challenge: any) => ({
+          title: challenge.badge_name || "Badge",
+          description: challenge.badge_description || "Achievement unlocked",
+          tier: challenge.badge_tier || "Bronze",
+          earned: true,
+          date: new Date(challenge.updated_at).toLocaleDateString(),
+          image: challenge.badge_image_url
+        }));
+
+      setEarnedBadges(badges);
+    } catch (error) {
+      console.error('Failed to fetch user badges:', error);
+      setEarnedBadges([]);
+    } finally {
+      setLoadingBadges(false);
+    }
+  };
+
+  const fetchUserChallenges = async () => {
+    try {
+      setLoadingChallenges(true);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/routes/challenges/${userId}`,
+        session?.access_token ? {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        } : undefined
+      );
+
+      setUserChallenges(
+        Array.isArray(response.data.challenges) ? response.data.challenges : []
+      );
+    } catch (error) {
+      console.error('Failed to fetch user challenges:', error);
+      setUserChallenges([]);
+    } finally {
+      setLoadingChallenges(false);
+    }
+  };
+
+  // Fetch comments for a post
+  const fetchComments = async (postId: number) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) return;
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/comments/${postId}`,
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        }
+      );
+
+      setComments(prev => ({ ...prev, [postId]: response.data }));
+    } catch (error) {
+      console.error('Failed to fetch comments:', error);
+    }
+  };
+
+  // Toggle like on a post
+  const handleToggleLike = async (postId: number) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) return;
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/likes/${postId}/toggle`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        }
+      );
+
+      // Update the post in state
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.post_id === postId
+            ? { ...post, is_liked: response.data.liked, likes_count: response.data.likes }
+            : post
+        )
+      );
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+    }
+  };
+
+  // Add a comment to a post
+  const handleAddComment = async (postId: number) => {
+    const commentText = newComment[postId]?.trim();
+    if (!commentText) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) return;
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/comments/${postId}`,
+        { content: commentText },
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        }
+      );
+
+      // Add the new comment to state
+      setComments(prev => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), response.data]
+      }));
+
+      // Update comments count
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.post_id === postId
+            ? { ...post, comments_count: post.comments_count + 1 }
+            : post
+        )
+      );
+
+      // Clear input
+      setNewComment(prev => ({ ...prev, [postId]: '' }));
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+    }
+  };
+
+  // Handle opening comments section
+  const handleOpenComments = async (postId: number) => {
+    if (openComments === postId) {
+      setOpenComments(null);
+    } else {
+      setOpenComments(postId);
+      if (!comments[postId]) {
+        await fetchComments(postId);
+      }
+    }
+  };
+
+  const formatDuration = (duration: any) => {
+    if (!duration) return '00:00:00';
+
+    if (typeof duration === 'string' && duration.includes(':')) {
+      return duration;
+    }
+
+    const totalSeconds = typeof duration === 'number' ? duration : parseInt(duration);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      const daysAgo = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysAgo < 7) {
+        return `${daysAgo} days ago`;
+      }
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
   };
 
   const formatRelativeTime = (dateString: string) => {
@@ -205,6 +576,8 @@ const ViewProfile: React.FC = () => {
     return `${diffDays}d ago`;
   };
 
+  const currentStats = statsData[timeRange];
+
   if (loading) {
     return (
       <IonPage>
@@ -218,7 +591,8 @@ const ViewProfile: React.FC = () => {
         </IonHeader>
         <IonContent>
           <div style={{ textAlign: 'center', padding: '40px' }}>
-            Loading profile...
+            <IonSpinner name="crescent" />
+            <p>Loading profile...</p>
           </div>
         </IonContent>
       </IonPage>
@@ -247,42 +621,48 @@ const ViewProfile: React.FC = () => {
 
   return (
     <IonPage>
-      <IonHeader>
-        <IonToolbar>
-          <IonButtons slot="start">
-            <IonBackButton defaultHref="/home" />
-          </IonButtons>
-          <IonTitle>{profile.name}</IonTitle>
-        </IonToolbar>
-      </IonHeader>
+      <IonContent className="profile-content">
+        <div className="profile-container">
+          {/* Enhanced Profile Header - Same as Profile.tsx */}
+          <div className="profile-header-section">
+            <div className="banner-container">
+              <IonImg src={Banner} alt="User Banner" className="banner-image" />
+              <div className="banner-overlay"></div>
+            </div>
 
-      <IonContent>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-          {/* Profile Header */}
-          <IonCard>
-            <IonCardContent>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
-                <IonAvatar style={{ width: '100px', height: '100px' }}>
-                  <img src={profile.profile_picture || ProfilePic} alt={profile.name} />
-                </IonAvatar>
+            <div className="profile-info-card">
+              <div className="profile-avatar-container">
+                <IonImg src={profile.profile_picture || ProfilePic} alt="Profile" className="profile-avatar" />
+              </div>
 
-                <div style={{ flex: 1 }}>
-                  <h2 style={{ margin: '0 0 8px 0', fontSize: '24px', fontWeight: 'bold' }}>
-                    {profile.name}
-                  </h2>
-                  <p style={{ margin: '0 0 12px 0', color: '#666' }}>
-                    @{profile.username}
-                  </p>
-
-                  <div style={{ display: 'flex', gap: '24px', marginBottom: '12px' }}>
-                    <div>
-                      <strong>{followerCount}</strong> Followers
-                    </div>
-                    <div>
-                      <strong>{followingCount}</strong> Following
-                    </div>
+              <div className="profile-details">
+                <div className="profile-text">
+                  <h1 className="profile-name">{profile.name}</h1>
+                  <p className="profile-username">@{profile.username}</p>
+                  <div className="profile-bio">
+                    <span>{profile.description || 'No description yet'}</span>
                   </div>
+                </div>
 
+                <div className="profile-stats-row">
+                  <div className="stat-item">
+                    <span className="stat-number">{followerCount}</span>
+                    <span className="stat-label">Followers</span>
+                  </div>
+                  <div className="stat-divider"></div>
+                  <div className="stat-item">
+                    <span className="stat-number">{followingCount}</span>
+                    <span className="stat-label">Following</span>
+                  </div>
+                  <div className="stat-divider"></div>
+                  <div className="stat-item">
+                    <span className="stat-number">{userRoutes.length}</span>
+                    <span className="stat-label">Activities</span>
+                  </div>
+                </div>
+
+                {/* Follow/Unfollow Button */}
+                <div style={{ marginTop: '12px' }}>
                   <IonButton
                     fill={isFollowing ? 'outline' : 'solid'}
                     onClick={handleToggleFollow}
@@ -292,101 +672,445 @@ const ViewProfile: React.FC = () => {
                   </IonButton>
                 </div>
               </div>
+            </div>
 
-              {profile.description && (
-                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
-                  <p style={{ margin: 0, color: '#333' }}>{profile.description}</p>
-                </div>
-              )}
-
-              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', color: '#666', fontSize: '14px' }}>
-                  {profile.gender && <div>Gender: {profile.gender}</div>}
-                  {profile.age && <div>Age: {profile.age}</div>}
-                  {profile.weight_kg && <div>Weight: {profile.weight_kg} kg</div>}
-                </div>
+            {/* Modern Navigation Tabs - Same as Profile.tsx */}
+            <div className="nav-tabs-container">
+              <div className="nav-tabs">
+                <button
+                  className={`nav-tab ${activeTab === "activities" ? "active" : ""}`}
+                  onClick={() => setActiveTab("activities")}
+                >
+                  <IonIcon icon={statsChart} />
+                  <span>Activities</span>
+                </button>
+                <button
+                  className={`nav-tab ${activeTab === "posts" ? "active" : ""}`}
+                  onClick={() => setActiveTab("posts")}
+                >
+                  <IonIcon icon={person} />
+                  <span>Posts</span>
+                </button>
+                <button
+                  className={`nav-tab ${activeTab === "badges" ? "active" : ""}`}
+                  onClick={() => setActiveTab("badges")}
+                >
+                  <IonIcon icon={trophy} />
+                  <span>Badges</span>
+                </button>
+                <button
+                  className={`nav-tab ${activeTab === "challenges" ? "active" : ""}`}
+                  onClick={() => setActiveTab("challenges")}
+                >
+                  <IonIcon icon={flame} />
+                  <span>Challenges</span>
+                </button>
               </div>
-            </IonCardContent>
-          </IonCard>
-
-          {/* Posts Section */}
-          <div style={{ marginTop: '20px' }}>
-            <h3 style={{ marginBottom: '16px', fontSize: '20px', fontWeight: 'bold' }}>
-              Posts
-            </h3>
-
-            {postsLoading ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>
-                Loading posts...
-              </div>
-            ) : posts.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                No posts yet
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {posts.map((post) => (
-                  <IonCard key={post.post_id}>
-                    <IonCardContent>
-                      <div style={{ marginBottom: '12px' }}>
-                        <div style={{ color: '#666', fontSize: '14px' }}>
-                          {formatRelativeTime(post.created_at)} • {new Date(post.created_at).toLocaleDateString()}
-                        </div>
-                      </div>
-
-                      {post.route_name && (
-                        <h4 style={{ marginBottom: '8px', fontWeight: 'bold' }}>{post.route_name}</h4>
-                      )}
-
-                      {post.content && (
-                        <p style={{ marginBottom: '12px' }}>{post.content}</p>
-                      )}
-
-                      {post.route_id && (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-                          <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-                            <IonIcon icon={locationOutline} style={{ color: '#3b82f6' }} />
-                            <div style={{ marginTop: '4px', fontWeight: 'bold' }}>{post.distance_km?.toFixed(1)} km</div>
-                            <div style={{ fontSize: '12px', color: '#666' }}>Distance</div>
-                          </div>
-                          <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-                            <IonIcon icon={timeOutline} style={{ color: '#10b981' }} />
-                            <div style={{ marginTop: '4px', fontWeight: 'bold' }}>{formatDuration(post.duration_seconds)}</div>
-                            <div style={{ fontSize: '12px', color: '#666' }}>Time</div>
-                          </div>
-                          <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-                            <IonIcon icon={speedometerOutline} style={{ color: '#f59e0b' }} />
-                            <div style={{ marginTop: '4px', fontWeight: 'bold' }}>{post.average_pace || 'N/A'}</div>
-                            <div style={{ fontSize: '12px', color: '#666' }}>Pace</div>
-                          </div>
-                          <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-                            <IonIcon icon={flameOutline} style={{ color: '#ef4444' }} />
-                            <div style={{ marginTop: '4px', fontWeight: 'bold' }}>{post.estimated_calories || 'N/A'}</div>
-                            <div style={{ fontSize: '12px', color: '#666' }}>Calories</div>
-                          </div>
-                        </div>
-                      )}
-
-                      {post.snapshot_url && (
-                        <div style={{ marginBottom: '12px', borderRadius: '8px', overflow: 'hidden' }}>
-                          <img src={post.snapshot_url} alt="Route map" style={{ width: '100%', display: 'block' }} />
-                        </div>
-                      )}
-
-                      <div style={{ display: 'flex', gap: '16px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
-                        <div style={{ color: '#666', fontSize: '14px' }}>
-                          <IonIcon icon={heartOutline} /> {post.likes_count} Likes
-                        </div>
-                        <div style={{ color: '#666', fontSize: '14px' }}>
-                          <IonIcon icon={chatbubbleEllipses} /> {post.comments_count} Comments
-                        </div>
-                      </div>
-                    </IonCardContent>
-                  </IonCard>
-                ))}
-              </div>
-            )}
+            </div>
           </div>
+
+          <IonGrid className="content-grid">
+            <IonRow>
+              {/* Enhanced Sidebar - Same as Profile.tsx */}
+              <IonCol size="12" sizeLg="3" className="sidebar-col">
+                <div className="stats-sidebar">
+                  <div className="stats-header">
+                    <h3>Performance Stats</h3>
+                  </div>
+
+                  {/* Time Range Dropdown */}
+                  <div className="time-range-dropdown">
+                    <select
+                      value={timeRange}
+                      onChange={(e) => setTimeRange(e.target.value as 'day' | 'week' | 'month')}
+                      className="time-range-select"
+                    >
+                      <option value="day">Today</option>
+                      <option value="week">This Week</option>
+                      <option value="month">This Month</option>
+                    </select>
+                  </div>
+
+                  {/* Dynamic Stats Card */}
+                  <div className={`stats-card ${timeRange}`}>
+                    <div className="stats-card-header">
+                      <h4>{currentStats.title}</h4>
+                    </div>
+                    <div className="stats-list">
+                      <div className="stats-item">
+                        <div className="stats-content">
+                          <span className="stats-label">Runs</span>
+                          <span className="stats-value">{currentStats.runs_count}</span>
+                        </div>
+                      </div>
+                      <div className="stats-item">
+                        <div className="stats-content">
+                          <span className="stats-label">Distance</span>
+                          <span className="stats-value">{currentStats.total_distance}</span>
+                        </div>
+                      </div>
+                      <div className="stats-item">
+                        <div className="stats-content">
+                          <span className="stats-label">Pace</span>
+                          <span className="stats-value">{currentStats.avg_pace}</span>
+                        </div>
+                      </div>
+                      <div className="stats-item">
+                        <div className="stats-content">
+                          <span className="stats-label">Calories</span>
+                          <span className="stats-value">{currentStats.total_calories}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </IonCol>
+
+              {/* Main Content - Same layout as Profile.tsx */}
+              <IonCol size="12" sizeLg="9" className="main-content-col">
+                {/* Activities Section */}
+                {activeTab === "activities" && (
+                  <div className="content-section">
+                    <div className="section-header">
+                      <h2>Activities</h2>
+                    </div>
+
+                    {routesLoading ? (
+                      <div className="loading-center">
+                        <IonSpinner name="crescent" />
+                        <p>Loading activities...</p>
+                      </div>
+                    ) : userRoutes.length === 0 ? (
+                      <div className="loading-center">
+                        <p>No activities yet.</p>
+                      </div>
+                    ) : (
+                      <div className="activities-list">
+                        {userRoutes.slice(0, 10).map((route, index) => (
+                          <IonCard key={route.route_id || index} className="activity-card-modern">
+                            <IonCardContent>
+                              <div className="activity-top">
+                                <div className="activity-meta">
+                                  <span className="activity-type">
+                                    {route.route_type ? route.route_type.charAt(0).toUpperCase() + route.route_type.slice(1) : "Run"}
+                                  </span>
+                                  <span className="activity-date">{formatDate(route.created_at)}</span>
+                                </div>
+
+                                <h3 className="activity-title">
+                                  {route.route_name || "Untitled Route"}
+                                </h3>
+                              </div>
+
+                              <div className="activity-stats-row">
+                                <div className="activity-stat">
+                                  <strong>{route.distance_km} km</strong>
+                                  <span>Distance</span>
+                                </div>
+                                <div className="activity-stat">
+                                  <strong>{formatDuration(route.duration_seconds)}</strong>
+                                  <span>Duration</span>
+                                </div>
+                                <div className="activity-stat">
+                                  <strong>{route.average_pace || "N/A"}</strong>
+                                  <span>Pace</span>
+                                </div>
+                              </div>
+
+                              <div className="activity-map">
+                                <IonImg src={route.map_image_url || MapImage} alt="Activity Map" />
+                              </div>
+                            </IonCardContent>
+                          </IonCard>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Posts Section - Vertical Feed with Like/Comment */}
+                {activeTab === "posts" && (
+                  <div className="content-section">
+                    <div className="section-header">
+                      <h2>Posts</h2>
+                      <span className="badge-count">{posts.length} posts</span>
+                    </div>
+
+                    {postsLoading ? (
+                      <div className="loading-center">
+                        <IonSpinner name="crescent" />
+                        <p>Loading posts...</p>
+                      </div>
+                    ) : posts.length === 0 ? (
+                      <div className="loading-center">
+                        <p>No posts yet.</p>
+                      </div>
+                    ) : (
+                      <div className="activity-feed">
+                        {posts.map((post) => (
+                          <IonCard key={post.post_id} className="activity-card-enhanced">
+                            {/* Activity Header */}
+                            <div className="activity-header-enhanced">
+                              <IonAvatar className="activity-user-avatar">
+                                <img src={post.author_avatar || ProfilePic} alt="Profile" />
+                              </IonAvatar>
+                              <div className="activity-user-info">
+                                <h3 className="activity-user-name">
+                                  {post.author_name} <span className="activity-handle">@{post.author_username}</span>
+                                </h3>
+                                <div className="activity-meta">
+                                  <span className="activity-time">{formatRelativeTime(post.created_at)}</span> • {new Date(post.created_at).toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+
+                            <IonCardContent className="activity-content-enhanced">
+                              {/* Route Name & Content */}
+                              {post.route_name && (
+                                <h4 style={{ marginBottom: '10px', fontWeight: 'bold' }}>{post.route_name}</h4>
+                              )}
+                              {post.content && (
+                                <p style={{ marginBottom: '15px' }}>{post.content}</p>
+                              )}
+
+                              {/* Stats */}
+                              {post.route_id && (
+                                <div className="activity-stats-grid">
+                                  <div className="stat-card distance">
+                                    <IonIcon icon={locationOutline} />
+                                    <div>
+                                      <span className="stat-value">{post.distance_km?.toFixed(1)} km</span>
+                                      <span className="stat-label">Distance</span>
+                                    </div>
+                                  </div>
+                                  <div className="stat-card time">
+                                    <IonIcon icon={timeOutline} />
+                                    <div>
+                                      <span className="stat-value">{formatDuration(post.duration_seconds)}</span>
+                                      <span className="stat-label">Time</span>
+                                    </div>
+                                  </div>
+                                  <div className="stat-card pace">
+                                    <IonIcon icon={speedometerOutline} />
+                                    <div>
+                                      <span className="stat-value">{post.average_pace || 'N/A'}</span>
+                                      <span className="stat-label">Pace</span>
+                                    </div>
+                                  </div>
+                                  <div className="stat-card calories">
+                                    <IonIcon icon={flameOutline} />
+                                    <div>
+                                      <span className="stat-value">{post.estimated_calories || 'N/A'}</span>
+                                      <span className="stat-label">Calories</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Map */}
+                              {post.snapshot_url && (
+                                <div className="activity-map-container">
+                                  <img src={post.snapshot_url} alt="Run Map" className="activity-map" />
+                                  <div className="map-overlay"></div>
+                                </div>
+                              )}
+
+                              {/* Actions - Like & Comment */}
+                              <div className="activity-actions-enhanced">
+                                <IonButton
+                                  fill="clear"
+                                  size="small"
+                                  className={`action-btn like-btn ${post.is_liked ? 'liked' : ''}`}
+                                  onClick={() => handleToggleLike(post.post_id)}
+                                >
+                                  <IonIcon icon={heartOutline} slot="start" />
+                                  <span>{post.likes_count} Likes</span>
+                                </IonButton>
+
+                                <IonButton
+                                  fill="clear"
+                                  size="small"
+                                  className="action-btn comment-btn"
+                                  onClick={() => handleOpenComments(post.post_id)}
+                                >
+                                  <IonIcon icon={chatbubbleEllipses} slot="start" />
+                                  <span>{post.comments_count} Comments</span>
+                                </IonButton>
+
+                                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '14px', color: '#666' }}>
+                                  <IonIcon icon={post.visibility === 'public' ? eyeOutline : lockClosedOutline} />
+                                  <span>{post.visibility === 'public' ? 'Public' : 'Private'}</span>
+                                </div>
+                              </div>
+
+                              {/* Comments */}
+                              {openComments === post.post_id && (
+                                <div className="comments-section-enhanced">
+                                  <div className="comments-header">
+                                    <h4>Comments ({post.comments_count})</h4>
+                                  </div>
+                                  {comments[post.post_id]?.map((comment) => (
+                                    <div key={comment.comment_id} className="comment-enhanced">
+                                      <IonAvatar className="comment-avatar">
+                                        <img src={comment.profile_picture || ProfilePic} alt={comment.username} />
+                                      </IonAvatar>
+                                      <div className="comment-content">
+                                        <div className="comment-header">
+                                          <strong className="comment-user">{comment.name}</strong>
+                                          <span className="comment-time">{formatRelativeTime(comment.created_at)}</span>
+                                        </div>
+                                        <p className="comment-text">{comment.content}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                  <div className="add-comment">
+                                    <IonAvatar className="comment-avatar">
+                                      <img src={ProfilePic} alt="You" />
+                                    </IonAvatar>
+                                    <IonInput
+                                      placeholder="Add a comment..."
+                                      className="comment-input"
+                                      value={newComment[post.post_id] || ''}
+                                      onIonInput={(e) => setNewComment(prev => ({
+                                        ...prev,
+                                        [post.post_id]: e.detail.value || ''
+                                      }))}
+                                      onKeyPress={(e) => {
+                                        if (e.key === 'Enter') {
+                                          handleAddComment(post.post_id);
+                                        }
+                                      }}
+                                    />
+                                    <IonButton
+                                      fill="clear"
+                                      size="small"
+                                      onClick={() => handleAddComment(post.post_id)}
+                                    >
+                                      Post
+                                    </IonButton>
+                                  </div>
+                                </div>
+                              )}
+                            </IonCardContent>
+                          </IonCard>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Badges Section */}
+                {activeTab === "badges" && (
+                  <div className="content-section">
+                    <div className="section-header">
+                      <h2>Achievement Badges</h2>
+                      <span className="badge-count">{earnedBadges.length} earned</span>
+                    </div>
+
+                    {loadingBadges ? (
+                      <div className="loading-center">
+                        <IonSpinner name="crescent" />
+                        <p>Loading badges...</p>
+                      </div>
+                    ) : earnedBadges.length === 0 ? (
+                      <div className="loading-center">
+                        <p>No badges earned yet.</p>
+                      </div>
+                    ) : (
+                      <div className="badges-grid">
+                        {earnedBadges.map((badge, i) => (
+                          <IonCard key={i} className="badge-card-modern">
+                            <div className={`badge-glow ${badge.tier.toLowerCase()}`}></div>
+                            <IonImg src={badge.image} alt={badge.title} className="badge-image" />
+                            <IonCardContent>
+                              <h4 className="badge-title">{badge.title}</h4>
+                              <p className="badge-description">{badge.description}</p>
+                              <div className="badge-earned">
+                                Earned {badge.date}
+                              </div>
+                            </IonCardContent>
+                          </IonCard>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Challenges Section */}
+                {activeTab === "challenges" && (
+                  <div className="content-section">
+                    <div className="section-header">
+                      <h2>Active Challenges</h2>
+                    </div>
+
+                    {loadingChallenges ? (
+                      <div className="loading-center">
+                        <IonSpinner name="crescent" />
+                        <p>Loading challenges...</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="challenges-grid">
+                          {userChallenges.filter((challenge) => challenge.progress_percent < 100).length === 0 ? (
+                            <p>No active challenges.</p>
+                          ) : (
+                            userChallenges
+                              .filter((challenge) => challenge.progress_percent < 100)
+                              .map((challenge, i) => (
+                                <IonCard key={i} className="challenge-card-modern">
+                                  <div className="challenge-image-container">
+                                    <IonImg src={challenge.challenge_image} alt={challenge.challenge_name} />
+                                    <div className="challenge-progress-overlay">
+                                      <div className="progress-circle">
+                                        <span className="progress-text">{Math.round(challenge.progress_percent) || 0}%</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <IonCardContent>
+                                    <h4 className="challenge-title">{challenge.challenge_name}</h4>
+                                    <p className="challenge-target">{challenge.challenge_description}</p>
+                                    <p className="challenge-duration">{challenge.challenge_duration_days} days</p>
+                                  </IonCardContent>
+                                </IonCard>
+                              ))
+                          )}
+                        </div>
+
+                        {/* Completed Challenges */}
+                        <div className="section-header completed-header" style={{ marginTop: '24px' }}>
+                          <h2>Completed Challenges</h2>
+                        </div>
+
+                        <div className="challenges-grid">
+                          {userChallenges.filter((challenge) => challenge.progress_percent >= 100).length === 0 ? (
+                            <p>No completed challenges yet.</p>
+                          ) : (
+                            userChallenges
+                              .filter((challenge) => challenge.progress_percent >= 100)
+                              .map((challenge, i) => (
+                                <IonCard key={i} className="challenge-card-modern completed">
+                                  <div className="challenge-image-container">
+                                    <IonImg src={challenge.challenge_image} alt={challenge.challenge_name} />
+                                    <div className="challenge-completed-overlay">
+                                      <span className="completed-text">Completed</span>
+                                    </div>
+                                  </div>
+                                  <IonCardContent>
+                                    <h4 className="challenge-title">{challenge.challenge_name}</h4>
+                                    <p className="challenge-target">{challenge.challenge_description}</p>
+                                    <p className="challenge-duration">{challenge.challenge_duration_days} days</p>
+                                  </IonCardContent>
+                                </IonCard>
+                              ))
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </IonCol>
+            </IonRow>
+          </IonGrid>
         </div>
       </IonContent>
     </IonPage>

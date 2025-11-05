@@ -62,6 +62,11 @@ class RouteInput(BaseModel):
     end: Point
     alpha: float = 0.5
 
+class RouteDistanceInput(BaseModel):
+    start: Point
+    target_distance_km: float
+    alpha: float = 0.5
+
 ### === Time & Distance Decay === ###
 def time_decay(t1, t2):
     delta = abs((t1 - t2).total_seconds()) / 60  # in minutes
@@ -138,28 +143,391 @@ def compute_trust(reports):
     beta = sum(1 for r in reports if r.agreement_score and r.agreement_score < 0.4)
     return (alpha + 1) / (alpha + beta + 2)
 
-### === Modified Dijkstra === ###
+### === Modified Dijkstra with Sidewalk Preference === ###
 def safest_path_osm(G, origin_point, destination_point, alpha=0.5):
     """
     origin_point, destination_point = (lat, lng)
+    Enhanced with sidewalk preference and road safety scoring
     """
     # Find nearest OSM nodes
     orig_node = ox.nearest_nodes(G, origin_point[1], origin_point[0])  # (lng, lat)
     dest_node = ox.nearest_nodes(G, destination_point[1], destination_point[0])
 
-    # Custom weight: combine length and risk
+    # Custom weight: combine length, risk, and road safety factors
     def weight(u, v, d):
         length = d.get("length", 1.0) # physical road distance (meters)
-        risk = d.get("risk", 0.2)  # TODO: link with reports/trust - safety risk score (0 = safe, higher = risky)
-        return (1 - alpha) * length + alpha * risk
+        base_risk = d.get("risk", 0.2)  # crime/incident risk score
+
+        # SIDEWALK PREFERENCE: Check if sidewalk exists
+        sidewalk = d.get("sidewalk", "no")
+        has_sidewalk = sidewalk in ["yes", "both", "left", "right", "separate"]
+
+        # ROAD TYPE SAFETY: Penalize dangerous road types
+        highway_type = d.get("highway", "residential")
+        road_safety_penalty = 0
+
+        # Safest to most dangerous
+        if highway_type in ["footway", "pedestrian", "path", "cycleway"]:
+            road_safety_penalty = 0  # Safest - dedicated paths
+        elif highway_type in ["residential", "living_street"]:
+            road_safety_penalty = 50 if not has_sidewalk else 10  # Safe if has sidewalk
+        elif highway_type in ["tertiary", "unclassified", "service"]:
+            road_safety_penalty = 100 if not has_sidewalk else 20
+        elif highway_type in ["secondary", "secondary_link"]:
+            road_safety_penalty = 200 if not has_sidewalk else 40  # Busier roads
+        elif highway_type in ["primary", "primary_link", "trunk", "trunk_link"]:
+            road_safety_penalty = 500 if not has_sidewalk else 80  # Major roads - avoid
+        elif highway_type in ["motorway", "motorway_link"]:
+            road_safety_penalty = 10000  # Highways - NEVER use
+
+        # LIGHTING: Prefer well-lit paths (if data available)
+        lit = d.get("lit", "no")
+        lighting_penalty = 0 if lit == "yes" else 30
+
+        # LANES: More lanes = more dangerous
+        lanes = int(d.get("lanes", 1))
+        lane_penalty = (lanes - 1) * 20
+
+        # SPEED LIMIT: Higher speed = more dangerous
+        maxspeed = d.get("maxspeed", "30")
+        try:
+            speed_val = int(str(maxspeed).replace(" kph", "").replace(" mph", "").split()[0])
+            speed_penalty = max(0, (speed_val - 30) * 2)  # Penalty for speeds above 30kph
+        except:
+            speed_penalty = 0
+
+        # TOTAL SAFETY SCORE
+        safety_score = base_risk + road_safety_penalty + lighting_penalty + lane_penalty + speed_penalty
+
+        # Apply sidewalk bonus (reduce safety score if sidewalk exists)
+        if has_sidewalk:
+            safety_score *= 0.5  # 50% safer with sidewalk
+
+        # Combine distance and safety
+        return (1 - alpha) * length + alpha * safety_score
 
     # Run shortest path
     try:
         path = nx.shortest_path(G, orig_node, dest_node, weight=weight)
-        coords = [(G.nodes[n]["y"], G.nodes[n]["x"]) for n in path]
-        return coords
+
+        # Extract coordinates and road metadata
+        coords = []
+        route_metadata = []
+
+        for i, node in enumerate(path):
+            coords.append((G.nodes[node]["y"], G.nodes[node]["x"]))
+
+            # Get edge metadata for safety warnings
+            if i < len(path) - 1:
+                next_node = path[i + 1]
+                if G.has_edge(node, next_node):
+                    edge_data = G[node][next_node]
+                    if isinstance(edge_data, dict):
+                        edge_info = edge_data
+                    else:
+                        edge_info = list(edge_data.values())[0]
+
+                    route_metadata.append({
+                        "highway": edge_info.get("highway", "unknown"),
+                        "sidewalk": edge_info.get("sidewalk", "no"),
+                        "lit": edge_info.get("lit", "no"),
+                        "lanes": edge_info.get("lanes", 1),
+                        "maxspeed": edge_info.get("maxspeed", "30"),
+                        "length": edge_info.get("length", 0)
+                    })
+
+        return coords, route_metadata
     except nx.NetworkXNoPath:
+        return [], []
+
+def distance_based_route(G, origin_point, target_distance_km, alpha=0.5):
+    """
+    Generate a circular route of approximately target_distance_km from origin_point
+    Finds the safest route that returns to start with the target distance
+    Enhanced with sidewalk preference and road safety scoring
+    """
+    orig_node = ox.nearest_nodes(G, origin_point[1], origin_point[0])  # (lng, lat)
+
+    # Custom weight: same safety scoring as safest_path_osm
+    def weight(u, v, d):
+        length = d.get("length", 1.0)
+        base_risk = d.get("risk", 0.2)
+
+        # Sidewalk preference
+        sidewalk = d.get("sidewalk", "no")
+        has_sidewalk = sidewalk in ["yes", "both", "left", "right", "separate"]
+
+        # Road type safety
+        highway_type = d.get("highway", "residential")
+        road_safety_penalty = 0
+
+        if highway_type in ["footway", "pedestrian", "path", "cycleway"]:
+            road_safety_penalty = 0
+        elif highway_type in ["residential", "living_street"]:
+            road_safety_penalty = 50 if not has_sidewalk else 10
+        elif highway_type in ["tertiary", "unclassified", "service"]:
+            road_safety_penalty = 100 if not has_sidewalk else 20
+        elif highway_type in ["secondary", "secondary_link"]:
+            road_safety_penalty = 200 if not has_sidewalk else 40
+        elif highway_type in ["primary", "primary_link", "trunk", "trunk_link"]:
+            road_safety_penalty = 500 if not has_sidewalk else 80
+        elif highway_type in ["motorway", "motorway_link"]:
+            road_safety_penalty = 10000
+
+        # Lighting
+        lit = d.get("lit", "no")
+        lighting_penalty = 0 if lit == "yes" else 30
+
+        # Lanes
+        lanes = int(d.get("lanes", 1))
+        lane_penalty = (lanes - 1) * 20
+
+        # Speed limit
+        maxspeed = d.get("maxspeed", "30")
+        try:
+            speed_val = int(str(maxspeed).replace(" kph", "").replace(" mph", "").split()[0])
+            speed_penalty = max(0, (speed_val - 30) * 2)
+        except:
+            speed_penalty = 0
+
+        safety_score = base_risk + road_safety_penalty + lighting_penalty + lane_penalty + speed_penalty
+
+        if has_sidewalk:
+            safety_score *= 0.5
+
+        return (1 - alpha) * length + alpha * safety_score
+
+    # Get all nodes within a reasonable radius
+    target_meters = target_distance_km * 1000
+    search_radius_meters = target_meters / 2  # Search in half the distance
+
+    # Get nearby nodes
+    nearby_nodes = []
+    for node in G.nodes():
+        node_lat = G.nodes[node]["y"]
+        node_lng = G.nodes[node]["x"]
+
+        # Calculate distance from origin
+        R = 6371000  # Earth's radius in meters
+        lat1, lng1 = origin_point
+        lat2, lng2 = node_lat, node_lng
+
+        phi1, phi2 = math.radians(lat1), math.radians(lat2)
+        dphi = math.radians(lat2 - lat1)
+        dlambda = math.radians(lng2 - lng1)
+        a = math.sin(dphi/2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda/2)**2
+        distance = R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+        if search_radius_meters * 0.3 < distance < search_radius_meters * 1.2:
+            nearby_nodes.append((node, distance))
+
+    if not nearby_nodes:
+        print("No nearby nodes found for distance-based routing")
         return []
+
+    # Sort by how close they are to half the target distance
+    nearby_nodes.sort(key=lambda x: abs(x[1] - search_radius_meters))
+
+    # Try multiple turning points to find the best route
+    best_route = None
+    best_diff = float('inf')
+
+    for turn_node, _ in nearby_nodes[:20]:  # Try top 20 candidates
+        try:
+            # Path from origin to turning point
+            path_out = nx.shortest_path(G, orig_node, turn_node, weight=weight)
+            # Path from turning point back to origin
+            path_back = nx.shortest_path(G, turn_node, orig_node, weight=weight)
+
+            # Calculate total distance
+            total_distance = 0
+            combined_path = path_out + path_back[1:]  # Avoid duplicate node
+
+            for i in range(len(combined_path) - 1):
+                u, v = combined_path[i], combined_path[i + 1]
+                if G.has_edge(u, v):
+                    edge_data = G[u][v]
+                    if isinstance(edge_data, dict):
+                        total_distance += edge_data.get('length', 0)
+                    else:
+                        # MultiDiGraph case
+                        total_distance += list(edge_data.values())[0].get('length', 0)
+
+            total_distance_km = total_distance / 1000
+            diff = abs(total_distance_km - target_distance_km)
+
+            # Keep track of the best route (closest to target distance)
+            if diff < best_diff and diff < target_distance_km * 0.3:  # Within 30% of target
+                best_diff = diff
+                best_route = combined_path
+
+                # If we found a very close match, use it
+                if diff < target_distance_km * 0.1:  # Within 10%
+                    break
+
+        except nx.NetworkXNoPath:
+            continue
+
+    if best_route:
+        # Extract coordinates and metadata
+        coords = []
+        route_metadata = []
+
+        for i, node in enumerate(best_route):
+            coords.append((G.nodes[node]["y"], G.nodes[node]["x"]))
+
+            if i < len(best_route) - 1:
+                next_node = best_route[i + 1]
+                if G.has_edge(node, next_node):
+                    edge_data = G[node][next_node]
+                    if isinstance(edge_data, dict):
+                        edge_info = edge_data
+                    else:
+                        edge_info = list(edge_data.values())[0]
+
+                    route_metadata.append({
+                        "highway": edge_info.get("highway", "unknown"),
+                        "sidewalk": edge_info.get("sidewalk", "no"),
+                        "lit": edge_info.get("lit", "no"),
+                        "lanes": edge_info.get("lanes", 1),
+                        "maxspeed": edge_info.get("maxspeed", "30"),
+                        "length": edge_info.get("length", 0)
+                    })
+
+        return coords, route_metadata
+
+    # Fallback: just make a simple out-and-back route
+    print("Using fallback: out-and-back route")
+    try:
+        half_target = target_meters / 2
+        fallback_node = nearby_nodes[0][0] if nearby_nodes else orig_node
+
+        path_out = nx.shortest_path(G, orig_node, fallback_node, weight=weight)
+        path_back = nx.shortest_path(G, fallback_node, orig_node, weight=weight)
+        combined = path_out + path_back[1:]
+
+        coords = []
+        route_metadata = []
+
+        for i, node in enumerate(combined):
+            coords.append((G.nodes[node]["y"], G.nodes[node]["x"]))
+
+            if i < len(combined) - 1:
+                next_node = combined[i + 1]
+                if G.has_edge(node, next_node):
+                    edge_data = G[node][next_node]
+                    if isinstance(edge_data, dict):
+                        edge_info = edge_data
+                    else:
+                        edge_info = list(edge_data.values())[0]
+
+                    route_metadata.append({
+                        "highway": edge_info.get("highway", "unknown"),
+                        "sidewalk": edge_info.get("sidewalk", "no"),
+                        "lit": edge_info.get("lit", "no"),
+                        "lanes": edge_info.get("lanes", 1),
+                        "maxspeed": edge_info.get("maxspeed", "30"),
+                        "length": edge_info.get("length", 0)
+                    })
+
+        return coords, route_metadata
+    except:
+        return [], []
+
+### === Safety Warnings Generator === ###
+def generate_safety_warnings(route_metadata):
+    """
+    Analyze route metadata and generate safety warnings for runners
+    """
+    warnings = []
+    total_distance = 0
+    sidewalk_distance = 0
+    no_sidewalk_segments = []
+
+    for i, segment in enumerate(route_metadata):
+        length_km = segment["length"] / 1000
+        total_distance += length_km
+
+        highway = segment["highway"]
+        sidewalk = segment["sidewalk"]
+        has_sidewalk = sidewalk in ["yes", "both", "left", "right", "separate"]
+        lit = segment["lit"]
+        maxspeed = segment["maxspeed"]
+
+        if has_sidewalk:
+            sidewalk_distance += length_km
+
+        # WARNING: No sidewalk on busy road
+        if not has_sidewalk and highway in ["primary", "secondary", "tertiary", "trunk"]:
+            no_sidewalk_segments.append({
+                "segment": i,
+                "type": "no_sidewalk_busy_road",
+                "severity": "high",
+                "message": f"⚠️ No sidewalk on {highway} road. Run facing traffic to stay alert.",
+                "advice": "Face oncoming traffic so you can see vehicles approaching. Stay as far right as safely possible."
+            })
+
+        # WARNING: Highway/Motorway (should never happen but safety check)
+        if highway in ["motorway", "motorway_link"]:
+            warnings.append({
+                "segment": i,
+                "type": "motorway",
+                "severity": "critical",
+                "message": "🚨 DANGER: Motorway detected. Do NOT run here!",
+                "advice": "Find an alternative route immediately. Running on motorways is illegal and extremely dangerous."
+            })
+
+        # WARNING: Poor lighting (for evening/night runs)
+        if lit == "no" and length_km > 0.5:
+            warnings.append({
+                "segment": i,
+                "type": "poor_lighting",
+                "severity": "medium",
+                "message": f"🌙 {length_km:.1f}km of unlit road ahead.",
+                "advice": "Wear reflective gear and use a headlamp. Consider alternative route if running at night."
+            })
+
+        # WARNING: High speed limit
+        try:
+            speed = int(str(maxspeed).replace(" kph", "").replace(" mph", "").split()[0])
+            if speed >= 60 and not has_sidewalk:
+                warnings.append({
+                    "segment": i,
+                    "type": "high_speed_no_sidewalk",
+                    "severity": "high",
+                    "message": f"⚠️ High-speed road ({speed} kph) without sidewalk.",
+                    "advice": "Stay alert. Face traffic. Consider wearing bright/reflective clothing."
+                })
+        except:
+            pass
+
+    # Aggregate warning for no-sidewalk segments
+    if no_sidewalk_segments:
+        total_no_sidewalk = sum(route_metadata[seg["segment"]]["length"] / 1000 for seg in no_sidewalk_segments)
+        warnings.insert(0, {
+            "type": "route_summary_sidewalk",
+            "severity": "high" if total_no_sidewalk > 1 else "medium",
+            "message": f"⚠️ {total_no_sidewalk:.2f}km ({(total_no_sidewalk/total_distance*100):.1f}%) without sidewalks.",
+            "advice": "Always face oncoming traffic when running on roads without sidewalks."
+        })
+
+    # Positive feedback
+    if sidewalk_distance / total_distance > 0.8:
+        warnings.insert(0, {
+            "type": "route_summary_safe",
+            "severity": "info",
+            "message": f"✓ Great! {(sidewalk_distance/total_distance*100):.0f}% of route has sidewalks.",
+            "advice": "This is a safe route for running."
+        })
+
+    return {
+        "warnings": warnings,
+        "stats": {
+            "total_distance_km": total_distance,
+            "sidewalk_coverage": sidewalk_distance / total_distance if total_distance > 0 else 0,
+            "has_critical_warnings": any(w["severity"] == "critical" for w in warnings)
+        }
+    }
 
 ### === FastAPI Endpoint Examples === ###
 @app.on_event("startup")
@@ -259,13 +627,52 @@ def get_trust(reports: List[Report]):
 
 @app.post("/route-osm")
 def get_route_osm(input: RouteInput):
-    coords = safest_path_osm(
+    """
+    Generate safest route between two points with safety warnings
+    """
+    coords, metadata = safest_path_osm(
         road_graph,
         (input.start.lat, input.start.lng),
         (input.end.lat, input.end.lng),
         input.alpha,
     )
-    return {"coordinates": coords}
+
+    # Generate safety warnings
+    safety_analysis = generate_safety_warnings(metadata) if metadata else {
+        "warnings": [],
+        "stats": {"total_distance_km": 0, "sidewalk_coverage": 0, "has_critical_warnings": False}
+    }
+
+    return {
+        "coordinates": coords,
+        "metadata": metadata,
+        "safety": safety_analysis
+    }
+
+@app.post("/route-distance")
+def get_route_distance(input: RouteDistanceInput):
+    """
+    Generate a circular route of specified distance from a starting point
+    Returns to the start with the safest path and safety warnings
+    """
+    coords, metadata = distance_based_route(
+        road_graph,
+        (input.start.lat, input.start.lng),
+        input.target_distance_km,
+        input.alpha,
+    )
+
+    # Generate safety warnings
+    safety_analysis = generate_safety_warnings(metadata) if metadata else {
+        "warnings": [],
+        "stats": {"total_distance_km": 0, "sidewalk_coverage": 0, "has_critical_warnings": False}
+    }
+
+    return {
+        "coordinates": coords,
+        "metadata": metadata,
+        "safety": safety_analysis
+    }
 
 @app.post("/sbert")
 def get_computed_sbert(req: EmbedRequest):

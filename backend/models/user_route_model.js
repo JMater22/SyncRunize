@@ -42,7 +42,8 @@ export const createRoute = async (data) => {
     risk_score = 0,
     route_name = "Unnamed Route",
     weight_kg = 70,
-    visibility = "private" // ✅ NEW: default
+    visibility = "private", // ✅ NEW: default
+    route_status = "generated" // ✅ NEW: default to 'generated' for route creation
   } = data;
 
   // Compute distance
@@ -96,6 +97,7 @@ export const createRoute = async (data) => {
       route_name,
       snapshot_url,
       visibility, // ✅ included
+      route_status, // ✅ NEW: include route_status
       created_at: new Date().toISOString(),
     })
     .select()
@@ -107,15 +109,30 @@ export const createRoute = async (data) => {
 
 /**
  * Get user routes
+ * @param {number} userId - User ID
+ * @param {object} filters - Filter options
+ * @param {number} filters.limit - Maximum number of routes to return
+ * @param {number} filters.offset - Offset for pagination
+ * @param {string} filters.start_date - Filter by start date
+ * @param {string} filters.end_date - Filter by end date
+ * @param {string} filters.route_status - Filter by route status ('generated', 'saved', 'completed')
+ * @param {boolean} filters.activities_only - If true, only return completed routes (for activities view)
  */
 export const getUserRoutes = async (userId, filters = {}) => {
   console.log('========== MODEL getUserRoutes START ==========');
   console.log('Received userId:', userId);
   console.log('Received filters:', filters);
-  
-  const { limit = 20, offset = 0, start_date, end_date } = filters;
-  
-  console.log('Parsed filters:', { limit, offset, start_date, end_date });
+
+  const {
+    limit = 20,
+    offset = 0,
+    start_date,
+    end_date,
+    route_status,
+    activities_only = false // ✅ NEW: default filter for activities
+  } = filters;
+
+  console.log('Parsed filters:', { limit, offset, start_date, end_date, route_status, activities_only });
 
   let query = supabase
     .from("user_routes")
@@ -123,6 +140,16 @@ export const getUserRoutes = async (userId, filters = {}) => {
     .eq("user_id", userId);
 
   console.log('Base query created for user_id:', userId);
+
+  // ✅ NEW: Filter for activities view - only show completed routes
+  if (activities_only) {
+    query = query.eq("route_status", "completed");
+    console.log('Applied activities_only filter: route_status = completed');
+  } else if (route_status) {
+    // Allow explicit route_status filtering
+    query = query.eq("route_status", route_status);
+    console.log('Applied route_status filter:', route_status);
+  }
 
   if (start_date) {
     query = query.gte("created_at", start_date);
@@ -142,16 +169,16 @@ export const getUserRoutes = async (userId, filters = {}) => {
   console.log('Executing Supabase query...');
 
   const { data, error } = await query;
-  
+
   console.log('Query executed');
   console.log('Error:', error);
   console.log('Data:', data);
-  
+
   if (error) {
     console.error('Supabase error details:', error);
     throw error;
   }
-  
+
   console.log('Returning', data.length, 'routes');
   return data;
 };
@@ -188,5 +215,35 @@ export const deleteRouteById = async (routeId) => {
   }
 
   console.log(`Route ${routeId} deleted successfully`, data);
+  return data;
+};
+
+/**
+ * Update route status
+ * @param {number} routeId - Route ID
+ * @param {number} userId - User ID (for security check)
+ * @param {string} status - New status ('generated', 'saved', 'completed')
+ */
+export const updateRouteStatus = async (routeId, userId, status) => {
+  const validStatuses = ['generated', 'saved', 'completed'];
+
+  if (!validStatuses.includes(status)) {
+    throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+  }
+
+  const { data, error } = await supabase
+    .from("user_routes")
+    .update({ route_status: status })
+    .eq("route_id", routeId)
+    .eq("user_id", userId) // Security: ensure user owns this route
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Failed to update route status:", error);
+    throw error;
+  }
+
+  console.log(`Route ${routeId} status updated to '${status}'`);
   return data;
 };

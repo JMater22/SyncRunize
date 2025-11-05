@@ -47,7 +47,11 @@ export const getUserPosts = async (req, res) => {
     const currentUserId = req.user?.user_id || null;
     const { limit = 20, offset = 0 } = req.query;
 
+    console.log(`[post_controller.getUserPosts] targetUserId: ${userId}, currentUserId: ${currentUserId}, hasAuth: ${!!req.user}`);
+
     const posts = await PostModel.getUserPosts(userId, currentUserId, parseInt(limit), parseInt(offset));
+
+    console.log(`[post_controller.getUserPosts] Returning ${posts.length} posts`);
     res.json(posts);
   } catch (err) {
     console.error("Get user posts error:", err);
@@ -109,11 +113,21 @@ export const updatePost = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body; // {content, imageUrl, visibility}
+    const userId = req.user.user_id;
 
-    const updated = await PostModel.updatePost(id, updates);
+    const updated = await PostModel.updatePost(id, updates, userId);
     res.json(updated);
   } catch (err) {
     console.error("Update post error:", err);
+
+    // Handle specific errors
+    if (err.message && err.message.includes("Unauthorized")) {
+      return res.status(403).json({ error: err.message });
+    }
+    if (err.message && err.message.includes("not found")) {
+      return res.status(404).json({ error: err.message });
+    }
+
     res.status(500).json({ error: "Failed to update post" });
   }
 };
@@ -122,10 +136,20 @@ export const updatePost = async (req, res) => {
 export const deletePost = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await PostModel.deletePost(id);
+    const userId = req.user.user_id;
+    const result = await PostModel.deletePost(id, userId);
     res.json(result);
   } catch (err) {
     console.error("Delete post error:", err);
+
+    // Handle specific errors
+    if (err.message && err.message.includes("Unauthorized")) {
+      return res.status(403).json({ error: err.message });
+    }
+    if (err.message && err.message.includes("not found")) {
+      return res.status(404).json({ error: err.message });
+    }
+
     res.status(500).json({ error: "Failed to delete post" });
   }
 };

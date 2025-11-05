@@ -29,6 +29,7 @@ import SavedRoutesPage from "./components/Routes/SavedRoutesPage";
 import Activities from "./pages/Activities";
 import RecentlyDeleted from "./pages/RecentlyDeleted";
 import Profile from "./pages/Profile";
+import ViewProfile from "./pages/ViewProfile";
 import CreateGroup from "./components/Community/CreateGroup";
 import GroupFeed from "./components/Community/GroupFeed";
 import GetStarted from "./components/UserAuth/GetStarted";
@@ -201,6 +202,11 @@ const App: React.FC = () => {
                 exact
                 path="/profile"
                 render={() => (session ? <Profile /> : <Redirect to="/login" />)}
+              />
+              <Route
+                exact
+                path="/profile/:userId"
+                render={() => (session ? <ViewProfile /> : <Redirect to="/login" />)}
               />
               <Route
                 exact

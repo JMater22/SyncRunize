@@ -28,6 +28,8 @@ export const getFeed = async (currentUserId, limit = 20, offset = 0) => {
   const followedIds = followedUsers.map(f => f.followed_id);
   followedIds.push(currentUserId); // Include own posts
 
+  // For followed users (including self), show ALL posts (public + private)
+  // This is correct because we only fetch from users we follow
   const { data, error } = await supabase
     .from("posts")
     .select(`
@@ -39,7 +41,8 @@ export const getFeed = async (currentUserId, limit = 20, offset = 0) => {
       )
     `)
     .in("user_id", followedIds)
-    .or(`visibility.eq.public,user_id.eq.${currentUserId}`)
+    // No additional visibility filter needed - we only show posts from people we follow
+    // and those users' posts should all be visible to us (both public and private)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -96,17 +99,27 @@ export const getMyPosts = async (userId, limit = 20, offset = 0) => {
 
 // ✅ NEW: Get another user's posts (with privacy filter)
 export const getUserPosts = async (targetUserId, currentUserId = null, limit = 20, offset = 0) => {
+  console.log(`[getUserPosts] targetUserId: ${targetUserId}, currentUserId: ${currentUserId}`);
+
   // Check if current user follows target user
   let isFollowing = false;
   if (currentUserId) {
-    const { data: followData } = await supabase
+    const { data: followData, error: followError } = await supabase
       .from("follows")
       .select("follow_id")
       .eq("follower_id", currentUserId)
       .eq("followed_id", targetUserId)
       .single();
 
+    console.log(`[getUserPosts] Follow check result:`, { followData, followError: followError?.code });
+
+    // PGRST116 means no rows found, which is fine - just means not following
+    if (followError && followError.code !== 'PGRST116') {
+      console.error('Error checking follow status:', followError);
+    }
+
     isFollowing = !!followData;
+    console.log(`[getUserPosts] isFollowing: ${isFollowing}`);
   }
 
   // Build query with privacy filter
@@ -127,16 +140,31 @@ export const getUserPosts = async (targetUserId, currentUserId = null, limit = 2
   // Apply privacy filter
   if (currentUserId && parseInt(currentUserId) === parseInt(targetUserId)) {
     // Own posts - show all
+    console.log(`[getUserPosts] Showing own posts (all visibility)`);
   } else if (isFollowing) {
     // Following - show public and private
+    console.log(`[getUserPosts] Following - showing public and private posts`);
     query = query.in("visibility", ["public", "private"]);
   } else {
     // Not following - show only public
+    console.log(`[getUserPosts] Not following - showing only public posts`);
     query = query.eq("visibility", "public");
   }
 
   const { data, error } = await query;
   if (error) throw error;
+
+  console.log(`[getUserPosts] Found ${data?.length || 0} posts`);
+
+  // Debug: Check total posts for this user without filters
+  const { data: allPosts } = await supabase
+    .from("posts")
+    .select("post_id, visibility")
+    .eq("user_id", targetUserId);
+  console.log(`[getUserPosts] DEBUG - Total posts for user ${targetUserId}:`, allPosts?.length || 0);
+  if (allPosts && allPosts.length > 0) {
+    console.log(`[getUserPosts] DEBUG - Post visibilities:`, allPosts.map(p => ({ id: p.post_id, visibility: p.visibility })));
+  }
 
   // Get likes and comments count for each post
   const postsWithCounts = await Promise.all(data.map(async (post) => {
@@ -227,7 +255,18 @@ export const createPost = async (userId, content, imageUrl = null) => {
 };
 
 // Update a post
-export const updatePost = async (postId, updates) => {
+export const updatePost = async (postId, updates, userId) => {
+  // First, verify ownership
+  const { data: post, error: fetchError } = await supabase
+    .from("posts")
+    .select("user_id")
+    .eq("post_id", postId)
+    .single();
+
+  if (fetchError) throw fetchError;
+  if (!post) throw new Error("Post not found");
+  if (post.user_id !== userId) throw new Error("Unauthorized: You can only update your own posts");
+
   const updateData = {};
 
   if (updates.content !== undefined) updateData.content = updates.content;
@@ -246,12 +285,32 @@ export const updatePost = async (postId, updates) => {
 };
 
 // Delete a post (likes & comments cascade in DB)
-export const deletePost = async (postId) => {
+export const deletePost = async (postId, userId) => {
+  // First, verify ownership
+  const { data: post, error: fetchError } = await supabase
+    .from("posts")
+    .select("user_id, route_id")
+    .eq("post_id", postId)
+    .single();
+
+  if (fetchError) throw fetchError;
+  if (!post) throw new Error("Post not found");
+  if (post.user_id !== userId) throw new Error("Unauthorized: You can only delete your own posts");
+
+  // Unlink from user_routes if this post is linked
+  if (post.route_id) {
+    await supabase
+      .from("user_routes")
+      .update({ post_id: null, is_shared: false })
+      .eq("post_id", postId);
+  }
+
+  // Delete the post
   const { error } = await supabase
     .from("posts")
     .delete()
     .eq("post_id", postId);
 
   if (error) throw error;
-  return { message: "Post deleted" };
+  return { message: "Post deleted successfully" };
 };

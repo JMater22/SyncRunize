@@ -1,5 +1,62 @@
 import { supabase } from "./supabase.js";
 
+// Optional authentication - tries to authenticate but doesn't fail if no token
+export const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers["authorization"];
+    if (!authHeader) {
+      // No auth provided - continue without user
+      req.user = null;
+      return next();
+    }
+
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      // Invalid format - continue without user
+      req.user = null;
+      return next();
+    }
+
+    // Verify token with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      // Invalid token - continue without user
+      req.user = null;
+      return next();
+    }
+
+    // Get user_id from users table using auth_id
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("user_id, name, email, username, profile_picture")
+      .eq("auth_id", user.id)
+      .single();
+
+    if (userError || !userData) {
+      console.error("User lookup error:", userError);
+      req.user = null;
+      return next();
+    }
+
+    // Attach complete user info to req.user
+    req.user = {
+      user_id: userData.user_id,
+      auth_id: user.id,
+      email: userData.email,
+      name: userData.name,
+      username: userData.username,
+      profile_picture: userData.profile_picture
+    };
+
+    next();
+  } catch (err) {
+    console.error("Optional Auth Error:", err);
+    req.user = null;
+    next();
+  }
+};
+
 export const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers["authorization"];

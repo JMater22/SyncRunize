@@ -79,9 +79,13 @@ const Activities: React.FC = () => {
         const userId = user.user_id;
         setCurrentUserId(userId);
 
-        // 3. Fetch user routes
+        // 3. Fetch user routes (only completed activities)
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/routes/user/${userId}`, {
-          params: { limit: 20, offset: 0 }
+          params: {
+            limit: 20,
+            offset: 0,
+            activities_only: true // ✅ NEW: Only fetch completed routes for activities view
+          }
         });
 
         const routes = Array.isArray(response.data) ? response.data : [];

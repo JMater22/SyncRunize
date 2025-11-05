@@ -86,7 +86,6 @@ interface UserSearchResult {
 
 // Placeholder images
 import ProfilePic from "../assets/Profile Picture.png";
-import GirlPic from "../assets/GIRL 3.jpg";
 import Couch5K from "../assets/Couch to 5K.jpg";
 import SevenDayStarter from "../assets/The 7-Day Starter.jpg";
 import ThreeTimesAWeek from "../assets/Three Times a Week.jpg";
@@ -107,7 +106,70 @@ const Home: React.FC = () => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [followingUsers, setFollowingUsers] = useState<Set<number>>(new Set());
 
+  // Current user profile state
+  const [currentUser, setCurrentUser] = useState<{
+    name: string;
+    username: string;
+    profile_picture?: string;
+    user_id?: number;
+  } | null>(null);
+  const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 });
+  const [userRoutes, setUserRoutes] = useState<any[]>([]);
+  const [weeklyStats, setWeeklyStats] = useState({
+    distance: '0.0 km',
+    time: '0h 0m',
+    calories: '0'
+  });
+
   const history = useHistory();
+
+  // Calculate weekly stats from user routes
+  useEffect(() => {
+    if (!userRoutes || userRoutes.length === 0) {
+      setWeeklyStats({
+        distance: '0.0 km',
+        time: '0h 0m',
+        calories: '0'
+      });
+      return;
+    }
+
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // Filter routes from the last 7 days
+    const weekRoutes = userRoutes.filter(route => {
+      const created = new Date(route.created_at);
+      return created >= weekAgo;
+    });
+
+    // Calculate totals
+    const total_distance = weekRoutes.reduce((sum, r) => sum + (r.distance_km || 0), 0);
+    const total_duration = weekRoutes.reduce((sum, r) => sum + (r.duration_seconds || 0), 0);
+    const total_calories = weekRoutes.reduce((sum, r) => sum + (r.estimated_calories || 0), 0);
+
+    // Format distance
+    const distance = `${total_distance.toFixed(1)} km`;
+
+    // Format time (duration in seconds to hours and minutes)
+    const hours = Math.floor(total_duration / 3600);
+    const minutes = Math.floor((total_duration % 3600) / 60);
+    const time = `${hours}h ${minutes}m`;
+
+    // Format calories
+    const calories = Math.round(total_calories).toString();
+
+    setWeeklyStats({
+      distance,
+      time,
+      calories
+    });
+  }, [userRoutes]);
+
+  // Fetch current user profile and stats
+  useEffect(() => {
+    fetchCurrentUserProfile();
+  }, []);
 
   // Fetch posts feed
   useEffect(() => {
@@ -213,6 +275,52 @@ const Home: React.FC = () => {
   // Navigate to user profile
   const handleViewProfile = (userId: number) => {
     history.push(`/profile/${userId}`);
+  };
+
+  const fetchCurrentUserProfile = async () => {
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session) return;
+
+      const token = session.access_token;
+
+      // Fetch user profile
+      const { data: user } = await axios.get(
+        `${import.meta.env.VITE_API_URL}/users/me`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      setCurrentUser({
+        name: user.name,
+        username: user.username,
+        profile_picture: user.profile_picture,
+        user_id: user.user_id
+      });
+
+      // Fetch follow counts
+      const { data: counts } = await axios.get(
+        `${import.meta.env.VITE_API_URL}/follows/${user.user_id}/counts`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setFollowCounts(counts);
+
+      // Fetch user routes (for activities count and weekly stats calculation)
+      const routesResponse = await axios.get(
+        `${import.meta.env.VITE_API_URL}/routes/user/${user.user_id}`,
+        {
+          params: {
+            limit: 20,
+            offset: 0
+          }
+        }
+      );
+      setUserRoutes(Array.isArray(routesResponse.data) ? routesResponse.data : []);
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+    }
   };
 
   const fetchFeed = async () => {
@@ -374,7 +482,7 @@ const Home: React.FC = () => {
       icon: personAddOutline,
       iconColor: "#3880ff",
       user: "Sarah Johnson",
-      avatar: GirlPic,
+      avatar: ProfilePic,
       message: "started following you",
       time: "5m ago",
       unread: true,
@@ -415,7 +523,7 @@ const Home: React.FC = () => {
       icon: heartOutline,
       iconColor: "#eb445a",
       user: "Emily Chen",
-      avatar: GirlPic,
+      avatar: ProfilePic,
       message: "liked your activity",
       time: "5h ago",
       unread: true,
@@ -458,8 +566,8 @@ const Home: React.FC = () => {
   if (showCreatePostPage) {
     return (
       <CreatePostPage
-        userName="Alexander Smith"
-        userAvatar={ProfilePic}
+        userName={currentUser?.name || 'User'}
+        userAvatar={currentUser?.profile_picture || ProfilePic}
         onClose={() => setShowCreatePostPage(false)}
         onSubmit={handlePostSubmit}
       />
@@ -475,26 +583,26 @@ const Home: React.FC = () => {
             <IonCard className="profile-card-enhanced">
               <div className="profile-card-header">
                 <IonAvatar className="profile-avatar-large">
-                  <img src={ProfilePic} alt="Profile" />
+                  <img src={currentUser?.profile_picture || ProfilePic} alt="Profile" />
                 </IonAvatar>
                 <div className="online-status"></div>
               </div>
 
               <IonCardContent className="profile-card-content">
-                <h2 className="profile-name">Alexander Smith</h2>
-                <p className="profile-handle">@alexsmith</p>
+                <h2 className="profile-name">{currentUser?.name || 'Loading...'}</h2>
+                <p className="profile-handle">@{currentUser?.username || 'username'}</p>
 
                 <div className="profile-stats-grid">
                   <div className="stat-item">
-                    <span className="stat-number">32</span>
+                    <span className="stat-number">{followCounts.following}</span>
                     <span className="stat-label">Following</span>
                   </div>
                   <div className="stat-item">
-                    <span className="stat-number">21</span>
+                    <span className="stat-number">{followCounts.followers}</span>
                     <span className="stat-label">Followers</span>
                   </div>
                   <div className="stat-item">
-                    <span className="stat-number">12</span>
+                    <span className="stat-number">{userRoutes.length}</span>
                     <span className="stat-label">Activities</span>
                   </div>
                 </div>
@@ -503,15 +611,15 @@ const Home: React.FC = () => {
                   <h4>This Week</h4>
                   <div className="summary-stats">
                     <div className="summary-item">
-                      <span className="summary-value">45.6 km</span>
+                      <span className="summary-value">{weeklyStats.distance}</span>
                       <span className="summary-label">Distance</span>
                     </div>
                     <div className="summary-item">
-                      <span className="summary-value">4h 23m</span>
+                      <span className="summary-value">{weeklyStats.time}</span>
                       <span className="summary-label">Time</span>
                     </div>
                     <div className="summary-item">
-                      <span className="summary-value">3234</span>
+                      <span className="summary-value">{weeklyStats.calories}</span>
                       <span className="summary-label">Calories</span>
                     </div>
                   </div>
@@ -519,7 +627,7 @@ const Home: React.FC = () => {
               </IonCardContent>
             </IonCard>
 
-            
+
           </aside>
 
           {/* Center Feed */}
@@ -746,7 +854,7 @@ const Home: React.FC = () => {
                           ))}
                           <div className="add-comment">
                             <IonAvatar className="comment-avatar">
-                              <img src={ProfilePic} alt="You" />
+                              <img src={currentUser?.profile_picture || ProfilePic} alt="You" />
                             </IonAvatar>
                             <IonInput
                               placeholder="Add a comment..."

@@ -1,6 +1,6 @@
 import express from "express";
 import * as PostController from "../controllers/post_controller.js";
-import { authenticate } from "../utils/auth_middleware.js";
+import { authenticate, optionalAuth } from "../utils/auth_middleware.js";
 
 const router = express.Router();
 
@@ -10,7 +10,7 @@ router.get("/", PostController.getPosts);
 // ✅ NEW: Protected routes for personalized feed
 router.get("/feed", authenticate, PostController.getFeed);
 router.get("/my", authenticate, PostController.getMyPosts);
-router.get("/user/:userId", PostController.getUserPosts); // Can be public or authenticated
+router.get("/user/:userId", optionalAuth, PostController.getUserPosts); // Optional auth for privacy filtering
 
 // ✅ NEW: Create post from route
 router.post("/from-route", authenticate, PostController.createPostFromRoute);
