@@ -46,6 +46,9 @@ interface Post {
 const GroupFeed: React.FC = () => {
   const history = useHistory();
   
+  // Group membership state - Set this based on your actual user/group relationship
+  const [isUserJoined, setIsUserJoined] = useState(true); // Change to false if user hasn't joined
+  
   // Comments state
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
@@ -196,7 +199,31 @@ const GroupFeed: React.FC = () => {
 
   const handleLeaveGroup = () => {
     console.log("User left the group");
+    setIsUserJoined(false);
     history.push("/HomeModule/homeM1");
+  };
+
+  // Build action sheet buttons conditionally
+  const getActionSheetButtons = () => {
+    const buttons = [];
+    
+    if (isUserJoined) {
+      buttons.push({
+        text: 'Leave Group',
+        role: 'destructive',
+        icon: exitOutline,
+        handler: () => {
+          setShowLeaveAlert(true);
+        }
+      });
+    }
+    
+    buttons.push({
+      text: 'Cancel',
+      role: 'cancel'
+    });
+    
+    return buttons;
   };
 
   return (
@@ -326,20 +353,7 @@ const GroupFeed: React.FC = () => {
         <IonActionSheet
           isOpen={showActionSheet}
           onDidDismiss={() => setShowActionSheet(false)}
-          buttons={[
-            {
-              text: 'Leave Group',
-              role: 'destructive',
-              icon: exitOutline,
-              handler: () => {
-                setShowLeaveAlert(true);
-              }
-            },
-            {
-              text: 'Cancel',
-              role: 'cancel'
-            }
-          ]}
+          buttons={getActionSheetButtons()}
         />
 
         {/* Leave Group Confirmation Alert */}

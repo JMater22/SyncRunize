@@ -1,46 +1,47 @@
-import React from "react";
-import {
-  IonCard,
-  IonCardContent,
-  IonButton,
-  IonImg
-} from "@ionic/react";
+  import React from "react";
+  import {
+    IonCard,
+    IonCardContent,
+    IonButton,
+    IonImg
+  } from "@ionic/react";
+  import GroupFeed from "../pages/Group-feed";
 
-interface GroupCardProps {
-  name: string;
-  imageSrc: string;
-  showJoinButton?: boolean;
-  routerLink?: string;
-  onJoin?: () => void;
-}
+  interface GroupCardProps {
+    name: string;
+    imageSrc: string;
+    showJoinButton?: boolean;
+    routerLink?: string;
+    onJoin?: () => void;
+  }
 
-const GroupCard: React.FC<GroupCardProps> = ({
-  name,
-  imageSrc,
-  showJoinButton = false,
-  routerLink,
-  onJoin
-}) => {
-  return (
-    <IonCard className="group-card" routerLink={routerLink}>
-      <IonImg src={imageSrc} alt={`${name} Group`} />
-      <IonCardContent className="group-overlay">
-        <span className="group-name">{name}</span>
-        {showJoinButton && (
-          <IonButton 
-            size="small" 
-            className="join-group-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              onJoin?.();
-            }}
-          >
-            Join
-          </IonButton>
-        )}
-      </IonCardContent>
-    </IonCard>
-  );
-};
+  const GroupCard: React.FC<GroupCardProps> = ({
+    name,
+    imageSrc,
+    showJoinButton = false,
+    routerLink="/group-feed",
+    onJoin
+  }) => {
+    return (
+      <IonCard className="group-card" routerLink={routerLink}>
+        <IonImg src={imageSrc} alt={`${name} Group`} />
+        <IonCardContent className="group-overlay">
+          <span className="group-name">{name}</span>
+          {showJoinButton && (
+            <IonButton 
+              size="small" 
+              className="join-group-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onJoin?.();
+              }}
+            >
+              Join
+            </IonButton>
+          )}
+        </IonCardContent>
+      </IonCard>
+    );
+  };
 
-export default GroupCard;
+  export default GroupCard;

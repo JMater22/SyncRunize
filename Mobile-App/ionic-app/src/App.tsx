@@ -127,7 +127,7 @@ const App: React.FC = () => (
 
           <IonTabButton tab="community" href="/community">
             <img src={GroupsIcon} alt="Community" className="nav-icon" />
-            Groups
+            Community
           </IonTabButton>
 
           <IonTabButton tab="analytics" href="/analytics">
