@@ -251,21 +251,23 @@ const GroupFeed: React.FC = () => {
 
       <IonContent fullscreen className="ion-padding">
         <div className="feed-tab">
-          {/* Post Creation Input */}
-          <IonCard className="post-input-card" routerLink="/create-post">
-            <IonItem lines="none">
-              <IonAvatar slot="start">
-                <IonImg src={ProfilePic} />
-              </IonAvatar>
-              <input 
-                type="text" 
-                placeholder="What's on your mind?" 
-                className="post-input" 
-                style={{border: 'none', outline: 'none', width: '100%', padding: '10px'}} 
-                readOnly 
-              />
-            </IonItem>
-          </IonCard>
+          {/* Post Creation Input - Only shown if user has joined */}
+          {isUserJoined && (
+            <IonCard className="post-input-card" routerLink="/create-post">
+              <IonItem lines="none">
+                <IonAvatar slot="start">
+                  <IonImg src={ProfilePic} />
+                </IonAvatar>
+                <input 
+                  type="text" 
+                  placeholder="What's on your mind?" 
+                  className="post-input" 
+                  style={{border: 'none', outline: 'none', width: '100%', padding: '10px'}} 
+                  readOnly 
+                />
+              </IonItem>
+            </IonCard>
+          )}
 
           {/* Feed Posts */}
           <div className="feed-posts">
