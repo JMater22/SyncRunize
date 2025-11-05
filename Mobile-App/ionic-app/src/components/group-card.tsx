@@ -19,7 +19,7 @@
     name,
     imageSrc,
     showJoinButton = false,
-    routerLink="/group-feed",
+    routerLink="/group-feed", 
     onJoin
   }) => {
     return (
