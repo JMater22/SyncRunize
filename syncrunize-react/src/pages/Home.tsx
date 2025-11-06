@@ -171,14 +171,37 @@ const Home: React.FC = () => {
     });
   }, [userRoutes]);
 
-  // Fetch current user profile and stats
+  // Check session and initialize
   useEffect(() => {
-    fetchCurrentUserProfile();
-  }, []);
+    const initialize = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
 
-  // Fetch posts feed
-  useEffect(() => {
-    fetchFeed();
+        if (error) {
+          console.error('❌ Home: Error getting session:', error);
+          setLoading(false);
+          return;
+        }
+
+        if (session) {
+          console.log('✅ Home: Session found, initializing data');
+
+          // Fetch data in parallel
+          await Promise.all([
+            fetchCurrentUserProfile(),
+            fetchFeed()
+          ]);
+        } else {
+          console.log('⚠️ Home: No session found');
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('❌ Home: Error in initialization:', error);
+        setLoading(false);
+      }
+    };
+
+    initialize();
   }, []);
 
   // Debounced search for users
@@ -279,7 +302,7 @@ const Home: React.FC = () => {
 
   // Navigate to user profile
   const handleViewProfile = (userId: number) => {
-    history.push(`/profile/${userId}`);
+    history.push(`/user/${userId}`);
   };
 
   const fetchCurrentUserProfile = async () => {
@@ -564,7 +587,7 @@ const Home: React.FC = () => {
                     <IonIcon icon={person} style={{ fontSize: '64px', color: '#92C628' }} />
                   )}
                 </IonAvatar>
-                <div className="online-status"></div>
+                
               </div>
 
               <IonCardContent className="profile-card-content">

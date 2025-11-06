@@ -58,7 +58,21 @@ import React, { useEffect, useState } from "react";
 setupIonicReact();
 
 const AppContent: React.FC<{ session: any; userData: any; loading: boolean }> = ({ session, userData, loading }) => {
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        background: '#f5f5f5'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <h2>Loading SyncRunize...</h2>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <IonReactRouter>
@@ -177,7 +191,7 @@ const AppContent: React.FC<{ session: any; userData: any; loading: boolean }> = 
             />
             <Route
               exact
-              path="/profile/:userId"
+              path="/user/:userId"
               render={() => (session ? <ViewProfile /> : <Redirect to="/login" />)}
             />
             <Route
@@ -244,35 +258,132 @@ const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+    let initialized = false;
+
     // Fetch current session
-    supabase.auth.getSession().then(async ({ data }) => {
-      const currentSession = data.session;
-      setSession(currentSession);
+    const initializeAuth = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
 
-      if (currentSession?.user) {
-        // Fetch matching user record from your custom table
-        const { data: userRecord } = await supabase
-          .from("users")
-          .select("*")
-          .eq("auth_id", currentSession.user.id)
-          .single();
+        if (error) {
+          console.error('❌ App: Error getting session:', error);
+          if (isMounted) {
+            setSession(null);
+            setUserData(null);
+            setLoading(false);
+            setIsInitialized(true);
+          }
+          initialized = true;
+          return;
+        }
 
-        setUserData(userRecord);
+        const currentSession = data.session;
+
+        if (!isMounted) return;
+
+        setSession(currentSession);
+
+        if (currentSession?.user) {
+          // Fetch matching user record from your custom table
+          const { data: userRecord, error: userError } = await supabase
+            .from("users")
+            .select("*")
+            .eq("auth_id", currentSession.user.id)
+            .single();
+
+          if (!isMounted) return;
+
+          if (userError) {
+            console.error('❌ App: Error fetching user record:', userError);
+            setUserData(null);
+          } else {
+            console.log('✅ App: User record loaded');
+            setUserData(userRecord);
+          }
+        } else {
+          // Clear userData if no session
+          setUserData(null);
+        }
+
+        if (isMounted) {
+          setLoading(false);
+          setIsInitialized(true);
+        }
+        initialized = true;
+      } catch (err) {
+        console.error('❌ App: Unexpected error in getSession:', err);
+        if (isMounted) {
+          setSession(null);
+          setUserData(null);
+          setLoading(false);
+          setIsInitialized(true);
+        }
+        initialized = true;
       }
+    };
 
-      setLoading(false);
-    });
+    initializeAuth();
 
     // Listen for auth state changes
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
+      async (event, session) => {
+        if (!isMounted) return;
+
+        console.log('🔔 App: Auth event:', event);
+
+        // Ignore INITIAL_SESSION and first SIGNED_IN during initialization
+        if (event === 'INITIAL_SESSION' || (!initialized && event === 'SIGNED_IN')) {
+          console.log('⏭️ App: Skipping initial auth event, already handled');
+          return;
+        }
+
+        // Only handle meaningful events to avoid unnecessary re-renders
+        if (event === 'SIGNED_OUT') {
+          console.log('🔄 App: User signed out');
+          setSession(null);
+          setUserData(null);
+        } else if (event === 'SIGNED_IN' && session?.user) {
+          console.log('🔄 App: User signed in');
+          setSession(session);
+
+          try {
+            // Fetch new user data when logging in
+            const { data: userRecord, error } = await supabase
+              .from("users")
+              .select("*")
+              .eq("auth_id", session.user.id)
+              .single();
+
+            if (!isMounted) return;
+
+            if (error) {
+              console.error('❌ App: Error fetching user record on sign in:', error);
+              setUserData(null);
+            } else {
+              console.log('✅ App: User record loaded on sign in');
+              setUserData(userRecord);
+            }
+          } catch (error) {
+            console.error('❌ App: Error in auth state change:', error);
+            if (isMounted) setUserData(null);
+          }
+        } else if (event === 'TOKEN_REFRESHED') {
+          console.log('🔄 App: Token refreshed');
+          // Update session but don't refetch user data
+          setSession(session);
+        } else if (event === 'USER_UPDATED') {
+          console.log('🔄 App: User updated');
+          setSession(session);
+        }
       }
     );
 
     return () => {
+      isMounted = false;
       listener.subscription.unsubscribe();
     };
   }, []);

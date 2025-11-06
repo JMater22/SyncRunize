@@ -181,13 +181,37 @@ const ViewProfile: React.FC = () => {
   }, [userId, history]);
 
   useEffect(() => {
-    fetchUserProfile();
-    fetchUserPosts();
-    fetchUserRoutes();
-    fetchFollowCounts();
-    checkFollowStatus();
-    fetchUserBadges();
-    fetchUserChallenges();
+    // Reset all state immediately when userId changes to prevent showing stale data
+    setProfile(null);
+    setPosts([]);
+    setUserRoutes([]);
+    setEarnedBadges([]);
+    setUserChallenges([]);
+    setIsFollowing(false);
+    setFollowerCount(0);
+    setFollowingCount(0);
+    setComments({});
+    setOpenComments(null);
+    setStatsData({
+      day: { title: "Today", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+      week: { title: "This Week", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+      month: { title: "This Month", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+    });
+
+    // Fetch new data - ensure session is available first
+    const initializeData = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        fetchUserProfile();
+        fetchUserPosts();
+        fetchUserRoutes();
+        fetchFollowCounts();
+        checkFollowStatus();
+        fetchUserBadges();
+        fetchUserChallenges();
+      }
+    };
+    initializeData();
   }, [userId]);
 
   // Calculate stats from routes
