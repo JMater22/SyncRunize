@@ -6,19 +6,41 @@ import {
   IonButton,
   IonInput,
   IonText,
+  IonToast,
+  IonIcon,
 } from "@ionic/react";
+import { eyeOutline, eyeOffOutline } from 'ionicons/icons';
 import "../theme/log-in.css";
 import LogoIcon from "../components/assets/SycnRunize-Logo.png";
 import { useHideTabBar } from "../hooks/useHideTabBar";
+import { supabase } from "../lib/supabaseClient";
 
 const Login: React.FC = () => {
   useHideTabBar();
   const history = useHistory();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login attempted");
-    history.push("/home");
+    setSubmitting(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setError(error.message);
+        return;
+      }
+      history.replace("/home");
+    } catch (err: any) {
+      setError(err?.message || "Login failed");
+    } finally {
+      setSubmitting(false);
+    }
   }; 
 
   const [isMobile, setIsMobile] = useState(false); 
@@ -63,24 +85,31 @@ const Login: React.FC = () => {
                       className="custom-input2"
                       type="email"
                       placeholder="Enter your email"
+                      value={email}
+                      onIonChange={(e) => setEmail(e.detail.value || "")}
                       required
                     />
                   </div>
 
                  
-                  <div className="input-group2">
+                  <div className="input-group2" style={{ position: 'relative' }}>
                     <label className="input-label2">Password</label>
                     <IonInput
                       className="custom-input2"
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       placeholder="Enter your password"
+                      value={password}
+                      onIonChange={(e) => setPassword(e.detail.value || "")}
                       required
                     />
+                    <IonButton fill="clear" size="small" style={{ position: 'absolute', right: 0, top: 30 }} onClick={() => setShowPassword(s => !s)}>
+                      <IonIcon icon={showPassword ? eyeOffOutline : eyeOutline} />
+                    </IonButton>
                   </div> 
 
                  
                   <div className="forgot-password-container">
-                    <a href="#" className="forgot-link2">
+                    <a href="/forgot-password" className="forgot-link2">
                       Forgot Password?
                     </a>
                   </div>
@@ -91,8 +120,9 @@ const Login: React.FC = () => {
                   expand="block"
                   type="submit"
                   className="submit-button2"
+                  disabled={submitting}
                 >
-                  Log in
+                  {submitting ? 'Signing in...' : 'Log in'}
                 </IonButton>
 
                
@@ -123,22 +153,6 @@ const Login: React.FC = () => {
                       <span>Sign in with Google</span>
                     </div>
                   </IonButton>
-
-                  <IonButton
-                    fill="solid"
-                    className="social-button apple-button"
-                  >
-                    <div className="social-content">
-                      <svg
-                        className="social-icon"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.66-3.74 4.25z" />
-                      </svg>
-                      <span>Sign in with Apple</span>
-                    </div>
-                  </IonButton>
                 </div>
 
 
@@ -153,6 +167,13 @@ const Login: React.FC = () => {
           </div>
         </div>
       </IonContent>
+      <IonToast
+        isOpen={!!error}
+        message={error || ''}
+        duration={2500}
+        color="danger"
+        onDidDismiss={() => setError(null)}
+      />
     </IonPage>
   );
 };

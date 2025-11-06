@@ -340,6 +340,7 @@ const Home: React.FC = () => {
       const routesResponse = await axios.get(
         `${import.meta.env.VITE_API_URL}/routes/user/${user.user_id}`,
         {
+          headers: { Authorization: `Bearer ${token}` },
           params: {
             limit: 100, // Increased to get all activities for accurate stats
             offset: 0,

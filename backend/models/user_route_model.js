@@ -129,7 +129,8 @@ export const getUserRoutes = async (userId, filters = {}) => {
     start_date,
     end_date,
     route_status,
-    activities_only = false // ✅ NEW: default filter for activities
+    activities_only = false,
+    visibility
   } = filters;
 
   console.log('Parsed filters:', { limit, offset, start_date, end_date, route_status, activities_only });
@@ -159,6 +160,10 @@ export const getUserRoutes = async (userId, filters = {}) => {
   if (end_date) {
     query = query.lte("created_at", end_date);
     console.log('Added end_date filter:', end_date);
+  }
+  if (visibility) {
+    query = query.eq('visibility', visibility);
+    console.log('Applied visibility filter:', visibility);
   }
 
   query = query
@@ -191,7 +196,7 @@ export const getRouteById = async (routeId) => {
   const { data, error } = await supabase
     .from("user_routes")
     .select("*")
-    .eq("id", routeId)
+    .eq("route_id", routeId)
     .single();
   
   if (error) throw error;
@@ -247,3 +252,5 @@ export const updateRouteStatus = async (routeId, userId, status) => {
   console.log(`Route ${routeId} status updated to '${status}'`);
   return data;
 };
+
+

@@ -38,9 +38,10 @@ import {
   lockClosedOutline
 } from 'ionicons/icons';
 import { supabase } from '../supabaseClient';
-import ProfilePic from '../assets/Profile Picture.png';
 import Banner from '../assets/Banner UP.png';
 import MapImage from '../assets/MAP 1.png';
+
+const DEFAULT_AVATAR = 'https://ionicframework.com/docs/img/demos/avatar.svg';
 
 // Import the same CSS as Profile.tsx
 import '../components/UserProfile/UserProfile.css';
@@ -310,11 +311,16 @@ const ViewProfile: React.FC = () => {
     try {
       setRoutesLoading(true);
 
+      // Get authentication token to identify the viewer
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const response = await axios.get(
         `${import.meta.env.VITE_API_URL}/routes/user/${userId}`,
         {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
           params: {
-            limit: 20,
+            limit: 100,
             offset: 0,
             activities_only: true // ✅ NEW: Only fetch completed routes for activities view
           }
@@ -324,6 +330,10 @@ const ViewProfile: React.FC = () => {
       setUserRoutes(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Failed to fetch user routes:', error);
+      // If 403, it means the user has private activities
+      if (axios.isAxiosError(error) && error.response?.status === 403) {
+        setUserRoutes([]); // Set empty array for private activities
+      }
     } finally {
       setRoutesLoading(false);
     }
@@ -407,7 +417,7 @@ const ViewProfile: React.FC = () => {
       );
 
       // Filter only completed challenges with badges
-      const badges = response.data.data
+      const raw = response.data.data
         .filter((challenge: any) => challenge.completed && challenge.badge_image_url)
         .map((challenge: any) => ({
           title: challenge.badge_name || "Badge",
@@ -415,10 +425,19 @@ const ViewProfile: React.FC = () => {
           tier: challenge.badge_tier || "Bronze",
           earned: true,
           date: new Date(challenge.updated_at).toLocaleDateString(),
-          image: challenge.badge_image_url
+          image: challenge.badge_image_url,          awardedFor: challenge.challenge_name || challenge.challenge_slug || undefined
         }));
 
-      setEarnedBadges(badges);
+      // Deduplicate by image URL (fallback to name|tier)
+      const seen = new Set<string>();
+      const unique = raw.filter((b: any) => {
+        const key = b.image || `${b.title}|${b.tier}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      setEarnedBadges(unique);
     } catch (error) {
       console.error('Failed to fetch user badges:', error);
       setEarnedBadges([]);
@@ -600,54 +619,39 @@ const ViewProfile: React.FC = () => {
     return `${diffDays}d ago`;
   };
 
+  const renderStatusPage = (message: string, showSpinner = false) => (
+    <IonPage>
+      <IonHeader>
+        <IonToolbar>
+          <IonButtons slot="start">
+            <IonBackButton defaultHref="/home" />
+          </IonButtons>
+          <IonTitle>Profile</IonTitle>
+        </IonToolbar>
+      </IonHeader>
+      <IonContent>
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          {showSpinner && <IonSpinner name="crescent" />}
+          <p>{message}</p>
+        </div>
+      </IonContent>
+    </IonPage>
+  );
+
   const currentStats = statsData[timeRange];
 
   if (loading) {
-    return (
-      <IonPage>
-        <IonHeader>
-          <IonToolbar>
-            <IonButtons slot="start">
-              <IonBackButton defaultHref="/home" />
-            </IonButtons>
-            <IonTitle>Profile</IonTitle>
-          </IonToolbar>
-        </IonHeader>
-        <IonContent>
-          <div style={{ textAlign: 'center', padding: '40px' }}>
-            <IonSpinner name="crescent" />
-            <p>Loading profile...</p>
-          </div>
-        </IonContent>
-      </IonPage>
-    );
+    return renderStatusPage('Loading profile...', true);
   }
 
   if (!profile) {
-    return (
-      <IonPage>
-        <IonHeader>
-          <IonToolbar>
-            <IonButtons slot="start">
-              <IonBackButton defaultHref="/home" />
-            </IonButtons>
-            <IonTitle>Profile</IonTitle>
-          </IonToolbar>
-        </IonHeader>
-        <IonContent>
-          <div style={{ textAlign: 'center', padding: '40px' }}>
-            User not found
-          </div>
-        </IonContent>
-      </IonPage>
-    );
+    return renderStatusPage('User not found');
   }
 
   return (
     <IonPage>
       <IonContent className="profile-content">
         <div className="profile-container">
-          {/* Enhanced Profile Header - Same as Profile.tsx */}
           <div className="profile-header-section">
             <div className="banner-container">
               <IonImg src={Banner} alt="User Banner" className="banner-image" />
@@ -656,7 +660,7 @@ const ViewProfile: React.FC = () => {
 
             <div className="profile-info-card">
               <div className="profile-avatar-container">
-                <IonImg src={profile.profile_picture || ProfilePic} alt="Profile" className="profile-avatar" />
+                <IonImg src={profile.profile_picture || DEFAULT_AVATAR} alt="Profile" className="profile-avatar" />
               </div>
 
               <div className="profile-details">
@@ -685,7 +689,6 @@ const ViewProfile: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Follow/Unfollow Button */}
                 <div style={{ marginTop: '12px' }}>
                   <IonButton
                     fill={isFollowing ? 'outline' : 'solid'}
@@ -698,7 +701,6 @@ const ViewProfile: React.FC = () => {
               </div>
             </div>
 
-            {/* Modern Navigation Tabs - Same as Profile.tsx */}
             <div className="nav-tabs-container">
               <div className="nav-tabs">
                 <button
@@ -735,14 +737,12 @@ const ViewProfile: React.FC = () => {
 
           <IonGrid className="content-grid">
             <IonRow>
-              {/* Enhanced Sidebar - Same as Profile.tsx */}
               <IonCol size="12" sizeLg="3" className="sidebar-col">
                 <div className="stats-sidebar">
                   <div className="stats-header">
                     <h3>Performance Stats</h3>
                   </div>
 
-                  {/* Time Range Dropdown */}
                   <div className="time-range-dropdown">
                     <select
                       value={timeRange}
@@ -755,7 +755,6 @@ const ViewProfile: React.FC = () => {
                     </select>
                   </div>
 
-                  {/* Dynamic Stats Card */}
                   <div className={`stats-card ${timeRange}`}>
                     <div className="stats-card-header">
                       <h4>{currentStats.title}</h4>
@@ -790,15 +789,12 @@ const ViewProfile: React.FC = () => {
                 </div>
               </IonCol>
 
-              {/* Main Content - Same layout as Profile.tsx */}
               <IonCol size="12" sizeLg="9" className="main-content-col">
-                {/* Activities Section */}
                 {activeTab === "activities" && (
                   <div className="content-section">
                     <div className="section-header">
                       <h2>Activities</h2>
                     </div>
-
                     {routesLoading ? (
                       <div className="loading-center">
                         <IonSpinner name="crescent" />
@@ -815,17 +811,11 @@ const ViewProfile: React.FC = () => {
                             <IonCardContent>
                               <div className="activity-top">
                                 <div className="activity-meta">
-                                  <span className="activity-type">
-                                    {route.route_type ? route.route_type.charAt(0).toUpperCase() + route.route_type.slice(1) : "Run"}
-                                  </span>
+                                  <span className="activity-type">{route.route_type ? route.route_type.charAt(0).toUpperCase() + route.route_type.slice(1) : "Run"}</span>
                                   <span className="activity-date">{formatDate(route.created_at)}</span>
                                 </div>
-
-                                <h3 className="activity-title">
-                                  {route.route_name || "Untitled Route"}
-                                </h3>
+                                <h3 className="activity-title">{route.route_name || "Untitled Route"}</h3>
                               </div>
-
                               <div className="activity-stats-row">
                                 <div className="activity-stat">
                                   <strong>{route.distance_km} km</strong>
@@ -840,7 +830,6 @@ const ViewProfile: React.FC = () => {
                                   <span>Pace</span>
                                 </div>
                               </div>
-
                               <div className="activity-map">
                                 <IonImg src={route.map_image_url || MapImage} alt="Activity Map" />
                               </div>
@@ -852,14 +841,12 @@ const ViewProfile: React.FC = () => {
                   </div>
                 )}
 
-                {/* Posts Section - Vertical Feed with Like/Comment */}
                 {activeTab === "posts" && (
                   <div className="content-section">
                     <div className="section-header">
                       <h2>Posts</h2>
                       <span className="badge-count">{posts.length} posts</span>
                     </div>
-
                     {postsLoading ? (
                       <div className="loading-center">
                         <IonSpinner name="crescent" />
@@ -873,146 +860,32 @@ const ViewProfile: React.FC = () => {
                       <div className="activity-feed">
                         {posts.map((post) => (
                           <IonCard key={post.post_id} className="activity-card-enhanced">
-                            {/* Activity Header */}
-                            <div className="activity-header-enhanced">
-                              <IonAvatar className="activity-user-avatar">
-                                <img src={post.author_avatar || ProfilePic} alt="Profile" />
-                              </IonAvatar>
-                              <div className="activity-user-info">
-                                <h3 className="activity-user-name">
-                                  {post.author_name} <span className="activity-handle">@{post.author_username}</span>
-                                </h3>
-                                <div className="activity-meta">
-                                  <span className="activity-time">{formatRelativeTime(post.created_at)}</span> • {new Date(post.created_at).toLocaleDateString()}
-                                </div>
-                              </div>
-                            </div>
-
-                            <IonCardContent className="activity-content-enhanced">
-                              {/* Route Name & Content */}
-                              {post.route_name && (
-                                <h4 style={{ marginBottom: '10px', fontWeight: 'bold' }}>{post.route_name}</h4>
-                              )}
-                              {post.content && (
-                                <p style={{ marginBottom: '15px' }}>{post.content}</p>
-                              )}
-
-                              {/* Stats */}
+                            <IonCardContent>
+                              {post.route_name && <h4 style={{ marginBottom: '10px', fontWeight: 'bold' }}>{post.route_name}</h4>}
+                              {post.content && <p style={{ marginBottom: '15px' }}>{post.content}</p>}
                               {post.route_id && (
-                                <div className="activity-stats-grid">
-                                  <div className="stat-card distance">
-                                    <IonIcon icon={locationOutline} />
-                                    <div>
-                                      <span className="stat-value">{post.distance_km?.toFixed(1)} km</span>
-                                      <span className="stat-label">Distance</span>
-                                    </div>
+                                <div className="activity-stats-row">
+                                  <div className="activity-stat">
+                                    <strong>{(post.distance_km || 0).toFixed(1)} km</strong>
+                                    <span>Distance</span>
                                   </div>
-                                  <div className="stat-card time">
-                                    <IonIcon icon={timeOutline} />
-                                    <div>
-                                      <span className="stat-value">{formatDuration(post.duration_seconds)}</span>
-                                      <span className="stat-label">Time</span>
-                                    </div>
+                                  <div className="activity-stat">
+                                    <strong>{formatDuration(post.duration_seconds || 0)}</strong>
+                                    <span>Time</span>
                                   </div>
-                                  <div className="stat-card pace">
-                                    <IonIcon icon={speedometerOutline} />
-                                    <div>
-                                      <span className="stat-value">{post.average_pace || 'N/A'}</span>
-                                      <span className="stat-label">Pace</span>
-                                    </div>
+                                  <div className="activity-stat">
+                                    <strong>{post.average_pace || "N/A"}</strong>
+                                    <span>Pace</span>
                                   </div>
-                                  <div className="stat-card calories">
-                                    <IonIcon icon={flameOutline} />
-                                    <div>
-                                      <span className="stat-value">{post.estimated_calories || 'N/A'}</span>
-                                      <span className="stat-label">Calories</span>
-                                    </div>
+                                  <div className="activity-stat">
+                                    <strong>{post.estimated_calories || "N/A"}</strong>
+                                    <span>Calories</span>
                                   </div>
                                 </div>
                               )}
-
-                              {/* Map */}
                               {post.snapshot_url && (
-                                <div className="activity-map-container">
-                                  <img src={post.snapshot_url} alt="Run Map" className="activity-map" />
-                                  <div className="map-overlay"></div>
-                                </div>
-                              )}
-
-                              {/* Actions - Like & Comment */}
-                              <div className="activity-actions-enhanced">
-                                <IonButton
-                                  fill="clear"
-                                  size="small"
-                                  className={`action-btn like-btn ${post.is_liked ? 'liked' : ''}`}
-                                  onClick={() => handleToggleLike(post.post_id)}
-                                >
-                                  <IonIcon icon={heartOutline} slot="start" />
-                                  <span>{post.likes_count} Likes</span>
-                                </IonButton>
-
-                                <IonButton
-                                  fill="clear"
-                                  size="small"
-                                  className="action-btn comment-btn"
-                                  onClick={() => handleOpenComments(post.post_id)}
-                                >
-                                  <IonIcon icon={chatbubbleEllipses} slot="start" />
-                                  <span>{post.comments_count} Comments</span>
-                                </IonButton>
-
-                                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '14px', color: '#666' }}>
-                                  <IonIcon icon={post.visibility === 'public' ? eyeOutline : lockClosedOutline} />
-                                  <span>{post.visibility === 'public' ? 'Public' : 'Private'}</span>
-                                </div>
-                              </div>
-
-                              {/* Comments */}
-                              {openComments === post.post_id && (
-                                <div className="comments-section-enhanced">
-                                  <div className="comments-header">
-                                    <h4>Comments ({post.comments_count})</h4>
-                                  </div>
-                                  {comments[post.post_id]?.map((comment) => (
-                                    <div key={comment.comment_id} className="comment-enhanced">
-                                      <IonAvatar className="comment-avatar">
-                                        <img src={comment.profile_picture || ProfilePic} alt={comment.username} />
-                                      </IonAvatar>
-                                      <div className="comment-content">
-                                        <div className="comment-header">
-                                          <strong className="comment-user">{comment.name}</strong>
-                                          <span className="comment-time">{formatRelativeTime(comment.created_at)}</span>
-                                        </div>
-                                        <p className="comment-text">{comment.content}</p>
-                                      </div>
-                                    </div>
-                                  ))}
-                                  <div className="add-comment">
-                                    <IonAvatar className="comment-avatar">
-                                      <img src={ProfilePic} alt="You" />
-                                    </IonAvatar>
-                                    <IonInput
-                                      placeholder="Add a comment..."
-                                      className="comment-input"
-                                      value={newComment[post.post_id] || ''}
-                                      onIonInput={(e) => setNewComment(prev => ({
-                                        ...prev,
-                                        [post.post_id]: e.detail.value || ''
-                                      }))}
-                                      onKeyPress={(e) => {
-                                        if (e.key === 'Enter') {
-                                          handleAddComment(post.post_id);
-                                        }
-                                      }}
-                                    />
-                                    <IonButton
-                                      fill="clear"
-                                      size="small"
-                                      onClick={() => handleAddComment(post.post_id)}
-                                    >
-                                      Post
-                                    </IonButton>
-                                  </div>
+                                <div className="activity-map">
+                                  <IonImg src={post.snapshot_url} alt="Run Map" />
                                 </div>
                               )}
                             </IonCardContent>
@@ -1023,14 +896,12 @@ const ViewProfile: React.FC = () => {
                   </div>
                 )}
 
-                {/* Badges Section */}
                 {activeTab === "badges" && (
                   <div className="content-section">
                     <div className="section-header">
                       <h2>Achievement Badges</h2>
                       <span className="badge-count">{earnedBadges.length} earned</span>
                     </div>
-
                     {loadingBadges ? (
                       <div className="loading-center">
                         <IonSpinner name="crescent" />
@@ -1044,13 +915,16 @@ const ViewProfile: React.FC = () => {
                       <div className="badges-grid">
                         {earnedBadges.map((badge, i) => (
                           <IonCard key={i} className="badge-card-modern">
-                            <div className={`badge-glow ${badge.tier.toLowerCase()}`}></div>
+                            <div className="badge-glow"></div>
                             <IonImg src={badge.image} alt={badge.title} className="badge-image" />
                             <IonCardContent>
                               <h4 className="badge-title">{badge.title}</h4>
                               <p className="badge-description">{badge.description}</p>
                               <div className="badge-earned">
                                 Earned {badge.date}
+                                {badge.awardedFor ? (
+                                  <span className="badge-award"> for "{badge.awardedFor}"</span>
+                                ) : null}
                               </div>
                             </IonCardContent>
                           </IonCard>
@@ -1060,13 +934,11 @@ const ViewProfile: React.FC = () => {
                   </div>
                 )}
 
-                {/* Challenges Section */}
                 {activeTab === "challenges" && (
                   <div className="content-section">
                     <div className="section-header">
                       <h2>Active Challenges</h2>
                     </div>
-
                     {loadingChallenges ? (
                       <div className="loading-center">
                         <IonSpinner name="crescent" />
@@ -1075,20 +947,15 @@ const ViewProfile: React.FC = () => {
                     ) : (
                       <>
                         <div className="challenges-grid">
-                          {userChallenges.filter((challenge) => challenge.progress_percent < 100).length === 0 ? (
+                          {userChallenges.filter((c) => (c.progress_percent || 0) < 100).length === 0 ? (
                             <p>No active challenges.</p>
                           ) : (
                             userChallenges
-                              .filter((challenge) => challenge.progress_percent < 100)
+                              .filter((c) => (c.progress_percent || 0) < 100)
                               .map((challenge, i) => (
                                 <IonCard key={i} className="challenge-card-modern">
                                   <div className="challenge-image-container">
                                     <IonImg src={challenge.challenge_image} alt={challenge.challenge_name} />
-                                    <div className="challenge-progress-overlay">
-                                      <div className="progress-circle">
-                                        <span className="progress-text">{Math.round(challenge.progress_percent) || 0}%</span>
-                                      </div>
-                                    </div>
                                   </div>
                                   <IonCardContent>
                                     <h4 className="challenge-title">{challenge.challenge_name}</h4>
@@ -1099,25 +966,19 @@ const ViewProfile: React.FC = () => {
                               ))
                           )}
                         </div>
-
-                        {/* Completed Challenges */}
                         <div className="section-header completed-header" style={{ marginTop: '24px' }}>
                           <h2>Completed Challenges</h2>
                         </div>
-
                         <div className="challenges-grid">
-                          {userChallenges.filter((challenge) => challenge.progress_percent >= 100).length === 0 ? (
+                          {userChallenges.filter((c) => (c.progress_percent || 0) >= 100).length === 0 ? (
                             <p>No completed challenges yet.</p>
                           ) : (
                             userChallenges
-                              .filter((challenge) => challenge.progress_percent >= 100)
+                              .filter((c) => (c.progress_percent || 0) >= 100)
                               .map((challenge, i) => (
                                 <IonCard key={i} className="challenge-card-modern completed">
                                   <div className="challenge-image-container">
                                     <IonImg src={challenge.challenge_image} alt={challenge.challenge_name} />
-                                    <div className="challenge-completed-overlay">
-                                      <span className="completed-text">Completed</span>
-                                    </div>
                                   </div>
                                   <IonCardContent>
                                     <h4 className="challenge-title">{challenge.challenge_name}</h4>

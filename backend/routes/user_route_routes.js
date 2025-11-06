@@ -1,6 +1,6 @@
 // routes/user_route_routes.js
 import express from "express";
-import { authenticate } from "../utils/auth_middleware.js";
+import { authenticate, optionalAuth } from "../utils/auth_middleware.js";
 import * as RouteController from "../controllers/user_route_controller.js";
 
 const router = express.Router();
@@ -16,7 +16,8 @@ router.get("/challenges/:userId", RouteController.getUserChallenges);
 // Supports query params: ?activities_only=true&route_status=completed
 router.get("/", authenticate, RouteController.getUserRoutes);
 
-router.get("/user/:userId", RouteController.getUserRoutesByUserId);
+// Allow unauthenticated viewers but apply visibility rules inside controller
+router.get("/user/:userId", optionalAuth, RouteController.getUserRoutesByUserId);
 
 // ✅ NEW: Generate a route (status: 'generated') - doesn't update challenges
 router.post("/generate", authenticate, RouteController.generateRoute);

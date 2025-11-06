@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   IonPage,
   IonHeader,
@@ -22,19 +22,31 @@ import { camera, images, close } from "ionicons/icons";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import '../theme/Edit-Profile.css';
 import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
+import { UsersApi } from "../services/users";
 
 
 const EditProfile: React.FC = () => {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [birthdate, setBirthdate] = useState("");
-  const [gender, setGender] = useState("");
+  const [name, setName] = useState("");
+  const [gender, setGender] = useState<'male' | 'female' | 'other' | ''>('');
+  const [description, setDescription] = useState("");
   const [profilePhoto, setProfilePhoto] = useState(ProfilePic);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [showActionSheet, setShowActionSheet] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const me = await UsersApi.me();
+        setName(me.name || "");
+        setGender((me.gender as any) || '');
+        setDescription(me.description || "");
+      } catch (e) {
+        // ignore; show empty
+      }
+    })();
+  }, []);
 
   /** 📸 Select Photo - Android Platform */
   const selectPhoto = async (source: CameraSource) => {
@@ -64,29 +76,23 @@ const EditProfile: React.FC = () => {
     setShowActionSheet(true);
   };
 
-  const handleDone = () => {
-    // Validate and save profile data
-    if (!firstName.trim() || !lastName.trim()) {
-      setToastMessage("Please enter your first and last name");
+  const handleDone = async () => {
+    if (!name.trim()) {
+      setToastMessage("Please enter your name");
       setShowToast(true);
       return;
     }
-
-    console.log('Saving profile:', {
-      firstName,
-      lastName,
-      city,
-      state,
-      birthdate,
-      gender,
-      profilePhoto
-    });
-
-    setToastMessage("Profile updated successfully!");
-    setShowToast(true);
-
-    // Navigate back after a short delay
-    // setTimeout(() => history.push('/'), 1500);
+    try {
+      setSaving(true);
+      await UsersApi.updateMe({ name, gender: gender || null, description });
+      setToastMessage("Profile updated successfully!");
+      setShowToast(true);
+    } catch (e: any) {
+      setToastMessage(e?.message || 'Failed to update profile');
+      setShowToast(true);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -156,55 +162,13 @@ const EditProfile: React.FC = () => {
 
         {/* Edit Form */}
         <form className="edit-form">
-          {/* Name Fields */}
-          <div className="form-row">
-            <IonItem className="form-group">
-              <IonLabel position="stacked">First Name</IonLabel>
-              <IonInput
-                value={firstName}
-                placeholder="Enter first name"
-                onIonInput={(e) => setFirstName(e.detail.value!)}
-              />
-            </IonItem>
-
-            <IonItem className="form-group">
-              <IonLabel position="stacked">Last Name</IonLabel>
-              <IonInput
-                value={lastName}
-                placeholder="Enter last name"
-                onIonInput={(e) => setLastName(e.detail.value!)}
-              />
-            </IonItem>
-          </div>
-
-          {/* Location Fields */}
-          <div className="form-row">
-            <IonItem className="form-group">
-              <IonLabel position="stacked">City</IonLabel>
-              <IonInput
-                value={city}
-                placeholder="Enter city"
-                onIonInput={(e) => setCity(e.detail.value!)}
-              />
-            </IonItem>
-
-            <IonItem className="form-group">
-              <IonLabel position="stacked">State</IonLabel>
-              <IonInput
-                value={state}
-                placeholder="Enter state"
-                onIonInput={(e) => setState(e.detail.value!)}
-              />
-            </IonItem>
-          </div>
-
-          {/* Birthdate */}
+          {/* Name */}
           <IonItem className="form-group full-width">
-            <IonLabel position="stacked">Birthdate</IonLabel>
+            <IonLabel position="stacked">Name</IonLabel>
             <IonInput
-              type="date"
-              value={birthdate}
-              onIonInput={(e) => setBirthdate(e.detail.value!)}
+              value={name}
+              placeholder="Enter your name"
+              onIonInput={(e) => setName(e.detail.value!)}
             />
           </IonItem>
 
@@ -219,10 +183,17 @@ const EditProfile: React.FC = () => {
               <IonSelectOption value="male">Male</IonSelectOption>
               <IonSelectOption value="female">Female</IonSelectOption>
               <IonSelectOption value="other">Other</IonSelectOption>
-              <IonSelectOption value="prefer-not-to-say">
-                Prefer not to say
-              </IonSelectOption>
             </IonSelect>
+          </IonItem>
+
+          {/* Description */}
+          <IonItem className="form-group full-width">
+            <IonLabel position="stacked">Bio</IonLabel>
+            <IonInput
+              value={description}
+              placeholder="Tell others about you"
+              onIonInput={(e) => setDescription(e.detail.value!)}
+            />
           </IonItem>
         </form>
 

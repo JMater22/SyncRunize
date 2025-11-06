@@ -121,8 +121,8 @@ export const searchUsers = async (req, res) => {
     const { q } = req.query;
 
     if (!q || q.trim().length < 2) {
-      return res.status(400).json({ 
-        error: "Search query must be at least 2 characters" 
+      return res.status(400).json({
+        error: "Search query must be at least 2 characters"
       });
     }
 
@@ -133,3 +133,75 @@ export const searchUsers = async (req, res) => {
     res.status(500).json({ error: "Failed to search users" });
   }
 };
+
+// ✅ Update account settings (name, weight, gender, location)
+export const updateAccountSettings = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const { name, weight_kg, gender, location } = req.body;
+
+    const updates = {};
+    if (name !== undefined && name.trim()) updates.name = name.trim();
+    if (weight_kg !== undefined && !isNaN(parseFloat(weight_kg))) updates.weight_kg = parseFloat(weight_kg);
+    if (gender !== undefined && ['male', 'female', 'other'].includes(gender)) updates.gender = gender;
+    if (location !== undefined) updates.location = location.trim();
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "No valid account settings provided" });
+    }
+
+    const updated = await UserModel.updateUserProfile(userId, updates);
+
+    res.json({
+      message: "Account settings updated successfully",
+      data: updated
+    });
+  } catch (err) {
+    console.error("❌ Update Account Settings Error:", err);
+    res.status(500).json({ error: "Failed to update account settings", details: err.message });
+  }
+};
+
+// ✅ Update privacy controls (activities_visibility)
+export const updatePrivacySettings = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const { activities_visibility } = req.body;
+
+    if (!activities_visibility || !['public', 'private'].includes(activities_visibility)) {
+      return res.status(400).json({
+        error: "Invalid activities_visibility. Must be 'public' or 'private'."
+      });
+    }
+
+    const updated = await UserModel.updateUserProfile(userId, { activities_visibility });
+
+    res.json({
+      message: "Privacy settings updated successfully",
+      data: {
+        activities_visibility: updated.activities_visibility
+      }
+    });
+  } catch (err) {
+    console.error("❌ Update Privacy Settings Error:", err);
+    res.status(500).json({ error: "Failed to update privacy settings", details: err.message });
+  }
+};
+
+
+// ✅ Update password (handled by Supabase on frontend, but endpoint for consistency)
+export const updatePassword = async (req, res) => {
+  try {
+    // Password updates are handled by Supabase Auth on the frontend
+    // This endpoint is here for API consistency, but actual password change
+    // should use supabase.auth.updateUser({ password: newPassword })
+
+    res.status(200).json({
+      message: "Password updates should be handled via Supabase Auth on the client side"
+    });
+  } catch (err) {
+    console.error("❌ Update Password Error:", err);
+    res.status(500).json({ error: "Failed to update password", details: err.message });
+  }
+};
+

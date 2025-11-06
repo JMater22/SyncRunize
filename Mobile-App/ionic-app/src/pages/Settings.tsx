@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useHistory } from 'react-router-dom';
 import {
   IonPage,
   IonHeader,
@@ -25,11 +26,10 @@ import '../theme/variables.css';
 import "../theme/global.css";
 import { usePushNotifications } from "../components/push-notification";
 import { PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
+import { supabase } from "../lib/supabaseClient";
 
 interface NotificationPreferences {
   pushEnabled: boolean;
-  challengeUpdates: boolean;
-  friendActivity: boolean;
   comments: boolean;
   groupEvents: boolean;
   achievementAlerts: boolean;
@@ -37,6 +37,8 @@ interface NotificationPreferences {
 }
 
 export default function Settings() {
+  const history = useHistory();
+  const [loggingOut, setLoggingOut] = useState(false);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -44,8 +46,6 @@ export default function Settings() {
   
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>({
     pushEnabled: true,
-    challengeUpdates: true,
-    friendActivity: false,
     comments: false,
     groupEvents: true,
     achievementAlerts: true,
@@ -87,6 +87,20 @@ export default function Settings() {
     // });
   };
 
+  const handleLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await supabase.auth.signOut();
+      // After sign out, route to authentication gate
+      history.replace('/authentication');
+    } catch (e) {
+      setToastMessage('Failed to log out');
+      setShowToast(true);
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   // Handle toggle changes
   const handleToggleChange = (key: keyof NotificationPreferences, value: boolean) => {
     const newPrefs = { ...notificationPrefs, [key]: value };
@@ -96,8 +110,6 @@ export default function Settings() {
     if (key === 'pushEnabled' && !value) {
       const allDisabled: NotificationPreferences = {
         pushEnabled: false,
-        challengeUpdates: false,
-        friendActivity: false,
         comments: false,
         groupEvents: false,
         achievementAlerts: false,
@@ -170,9 +182,8 @@ export default function Settings() {
                   <h2>Profile Visibility</h2>
                   <p>Who can see your profile</p>
                 </IonLabel>
-                <IonSelect justify="end" value="friends" interface="action-sheet">
-                  <IonSelectOption value="friends">Friends Only</IonSelectOption>
-                  <IonSelectOption value="everyone">Everyone</IonSelectOption>
+                <IonSelect justify="end" value="public" interface="action-sheet">
+                  <IonSelectOption value="public">Everyone</IonSelectOption>
                   <IonSelectOption value="private">Private</IonSelectOption>
                 </IonSelect>
               </IonItem>
@@ -221,30 +232,6 @@ export default function Settings() {
                   color="success"
                   checked={notificationPrefs.pushEnabled}
                   onIonChange={(e) => handleToggleChange('pushEnabled', e.detail.checked)}
-                />
-              </IonItem>
-
-              <IonItem disabled={!notificationPrefs.pushEnabled}>
-                <IonLabel>
-                  <h2>Challenge Updates</h2>
-                </IonLabel>
-                <IonToggle
-                  slot="end"
-                  color="success"
-                  checked={notificationPrefs.challengeUpdates}
-                  onIonChange={(e) => handleToggleChange('challengeUpdates', e.detail.checked)}
-                />
-              </IonItem>
-
-              <IonItem disabled={!notificationPrefs.pushEnabled}>
-                <IonLabel>
-                  <h2>Friend Activity</h2>
-                </IonLabel>
-                <IonToggle
-                  slot="end"
-                  color="success"
-                  checked={notificationPrefs.friendActivity}
-                  onIonChange={(e) => handleToggleChange('friendActivity', e.detail.checked)}
                 />
               </IonItem>
 
@@ -322,8 +309,8 @@ export default function Settings() {
 
         {/* Log Out */}
         <div>
-          <IonButton className="logout-btn" routerLink="/log-in" expand="block" color="danger">
-            Log Out
+          <IonButton className="logout-btn" onClick={handleLogout} expand="block" color="danger" disabled={loggingOut}>
+            {loggingOut ? 'Logging out...' : 'Log Out'}
           </IonButton>
         </div>
 

@@ -24,17 +24,27 @@ export const useBadges = (userId: number | null) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const badges = response.data
+      const raw = response.data
         .filter((c: any) => c.completed && c.badge_image_url)
         .map((c: any) => ({
           title: c.badge_name || "Badge",
           description: c.badge_description || "",
           tier: c.badge_tier || "Bronze",
           date: new Date(c.updated_at).toLocaleDateString(),
-          image: c.badge_image_url
+          image: c.badge_image_url,
+          awardedFor: c.challenge_name || c.challenge_slug || undefined
         }));
 
-      setEarnedBadges(badges);
+      // Deduplicate by image URL (assumes same badge uses same asset)
+      const seen = new Set<string>();
+      const unique = raw.filter((b: any) => {
+        const key = b.image || `${b.title}|${b.tier}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      setEarnedBadges(unique);
     } catch (error) {
       console.error("Error fetching badges:", error);
     } finally {

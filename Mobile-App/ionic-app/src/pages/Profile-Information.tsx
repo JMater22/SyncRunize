@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   IonPage,
   IonHeader,
@@ -11,21 +11,52 @@ import {
   IonInput,
   IonLabel,
   IonIcon,
-  IonButton, IonCol, IonGrid, IonRow
+  IonButton, IonCol, IonGrid, IonRow, IonSelect, IonSelectOption, IonToast
 } from "@ionic/react";
-import { person, mail, call, location } from "ionicons/icons";
+import { person, mail } from "ionicons/icons";
 import "../theme/Profile-Information.css";
 import "../theme/global.css";
+import { UsersApi } from "../services/users";
 
 const ProfileInformation: React.FC = () => {
-  const [fullName, setFullName] = useState("");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
+  const [gender, setGender] = useState<'male' | 'female' | 'other' | ''>('');
+  const [weight, setWeight] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{open: boolean; msg: string; color?: string}>({open:false, msg:''});
 
-  const handleSave = () => {
-    console.log("Saving profile:", { fullName, email, phone, address });
-    // Add save logic here
+  useEffect(() => {
+    (async () => {
+      try {
+        const me = await UsersApi.me();
+        setName(me.name || '');
+        setEmail(me.email || '');
+        setGender((me.gender as any) || '');
+        setWeight(me.weight_kg != null ? String(me.weight_kg) : '');
+      } catch (_) {}
+    })();
+  }, []);
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      setToast({open:true, msg:'Please enter your name', color:'danger'});
+      return;
+    }
+    const weightNum = weight ? Number(weight) : null;
+    if (weight && (isNaN(Number(weight)) || Number(weight) <= 0)) {
+      setToast({open:true, msg:'Weight must be a positive number', color:'danger'});
+      return;
+    }
+    try {
+      setSaving(true);
+      await UsersApi.updateMe({ name, gender: gender || null, weight_kg: weightNum });
+      setToast({open:true, msg:'Saved successfully', color:'success'});
+    } catch (e: any) {
+      setToast({open:true, msg: e?.message || 'Failed to save', color:'danger'});
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -47,13 +78,13 @@ const ProfileInformation: React.FC = () => {
 
       {/* Content */}
       <IonContent  className="ion-padding dark-content">
-        {/* Full Name */}
+        {/* Name */}
         <IonItem className="profile-input">
           <IonIcon color="success" icon={person} slot="start" className="profile-icon" />
-          <IonLabel position="stacked">Full Name</IonLabel>
+          <IonLabel position="stacked">Name</IonLabel>
           <IonInput
-            value={fullName}
-            onIonInput={(e) => setFullName(e.detail.value!)}
+            value={name}
+            onIonInput={(e) => setName(e.detail.value!)}
             placeholder=""
           />
         </IonItem>
@@ -65,31 +96,30 @@ const ProfileInformation: React.FC = () => {
           <IonInput
             type="email"
             value={email}
-            onIonInput={(e) => setEmail(e.detail.value!)}
+            readonly
             placeholder=""
           />
         </IonItem>
 
-        {/* Phone Number */}
+        {/* Gender */}
         <IonItem className="profile-input">
-          <IonIcon color="success" icon={call} slot="start" className="profile-icon" />
-          <IonLabel position="stacked">Phone Number</IonLabel>
-          <IonInput
-            type="tel"
-            value={phone}
-            onIonInput={(e) => setPhone(e.detail.value!)}
-            placeholder=""
-          />
+          <IonLabel position="stacked">Gender</IonLabel>
+          <IonSelect value={gender} placeholder="Select gender" onIonChange={(e) => setGender(e.detail.value!)}>
+            <IonSelectOption value="male">Male</IonSelectOption>
+            <IonSelectOption value="female">Female</IonSelectOption>
+            <IonSelectOption value="other">Other</IonSelectOption>
+          </IonSelect>
         </IonItem>
 
-        {/* Address */}
+        {/* Weight (kg) */}
         <IonItem className="profile-input">
-          <IonIcon color="success" icon={location} slot="start" className="profile-icon" />
-          <IonLabel position="stacked">Address</IonLabel>
+          <IonLabel position="stacked">Weight (kg)</IonLabel>
           <IonInput
-            value={address}
-            onIonInput={(e) => setAddress(e.detail.value!)}
-            placeholder=""
+            type="number"
+            inputMode="decimal"
+            value={weight}
+            onIonInput={(e) => setWeight(e.detail.value!)}
+            placeholder="e.g. 65"
           />
         </IonItem>
 
@@ -112,13 +142,15 @@ const ProfileInformation: React.FC = () => {
         expand="block"
         color="success"
         onClick={handleSave}
+        disabled={saving}
         className="save-button"
       >
-        Save Changes
+        {saving ? 'Saving...' : 'Save Changes'}
       </IonButton>
     </IonCol>
   </IonRow>
 </IonGrid>
+        <IonToast isOpen={toast.open} onDidDismiss={() => setToast({open:false,msg:''})} message={toast.msg} duration={2000} color={toast.color}/>
       </IonContent>
     </IonPage>
   );

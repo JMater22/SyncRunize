@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   IonPage,
   IonHeader,
@@ -39,6 +39,7 @@ import "../theme/global.css";
 import ProfilePic from "../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg";
 import ChallengePic from "../components/assets/istockphoto-143920084-612x612.jpg";
 import { usePushNotifications } from "../components/push-notification";
+import { UsersApi } from "../services/users";
 
 // Import Google Fonts
 const fontLink = document.createElement('link');
@@ -252,6 +253,31 @@ const DistanceChart: React.FC = () => {
   );
 };
 
+const UserGreeting: React.FC = () => {
+  const [name, setName] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const me = await UsersApi.me();
+        setName(me.name || me.username || `User ${me.user_id}`);
+      } catch (e: any) {
+        setError(e?.message || 'Failed to load profile');
+      }
+    })();
+  }, []);
+
+  if (error) return null;
+  if (!name) return null;
+
+  return (
+    <div style={{ padding: '12px 16px' }}>
+      <IonTitle style={{ fontSize: '16px' }}>Welcome, {name}</IonTitle>
+    </div>
+  );
+};
+
 // =======================
 // Main Dashboard Component
 // =======================
@@ -366,6 +392,7 @@ export default function Dashboard() {
 
       {/* ===== Scrollable Content ===== */}
       <IonContent fullscreen className="dark-content">
+        <UserGreeting />
         {/* Personal Records */}
         <div className="section-header">
           <span>Personal Records</span>
@@ -525,3 +552,4 @@ export default function Dashboard() {
     </IonPage>
   );
 }
+

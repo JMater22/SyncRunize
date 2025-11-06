@@ -10,10 +10,11 @@ import {
   IonIcon,
 } from "@ionic/react";
 
-import '../components/Activities/Activities.css'; 
+import '../components/Activities/Activities.css';
 import { supabase } from "../supabaseClient";
 import axios from "axios";
 import { arrowDownOutline, arrowUpOutline } from "ionicons/icons";
+import { formatDistance, formatPace } from "../utils/distanceConverter";
 
  interface Activity {
   id: number;
@@ -35,6 +36,7 @@ const Activities: React.FC = () => {
   const [filteredActivities, setFilteredActivities] = useState<Activity[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState<{ key: keyof Activity; direction: 'asc' | 'desc' } | null>(null);
+  const [distanceUnit, setDistanceUnit] = useState<'km' | 'mi'>('km');
 
   const handleDeleteClick = (index: number) => {
     setActivityToDelete(index);
@@ -93,8 +95,12 @@ const Activities: React.FC = () => {
         const userId = user.user_id;
         setCurrentUserId(userId);
 
+        // Set distance unit preference
+        setDistanceUnit(user.distance_unit || 'km');
+
         // 3. Fetch user routes (only completed activities)
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/routes/user/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
           params: {
             activities_only: true // Only fetch completed routes for activities view
           }
@@ -104,13 +110,13 @@ const Activities: React.FC = () => {
 
         setUserRoutes(routes);
 
-        // 4. Map API data to activityList shape
+        // 4. Map API data to activityList shape with distance unit conversion
         const mappedActivities: Activity[] = routes.map((route: any) => ({
           id: route.route_id,
           date: new Date(route.created_at).toDateString(),
           title: route.route_name,
-          distance: `${route.distance_km.toFixed(2)} km`,
-          pace: route.average_pace,
+          distance: formatDistance(route.distance_km, user.distance_unit || 'km'),
+          pace: formatPace(route.average_pace, user.distance_unit || 'km'),
           time: route.duration_seconds,
           calories: route.estimated_calories
         }));

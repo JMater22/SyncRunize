@@ -9,6 +9,38 @@
   background: #000000;
 }
 
+/* Make form fields readable on dark backgrounds */
+.dark-content ion-item {
+  --background: transparent;
+  color: #ffffff;
+}
+
+.dark-content ion-label {
+  color: #ffffff !important;
+}
+
+.dark-content ion-input,
+.dark-content ion-textarea,
+.dark-content ion-select,
+.dark-content ion-searchbar {
+  --color: #ffffff; /* input text color */
+  color: #ffffff;   /* fallback */
+  --placeholder-color: rgba(255,255,255,0.6);
+  --placeholder-opacity: 1;
+  --highlight-color-focused: #92C628; /* underline/outline focus */
+  --highlight-color: #92C628;
+}
+
+/* Shadow parts for better text color enforcement */
+.dark-content ion-input::part(native),
+.dark-content ion-textarea::part(native) {
+  color: #ffffff;
+}
+
+.dark-content ion-select::part(text) {
+  color: #ffffff;
+}
+
 /* Header Styles */
 .dark-header ion-toolbar {
   --background: #000000;

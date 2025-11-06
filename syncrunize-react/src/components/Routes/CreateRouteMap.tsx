@@ -29,6 +29,7 @@ import { GoogleMap, LoadScript, Polyline } from '@react-google-maps/api';
 import { MarkerF } from '@react-google-maps/api';
 import axios from 'axios';
 import { supabase } from '../../supabaseClient';
+import { kmToMiles } from '../../utils/distanceConverter';
 import './CreateRouteMap.css';
 
 // Google Maps configuration
@@ -61,7 +62,6 @@ interface SafetyAnalysis {
   warnings: SafetyWarning[];
   stats: {
     total_distance_km: number;
-    sidewalk_coverage: number;
     has_critical_warnings: boolean;
   };
 }
@@ -117,6 +117,8 @@ const CreateRouteMap = () => {
   const [trafficLayer, setTrafficLayer] = useState<google.maps.TrafficLayer | null>(null);
   const [generatedPath, setGeneratedPath] = useState<LatLng[]>([]);
   const [generatedRoute, setGeneratedRoute] = useState<GeneratedRoute | null>(null);
+  // Keep an imperative reference to the rendered polyline to force-remove on cancel if needed
+  const polylineRef = useRef<google.maps.Polyline | null>(null);
   const [safetyAnalysis, setSafetyAnalysis] = useState<SafetyAnalysis | null>(null);
 
   // Hazard states
@@ -161,6 +163,21 @@ const CreateRouteMap = () => {
       setTrafficLayer(traffic);
     }
   }, [map]);
+
+  // Load user unit preference (km/mi) and map to component units (km/miles)
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+        const { data: me } = await axios.get(`${import.meta.env.VITE_API_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        });
+        if (me?.distance_unit === 'mi') setDistanceUnit('miles');
+        else setDistanceUnit('km');
+      } catch (_) { /* default to km */ }
+    })();
+  }, []);
 
   // Toggle traffic layer visibility
   useEffect(() => {
@@ -507,24 +524,81 @@ const CreateRouteMap = () => {
       // Convert coordinates to correct format
       // Algorithm returns arrays: [[lat1, lng1], [lat2, lng2], ...]
       const pathPoints: LatLng[] = coordinates.map((coord: any) => {
-        if (Array.isArray(coord)) {
-          return { lat: coord[0], lng: coord[1] };
-        } else if (coord.lat !== undefined && coord.lng !== undefined) {
-          return { lat: coord.lat, lng: coord.lng };
-        } else {
-          console.error('Invalid coordinate format:', coord);
-          return { lat: 0, lng: 0 };
+        // Accept a few common formats from algorithm backends
+        if (Array.isArray(coord) && coord.length >= 2) {
+          let a = parseFloat(coord[0]);
+          let b = parseFloat(coord[1]);
+          // Detect [lon, lat] vs [lat, lon] and normalize to {lat, lng}
+          // Valid latitude range: [-90, 90]; longitude: [-180, 180]
+          const looksLikeLatLon = Math.abs(a) <= 90 && Math.abs(b) <= 180;
+          const looksLikeLonLat = Math.abs(a) <= 180 && Math.abs(b) <= 90;
+          if (looksLikeLatLon && !looksLikeLonLat) {
+            return { lat: a, lng: b };
+          }
+          if (looksLikeLonLat && !looksLikeLatLon) {
+            return { lat: b, lng: a };
+          }
+          // Ambiguous: default to [lat, lon]
+          return { lat: a, lng: b };
+        } else if (coord && typeof coord === 'object') {
+          if (coord.lat !== undefined && coord.lng !== undefined) {
+            return { lat: parseFloat(coord.lat), lng: parseFloat(coord.lng) };
+          }
+          if (coord.latitude !== undefined && coord.longitude !== undefined) {
+            return { lat: parseFloat(coord.latitude), lng: parseFloat(coord.longitude) };
+          }
+          if (coord.lat !== undefined && coord.lon !== undefined) {
+            return { lat: parseFloat(coord.lat), lng: parseFloat(coord.lon) };
+          }
         }
+        console.error('Invalid coordinate format:', coord);
+        return { lat: 0, lng: 0 };
       }).filter((p: LatLng) => p.lat !== 0 && p.lng !== 0);
 
       console.log('Converted to', pathPoints.length, 'path points');
-      setGeneratedPath(pathPoints);
 
-      // For distance mode, set the endpoint to the last point of the generated route
-      if (routeMode === 'distance' && pathPoints.length > 0) {
-        const lastPoint = pathPoints[pathPoints.length - 1];
-        setEndPoint(lastPoint);
+      // Choose an endpoint for saving/display
+      let chosenEnd: LatLng | null = null;
+      if (routeMode === 'endpoint') {
+        chosenEnd = endPoint && pathPoints.length > 0 ? endPoint : (pathPoints[pathPoints.length - 1] ?? null);
+      } else if (routeMode === 'distance' && pathPoints.length > 0) {
+        // Default to last path point
+        chosenEnd = pathPoints[pathPoints.length - 1];
+        // If the route is a loop (end ≈ start), pick the farthest point from the start as visual endpoint
+        if (startPoint) {
+          const toRad = (deg: number) => deg * Math.PI / 180;
+          const haversineKm = (a: LatLng, b: LatLng) => {
+            const R = 6371;
+            const dLat = toRad(b.lat - a.lat);
+            const dLng = toRad(b.lng - a.lng);
+            const s = Math.sin(dLat/2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng/2) ** 2;
+            return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+          };
+          const distToStart = haversineKm(startPoint, chosenEnd);
+          if (distToStart < 0.05) { // ~50 meters threshold
+            let best = chosenEnd;
+            let bestDist = distToStart;
+            for (const p of pathPoints) {
+              const d = haversineKm(startPoint, p);
+              if (d > bestDist) { bestDist = d; best = p; }
+            }
+            chosenEnd = best;
+          }
+        }
+        // Update end marker to the chosen endpoint
+        setEndPoint(chosenEnd);
       }
+
+      // Align polyline endpoints exactly to the selected pins (to avoid subtle offsets)
+      if (pathPoints.length > 0 && startPoint) {
+        pathPoints[0] = { lat: +startPoint.lat.toFixed(6), lng: +startPoint.lng.toFixed(6) };
+      }
+      if (pathPoints.length > 1 && chosenEnd) {
+        pathPoints[pathPoints.length - 1] = { lat: +chosenEnd.lat.toFixed(6), lng: +chosenEnd.lng.toFixed(6) };
+      }
+
+      // Reflect the adjusted path on the map
+      setGeneratedPath(pathPoints);
 
       // Step 2: Save route to backend with status 'generated'
       const { data: { session } } = await supabase.auth.getSession();
@@ -566,8 +640,8 @@ const CreateRouteMap = () => {
         {
           start_lat: startPoint.lat,
           start_lng: startPoint.lng,
-          end_lat: routeMode === 'endpoint' && endPoint ? endPoint.lat : pathPoints[pathPoints.length - 1].lat,
-          end_lng: routeMode === 'endpoint' && endPoint ? endPoint.lng : pathPoints[pathPoints.length - 1].lng,
+          end_lat: (chosenEnd ?? pathPoints[pathPoints.length - 1]).lat,
+          end_lng: (chosenEnd ?? pathPoints[pathPoints.length - 1]).lng,
           chosen_path: pathPoints,
           duration_seconds: estimatedDuration,
           average_pace: estimatedPace,
@@ -658,6 +732,11 @@ const CreateRouteMap = () => {
 
   // Cancel route creation
   const handleCancel = () => {
+    // Force-remove polyline from map in case the library keeps it mounted
+    if (polylineRef.current) {
+      try { polylineRef.current.setMap(null); } catch {}
+      polylineRef.current = null;
+    }
     // Clear all route-related state
     setGeneratedPath([]);
     setGeneratedRoute(null);
@@ -678,6 +757,11 @@ const CreateRouteMap = () => {
 
     setToastMessage('Route cancelled');
     setShowToast(true);
+
+    // Full refresh to ensure all map overlays and markers reset cleanly
+    setTimeout(() => {
+      try { window.location.reload(); } catch {}
+    }, 300);
   };
 
   const handleBack = () => {
@@ -1001,20 +1085,36 @@ const CreateRouteMap = () => {
                 <IonCard className="route-info-card">
                   <IonCardContent>
                     <h3>{generatedRoute.route_name}</h3>
+                    {/* Quick unit toggle for displayed stats */}
+                    <div style={{ display: 'flex', gap: 8, margin: '6px 0 10px' }}>
+                      <button
+                        className={`unit-btn ${distanceUnit === 'km' ? 'active' : ''}`}
+                        onClick={() => setDistanceUnit('km')}
+                        style={{ padding: '4px 10px' }}
+                      >
+                        KM
+                      </button>
+                      <button
+                        className={`unit-btn ${distanceUnit === 'miles' ? 'active' : ''}`}
+                        onClick={() => setDistanceUnit('miles')}
+                        style={{ padding: '4px 10px' }}
+                      >
+                        Miles
+                      </button>
+                    </div>
+
                     <div className="route-stats">
                       <div className="stat-item">
                         <span className="stat-label">Distance</span>
-                        <span className="stat-value">{generatedRoute.distance_km.toFixed(2)} km</span>
+                        <span className="stat-value">
+                          {distanceUnit === 'km'
+                            ? `${generatedRoute.distance_km.toFixed(2)} km`
+                            : `${kmToMiles(generatedRoute.distance_km).toFixed(2)} miles`}
+                        </span>
                       </div>
                       <div className="stat-item">
                         <span className="stat-label">Est. Time</span>
                         <span className="stat-value">{Math.round(generatedRoute.duration_seconds / 60)} min</span>
-                      </div>
-                      <div className="stat-item">
-                        <span className="stat-label">Sidewalk Coverage</span>
-                        <span className="stat-value">
-                          {safetyAnalysis ? `${(safetyAnalysis.stats.sidewalk_coverage * 100).toFixed(0)}%` : 'N/A'}
-                        </span>
                       </div>
                     </div>
                   </IonCardContent>
@@ -1115,6 +1215,7 @@ const CreateRouteMap = () => {
                 {/* Start Point Marker */}
                 {startPoint && (
                   <MarkerF
+                    key={`start-${startPoint.lat}-${startPoint.lng}`}
                     position={startPoint}
                     label="S"
                     icon={{
@@ -1126,10 +1227,11 @@ const CreateRouteMap = () => {
                 {/* End Point Marker */}
                 {endPoint && (
                   <MarkerF
+                    key={`end-${endPoint.lat}-${endPoint.lng}`}
                     position={endPoint}
                     label="E"
                     icon={{
-                      url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
+                      url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
                     }}
                   />
                 )}
@@ -1137,9 +1239,12 @@ const CreateRouteMap = () => {
                 {/* Generated Route Path */}
                 {generatedPath.length > 0 && (
                   <Polyline
+                    key={`route-${generatedPath[0].lat}-${generatedPath[generatedPath.length-1].lng}`}
                     path={generatedPath}
+                    onLoad={(poly) => { polylineRef.current = poly; }}
+                    onUnmount={() => { polylineRef.current = null; }}
                     options={{
-                      strokeColor: '#0080ff',
+                      strokeColor: '#92C628',
                       strokeOpacity: 0.8,
                       strokeWeight: 5,
                     }}

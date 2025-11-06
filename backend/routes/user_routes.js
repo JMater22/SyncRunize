@@ -14,8 +14,10 @@ router.get("/me", authenticate, UserController.getMyProfile);
 router.put("/update-me", authenticate, UserController.updateProfile);
 router.delete("/delete-me", authenticate, UserController.deleteProfile);
 
-
-
+// ✅ Settings endpoints (organized by category)
+router.put("/settings/account", authenticate, UserController.updateAccountSettings);
+router.put("/settings/privacy", authenticate, UserController.updatePrivacySettings);
+router.put("/settings/password", authenticate, UserController.updatePassword);
 
 // Search users
 router.get("/search", authenticate, UserController.searchUsers);
