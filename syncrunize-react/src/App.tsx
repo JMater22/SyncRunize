@@ -191,7 +191,7 @@ const AppContent: React.FC<{ session: any; userData: any; loading: boolean }> = 
             />
             <Route
               exact
-              path="/profile/:userId"
+              path="/user/:userId"
               render={() => (session ? <ViewProfile /> : <Redirect to="/login" />)}
             />
             <Route

@@ -59,7 +59,7 @@ const NotificationMenu: React.FC = () => {
     switch (notification.type) {
       case 'follow':
         if (notification.actor_id) {
-          history.push(`/profile/${notification.actor_id}`);
+          history.push(`/user/${notification.actor_id}`);
         }
         break;
 

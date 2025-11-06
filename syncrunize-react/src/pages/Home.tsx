@@ -302,7 +302,7 @@ const Home: React.FC = () => {
 
   // Navigate to user profile
   const handleViewProfile = (userId: number) => {
-    history.push(`/profile/${userId}`);
+    history.push(`/user/${userId}`);
   };
 
   const fetchCurrentUserProfile = async () => {
