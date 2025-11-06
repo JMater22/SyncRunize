@@ -77,12 +77,6 @@ const SavedRoutesPage: React.FC = () => {
 
     useEffect(() => {
       fetchSavedRoutes(); // initial fetch
-
-      // Auto-refetch every 10 seconds
-      const interval = setInterval(fetchSavedRoutes, 10000);
-
-      // cleanup when leaving page
-      return () => clearInterval(interval);
     }, []);
 
   // ✅ Unsave route handler (Axios DELETE with route_id header)

@@ -25,13 +25,14 @@ import {
   locationOutline
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
-import { GoogleMap, LoadScript, Marker, Polyline } from '@react-google-maps/api';
+import { GoogleMap, LoadScript, Polyline } from '@react-google-maps/api';
+import { MarkerF } from '@react-google-maps/api';
 import axios from 'axios';
 import { supabase } from '../../supabaseClient';
 import './CreateRouteMap.css';
 
 // Google Maps configuration
-const libraries: ("places" | "geometry")[] = ["places", "geometry"];
+const libraries: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
 const mapContainerStyle = {
   width: '100%',
   height: '100%'
@@ -173,59 +174,8 @@ const CreateRouteMap = () => {
   }, [showTrafficLayer, trafficLayer, map]);
 
   // Enrich hazard with establishment info using Places API
+  // Temporarily disabled due to Places API compatibility issues
   const enrichWithEstablishment = async (hazard: HazardReport): Promise<HazardReport> => {
-    if (!window.google?.maps?.places) return hazard;
-
-    try {
-      // Create a nearby search request with required fields
-      const request: any = {
-        fields: ['places.id', 'places.displayName', 'places.formattedAddress', 'places.types', 'places.location'],
-        locationRestriction: {
-          circle: {
-            center: { lat: hazard.lat, lng: hazard.lng },
-            radius: 50 // 50 meters radius to find establishments at this location
-          }
-        }
-      };
-
-      // Use nearbySearch to find places
-      const { places } = await google.maps.places.Place.searchNearby(request);
-
-      if (places && places.length > 0) {
-        // Get the closest place
-        const place = places[0];
-
-        // Check if it's actually an establishment (not just a generic location)
-        const establishmentTypes = ['restaurant', 'cafe', 'store', 'school', 'hospital',
-                                    'shopping_mall', 'supermarket', 'gas_station', 'bank',
-                                    'pharmacy', 'gym', 'park', 'museum', 'library'];
-
-        const placeTypes = (place as any).types || [];
-        const isEstablishment = placeTypes.some((type: string) =>
-          establishmentTypes.includes(type.toLowerCase())
-        );
-
-        if (isEstablishment) {
-          const displayNameObj = (place as any).displayName;
-          const displayNameText = typeof displayNameObj === 'string'
-            ? displayNameObj
-            : (displayNameObj?.text || 'Unknown Place');
-
-          return {
-            ...hazard,
-            establishment: {
-              place_id: (place as any).id || '',
-              displayName: displayNameText,
-              formattedAddress: (place as any).formattedAddress || '',
-              types: placeTypes
-            }
-          };
-        }
-      }
-    } catch (error) {
-      console.error('Failed to enrich hazard with establishment info:', error);
-    }
-
     return hazard;
   };
 
@@ -1164,7 +1114,7 @@ const CreateRouteMap = () => {
               >
                 {/* Start Point Marker */}
                 {startPoint && (
-                  <Marker
+                  <MarkerF
                     position={startPoint}
                     label="S"
                     icon={{
@@ -1175,7 +1125,7 @@ const CreateRouteMap = () => {
 
                 {/* End Point Marker */}
                 {endPoint && (
-                  <Marker
+                  <MarkerF
                     position={endPoint}
                     label="E"
                     icon={{
@@ -1198,7 +1148,7 @@ const CreateRouteMap = () => {
 
                 {/* Hazard Markers */}
                 {hazards.map((hazard) => (
-                  <Marker
+                  <MarkerF
                     key={hazard.report_id}
                     position={{ lat: hazard.lat, lng: hazard.lng }}
                     icon={getMarkerIcon(hazard)}
