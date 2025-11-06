@@ -59,30 +59,137 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Get current user
+  // Get current user and subscribe to auth changes
   useEffect(() => {
+    let isMounted = true;
+    let initialized = false;
+
     const fetchCurrentUser = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const { data: userRecord } = await supabase
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          console.error('❌ NotificationContext: Session error:', sessionError);
+          if (isMounted) {
+            setLoading(false);
+            setIsInitialized(true);
+          }
+          initialized = true;
+          return;
+        }
+
+        if (!session?.user) {
+          // Clear all state if no session
+          console.log('🔄 NotificationContext: No session, clearing state');
+          if (isMounted) {
+            setCurrentUserId(null);
+            setNotifications([]);
+            setUnreadCount(0);
+            setLoading(false);
+            setIsInitialized(true);
+          }
+          initialized = true;
+          return;
+        }
+
+        const { data: userRecord, error } = await supabase
+          .from('users')
+          .select('user_id')
+          .eq('auth_id', session.user.id)
+          .single();
+
+        if (!isMounted) return;
+
+        if (error) {
+          console.error('❌ NotificationContext: Error fetching user record:', error);
+          setLoading(false);
+          setIsInitialized(true);
+          initialized = true;
+          return;
+        }
+
+        if (userRecord) {
+          console.log('✅ NotificationContext: Current user ID:', userRecord.user_id);
+          setCurrentUserId(userRecord.user_id);
+          setIsInitialized(true);
+        } else {
+          console.warn('⚠️ NotificationContext: No user record found');
+          setLoading(false);
+          setIsInitialized(true);
+        }
+        initialized = true;
+      } catch (error) {
+        console.error('❌ NotificationContext: Error fetching current user:', error);
+        if (isMounted) {
+          setLoading(false);
+          setIsInitialized(true);
+        }
+        initialized = true;
+      }
+    };
+
+    fetchCurrentUser();
+
+    // Subscribe to auth state changes to handle logout/login
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
+      console.log('🔔 NotificationContext: Auth event:', event);
+
+      // Ignore INITIAL_SESSION and first SIGNED_IN during initialization
+      if (event === 'INITIAL_SESSION' || (!initialized && event === 'SIGNED_IN')) {
+        console.log('⏭️ NotificationContext: Skipping initial auth event');
+        return;
+      }
+
+      // Only handle meaningful auth events
+      if (event === 'SIGNED_OUT') {
+        // User logged out - clear all state
+        console.log('🔄 NotificationContext: User logged out, clearing state');
+        setCurrentUserId(null);
+        setNotifications([]);
+        setUnreadCount(0);
+        setLoading(false);
+      } else if (event === 'SIGNED_IN' && session?.user) {
+        // User logged in - fetch new user data
+        console.log('🔄 NotificationContext: User logged in, fetching user data');
+
+        try {
+          const { data: userRecord, error } = await supabase
             .from('users')
             .select('user_id')
             .eq('auth_id', session.user.id)
             .single();
 
-          if (userRecord) {
-            console.log('✅ NotificationContext: Current user ID:', userRecord.user_id);
-            setCurrentUserId(userRecord.user_id);
-          }
-        }
-      } catch (error) {
-        console.error('❌ NotificationContext: Error fetching current user:', error);
-      }
-    };
+          if (!isMounted) return;
 
-    fetchCurrentUser();
+          if (error) {
+            console.error('❌ NotificationContext: Error fetching user on sign in:', error);
+            return;
+          }
+
+          if (userRecord) {
+            console.log('✅ NotificationContext: New user ID:', userRecord.user_id);
+            setCurrentUserId(userRecord.user_id);
+            // Reset notifications for new user
+            setNotifications([]);
+            setUnreadCount(0);
+          }
+        } catch (error) {
+          console.error('❌ NotificationContext: Error in auth state change:', error);
+        }
+      } else if (event === 'TOKEN_REFRESHED') {
+        console.log('🔄 NotificationContext: Token refreshed');
+        // Don't need to do anything for token refresh if we already have the user
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
   // Fetch notifications from backend
