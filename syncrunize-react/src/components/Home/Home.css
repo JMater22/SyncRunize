@@ -203,8 +203,8 @@ h2.profile-name {
 
 .activity-card-enhanced {
   background: #ffffff;
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.9);
   overflow: hidden;
   margin: 0;
@@ -213,22 +213,22 @@ h2.profile-name {
 
 .activity-card-enhanced:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.12);
 }
 
 .activity-header-enhanced {
-  padding: 20px 20px 16px;
+  padding: 16px 18px 14px;
   background: #f0f0f0;
   color: #000000;
   display: flex;
   align-items: flex-start;
-  gap: 16px;
+  gap: 14px;
 }
 
 .activity-user-avatar {
-  width: 48px;
-  height: 48px;
-  border: 3px solid rgba(255, 255, 255, 0.9);
+  width: 42px;
+  height: 42px;
+  border: 2.5px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
   flex-shrink: 0;
 }
@@ -238,17 +238,17 @@ h2.profile-name {
 }
 
 .activity-user-name {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   color: rgb(0, 0, 0);
 }
 
 .activity-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 6px;
+  gap: 10px;
+  margin-bottom: 4px;
 }
 span.activity-handle {
   font-size: 14px;
@@ -296,8 +296,8 @@ span.activity-handle {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 24px 16px;
+  gap: 6px;
+  padding: 18px 14px;
   border-right: 1px solid #e2e8f0;
   transition: all 0.3s ease;
   text-align: center;
@@ -332,7 +332,7 @@ span.activity-handle {
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   color: #1e293b;
   line-height: 1;
@@ -340,7 +340,7 @@ span.activity-handle {
 
 .activity-map-container {
   position: relative;
-  padding: 20px;
+  padding: 16px;
   background: #f8fafc;
 }
 
@@ -367,7 +367,7 @@ span.activity-handle {
 .activity-actions-enhanced {
   display: flex;
   align-items: center;
-  padding: 16px 20px;
+  padding: 14px 18px;
   border-top: 1px solid #e2e8f0;
   background: white;
   gap: 8px;
@@ -390,6 +390,14 @@ span.activity-handle {
   --color: #ef4444;
 }
 
+.like-btn.liked {
+  --color: #ef4444;
+}
+
+.like-btn.liked ion-icon {
+  fill: #ef4444;
+}
+
 .comment-btn:hover {
   --color: #3b82f6;
 }
@@ -407,7 +415,7 @@ span.activity-handle {
 .comments-section-enhanced {
   border-top: 1px solid #e2e8f0;
   background: #f8fafc;
-  padding: 20px;
+  padding: 16px;
 }
 
 .comments-header {
@@ -1056,8 +1064,8 @@ h4.challenge-title {
   }
 
   .activity-user-avatar {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     flex-shrink: 0;
   }
 

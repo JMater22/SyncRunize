@@ -72,7 +72,7 @@ export const leaveChallenge = async (req, res) => {
 // GET /api/challenges/user/:userId → fetch all challenges user joined
 export const getUserChallengesProgress = async (req, res) => {
   try {
-    const userId = req.user.id; // or req.user.userId if authenticated
+    const userId = req.user.user_id; // ✅ Integer from users table
 
     // Fetch all user challenges for this user
     const userChallenges = await UserChallengeModel.getUserChallenges(userId);

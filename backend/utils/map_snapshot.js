@@ -135,10 +135,22 @@ export const generateMapTilerSnapshot = (routePath, options = {}) => {
  * Use environment variable to control which service to use
  */
 export const generateRouteSnapshot = (routePath, options = {}) => {
-  const provider = process.env.MAP_SNAPSHOT_PROVIDER || 'osm'; // 'google' or 'osm'
+  const provider = process.env.MAP_SNAPSHOT_PROVIDER || 'osm'; // 'google', 'osm', or 'maptiler'
+
+  console.log(`Generating route snapshot using provider: ${provider}`);
 
   if (provider === 'google') {
+    if (!process.env.GOOGLE_MAPS_API_KEY) {
+      console.warn('Google Maps API key not found, falling back to OSM');
+      return generateOSMSnapshot(routePath, options);
+    }
     return generateGoogleMapSnapshot(routePath, options);
+  } else if (provider === 'maptiler') {
+    if (!process.env.MAPTILER_API_KEY) {
+      console.warn('MapTiler API key not found, falling back to OSM');
+      return generateOSMSnapshot(routePath, options);
+    }
+    return generateMapTilerSnapshot(routePath, options);
   } else {
     return generateOSMSnapshot(routePath, options);
   }

@@ -4,10 +4,22 @@ import { authenticate } from "../utils/auth_middleware.js";
 
 const router = express.Router();
 
-// Group posts
-router.get("/:groupId/posts", GroupPostController.getGroupPosts);
-router.post("/:groupId/posts", authenticate, GroupPostController.createGroupPost);
+// ==================== GROUP POST ROUTES ====================
+
+// ✅ GET all posts in a group
+// GET /api/group-posts/:groupId?limit=20&offset=0&userId=5
+router.get("/:groupId", GroupPostController.getGroupPosts);
+
+// ✅ CREATE post in group
+// POST /api/group-posts/:groupId
+router.post("/:groupId", authenticate, GroupPostController.createGroupPost);
+
+// ✅ UPDATE post
+// PUT /api/group-posts/:groupId/posts/:postId
 router.put("/:groupId/posts/:postId", authenticate, GroupPostController.updateGroupPost);
+
+// ✅ DELETE post
+// DELETE /api/group-posts/:groupId/posts/:postId
 router.delete("/:groupId/posts/:postId", authenticate, GroupPostController.deleteGroupPost);
 
 export default router;

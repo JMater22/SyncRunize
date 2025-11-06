@@ -13,11 +13,21 @@ router.get("/badges/detail/:userChallengeId", RouteController.getUserChallengeWi
 router.get("/challenges/:userId", RouteController.getUserChallenges);
 
 // ✅ Fetch all routes for the logged-in user (must come before /:id)
+// Supports query params: ?activities_only=true&route_status=completed
 router.get("/", authenticate, RouteController.getUserRoutes);
 
 router.get("/user/:userId", RouteController.getUserRoutesByUserId);
 
-// ✅ Save new run or route (also updates challenges automatically)
+// ✅ NEW: Generate a route (status: 'generated') - doesn't update challenges
+router.post("/generate", authenticate, RouteController.generateRoute);
+
+// ✅ NEW: Complete a run (status: 'completed') - updates challenges/badges
+router.post("/complete", authenticate, RouteController.completeRun);
+
+// ✅ NEW: Save a generated route (updates status to 'saved')
+router.post("/save/:routeId", authenticate, RouteController.saveGeneratedRoute);
+
+// ✅ LEGACY: Save new run or route (defaults to 'completed' for backward compatibility)
 router.post("/", authenticate, RouteController.createRoute);
 
 // Dynamic param routes last (because they match anything)

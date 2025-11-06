@@ -1,3 +1,339 @@
+/* ==================== INVITE ATHLETES MODAL ==================== */
+/* Add this to your GroupFeed.css */
+
+.invite-modal-container {
+  padding: 20px;
+  min-height: 100%;
+  background: #f7f8fa;
+}
+
+.invite-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.invite-modal-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.close-modal-btn {
+  --color: #6b7280;
+  font-size: 28px;
+}
+
+/* Search Section */
+.invite-search-section {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 0 16px;
+  margin-bottom: 12px;
+}
+
+.search-icon {
+  font-size: 20px;
+  color: #6b7280;
+  margin-right: 12px;
+}
+
+.invite-search-input {
+  --background: transparent;
+  --padding-start: 0;
+  --padding-end: 0;
+  flex: 1;
+  font-size: 16px;
+}
+
+.search-spinner {
+  --color: #92C628;
+  width: 20px;
+  height: 20px;
+  margin-left: 8px;
+}
+
+.search-hint {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Search Results */
+.invite-search-results {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 400px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Empty States */
+.empty-search-state,
+.searching-state,
+.no-results-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.empty-search-icon,
+.no-results-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-search-state p,
+.no-results-state p {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #1a1a1a;
+}
+
+.no-results-state span {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.searching-state {
+  padding: 40px 20px;
+}
+
+.searching-state ion-spinner {
+  --color: #92C628;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 16px;
+}
+
+.searching-state p {
+  font-size: 16px;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Results List */
+.results-list {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.results-header {
+  padding: 12px 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.results-header p {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* User Result Item */
+.user-result-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.user-result-item:hover {
+  background: #f3f4f6;
+  border-color: #92C628;
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(146, 198, 40, 0.1);
+}
+
+.user-result-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.user-result-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.user-result-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-result-username {
+  font-size: 14px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-result-location {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.user-result-location ion-icon {
+  font-size: 14px;
+}
+
+.invite-user-btn {
+  --background: #92C628;
+  --background-hover: #7ab01f;
+  --color: white;
+  --border-radius: 6px;
+  height: 36px;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: none;
+  padding: 0 20px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.invite-user-btn:hover {
+  transform: scale(1.05);
+}
+
+.invite-user-btn ion-spinner {
+  --color: white;
+  width: 20px;
+  height: 20px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .invite-modal-container {
+    padding: 16px;
+  }
+
+  .invite-modal-header h2 {
+    font-size: 20px;
+  }
+
+  .invite-search-section {
+    padding: 16px;
+  }
+
+  .search-input-wrapper {
+    padding: 0 12px;
+  }
+
+  .invite-search-input {
+    font-size: 14px;
+  }
+
+  .invite-search-results {
+    padding: 16px;
+  }
+
+  .user-result-item {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .user-result-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .user-result-name {
+    font-size: 15px;
+  }
+
+  .user-result-username {
+    font-size: 13px;
+  }
+
+  .invite-user-btn {
+    height: 32px;
+    font-size: 13px;
+    padding: 0 16px;
+  }
+
+  .empty-search-icon,
+  .no-results-icon {
+    font-size: 48px;
+  }
+
+  .empty-search-state p,
+  .no-results-state p {
+    font-size: 16px;
+  }
+}
+
+/* Animation for button click */
+@keyframes buttonPress {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.invite-user-btn:active {
+  animation: buttonPress 0.2s ease;
+}
+
+
 /* ====== Header ====== */
 ion-header ion-toolbar {
   --background: white;
@@ -32,6 +368,29 @@ ion-header ion-button {
   right: 0;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
   padding: 2rem;
+}
+
+/* Privacy badge styles */
+.privacy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  width: fit-content;
+}
+.privacy-badge.private {
+  background: #d32f2f; /* red tone */
+  color: #fff;
+}
+.privacy-badge.public {
+  background: #2e7d32; /* green tone */
+  color: #fff;
+}
+.privacy-badge ion-icon {
+  font-size: 14px;
 }
 
 .club-hero-content {
@@ -656,10 +1015,195 @@ ion-header ion-button {
   line-height: 1.5;
 }
 
-.post-image {
-  width: 100%;
-  border-radius: 8px;
+/* ==================== POST IMAGES - COMPLETE CSS ==================== */
+/* Add this to your GroupFeed.css file */
+
+/* Post Images Container */
+.post-images {
+  display: grid !important;
+  gap: 8px;
   margin-top: 12px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Single image - full width */
+.post-images.single-image {
+  grid-template-columns: 1fr;
+}
+
+/* Two images - side by side */
+.post-images.two-images {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Three images - one large, two small */
+.post-images.three-images {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+}
+
+.post-images.three-images .post-image-container:first-child {
+  grid-column: 1 / -1;
+}
+
+/* Four+ images - 2x2 grid */
+.post-images.four-plus-images {
+  grid-template-columns: 1fr 1fr;
+  max-height: 600px;
+}
+
+/* Image Container (holds placeholder + image) */
+.post-image-container {
+  position: relative;
+  width: 100%;
+  min-height: 250px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  overflow: hidden;
+  display: block !important;
+}
+
+/* Individual post image */
+.post-image {
+  width: 100% !important;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+  min-height: 250px;
+  max-height: 500px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  display: block !important;
+}
+
+.post-image:hover {
+  transform: scale(1.02);
+}
+
+/* Image placeholder while loading */
+.post-image-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 250px;
+  background: linear-gradient(
+    90deg,
+    #e0e0e0 0%,
+    #f0f0f0 20%,
+    #f8f8f8 40%,
+    #f0f0f0 60%,
+    #e0e0e0 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite ease-in-out;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 14px;
+  gap: 12px;
+  z-index: 1;
+}
+
+.post-image-placeholder ion-spinner {
+  --color: #fc4c02;
+  width: 40px;
+  height: 40px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Image counter for 5+ images */
+.post-image-overlay::after {
+  content: attr(data-count);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: bold;
+  border-radius: 4px;
+  z-index: 2;
+}
+
+/* Upload progress overlay */
+.upload-progress-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  color: white;
+}
+
+.upload-progress-content {
+  text-align: center;
+  padding: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.upload-progress-spinner {
+  --color: #fc4c02 !important;
+  width: 60px !important;
+  height: 60px !important;
+  margin-bottom: 20px;
+}
+
+.upload-progress-text {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: white;
+}
+
+.upload-progress-subtext {
+  font-size: 14px;
+  opacity: 0.9;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .post-images.two-images,
+  .post-images.three-images,
+  .post-images.four-plus-images {
+    grid-template-columns: 1fr;
+  }
+
+  .post-images.three-images .post-image-container:first-child {
+    grid-column: 1;
+  }
+
+  .post-image {
+    min-height: 250px;
+    max-height: 400px;
+  }
 }
 
 .post-footer {

@@ -3,12 +3,13 @@ import * as RouteModel from "../models/user_route_model.js";
 import * as UserChallengeModel from "../models/user_challenge_model.js";
 import * as ChallengeModel from "../models/challenge_model.js";
 import { computeProgressPercent, awardBadgeIfQualified } from "../services/award_service.js";
+import * as NotificationService from "../services/notification_service.js";
 import { supabase } from '../utils/supabase.js';
 
-export const getUserIdFromAuth = async (req, res) => {
+export const getUserIdFromAuth = async (_req, res) => {
   try {
     // 1. Get the auth user id from Supabase auth
-    const { user } = await supabase.auth.getUser(); // or req.user if you already have session
+    const { user } = await supabase.auth.getUser(); // or _req.user if you already have session
 
     if (!user) return res.status(401).json({ error: 'Not authenticated' });
 
@@ -55,52 +56,85 @@ export const fetchUserIdFromAuth = async (req) => {
 };
 
 
-export const createRoute = async (req, res) => {
+/**
+ * Generate a new route (temporary - status: 'generated')
+ * This creates a route without updating challenges/badges
+ * Use this when user is just exploring/creating routes
+ */
+export const generateRoute = async (req, res) => {
   try {
     const userId = await fetchUserIdFromAuth(req);
 
-    // 1️⃣ Create the route (includes distance & snapshot)
+    // ✅ Validate visibility
+    const allowedVisibilities = ["public", "private"];
+    let visibility = req.body.visibility || "private";
+    if (!allowedVisibilities.includes(visibility)) {
+      return res.status(400).json({ error: "Invalid visibility value. Must be 'public' or 'private'." });
+    }
+
+    // ✅ Create route with status 'generated'
     const newRoute = await RouteModel.createRoute({
       ...req.body,
       user_id: userId,
+      visibility,
+      route_status: "generated" // NEW: mark as generated (temporary)
     });
 
-    // 2️⃣ Fetch all active (not completed) user challenges
+    res.status(201).json({
+      message: "✅ Route generated successfully",
+      route: newRoute,
+    });
+  } catch (err) {
+    console.error("❌ Route generation failed:", err);
+    res.status(500).json({ error: "Failed to generate route" });
+  }
+};
+
+/**
+ * Complete a run (creates route with status: 'completed')
+ * This is the original createRoute functionality
+ * Updates challenges and awards badges
+ */
+export const completeRun = async (req, res) => {
+  try {
+    const userId = await fetchUserIdFromAuth(req);
+
+    // ✅ Validate visibility
+    const allowedVisibilities = ["public", "private"];
+    let visibility = req.body.visibility || "private";
+    if (!allowedVisibilities.includes(visibility)) {
+      return res.status(400).json({ error: "Invalid visibility value. Must be 'public' or 'private'." });
+    }
+
+    // ✅ Create route with status 'completed'
+    const newRoute = await RouteModel.createRoute({
+      ...req.body,
+      user_id: userId,
+      visibility,
+      route_status: "completed" // NEW: mark as completed run
+    });
+
+    // (Keep your existing challenge update logic as is)
     const userChallenges = await UserChallengeModel.getUserChallenges(userId);
     const activeChallenges = userChallenges.filter((uc) => !uc.completed);
-
     const updates = [];
 
     for (const uc of activeChallenges) {
       const challenge = await ChallengeModel.getChallengeById(uc.challenge_id);
-      if (!challenge) {
-        console.warn(`⚠️ No challenge found for ID ${uc.challenge_id}`);
-        continue;
-      }
+      if (!challenge) continue;
 
-      console.log(`📊 Updating progress for userChallenge ${uc.user_challenge_id}`);
-      console.log(`➡️  Current total_distance_km: ${uc.total_distance_km}, challenge target: ${challenge.target_distance_km}`);
-
-      // Step 1: Update cumulative distance & runs
       const updatedProgress = await UserChallengeModel.updateProgress(uc.user_challenge_id, {
         add_distance: newRoute.distance_km,
         add_runs: 1,
       });
 
-      console.log("✅ After updateProgress:", updatedProgress);
-
-      // Step 2: Compute new percent
       const recomputed = computeProgressPercent(updatedProgress, challenge);
-      console.log("🏁 Recomputed progress:", recomputed);
 
-      // Step 3: Award badge if newly completed
       let awardedBadge = null;
       if (recomputed.completed && !updatedProgress.completed) {
         awardedBadge = await awardBadgeIfQualified(updatedProgress, challenge);
-        console.log("🎖️ Badge awarded:", awardedBadge);
       }
 
-      // Step 4: Save recomputed fields
       const final = await UserChallengeModel.setProgress(uc.user_challenge_id, {
         total_distance_km: updatedProgress.total_distance_km,
         total_runs: updatedProgress.total_runs,
@@ -111,7 +145,26 @@ export const createRoute = async (req, res) => {
           : updatedProgress.awarded_badge_id,
       });
 
-      console.log("💾 Final progress saved:", final);
+      // Notify on completion and badge earned
+      try {
+        if (recomputed.completed && !updatedProgress.completed) {
+          await NotificationService.notifyChallengeComplete(
+            userId,
+            uc.challenge_id,
+            challenge.name,
+            awardedBadge?.image_url || null
+          );
+        }
+        if (awardedBadge) {
+          await NotificationService.notifyBadgeEarned(
+            userId,
+            awardedBadge.name,
+            awardedBadge.image_url || null
+          );
+        }
+      } catch (e) {
+        console.error('[Notif.error] challenge notifications failed:', e?.message || e);
+      }
 
       updates.push({
         challenge_id: uc.challenge_id,
@@ -122,40 +175,85 @@ export const createRoute = async (req, res) => {
     }
 
     res.status(201).json({
-      message: "✅ Route saved successfully and challenges updated.",
+      message: "✅ Run completed successfully and challenges updated.",
       route: newRoute,
       challenges_updated: updates,
     });
   } catch (err) {
-    console.error("❌ Route creation failed:", err);
-    res.status(500).json({ error: "Failed to save route or update challenges" });
+    console.error("❌ Run completion failed:", err);
+    res.status(500).json({ error: "Failed to complete run or update challenges" });
   }
+};
+
+/**
+ * Save a generated route (updates status from 'generated' to 'saved')
+ * Also adds to saved_routes table
+ */
+export const saveGeneratedRoute = async (req, res) => {
+  try {
+    const userId = await fetchUserIdFromAuth(req);
+    const { routeId } = req.params;
+
+    if (!routeId) {
+      return res.status(400).json({ error: "Route ID is required" });
+    }
+
+    // Update route status to 'saved'
+    const updatedRoute = await RouteModel.updateRouteStatus(
+      parseInt(routeId),
+      userId,
+      'saved'
+    );
+
+    res.status(200).json({
+      message: "✅ Route saved successfully",
+      route: updatedRoute,
+    });
+  } catch (err) {
+    console.error("❌ Save route failed:", err);
+    res.status(500).json({ error: err.message || "Failed to save route" });
+  }
+};
+
+/**
+ * Legacy createRoute - kept for backward compatibility
+ * Defaults to 'completed' status
+ */
+export const createRoute = async (req, res) => {
+  // Default to completing a run for backward compatibility
+  return completeRun(req, res);
 };
 
 
 
 /**
  * Fetch all user routes
+ * Supports filtering by route_status and activities_only flag
  */
 export const getUserRoutes = async (req, res) => {
   try {
     console.log('========== getUserRoutes START ==========');
     console.log('req.user:', req.user);
     console.log('req.query:', req.query);
-    
-    const userId = req.user.id;
+
+    const userId = req.user.user_id; // ✅ Integer from users table
     console.log('Using userId:', userId);
-    
+
     if (!userId) {
       throw new Error('User ID is undefined or null');
     }
-    
-    const filters = req.query;
+
+    // ✅ NEW: Parse filters including activities_only and route_status
+    const filters = {
+      ...req.query,
+      // Convert string 'true'/'false' to boolean for activities_only
+      activities_only: req.query.activities_only === 'true',
+    };
     console.log('Filters to apply:', filters);
-    
+
     const routes = await RouteModel.getUserRoutes(userId, filters);
     console.log('Routes fetched successfully:', routes.length, 'routes');
-    
+
     res.json(routes);
   } catch (err) {
     console.error("❌ Fetching user routes failed:");
@@ -163,8 +261,8 @@ export const getUserRoutes = async (req, res) => {
     console.error("Error Message:", err.message);
     console.error("Error Stack:", err.stack);
     console.error("Full Error Object:", err);
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       error: "Failed to fetch user routes",
       details: err.message,
       type: err.constructor.name
@@ -175,14 +273,21 @@ export const getUserRoutes = async (req, res) => {
 export const getUserRoutesByUserId = async (req, res) => {
   try {
     const userId = req.params.userId; // Get from URL parameter
-    const filters = req.query;
-    
+
+    // ✅ NEW: Parse filters including activities_only
+    const filters = {
+      ...req.query,
+      // Convert string 'true'/'false' to boolean for activities_only
+      activities_only: req.query.activities_only === 'true',
+    };
+
     console.log('Fetching routes for user:', userId);
-    
+    console.log('Filters:', filters);
+
     const routes = await RouteModel.getUserRoutes(userId, filters);
-    
+
     console.log('Routes found:', routes.length);
-    
+
     res.json(routes);
   } catch (err) {
     console.error("❌ Fetching user routes failed:", err);

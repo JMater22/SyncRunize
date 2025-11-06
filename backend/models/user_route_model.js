@@ -40,11 +40,13 @@ export const createRoute = async (data) => {
     duration_seconds,
     average_pace,
     risk_score = 0,
-    route_name = 'Unnamed Route',
+    route_name = "Unnamed Route",
     weight_kg = 70,
+    visibility = "private", // ✅ NEW: default
+    route_status = "generated" // ✅ NEW: default to 'generated' for route creation
   } = data;
 
-  // 1️⃣ Compute total distance from the path
+  // Compute distance
   let distanceKm = 0;
   for (let i = 1; i < chosen_path.length; i++) {
     const prev = chosen_path[i - 1];
@@ -53,46 +55,30 @@ export const createRoute = async (data) => {
   }
 
   const estimated_calories = estimateCalories(
-    average_pace, 
-    duration_seconds, 
+    average_pace,
+    duration_seconds,
     weight_kg
   );
 
-  // Parse chosen_path if it's a string
+  // Parse path
   let pathArray;
   try {
-    pathArray = typeof chosen_path === 'string' 
-      ? JSON.parse(chosen_path) 
-      : chosen_path;
-    
-    console.log('📍 Parsed path array:', pathArray);
-    console.log('📍 Path array length:', pathArray?.length);
-    console.log('📍 First point:', pathArray?.[0]);
-  } catch (parseError) {
-    console.error('❌ Failed to parse chosen_path:', parseError);
+    pathArray = typeof chosen_path === "string" ? JSON.parse(chosen_path) : chosen_path;
+  } catch {
     pathArray = chosen_path;
   }
 
-  // Generate snapshot URL (will use OSM or Google based on env variable)
+  // Generate snapshot
   let snapshot_url = null;
   try {
-    console.log('🗺️ Attempting to generate snapshot...');
-    console.log('🗺️ Provider:', process.env.MAP_SNAPSHOT_PROVIDER || 'osm');
-    
     snapshot_url = generateRouteSnapshot(pathArray, {
       width: 800,
       height: 600,
-      lineColor: '0080ff',
+      lineColor: "0080ff",
     });
-    
-    console.log('✅ Snapshot URL generated:', snapshot_url);
   } catch (error) {
-    console.error('❌ Failed to generate route snapshot:', error.message);
-    console.error('❌ Full error:', error);
-    // Continue without snapshot - don't block route creation
+    console.error("Snapshot generation failed:", error);
   }
-
-  const pathJson = JSON.stringify(pathArray);
 
   const { data: result, error } = await supabase
     .from("user_routes")
@@ -102,7 +88,7 @@ export const createRoute = async (data) => {
       start_lng,
       end_lat,
       end_lng,
-      chosen_path: pathJson,
+      chosen_path: JSON.stringify(pathArray),
       distance_km: distanceKm,
       duration_seconds,
       average_pace,
@@ -110,7 +96,9 @@ export const createRoute = async (data) => {
       estimated_calories,
       route_name,
       snapshot_url,
-      created_at: new Date().toISOString()
+      visibility, // ✅ included
+      route_status, // ✅ NEW: include route_status
+      created_at: new Date().toISOString(),
     })
     .select()
     .single();
@@ -121,15 +109,30 @@ export const createRoute = async (data) => {
 
 /**
  * Get user routes
+ * @param {number} userId - User ID
+ * @param {object} filters - Filter options
+ * @param {number} filters.limit - Maximum number of routes to return
+ * @param {number} filters.offset - Offset for pagination
+ * @param {string} filters.start_date - Filter by start date
+ * @param {string} filters.end_date - Filter by end date
+ * @param {string} filters.route_status - Filter by route status ('generated', 'saved', 'completed')
+ * @param {boolean} filters.activities_only - If true, only return completed routes (for activities view)
  */
 export const getUserRoutes = async (userId, filters = {}) => {
   console.log('========== MODEL getUserRoutes START ==========');
   console.log('Received userId:', userId);
   console.log('Received filters:', filters);
-  
-  const { limit = 20, offset = 0, start_date, end_date } = filters;
-  
-  console.log('Parsed filters:', { limit, offset, start_date, end_date });
+
+  const {
+    limit = 1000, // Increased default limit to 1000 for better user experience
+    offset = 0,
+    start_date,
+    end_date,
+    route_status,
+    activities_only = false // ✅ NEW: default filter for activities
+  } = filters;
+
+  console.log('Parsed filters:', { limit, offset, start_date, end_date, route_status, activities_only });
 
   let query = supabase
     .from("user_routes")
@@ -137,6 +140,16 @@ export const getUserRoutes = async (userId, filters = {}) => {
     .eq("user_id", userId);
 
   console.log('Base query created for user_id:', userId);
+
+  // ✅ NEW: Filter for activities view - only show completed routes
+  if (activities_only) {
+    query = query.eq("route_status", "completed");
+    console.log('Applied activities_only filter: route_status = completed');
+  } else if (route_status) {
+    // Allow explicit route_status filtering
+    query = query.eq("route_status", route_status);
+    console.log('Applied route_status filter:', route_status);
+  }
 
   if (start_date) {
     query = query.gte("created_at", start_date);
@@ -156,16 +169,16 @@ export const getUserRoutes = async (userId, filters = {}) => {
   console.log('Executing Supabase query...');
 
   const { data, error } = await query;
-  
+
   console.log('Query executed');
   console.log('Error:', error);
   console.log('Data:', data);
-  
+
   if (error) {
     console.error('Supabase error details:', error);
     throw error;
   }
-  
+
   console.log('Returning', data.length, 'routes');
   return data;
 };
@@ -202,5 +215,35 @@ export const deleteRouteById = async (routeId) => {
   }
 
   console.log(`Route ${routeId} deleted successfully`, data);
+  return data;
+};
+
+/**
+ * Update route status
+ * @param {number} routeId - Route ID
+ * @param {number} userId - User ID (for security check)
+ * @param {string} status - New status ('generated', 'saved', 'completed')
+ */
+export const updateRouteStatus = async (routeId, userId, status) => {
+  const validStatuses = ['generated', 'saved', 'completed'];
+
+  if (!validStatuses.includes(status)) {
+    throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+  }
+
+  const { data, error } = await supabase
+    .from("user_routes")
+    .update({ route_status: status })
+    .eq("route_id", routeId)
+    .eq("user_id", userId) // Security: ensure user owns this route
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Failed to update route status:", error);
+    throw error;
+  }
+
+  console.log(`Route ${routeId} status updated to '${status}'`);
   return data;
 };

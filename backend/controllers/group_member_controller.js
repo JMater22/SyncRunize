@@ -1,4 +1,36 @@
 import * as GroupMemberModel from "../models/group_member_model.js";
+import * as NotificationService from "../services/notification_service.js";
+import { supabase } from "../utils/supabase.js";
+
+
+export const checkMembership = async (req, res) => {
+  try {
+    const { groupId, userId } = req.params;
+
+    const result = await GroupMemberModel.checkMembership(
+      parseInt(groupId, 10),
+      parseInt(userId, 10)
+    );
+
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Error checking membership:", err);
+    res.status(500).json({ error: "Failed to check membership" });
+  }
+};
+
+// Get joined groups for a specific user
+export const getJoinedGroupsByUser = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const joinedGroupIds = await GroupMemberModel.getJoinedGroupIdsByUser(userId);
+    res.status(200).json(joinedGroupIds); // array of group IDs
+  } catch (error) {
+    console.error("Error fetching joined groups:", error);
+    res.status(500).json({ error: "Failed to fetch joined groups" });
+  }
+};
 
 // Get all members of a specific group
 export const getGroupMembers = async (req, res) => {
@@ -17,7 +49,7 @@ export const addMember = async (req, res) => {
   try {
     const { groupId } = req.params;
     const { userId: bodyUserId, role } = req.body || {};
-    const loggedInUserId = req.user.id;
+    const loggedInUserId = req.user.user_id; // ✅ Integer from users table
 
     const targetUserId = bodyUserId || loggedInUserId;
     if (!targetUserId) {
@@ -60,5 +92,47 @@ export const removeMember = async (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: "Failed to remove member" });
+  }
+};
+
+export const inviteUserToGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { userId } = req.body;
+    const inviterId = req.user.user_id;
+
+    // Check if inviter is admin
+    const isAdmin = await GroupMemberModel.isGroupAdmin(groupId, inviterId);
+    if (!isAdmin) {
+      return res.status(403).json({ error: "Only admins can invite users" });
+    }
+
+    // Check if user is already a member
+    const isMember = await GroupMemberModel.isGroupMember(groupId, userId);
+    if (isMember) {
+      return res.status(400).json({ error: "User is already a member" });
+    }
+
+    // Add user to group
+    await GroupMemberModel.addGroupMember(groupId, userId, "member");
+
+    // 🔔 Get group name and send notification
+    const { data: group } = await supabase
+      .from("groups")
+      .select("name")
+      .eq("group_id", groupId)
+      .single();
+
+    if (group) {
+      await NotificationService.notifyGroupInvite(parseInt(userId), parseInt(groupId), group.name);
+    }
+
+    res.status(200).json({
+      message: "User invited successfully",
+      userId
+    });
+  } catch (err) {
+    console.error("Error inviting user:", err);
+    res.status(500).json({ error: "Failed to invite user" });
   }
 };

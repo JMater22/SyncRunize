@@ -129,6 +129,43 @@ export const unfollowUser = async (followerId, followedId) => {
     .eq("followed_id", followedId);
 
   if (error) throw error;
-  
+
   return { message: "Unfollowed successfully" };
+};
+
+// ✅ NEW: Check if current user follows target user
+export const checkFollowStatus = async (followerId, followedId) => {
+  const { data, error } = await supabase
+    .from("follows")
+    .select("follow_id")
+    .eq("follower_id", followerId)
+    .eq("followed_id", followedId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error;
+
+  return { isFollowing: !!data };
+};
+
+// ✅ NEW: Toggle follow (follow if not following, unfollow if already following)
+export const toggleFollow = async (followerId, followedId) => {
+  // Check if already following
+  const { data: existing, error: checkError } = await supabase
+    .from("follows")
+    .select("follow_id")
+    .eq("follower_id", followerId)
+    .eq("followed_id", followedId)
+    .single();
+
+  if (checkError && checkError.code !== 'PGRST116') throw checkError;
+
+  if (existing) {
+    // Unfollow
+    await unfollowUser(followerId, followedId);
+    return { isFollowing: false, message: "Unfollowed successfully" };
+  } else {
+    // Follow
+    await followUser(followerId, followedId);
+    return { isFollowing: true, message: "Followed successfully" };
+  }
 };

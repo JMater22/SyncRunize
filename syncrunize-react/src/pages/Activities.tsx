@@ -4,17 +4,16 @@ import {
   IonContent,
   IonSearchbar,
   IonButton,
-  IonGrid,
-  IonRow,
-  IonCol,
   IonCard,
   IonCardContent,
   IonAlert,
+  IonIcon,
 } from "@ionic/react";
 
 import '../components/Activities/Activities.css'; 
 import { supabase } from "../supabaseClient";
 import axios from "axios";
+import { arrowDownOutline, arrowUpOutline } from "ionicons/icons";
 
  interface Activity {
   id: number;
@@ -27,12 +26,15 @@ import axios from "axios";
 }
 
 const Activities: React.FC = () => {
- 
+
   const [userRoutes, setUserRoutes] = useState<any[]>([]);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [showAlert, setShowAlert] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
   const [activityList, setActivityList] = useState<Activity[]>([]);
+  const [filteredActivities, setFilteredActivities] = useState<Activity[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Activity; direction: 'asc' | 'desc' } | null>(null);
 
   const handleDeleteClick = (index: number) => {
     setActivityToDelete(index);
@@ -44,13 +46,13 @@ const Activities: React.FC = () => {
 
     try {
       // Get the route object to delete
-      const route = activityList[activityToDelete];
+      const route = filteredActivities[activityToDelete];
 
       // Call the backend DELETE API
       await axios.delete(`${import.meta.env.VITE_API_URL}/routes/${route.id}`);
 
       // Remove from local state only after successful deletion
-      const updatedActivities = activityList.filter((_, index) => index !== activityToDelete);
+      const updatedActivities = activityList.filter((activity) => activity.id !== route.id);
       setActivityList(updatedActivities);
 
     } catch (error) {
@@ -60,6 +62,18 @@ const Activities: React.FC = () => {
       setActivityToDelete(null);
       setShowAlert(false);
     }
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  const handleSort = (key: keyof Activity) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
   };
   useEffect(() => {
     const fetchUserRoutes = async () => {
@@ -79,9 +93,11 @@ const Activities: React.FC = () => {
         const userId = user.user_id;
         setCurrentUserId(userId);
 
-        // 3. Fetch user routes
+        // 3. Fetch user routes (only completed activities)
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/routes/user/${userId}`, {
-          params: { limit: 20, offset: 0 }
+          params: {
+            activities_only: true // Only fetch completed routes for activities view
+          }
         });
 
         const routes = Array.isArray(response.data) ? response.data : [];
@@ -110,73 +126,163 @@ const Activities: React.FC = () => {
     fetchUserRoutes();
   }, []);
 
+  // Filter and sort activities
+  useEffect(() => {
+    let filtered = [...activityList];
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      filtered = filtered.filter((activity) =>
+        activity.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        activity.date.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        activity.distance.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply sorting
+    if (sortConfig) {
+      filtered.sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+
+        // Handle numeric comparisons for calories
+        if (sortConfig.key === 'calories') {
+          return sortConfig.direction === 'asc'
+            ? (aValue as number) - (bValue as number)
+            : (bValue as number) - (aValue as number);
+        }
+
+        // Handle string comparisons
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    setFilteredActivities(filtered);
+  }, [activityList, searchQuery, sortConfig]);
+
   return (
     <IonPage>
       <IonContent className="ion-padding">
         <div className="activities-header">
-          <h2>My Activities</h2> 
+          <h2>My Activities</h2>
           <div className="search-and-button">
-            <IonSearchbar 
-              placeholder="Search for keywords" 
-              className="activities-searchbar" 
+            <IonSearchbar
+              placeholder="Search by title, date, or distance"
+              className="activities-searchbar"
+              value={searchQuery}
+              onIonInput={(e) => handleSearch(e.detail.value!)}
+              debounce={300}
             />
-            <IonButton
-              routerLink="/recently-deleted"
-              className="recently-deleted-btn">
-              Recently Deleted
-            </IonButton>
           </div>
         </div>
 
         {/* Summary */}
         <div className="activities-summary">
           <h3>
-            Total Activities: <span className="activity-count">{activityList.length} Activities</span>
+            Total Activities: <span className="activity-count">{filteredActivities.length} of {activityList.length}</span>
           </h3>
         </div>
 
         {/* Desktop Table View - Hidden on Mobile */}
-        <div className="desktop-only">
-          <IonGrid className="activities-table">
-            <IonRow>
-              <IonCol>Date</IonCol>
-              <IonCol>Title</IonCol>
-              <IonCol>Distance</IonCol>
-              <IonCol>Time</IonCol>
-              <IonCol>Pace</IonCol>
-              <IonCol>Calories</IonCol>
-              <IonCol>Actions</IonCol>
-            </IonRow>
-
-            {activityList.map((activity, index) => (
-              <IonRow key={index}>
-                <IonCol>{activity.date}</IonCol>
-                <IonCol>{activity.title}</IonCol>
-                <IonCol>{activity.distance}</IonCol>
-                <IonCol>{activity.time}</IonCol>
-                <IonCol>{activity.pace}</IonCol>
-                <IonCol>{activity.calories} kcal</IonCol>
-                <IonCol>
-                  <IonButton 
-                    fill="clear" 
-                    color="danger" 
-                    size="small"
-                    className="delete-button"
-                    onClick={() => handleDeleteClick(index)}
-                  >
-                    Delete
-                  </IonButton>
-
-                </IonCol>
-              </IonRow>
-            ))}
-          </IonGrid>
+                <div className="desktop-only">
+          <div className="table-container">
+            <table className="activities-table">
+              <thead>
+                <tr>
+                  <th onClick={() => handleSort('date')} className="sortable-header">
+                    <span>Date</span>
+                    {sortConfig?.key === 'date' && (
+                      <IonIcon
+                        className="sort-icon"
+                        icon={sortConfig.direction === 'asc' ? arrowUpOutline : arrowDownOutline}
+                      />
+                    )}
+                  </th>
+                  <th onClick={() => handleSort('title')} className="sortable-header">
+                    <span>Title</span>
+                    {sortConfig?.key === 'title' && (
+                      <IonIcon
+                        className="sort-icon"
+                        icon={sortConfig.direction === 'asc' ? arrowUpOutline : arrowDownOutline}
+                      />
+                    )}
+                  </th>
+                  <th onClick={() => handleSort('distance')} className="sortable-header">
+                    <span>Distance</span>
+                    {sortConfig?.key === 'distance' && (
+                      <IonIcon
+                        className="sort-icon"
+                        icon={sortConfig.direction === 'asc' ? arrowUpOutline : arrowDownOutline}
+                      />
+                    )}
+                  </th>
+                  <th onClick={() => handleSort('time')} className="sortable-header">
+                    <span>Time</span>
+                    {sortConfig?.key === 'time' && (
+                      <IonIcon
+                        className="sort-icon"
+                        icon={sortConfig.direction === 'asc' ? arrowUpOutline : arrowDownOutline}
+                      />
+                    )}
+                  </th>
+                  <th onClick={() => handleSort('pace')} className="sortable-header">
+                    <span>Pace</span>
+                    {sortConfig?.key === 'pace' && (
+                      <IonIcon
+                        className="sort-icon"
+                        icon={sortConfig.direction === 'asc' ? arrowUpOutline : arrowDownOutline}
+                      />
+                    )}
+                  </th>
+                  <th onClick={() => handleSort('calories')} className="sortable-header">
+                    <span>Calories</span>
+                    {sortConfig?.key === 'calories' && (
+                      <IonIcon
+                        className="sort-icon"
+                        icon={sortConfig.direction === 'asc' ? arrowUpOutline : arrowDownOutline}
+                      />
+                    )}
+                  </th>
+                  <th className="actions-header">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredActivities.map((activity, index) => (
+                  <tr key={activity.id}>
+                    <td>{activity.date}</td>
+                    <td>{activity.title}</td>
+                    <td>{activity.distance}</td>
+                    <td>{activity.time}</td>
+                    <td>{activity.pace}</td>
+                    <td>{activity.calories} kcal</td>
+                    <td className="actions-cell">
+                      <IonButton
+                        fill="clear"
+                        color="danger"
+                        size="small"
+                        className="delete-button"
+                        onClick={() => handleDeleteClick(index)}
+                      >
+                        Delete
+                      </IonButton>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Mobile Card View */}
         <div className="activities-cards mobile-only">
-          {activityList.map((activity, index) => (
-            <IonCard key={index} className="activity-card">
+          {filteredActivities.map((activity, index) => (
+            <IonCard key={activity.id} className="activity-card">
               <IonCardContent>
                 <div className="card-header">
                   <h3 className="activity-title">{activity.title}</h3>
@@ -202,6 +308,7 @@ const Activities: React.FC = () => {
                 </div>
                 <div className="delete-actions">
                   <IonButton
+                    color="danger"
                     onClick={() => handleDeleteClick(index)}
                   >
                     Delete
@@ -242,3 +349,6 @@ const Activities: React.FC = () => {
 };
 
 export default Activities;
+
+
+

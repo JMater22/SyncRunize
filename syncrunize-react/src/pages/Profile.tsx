@@ -25,7 +25,7 @@ import {
   IonAlert,
   IonSpinner
 } from "@ionic/react";
-import { settings, trophy, flame, statsChart, close, camera, checkmark, person, logOut } from "ionicons/icons";
+import { settings, trophy, flame, statsChart, close, camera, checkmark, person, logOut, createOutline, trashOutline, heartOutline, chatbubbleEllipses, locationOutline, timeOutline, speedometerOutline, flameOutline as flameIcon, eyeOutline, lockClosedOutline } from "ionicons/icons";
 
 import ProfilePic from "../assets/Profile Picture.png";
 import Banner from "../assets/Banner UP.png";
@@ -46,6 +46,7 @@ import TenKBeginner from "../assets/10K Beginner.jpg";
 import "../components/UserProfile/UserProfile.css";
 import { supabase } from "../supabaseClient";
 import axios from "axios";
+import { useLocation } from "react-router-dom";
 
  interface FollowsFormat {
   id:number;
@@ -100,7 +101,7 @@ const Profile: React.FC = () => {
 
 
   const history = useHistory();
-  const [activeTab, setActiveTab] = useState<"activities" | "badges" | "challenges">("activities");
+  const [activeTab, setActiveTab] = useState<"activities" | "badges" | "challenges" | "posts">("activities");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -111,6 +112,27 @@ const Profile: React.FC = () => {
   
   const [userRoutes, setUserRoutes] = useState<any[]>([]);
   const [loadingRoutes, setLoadingRoutes] = useState(false);
+
+  // Posts state
+  const [userPosts, setUserPosts] = useState<any[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [editingPost, setEditingPost] = useState<any | null>(null);
+  const [isEditPostModalOpen, setIsEditPostModalOpen] = useState(false);
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<number | null>(null);
+  const location = useLocation();
+
+  // Switch profile tab based on query param ?tab=badges|challenges|activities|posts
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = (params.get('tab') || '').toLowerCase();
+    if (tab === 'badges' || tab === 'challenges' || tab === 'activities' || tab === 'posts') {
+      setActiveTab(tab as any);
+      // Clean the URL to avoid repeated switching on re-renders
+      const cleanPath = '/profile';
+      window.history.replaceState({}, '', cleanPath);
+    }
+  }, [location.search]);
 
   // Profile data state
   const [profileData, setProfileData] = useState({
@@ -236,7 +258,21 @@ useEffect(() => {
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
-      if (!session) return;
+
+      // Clear state if no session
+      if (!session) {
+        setProfileData({
+          Name: "",
+          description: "",
+          profilePic: "https://ionicframework.com/docs/img/demos/avatar.svg"
+        });
+        setCurrentUserId(null);
+        setFollowersData([]);
+        setFollowingsData([]);
+        setFollowersCount(0);
+        setFollowingCount(0);
+        return;
+      }
 
       const token = session.access_token;
       const { data: user } = await axios.get(`${import.meta.env.VITE_API_URL}/users/me`, {
@@ -248,7 +284,7 @@ useEffect(() => {
       setProfileData({
         Name: user.name || "Unknown User",
         description: user.description || "",
-        profilePic: user.profile_picture || profileData.profilePic,
+        profilePic: user.profile_picture || "https://ionicframework.com/docs/img/demos/avatar.svg",
       });
       console.log(user.description);
       // Fetch both counts at once (more efficient!)
@@ -301,6 +337,16 @@ useEffect(() => {
 
   fetchUserData();
 
+  // Subscribe to auth state changes to refetch when user logs in/out
+  const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    if (session) {
+      fetchUserData();
+    }
+  });
+
+  return () => {
+    authListener?.subscription.unsubscribe();
+  };
 }, []);
 
 
@@ -381,14 +427,15 @@ useEffect(() => {
 
     try {
       setLoadingRoutes(true);
-      
+
       // No need for authentication token
       const response = await axios.get(
         `${import.meta.env.VITE_API_URL}/routes/user/${currentUserId}`,
-        { 
+        {
           params: {
-            limit: 20,
-            offset: 0
+            limit: 100, // Increased to get all activities for accurate stats
+            offset: 0,
+            activities_only: true // ✅ Only fetch completed routes for activities view (excludes generated routes)
           }
         }
       );
@@ -402,6 +449,35 @@ useEffect(() => {
   };
 
   fetchUserRoutes();
+}, [currentUserId]);
+
+// Fetch user's posts
+useEffect(() => {
+  const fetchUserPosts = async () => {
+    if (!currentUserId) return;
+
+    try {
+      setLoadingPosts(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/posts/my`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { limit: 50, offset: 0 }
+        }
+      );
+
+      setUserPosts(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error("Error fetching user posts:", error);
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
+
+  fetchUserPosts();
 }, [currentUserId]);
 
 
@@ -452,6 +528,78 @@ const formatDate = (dateString: string) => {
 
 
 const [showAllActivities, setShowAllActivities] = useState(false);
+
+// Post management functions
+const handleEditPost = (post: any) => {
+  setEditingPost(post);
+  setIsEditPostModalOpen(true);
+};
+
+const handleSavePostEdit = async () => {
+  if (!editingPost) return;
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const response = await axios.put(
+      `${import.meta.env.VITE_API_URL}/posts/${editingPost.post_id}`,
+      {
+        content: editingPost.content,
+        visibility: editingPost.visibility
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+
+    // Update local state
+    setUserPosts(prevPosts =>
+      prevPosts.map(post =>
+        post.post_id === editingPost.post_id ? { ...post, ...response.data } : post
+      )
+    );
+
+    setIsEditPostModalOpen(false);
+    setEditingPost(null);
+    setShowToast(true);
+  } catch (error) {
+    console.error("Error updating post:", error);
+    alert("Failed to update post");
+  }
+};
+
+const handleDeletePost = async () => {
+  if (!postToDelete) return;
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    await axios.delete(
+      `${import.meta.env.VITE_API_URL}/posts/${postToDelete}`,
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+
+    // Remove from local state
+    setUserPosts(prevPosts =>
+      prevPosts.filter(post => post.post_id !== postToDelete)
+    );
+
+    setShowDeleteAlert(false);
+    setPostToDelete(null);
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    alert("Failed to delete post");
+  }
+};
+
+const openDeleteConfirmation = (postId: number) => {
+  setPostToDelete(postId);
+  setShowDeleteAlert(true);
+};
 
 
     const handleFollowToggle = async (targetUserId: number) => {
@@ -598,8 +746,29 @@ const handleSaveProfile = async () => {
       console.error("Error logging out:", error.message);
     } else {
       console.log("User logged out and session cleared");
+
+      // Reset ALL local state to prevent data persistence
+      setProfileData({
+        Name: "",
+        description: "",
+        profilePic: "https://ionicframework.com/docs/img/demos/avatar.svg"
+      });
+      setCurrentUserId(null);
+      setUserRoutes([]);
+      setUserPosts([]);
+      setUserChallenges([]);
+      setEarnedBadges([]);
+      setFollowersData([]);
+      setFollowingsData([]);
+      setFollowersCount(0);
+      setFollowingCount(0);
+      setStatsData({
+        day: { title: "Today", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+        week: { title: "This Week", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+        month: { title: "This Month", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+      });
+
       setShowLogoutAlert(false);
-      
       history.push("/login");
     }
   };
@@ -663,6 +832,13 @@ const handleSaveProfile = async () => {
                 >
                   <IonIcon icon={statsChart} />
                   <span>Activities</span>
+                </button>
+                <button
+                  className={`nav-tab ${activeTab === "posts" ? "active" : ""}`}
+                  onClick={() => setActiveTab("posts")}
+                >
+                  <IonIcon icon={person} />
+                  <span>Manage Posts</span>
                 </button>
                 <button
                   className={`nav-tab ${activeTab === "badges" ? "active" : ""}`}
@@ -797,6 +973,10 @@ const handleSaveProfile = async () => {
                   <strong>{route.average_pace || "N/A"}</strong>
                   <span>Pace</span>
                 </div>
+                <div className="activity-stat">
+                  <strong>{route.estimated_calories || "N/A"}</strong>
+                  <span>Calorie Burned</span>
+                </div>
               </div>
 
               <div className="activity-map">
@@ -911,6 +1091,127 @@ const handleSaveProfile = async () => {
                           ))
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* Manage Posts Section */}
+                {activeTab === "posts" && (
+                  <div className="content-section">
+                    <div className="section-header">
+                      <h2>Manage Posts</h2>
+                      <span className="badge-count">{userPosts.length} posts</span>
+                    </div>
+
+                    {loadingPosts ? (
+                      <div className="loading-center">
+                        <IonSpinner name="crescent" />
+                        <p>Loading posts...</p>
+                      </div>
+                    ) : userPosts.length === 0 ? (
+                      <div className="loading-center">
+                        <p>No posts yet. Complete routes and share them to create posts!</p>
+                      </div>
+                    ) : (
+                      <div className="activities-list">
+                        {userPosts.map((post) => (
+                          <IonCard key={post.post_id} className="activity-card-modern">
+                            <IonCardContent>
+                              <div className="activity-top">
+                                <div className="activity-meta">
+                                  <span className="activity-type">
+                                    {post.route_name || "Post"}
+                                  </span>
+                                  <span className="activity-date">
+                                    {formatDate(post.created_at)}
+                                  </span>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <IonButton
+                                    fill="clear"
+                                    size="small"
+                                    onClick={() => handleEditPost(post)}
+                                  >
+                                    <IonIcon icon={createOutline} slot="icon-only" />
+                                  </IonButton>
+                                  <IonButton
+                                    fill="clear"
+                                    size="small"
+                                    color="danger"
+                                    onClick={() => openDeleteConfirmation(post.post_id)}
+                                  >
+                                    <IonIcon icon={trashOutline} slot="icon-only" />
+                                  </IonButton>
+                                </div>
+                              </div>
+
+                              {/* Content */}
+                              {post.content && (
+                                <p style={{ marginBottom: '12px' }}>{post.content}</p>
+                              )}
+
+                              {/* Stats (if route-based post) */}
+                              {post.route_id && (
+                                <div className="activity-stats-row">
+                                  <div className="activity-stat">
+                                    <IonIcon icon={locationOutline} />
+                                    <strong>{post.distance_km?.toFixed(1)} km</strong>
+                                    <span>Distance</span>
+                                  </div>
+                                  <div className="activity-stat">
+                                    <IonIcon icon={timeOutline} />
+                                    <strong>{formatDuration(post.duration_seconds)}</strong>
+                                    <span>Time</span>
+                                  </div>
+                                  <div className="activity-stat">
+                                    <IonIcon icon={speedometerOutline} />
+                                    <strong>{post.average_pace || 'N/A'}</strong>
+                                    <span>Pace</span>
+                                  </div>
+                                  <div className="activity-stat">
+                                    <IonIcon icon={flameIcon} />
+                                    <strong>{post.estimated_calories || 'N/A'}</strong>
+                                    <span>Calories</span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Map Image */}
+                              {post.snapshot_url && (
+                                <div className="activity-map">
+                                  <IonImg src={post.snapshot_url} alt="Route Map" />
+                                </div>
+                              )}
+
+                              {/* Post Stats */}
+                              <div style={{
+                                display: 'flex',
+                                gap: '16px',
+                                marginTop: '12px',
+                                paddingTop: '12px',
+                                borderTop: '1px solid #e2e8f0',
+                                fontSize: '14px',
+                                color: '#666'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <IonIcon icon={heartOutline} />
+                                  <span>{post.likes_count || 0} Likes</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <IonIcon icon={chatbubbleEllipses} />
+                                  <span>{post.comments_count || 0} Comments</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
+                                  <IonIcon icon={post.visibility === 'public' ? eyeOutline : lockClosedOutline} />
+                                  <span>{post.visibility === 'public' ? 'Public' : 'Private'}</span>
+                                </div>
+                              </div>
+                            </IonCardContent>
+                          </IonCard>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1168,6 +1469,118 @@ const handleSaveProfile = async () => {
           duration={2000}
           color="success"
           position="top"
+        />
+
+        {/* Edit Post Modal */}
+        <IonModal isOpen={isEditPostModalOpen} className="edit-profile-modal">
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Edit Post</IonTitle>
+              <IonButton
+                slot="end"
+                fill="clear"
+                onClick={() => {
+                  setIsEditPostModalOpen(false);
+                  setEditingPost(null);
+                }}
+              >
+                <IonIcon icon={close} />
+              </IonButton>
+            </IonToolbar>
+          </IonHeader>
+
+          <IonContent className="edit-modal-content">
+            <div className="edit-form-container">
+              {/* Form Fields */}
+              <div className="edit-form-fields">
+                <IonItem className="edit-form-item description-item">
+                  <IonLabel position="stacked">Post Content</IonLabel>
+                  <IonTextarea
+                    value={editingPost?.content || ''}
+                    onIonInput={(e) => setEditingPost({
+                      ...editingPost,
+                      content: e.detail.value!
+                    })}
+                    placeholder="Share your thoughts about this activity..."
+                    rows={4}
+                    className="edit-textarea"
+                  />
+                </IonItem>
+
+                <IonItem className="edit-form-item">
+                  <IonLabel position="stacked">Visibility</IonLabel>
+                  <select
+                    value={editingPost?.visibility || 'public'}
+                    onChange={(e) => setEditingPost({
+                      ...editingPost,
+                      visibility: e.target.value
+                    })}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      marginTop: '8px',
+                      borderRadius: '8px',
+                      border: '1px solid #ccc',
+                      fontSize: '16px'
+                    }}
+                  >
+                    <option value="public">Public - Everyone can see</option>
+                    <option value="private">Private - Only followers can see</option>
+                  </select>
+                </IonItem>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="edit-form-actions">
+                <IonButton
+                  expand="block"
+                  fill="solid"
+                  onClick={handleSavePostEdit}
+                  className="save-profile-btn"
+                >
+                  <IonIcon icon={checkmark} slot="start" />
+                  Save Changes
+                </IonButton>
+
+                <IonButton
+                  expand="block"
+                  fill="outline"
+                  onClick={() => {
+                    setIsEditPostModalOpen(false);
+                    setEditingPost(null);
+                  }}
+                  className="cancel-profile-btn"
+                >
+                  Cancel
+                </IonButton>
+              </div>
+            </div>
+          </IonContent>
+        </IonModal>
+
+        {/* Delete Post Confirmation Alert */}
+        <IonAlert
+          isOpen={showDeleteAlert}
+          onDidDismiss={() => {
+            setShowDeleteAlert(false);
+            setPostToDelete(null);
+          }}
+          header="Delete Post"
+          message="Are you sure you want to delete this post? This action cannot be undone."
+          cssClass="logout-alert"
+          buttons={[
+            {
+              text: 'Cancel',
+              role: 'cancel',
+              cssClass: 'alert-button-cancel'
+            },
+            {
+              text: 'Delete',
+              role: 'destructive',
+              cssClass: 'alert-button-logout',
+              handler: handleDeletePost
+            }
+          ]}
         />
       </IonContent>
     </IonPage>

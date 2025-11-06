@@ -11,4 +11,7 @@ router.get("/:postId", LikeController.getLikesCount);
 router.post("/:postId", authenticate, LikeController.likePost);
 router.delete("/:postId", authenticate, LikeController.unlikePost);
 
+// ✅ NEW: Toggle like (like/unlike in one call)
+router.post("/:postId/toggle", authenticate, LikeController.toggleLike);
+
 export default router;
