@@ -1,4 +1,5 @@
 import * as FollowModel from "../models/follow_model.js";
+import * as NotificationService from "../services/notification_service.js";
 
 
 // GET follower count
@@ -66,17 +67,20 @@ export const followUser = async (req, res) => {
   try {
     const { userId } = req.params; // user being followed
     const followerId = req.user.user_id; // ✅ Integer from users table
-    
+
     if (userId === followerId.toString()) { // ⚠️ FIXED: Consistent string comparison
       return res.status(400).json({ error: "You cannot follow yourself" });
     }
-    
+
     const follow = await FollowModel.followUser(followerId, userId);
-    
+
     if (!follow) {
       return res.status(200).json({ message: "Already following" });
     }
-    
+
+    // 🔔 Send follow notification
+    await NotificationService.notifyFollow(parseInt(userId), followerId);
+
     res.status(201).json(follow);
   } catch (err) {
     console.error("Error following user:", err);
@@ -121,6 +125,12 @@ export const toggleFollow = async (req, res) => {
     }
 
     const result = await FollowModel.toggleFollow(followerId, userId);
+
+    // 🔔 Send follow notification if user was followed (not unfollowed)
+    if (result.action === "followed") {
+      await NotificationService.notifyFollow(parseInt(userId), followerId);
+    }
+
     res.json(result);
   } catch (err) {
     console.error("Error toggling follow:", err);

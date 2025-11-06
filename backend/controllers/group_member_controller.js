@@ -1,4 +1,6 @@
 import * as GroupMemberModel from "../models/group_member_model.js";
+import * as NotificationService from "../services/notification_service.js";
+import { supabase } from "../utils/supabase.js";
 
 
 export const checkMembership = async (req, res) => {
@@ -114,9 +116,20 @@ export const inviteUserToGroup = async (req, res) => {
     // Add user to group
     await GroupMemberModel.addGroupMember(groupId, userId, "member");
 
-    res.status(200).json({ 
+    // 🔔 Get group name and send notification
+    const { data: group } = await supabase
+      .from("groups")
+      .select("name")
+      .eq("group_id", groupId)
+      .single();
+
+    if (group) {
+      await NotificationService.notifyGroupInvite(parseInt(userId), parseInt(groupId), group.name);
+    }
+
+    res.status(200).json({
       message: "User invited successfully",
-      userId 
+      userId
     });
   } catch (err) {
     console.error("Error inviting user:", err);

@@ -14,20 +14,23 @@ import {
   IonToast,
   IonModal
 } from "@ionic/react";
-import { 
-  location, 
-  chatbubbles, 
-  imageOutline, 
-  closeCircle, 
+import {
+  location,
+  chatbubbles,
+  imageOutline,
+  closeCircle,
   arrowBack,
   heartOutline,
   heart,
   sendOutline,
-  searchOutline, 
-  peopleOutline, 
-  alertCircleOutline 
+  searchOutline,
+  peopleOutline,
+  alertCircleOutline,
+  lockClosedOutline,
+  eyeOutline,
+  person,
 } from "ionicons/icons";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation, useHistory } from "react-router-dom";
 import axios from "axios";
 import { supabase } from "../../supabaseClient";
 import "./GroupFeed.css";
@@ -118,6 +121,9 @@ interface Comment {
 const GroupFeed: React.FC = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const routerLocation = useLocation(); 
+  const contentRef = useRef<HTMLIonContentElement>(null);
+  const history = useHistory();
 
   // ==================== STATE ====================
   // User & Auth
@@ -195,6 +201,18 @@ const [invitingUsers, setInvitingUsers] = useState<{ [userId: number]: boolean }
     setShowToast(true);
   };
 
+
+  // ==================== AVATAR HELPER ====================
+  const renderAvatar = (src: string | null | undefined, alt: string, className: string, size: number = 32) => {
+    if (src) {
+      return <img src={src} alt={alt} className={className} />;
+    }
+    return (
+      <div className={className} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0', borderRadius: '50%' }}>
+        <IonIcon icon={person} style={{ fontSize: `${size}px`, color: '#92C628' }} />
+      </div>
+    );
+  };
 
   // ==================== ADD SEARCH FUNCTION ====================
   const searchUsers = async (query: string) => {
@@ -301,7 +319,12 @@ const handleInviteUser = async (userId: number) => {
     const fetchGroupDetails = async () => {
       try {
         setIsLoading(true);
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/groups/${groupId}`);
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/groups/${groupId}`,
+          token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+        );
         setGroupDetails(response.data);
       } catch (error) {
         console.error("Error fetching group details:", error);
@@ -473,6 +496,31 @@ const handleInviteUser = async (userId: number) => {
     }
   };
 
+  // ==================== DISBAND (DELETE) GROUP [ADMIN ONLY] ====================
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
+  const handleDeleteGroup = async () => {
+    if (!currentUserId || !groupId) return;
+    if (userRole !== 'admin') return; // Only admin can disband
+
+    try {
+      setIsDeletingGroup(true);
+      await axios.delete(
+        `${import.meta.env.VITE_API_URL}/groups/${groupId}`,
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      showToastMessage('Group disbanded successfully', 'success');
+      // Redirect back to community after short delay
+      setTimeout(() => {
+        history.push('/community');
+      }, 600);
+    } catch (error: any) {
+      console.error('Error deleting group:', error);
+      showToastMessage(error.response?.data?.error || 'Failed to disband group', 'danger');
+    } finally {
+      setIsDeletingGroup(false);
+    }
+  };
+
   // ==================== UPLOAD IMAGES TO SUPABASE ====================
   const uploadImagesToSupabase = async (files: File[]): Promise<string[]> => {
     const uploadedUrls: string[] = [];
@@ -532,9 +580,25 @@ const handleInviteUser = async (userId: number) => {
         },
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
-
-      // Add new post to the beginning of the list
-      setPosts(prev => [response.data, ...prev]);
+      
+      // Refresh posts from API so images render with normalized structure
+      try {
+        const refreshed = await axios.get(
+          `${import.meta.env.VITE_API_URL}/group-posts/${groupId}?limit=20&offset=0&userId=${currentUserId}`,
+          { headers: { Authorization: `Bearer ${authToken}` } }
+        );
+        setPosts(refreshed.data.map((post: any) => ({
+          ...post,
+          images: typeof post.images === 'string' ? JSON.parse(post.images) : post.images,
+        })));
+      } catch (e) {
+        console.warn('Refresh posts after create failed, falling back to local insert');
+        const created = response.data;
+        setPosts(prev => [{
+          ...created,
+          images: typeof created.images === 'string' ? JSON.parse(created.images) : created.images,
+        }, ...prev]);
+      }
       
       // Reset form
       setPostTitle('');
@@ -552,6 +616,36 @@ const handleInviteUser = async (userId: number) => {
       setIsUploadingImages(false);
     }
   };
+
+  // When routed with ?focusGroupPost=<id>, refresh and scroll to that post
+  useEffect(() => {
+    const params = new URLSearchParams(routerLocation.search);
+    const focus = params.get('focusGroupPost');
+    if (!focus || !groupId || !currentUserId) return;
+    (async () => {
+      try {
+        // Ensure Posts tab is active so the target element exists in the DOM
+        if (activeSegment !== 'posts') {
+          setActiveSegment('posts');
+        }
+        const refreshed = await axios.get(
+          `${import.meta.env.VITE_API_URL}/group-posts/${groupId}?limit=20&offset=0&userId=${currentUserId}`,
+          { headers: { Authorization: `Bearer ${authToken}` } }
+        );
+        setPosts(refreshed.data.map((post: any) => ({
+          ...post,
+          images: typeof post.images === 'string' ? JSON.parse(post.images) : post.images,
+        })));
+      } catch (e) {
+        console.error('Error refreshing posts for focusGroupPost:', e);
+      } finally {
+        setTimeout(() => {
+          const el = document.getElementById(`gpost-${Number(focus)}`);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
+    })();
+  }, [routerLocation.search, groupId, currentUserId, authToken]);
 
   // ==================== LIKE POST ====================
   const handleLikePost = async (postId: number) => {
@@ -704,7 +798,7 @@ const handleInviteUser = async (userId: number) => {
 
   return (
     <IonPage>
-      <IonContent>
+      <IonContent ref={contentRef}>
         {/* Hero Banner */}
         <div className="club-hero-banner">
           <img 
@@ -719,6 +813,16 @@ const handleInviteUser = async (userId: number) => {
               </div>
               <div className="club-info">
                 <h1 className="club-name">{groupDetails.name}</h1>
+                {/* Privacy Indicator */}
+                <div
+                  className={`privacy-badge ${groupDetails.privacy ? 'private' : 'public'}`}
+                  style={{ marginTop: 4 }}
+                >
+                  <IonIcon icon={groupDetails.privacy ? lockClosedOutline : eyeOutline} />
+                  <span>
+                    {groupDetails.privacy ? 'Private Group' : 'Public Group'}
+                  </span>
+                </div>
                 {groupDetails.location && (
                   <div className="club-location">
                     <IonIcon icon={location} />
@@ -727,19 +831,37 @@ const handleInviteUser = async (userId: number) => {
                 )}
                 <p className="club-description">{groupDetails.description}</p>
               </div>
-              <IonButton
-                className={isMember ? "join-club-btn joined" : "join-club-btn"}
-                onClick={isMember ? handleLeaveGroup : handleJoinGroup}
-                disabled={isJoining}
-              >
-                {isJoining ? (
-                  <IonSpinner name="crescent" />
-                ) : isMember ? (
-                  "Joined"
-                ) : (
-                  "Join Club"
-                )}
-              </IonButton>
+              {/* Membership/Admin action */}
+              {userRole === 'admin' ? (
+                <IonButton
+                  color="danger"
+                  className="join-club-btn"
+                  onClick={handleDeleteGroup}
+                  disabled={isDeletingGroup}
+                >
+                  {isDeletingGroup ? <IonSpinner name="crescent" /> : 'Disband Group'}
+                </IonButton>
+              ) : isMember ? (
+                <IonButton
+                  className="join-club-btn joined"
+                  onClick={handleLeaveGroup}
+                  disabled={isJoining}
+                >
+                  {isJoining ? <IonSpinner name="crescent" /> : 'Joined'}
+                </IonButton>
+              ) : groupDetails.privacy ? (
+                <IonButton className="join-club-btn" disabled>
+                  Invite Only
+                </IonButton>
+              ) : (
+                <IonButton
+                  className="join-club-btn"
+                  onClick={handleJoinGroup}
+                  disabled={isJoining}
+                >
+                  {isJoining ? <IonSpinner name="crescent" /> : 'Join Club'}
+                </IonButton>
+              )}
             </div>
           </div>
         </div>
@@ -780,7 +902,7 @@ const handleInviteUser = async (userId: number) => {
                             <div className="leader-medal">
                               {index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}
                             </div>
-                            <img src={leader.avatar} alt={leader.name} className="leader-avatar" />
+                            {renderAvatar(leader.avatar, leader.name, "leader-avatar", 40)}
                             <span className="leader-name">{leader.name}</span>
                             <span className="leader-value">{leader.value}</span>
                           </div>
@@ -794,7 +916,7 @@ const handleInviteUser = async (userId: number) => {
                             <div className="leader-medal">
                               {index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}
                             </div>
-                            <img src={leader.avatar} alt={leader.name} className="leader-avatar" />
+                            {renderAvatar(leader.avatar, leader.name, "leader-avatar", 40)}
                             <span className="leader-name">{leader.name}</span>
                             <span className="leader-value">{leader.value}</span>
                           </div>
@@ -836,7 +958,7 @@ const handleInviteUser = async (userId: number) => {
                         <div key={entry.rank} className="table-row">
                           <div className="td rank-col">{entry.rank}</div>
                           <div className="td athlete-col">
-                            <img src={entry.avatar} alt={entry.name} className="athlete-avatar" />
+                            {renderAvatar(entry.avatar, entry.name, "athlete-avatar", 32)}
                             <span className="athlete-name">{entry.name}</span>
                           </div>
                           <div className="td">{entry.distance}</div>
@@ -873,11 +995,7 @@ const handleInviteUser = async (userId: number) => {
                     <div className="members-list">
                       {admins.map((admin) => (
                         <div key={admin.user_id} className="member-item">
-                          <img 
-                            src={admin.users.profile_picture || DefaultProfileImage} 
-                            alt={admin.users.name} 
-                            className="member-avatar" 
-                          />
+                          {renderAvatar(admin.users.profile_picture, admin.users.name, "member-avatar", 40)}
                           <div className="member-info">
                             <span className="member-name">{admin.users.name}</span>
                             {admin.users.location && (
@@ -896,11 +1014,7 @@ const handleInviteUser = async (userId: number) => {
                     <div className="members-list">
                       {members.map((member) => (
                         <div key={member.user_id} className="member-item">
-                          <img 
-                            src={member.users.profile_picture || DefaultProfileImage} 
-                            alt={member.users.name} 
-                            className="member-avatar" 
-                          />
+                          {renderAvatar(member.users.profile_picture, member.users.name, "member-avatar", 40)}
                           <div className="member-info">
                             <span className="member-name">{member.users.name}</span>
                             {member.users.location && (
@@ -1031,9 +1145,9 @@ const handleInviteUser = async (userId: number) => {
                       ) : (
                         <div className="posts-list">
                           {posts.map((post) => (
-                            <div key={post.post_id} className="post-card">
+                            <div key={post.post_id} id={`gpost-${post.post_id}`} className="post-card">
                               <div className="post-header">
-                                <img src={post.avatar} alt={post.author} className="post-avatar" />
+                                {renderAvatar(post.avatar, post.author, "post-avatar", 40)}
                                 <div className="post-author-info">
                                   <span className="post-author-name">{post.author}</span>
                                   <span className="post-timestamp">{post.timestamp}</span>
@@ -1132,7 +1246,7 @@ const handleInviteUser = async (userId: number) => {
                                 <div className="comments-section">
                                   {postComments[post.post_id]?.map((comment) => (
                                     <div key={comment.comment_id} className="comment-item">
-                                      <img src={comment.avatar || DefaultProfileImage} alt={comment.name} className="comment-avatar" />
+                                      {renderAvatar(comment.avatar, comment.name, "comment-avatar", 32)}
                                       <div className="comment-content">
                                         <div className="comment-header">
                                           <span className="comment-author">{comment.name}</span>
@@ -1200,7 +1314,13 @@ const handleInviteUser = async (userId: number) => {
                 </h3>
                 <div className="members-avatars">
                   {members.slice(0, 3).map((member, idx) => (
-                    <img key={idx} src={member.users.profile_picture} alt={member.users.name} />
+                    member.users.profile_picture ? (
+                      <img key={idx} src={member.users.profile_picture} alt={member.users.name} />
+                    ) : (
+                      <div key={idx} style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '-10px' }}>
+                        <IonIcon icon={person} style={{ fontSize: '24px', color: '#92C628' }} />
+                      </div>
+                    )
                   ))}
                   {members.length > 3 && (
                     <span className="more-members-text">
@@ -1208,7 +1328,7 @@ const handleInviteUser = async (userId: number) => {
                     </span>
                   )}
                 </div>
-                {isMember && (
+                {isMember && userRole !== 'admin' && (
                   <IonButton 
                     className="leave-btn" 
                     expand="block" 
@@ -1216,6 +1336,17 @@ const handleInviteUser = async (userId: number) => {
                     disabled={isJoining}
                   >
                     {isJoining ? <IonSpinner name="crescent" /> : "Leave Club"}
+                  </IonButton>
+                )}
+                {isMember && userRole === 'admin' && (
+                  <IonButton 
+                    color="danger"
+                    className="leave-btn" 
+                    expand="block" 
+                    onClick={handleDeleteGroup}
+                    disabled={isDeletingGroup}
+                  >
+                    {isDeletingGroup ? <IonSpinner name="crescent" /> : "Disband Club (Admin)"}
                   </IonButton>
                 )}
               </div>
@@ -1274,7 +1405,7 @@ const handleInviteUser = async (userId: number) => {
           setSearchResults([]);
         }}
       >
-        <IonContent>
+        <IonContent ref={contentRef}>
           <div className="invite-modal-container">
             {/* Header */}
             <div className="invite-modal-header">
@@ -1339,11 +1470,7 @@ const handleInviteUser = async (userId: number) => {
                   
                   {searchResults.map((user) => (
                     <div key={user.user_id} className="user-result-item">
-                      <img 
-                        src={user.profile_picture || DefaultProfileImage} 
-                        alt={user.name}
-                        className="user-result-avatar"
-                      />
+                      {renderAvatar(user.profile_picture, user.name, "user-result-avatar", 40)}
                       <div className="user-result-info">
                         <span className="user-result-name">{user.name}</span>
                         {user.username && (
@@ -1381,3 +1508,7 @@ const handleInviteUser = async (userId: number) => {
 };
 
 export default GroupFeed;
+
+
+
+

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { useNotifications } from '../contexts/NotificationContext';
+import NotificationMenu from '../components/Notifications/NotificationMenu';
 import {
   IonPage,
   IonContent,
@@ -35,7 +37,8 @@ import {
   personAddOutline,
   trophyOutline,
   ribbonOutline,
-  speedometerOutline
+  speedometerOutline,
+  person
 } from "ionicons/icons";
 
 // Import the new CreatePostPage component
@@ -95,6 +98,7 @@ const Home: React.FC = () => {
   const [openComments, setOpenComments] = useState<number | null>(null);
   const [showCreatePostPage, setShowCreatePostPage] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const { unreadCount } = useNotifications();
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<{ [postId: number]: Comment[] }>({});
   const [loading, setLoading] = useState(true);
@@ -122,6 +126,7 @@ const Home: React.FC = () => {
   });
 
   const history = useHistory();
+  const location = useLocation();
 
   // Calculate weekly stats from user routes
   useEffect(() => {
@@ -308,12 +313,14 @@ const Home: React.FC = () => {
       setFollowCounts(counts);
 
       // Fetch user routes (for activities count and weekly stats calculation)
+      // Only fetch completed routes (activities_only = true) - excludes generated routes
       const routesResponse = await axios.get(
         `${import.meta.env.VITE_API_URL}/routes/user/${user.user_id}`,
         {
           params: {
-            limit: 20,
-            offset: 0
+            limit: 100, // Increased to get all activities for accurate stats
+            offset: 0,
+            activities_only: true // Only count completed runs, not generated routes
           }
         }
       );
@@ -348,6 +355,51 @@ const Home: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Listen for a close event from NotificationMenu to hide the modal
+  useEffect(() => {
+    const handler = () => setShowNotifications(false);
+    window.addEventListener('notifications:close', handler);
+    return () => window.removeEventListener('notifications:close', handler);
+  }, []);
+
+  // If navigated with ?focusPost, refresh feed to get latest, then scroll after posts load
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const focus = params.get('focusPost');
+    if (focus) {
+      fetchFeed();
+    }
+  }, [location.search]);
+
+  // Scroll to focused post after posts are present
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const focus = params.get('focusPost');
+    if (!focus) return;
+    const targetId = `post-${Number(focus)}`;
+    const el = document.getElementById(targetId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Remove focus param from URL to avoid repeated scrolls
+      history.replace('/home');
+    }
+  }, [posts]);
+
+  // Scroll to a post if focusPost query param is present
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const focus = params.get('focusPost');
+    if (!focus) return;
+    const targetId = `post-${Number(focus)}`;
+    const el = document.getElementById(targetId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Optional: brief highlight class for UX
+      el.classList.add('highlight-focus');
+      setTimeout(() => el.classList.remove('highlight-focus'), 2000);
+    }
+  }, [posts]);
 
   // Fetch comments for a post
   const fetchComments = async (postId: number) => {
@@ -475,83 +527,6 @@ const Home: React.FC = () => {
     return `${diffDays}d ago`;
   };
 
-  const notificationsData = [
-    {
-      id: 1,
-      type: "follower",
-      icon: personAddOutline,
-      iconColor: "#3880ff",
-      user: "Sarah Johnson",
-      avatar: ProfilePic,
-      message: "started following you",
-      time: "5m ago",
-      unread: true,
-    },
-    {
-      id: 2,
-      type: "badge",
-      icon: ribbonOutline,
-      iconColor: "#ffc409",
-      message: "You've earned a new badge: 100km Milestone!",
-      time: "1h ago",
-      unread: true,
-    },
-    {
-      id: 3,
-      type: "challenge",
-      icon: trophyOutline,
-      iconColor: "#10dc60",
-      message: "Challenge Complete: April Distance Goal",
-      description: "Congratulations! You've completed 100km this month.",
-      time: "2h ago",
-      unread: true,
-    },
-    {
-      id: 4,
-      type: "follower",
-      icon: personAddOutline,
-      iconColor: "#3880ff",
-      user: "Mike Chen",
-      avatar: ProfilePic,
-      message: "started following you",
-      time: "3h ago",
-      unread: true,
-    },
-    {
-      id: 5,
-      type: "like",
-      icon: heartOutline,
-      iconColor: "#eb445a",
-      user: "Emily Chen",
-      avatar: ProfilePic,
-      message: "liked your activity",
-      time: "5h ago",
-      unread: true,
-    },
-    {
-      id: 6,
-      type: "comment",
-      icon: chatbubbleEllipses,
-      iconColor: "#3880ff",
-      user: "John Doe",
-      avatar: ProfilePic,
-      message: "commented on your post",
-      time: "1d ago",
-      unread: false,
-    },
-    {
-      id: 7,
-      type: "badge",
-      icon: ribbonOutline,
-      iconColor: "#ffc409",
-      message: "You've earned a new badge: Bronze",
-      time: "2d ago",
-      unread: false,
-    },
-  ];
-
-
-
   const handlePostSubmit = (content: string) => {
     console.log("New post:", content);
     // Handle post submission here
@@ -583,7 +558,11 @@ const Home: React.FC = () => {
             <IonCard className="profile-card-enhanced">
               <div className="profile-card-header">
                 <IonAvatar className="profile-avatar-large">
-                  <img src={currentUser?.profile_picture || ProfilePic} alt="Profile" />
+                  {currentUser?.profile_picture ? (
+                    <img src={currentUser.profile_picture} alt="Profile" />
+                  ) : (
+                    <IonIcon icon={person} style={{ fontSize: '64px', color: '#92C628' }} />
+                  )}
                 </IonAvatar>
                 <div className="online-status"></div>
               </div>
@@ -679,7 +658,11 @@ const Home: React.FC = () => {
                             style={{ width: '50px', height: '50px', marginRight: '12px', cursor: 'pointer' }}
                             onClick={() => handleViewProfile(user.user_id)}
                           >
-                            <img src={user.profile_picture || ProfilePic} alt={user.name} />
+                            {user.profile_picture ? (
+                              <img src={user.profile_picture} alt={user.name} />
+                            ) : (
+                              <IonIcon icon={person} style={{ fontSize: '32px', color: '#92C628' }} />
+                            )}
                           </IonAvatar>
 
                           <div
@@ -724,7 +707,7 @@ const Home: React.FC = () => {
                 </div>
               ) : (
                 posts.map((post) => (
-                  <IonCard key={post.post_id} className="activity-card-enhanced">
+                  <IonCard key={post.post_id} id={`post-${post.post_id}`} className="activity-card-enhanced">
                     {/* Activity Header */}
                     <div className="activity-header-enhanced">
                       <IonAvatar
@@ -732,7 +715,11 @@ const Home: React.FC = () => {
                         style={{ cursor: 'pointer' }}
                         onClick={() => handleViewProfile(post.user_id)}
                       >
-                        <img src={post.author_avatar || ProfilePic} alt="Profile" />
+                        {post.author_avatar ? (
+                          <img src={post.author_avatar} alt="Profile" />
+                        ) : (
+                          <IonIcon icon={person} style={{ fontSize: '32px', color: '#92C628' }} />
+                        )}
                       </IonAvatar>
                       <div className="activity-user-info">
                         <h3
@@ -835,7 +822,11 @@ const Home: React.FC = () => {
                                 style={{ cursor: 'pointer' }}
                                 onClick={() => handleViewProfile(comment.user_id)}
                               >
-                                <img src={comment.profile_picture || ProfilePic} alt={comment.username} />
+                                {comment.profile_picture ? (
+                                  <img src={comment.profile_picture} alt={comment.username} />
+                                ) : (
+                                  <IonIcon icon={person} style={{ fontSize: '24px', color: '#92C628' }} />
+                                )}
                               </IonAvatar>
                               <div className="comment-content">
                                 <div className="comment-header">
@@ -854,7 +845,11 @@ const Home: React.FC = () => {
                           ))}
                           <div className="add-comment">
                             <IonAvatar className="comment-avatar">
-                              <img src={currentUser?.profile_picture || ProfilePic} alt="You" />
+                              {currentUser?.profile_picture ? (
+                                <img src={currentUser.profile_picture} alt="You" />
+                              ) : (
+                                <IonIcon icon={person} style={{ fontSize: '24px', color: '#92C628' }} />
+                              )}
                             </IonAvatar>
                             <IonInput
                               placeholder="Add a comment..."
@@ -948,7 +943,11 @@ const Home: React.FC = () => {
         <IonFab vertical="bottom" horizontal="end" slot="fixed">
           <IonFabButton onClick={() => setShowNotifications(true)}>
             <IonIcon icon={notifications} />
-            <IonBadge color="danger" className="fab-badge">5</IonBadge>
+            {unreadCount > 0 && (
+              <IonBadge color="danger" className="fab-badge">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </IonBadge>
+            )}
           </IonFabButton>
         </IonFab>
 
@@ -964,58 +963,7 @@ const Home: React.FC = () => {
               </IonButtons>
             </IonToolbar>
           </IonHeader>
-          <IonContent>
-            <IonList>
-              {notificationsData.map((notification) => (
-                <IonItem
-                  key={notification.id}
-                  button
-                  detail={false}
-                  className={`notification-item ${notification.unread ? 'unread' : ''}`}
-                >
-                  <div 
-                    className="notification-icon-wrapper"
-                    style={{ backgroundColor: `${notification.iconColor}20` }}
-                  >
-                    {notification.avatar ? (
-                      <IonAvatar className="notification-avatar">
-                        <img src={notification.avatar} alt={notification.user} />
-                      </IonAvatar>
-                    ) : (
-                      <IonIcon
-                        icon={notification.icon}
-                        className="notification-icon"
-                        style={{ color: notification.iconColor }}
-                      />
-                    )}
-                  </div>
-                  <div className="notification-content">
-                    <div className="notification-header">
-                      {notification.user && (
-                        <strong className="notification-user">
-                          {notification.user}
-                        </strong>
-                      )}
-                      <span className="notification-message">
-                        {notification.message}
-                      </span>
-                    </div>
-                    {notification.description && (
-                      <p className="notification-description">
-                        {notification.description}
-                      </p>
-                    )} 
-                    <span className="notification-time">
-                      {notification.time}
-                    </span>
-                  </div>
-                  {notification.unread && (
-                    <div className="notification-unread-dot" />
-                  )}
-                </IonItem>
-              ))}
-            </IonList>
-          </IonContent>
+          <NotificationMenu />
         </IonModal>
       </IonContent>
     </IonPage>

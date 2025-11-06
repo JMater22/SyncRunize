@@ -59,6 +59,19 @@ export const getUserPosts = async (req, res) => {
   }
 };
 
+// Get a single post by ID
+export const getPostById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const post = await PostModel.getPostById(id);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+    res.json(post);
+  } catch (err) {
+    console.error("Get post by id error:", err);
+    res.status(500).json({ error: "Failed to fetch post" });
+  }
+};
+
 // ✅ NEW: CREATE post from route
 export const createPostFromRoute = async (req, res) => {
   try {

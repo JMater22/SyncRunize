@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pydantic
+sentence-transformers
+numpy
+scipy
+requests
+osmnx
+networkx
+pandas
+openpyxl
+supabase
+python-dotenv

@@ -1,4 +1,6 @@
 import * as CommentModel from "../models/comment_model.js";
+import * as NotificationService from "../services/notification_service.js";
+import { supabase } from "../utils/supabase.js";
 
 // GET comments for a post
 export const getComments = async (req, res) => {
@@ -18,6 +20,18 @@ export const createComment = async (req, res) => {
     const { content } = req.body;
     const userId = req.user.user_id; // ✅ Integer from users table
     const comment = await CommentModel.createComment(postId, userId, content);
+
+    // 🔔 Get post owner and send notification
+    const { data: post } = await supabase
+      .from("posts")
+      .select("user_id")
+      .eq("post_id", postId)
+      .single();
+
+    if (post) {
+      await NotificationService.notifyComment(post.user_id, userId, parseInt(postId));
+    }
+
     res.status(201).json(comment);
   } catch (err) {
     res.status(500).json({ error: "Failed to create comment" });

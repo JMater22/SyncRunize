@@ -81,6 +81,11 @@ export const getHazardsNearby = async (req, res) => {
     const latNum = parseFloat(lat);
     const lngNum = parseFloat(lng);
     const radiusNum = parseFloat(radius || 0.3);
+
+    if (isNaN(latNum) || isNaN(lngNum)) {
+      return res.status(400).json({ error: "Invalid latitude or longitude" });
+    }
+
     const hazards = await Hazard.findHazardsNearLocation(latNum, lngNum, radiusNum);
 
 
@@ -92,8 +97,8 @@ export const getHazardsNearby = async (req, res) => {
       });
     }
 
-    // Generate AI summaries for each hazard
-    const hazardsWithSummaries = await Promise.all(
+    // Generate AI summaries for each hazard (non-blocking, optional)
+    const hazardsWithSummaries = await Promise.allSettled(
       hazards.map(async (hazard) => {
         try {
           const summary = await summarizeHazard(hazard);
@@ -103,18 +108,27 @@ export const getHazardsNearby = async (req, res) => {
           return { ...hazard, ai_summary: null };
         }
       })
+    ).then(results =>
+      results.map((result, idx) =>
+        result.status === 'fulfilled' ? result.value : { ...hazards[idx], ai_summary: null }
+      )
     );
 
-    // Generate a single summarized overview for all nearby hazards
-    const ai_nearby_summary = await summarizeNearbyHazards(hazardsWithSummaries);
+    // Generate a single summarized overview for all nearby hazards (optional, non-blocking)
+    let ai_nearby_summary = "Hazards reported in this area.";
+    try {
+      ai_nearby_summary = await summarizeNearbyHazards(hazardsWithSummaries);
+    } catch (e) {
+      console.warn("⚠️ AI nearby summary failed:", e.message);
+    }
 
     res.json({
-      message: "✅ Nearby hazards with AI summaries generated.",
+      message: "✅ Nearby hazards retrieved successfully.",
       hazards: hazardsWithSummaries,
       ai_nearby_summary,
     });
   } catch (err) {
-    console.error(" Error fetching nearby hazards:", err);
+    console.error("❌ Error fetching nearby hazards:", err);
     res.status(500).json({ error: "Failed to fetch hazards" });
   }
 };

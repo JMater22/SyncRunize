@@ -1,12 +1,12 @@
 import express from "express";
 import * as GroupController from "../controllers/group_controller.js";
-import { authenticate } from "../utils/auth_middleware.js";
+import { authenticate, optionalAuth } from "../utils/auth_middleware.js";
 
 const router = express.Router();
 
-// Public
-router.get("/", GroupController.getAllGroups);
-router.get("/:groupId", GroupController.getGroupById);
+// Public, but with optional auth to enforce private visibility rules
+router.get("/", optionalAuth, GroupController.getAllGroups);
+router.get("/:groupId", optionalAuth, GroupController.getGroupById);
 
 // Protected
 router.post("/create/:userId", GroupController.createGroup);

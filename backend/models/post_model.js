@@ -190,6 +190,26 @@ export const getUserPosts = async (targetUserId, currentUserId = null, limit = 2
   return postsWithCounts;
 };
 
+// Get a single post by ID with basic author info
+export const getPostById = async (postId) => {
+  const { data, error } = await supabase
+    .from("posts")
+    .select(`
+      *,
+      author:user_id (
+        user_id,
+        username,
+        name,
+        profile_picture
+      )
+    `)
+    .eq("post_id", postId)
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
 // ✅ NEW: Create post from completed route
 export const createPostFromRoute = async (postData) => {
   const {

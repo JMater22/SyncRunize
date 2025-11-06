@@ -370,6 +370,29 @@ ion-header ion-button {
   padding: 2rem;
 }
 
+/* Privacy badge styles */
+.privacy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  width: fit-content;
+}
+.privacy-badge.private {
+  background: #d32f2f; /* red tone */
+  color: #fff;
+}
+.privacy-badge.public {
+  background: #2e7d32; /* green tone */
+  color: #fff;
+}
+.privacy-badge ion-icon {
+  font-size: 14px;
+}
+
 .club-hero-content {
   max-width: 1400px;
   margin: 0 auto;

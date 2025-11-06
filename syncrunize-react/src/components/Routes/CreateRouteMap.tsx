@@ -81,6 +81,13 @@ interface HazardReport {
     username: string;
     profile_picture: string | null;
   };
+  // Establishment info (enriched from Places API)
+  establishment?: {
+    place_id: string;
+    displayName: string;
+    formattedAddress: string;
+    types: string[];
+  };
 }
 
 interface GeneratedRoute {
@@ -135,22 +142,18 @@ const CreateRouteMap = () => {
   const [endSearchQuery, setEndSearchQuery] = useState('');
 
   // Autocomplete suggestions
-  const [startSuggestions, setStartSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
-  const [endSuggestions, setEndSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
+  const [startSuggestions, setStartSuggestions] = useState<google.maps.places.AutocompleteSuggestion[]>([]);
+  const [endSuggestions, setEndSuggestions] = useState<google.maps.places.AutocompleteSuggestion[]>([]);
   const [showStartSuggestions, setShowStartSuggestions] = useState(false);
   const [showEndSuggestions, setShowEndSuggestions] = useState(false);
 
   // Services
   const geocoder = useRef<google.maps.Geocoder | null>(null);
-  const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
-  const placesService = useRef<google.maps.places.PlacesService | null>(null);
 
   // Initialize Google Maps services when map loads
   useEffect(() => {
     if (map && window.google) {
       geocoder.current = new google.maps.Geocoder();
-      autocompleteService.current = new google.maps.places.AutocompleteService();
-      placesService.current = new google.maps.places.PlacesService(map);
 
       // Initialize traffic layer
       const traffic = new google.maps.TrafficLayer();
@@ -169,29 +172,111 @@ const CreateRouteMap = () => {
     }
   }, [showTrafficLayer, trafficLayer, map]);
 
-  // Fetch hazards when map bounds change
+  // Enrich hazard with establishment info using Places API
+  const enrichWithEstablishment = async (hazard: HazardReport): Promise<HazardReport> => {
+    if (!window.google?.maps?.places) return hazard;
+
+    try {
+      // Create a nearby search request with required fields
+      const request: any = {
+        fields: ['places.id', 'places.displayName', 'places.formattedAddress', 'places.types', 'places.location'],
+        locationRestriction: {
+          circle: {
+            center: { lat: hazard.lat, lng: hazard.lng },
+            radius: 50 // 50 meters radius to find establishments at this location
+          }
+        }
+      };
+
+      // Use nearbySearch to find places
+      const { places } = await google.maps.places.Place.searchNearby(request);
+
+      if (places && places.length > 0) {
+        // Get the closest place
+        const place = places[0];
+
+        // Check if it's actually an establishment (not just a generic location)
+        const establishmentTypes = ['restaurant', 'cafe', 'store', 'school', 'hospital',
+                                    'shopping_mall', 'supermarket', 'gas_station', 'bank',
+                                    'pharmacy', 'gym', 'park', 'museum', 'library'];
+
+        const placeTypes = (place as any).types || [];
+        const isEstablishment = placeTypes.some((type: string) =>
+          establishmentTypes.includes(type.toLowerCase())
+        );
+
+        if (isEstablishment) {
+          const displayNameObj = (place as any).displayName;
+          const displayNameText = typeof displayNameObj === 'string'
+            ? displayNameObj
+            : (displayNameObj?.text || 'Unknown Place');
+
+          return {
+            ...hazard,
+            establishment: {
+              place_id: (place as any).id || '',
+              displayName: displayNameText,
+              formattedAddress: (place as any).formattedAddress || '',
+              types: placeTypes
+            }
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Failed to enrich hazard with establishment info:', error);
+    }
+
+    return hazard;
+  };
+
+  // Get appropriate marker icon based on hazard type
+  const getMarkerIcon = (hazard: HazardReport) => {
+    const baseSize = new google.maps.Size(32, 32);
+    const anchor = new google.maps.Point(16, 32);
+
+    if (hazard.establishment) {
+      // Use building/establishment icon for hazards at establishments
+      return {
+        url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+        scaledSize: baseSize,
+        anchor: anchor
+      };
+    } else {
+      // Use warning icon for general hazards
+      return {
+        url: 'http://maps.google.com/mapfiles/ms/icons/orange-dot.png',
+        scaledSize: baseSize,
+        anchor: anchor
+      };
+    }
+  };
+
+  // Fetch all active hazards (no radius filtering for web version)
   const fetchHazardsInView = useCallback(async () => {
     if (!map) return;
 
     try {
-      const bounds = map.getBounds();
-      if (!bounds) return;
-
-      const ne = bounds.getNorthEast();
-      const sw = bounds.getSouthWest();
-
-      const response = await axios.get(
+      // For web version, fetch ALL active hazards without radius filtering
+      // Pass a very large radius to get all hazards in the region
+      const response = await axios.get<{ hazards: HazardReport[] }>(
         `${import.meta.env.VITE_API_URL}/hazards/nearby`,
         {
           params: {
             lat: map.getCenter()?.lat(),
             lng: map.getCenter()?.lng(),
-            radius: 5 // 5km radius
+            radius: 1000 // 1000km radius to effectively get all hazards
           }
         }
       );
 
-      setHazards(response.data.hazards || []);
+      const fetchedHazards = response.data.hazards || [];
+
+      // Enrich hazards with establishment information
+      const enrichedHazards = await Promise.all(
+        fetchedHazards.map((hazard: HazardReport) => enrichWithEstablishment(hazard))
+      );
+
+      setHazards(enrichedHazards);
     } catch (error) {
       console.error('Failed to fetch hazards:', error);
     }
@@ -211,9 +296,9 @@ const CreateRouteMap = () => {
     }
   }, [map, fetchHazardsInView]);
 
-  // Fetch autocomplete suggestions
-  const fetchSuggestions = useCallback((query: string, type: 'start' | 'end') => {
-    if (!query || query.length < 2 || !autocompleteService.current) {
+  // Fetch autocomplete suggestions using new AutocompleteSuggestion API
+  const fetchSuggestions = useCallback(async (query: string, type: 'start' | 'end') => {
+    if (!query || query.length < 2 || !window.google) {
       if (type === 'start') {
         setStartSuggestions([]);
         setShowStartSuggestions(false);
@@ -224,19 +309,20 @@ const CreateRouteMap = () => {
       return;
     }
 
-    const request: google.maps.places.AutocompletionRequest = {
-      input: query,
-      componentRestrictions: { country: 'PH' },
-      types: ['geocode', 'establishment']
-    };
+    try {
+      const request = {
+        input: query,
+        includedRegionCodes: ['PH'],
+      };
 
-    autocompleteService.current.getPlacePredictions(request, (predictions, status) => {
-      if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+      const { suggestions } = await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
+
+      if (suggestions && suggestions.length > 0) {
         if (type === 'start') {
-          setStartSuggestions(predictions);
+          setStartSuggestions(suggestions);
           setShowStartSuggestions(true);
         } else {
-          setEndSuggestions(predictions);
+          setEndSuggestions(suggestions);
           setShowEndSuggestions(true);
         }
       } else {
@@ -248,39 +334,52 @@ const CreateRouteMap = () => {
           setShowEndSuggestions(false);
         }
       }
-    });
+    } catch (error) {
+      console.error('Autocomplete suggestions failed:', error);
+      if (type === 'start') {
+        setStartSuggestions([]);
+        setShowStartSuggestions(false);
+      } else {
+        setEndSuggestions([]);
+        setShowEndSuggestions(false);
+      }
+    }
   }, []);
 
-  // Select suggestion and get coordinates
-  const selectSuggestion = useCallback(async (placeId: string, description: string, type: 'start' | 'end') => {
-    if (!geocoder.current || !map) return;
+  // Select suggestion and get coordinates using new Place API
+  const selectSuggestion = useCallback(async (placePrediction: google.maps.places.PlacePrediction, description: string, type: 'start' | 'end') => {
+    if (!map) return;
 
     try {
-      const result = await geocoder.current.geocode({ placeId });
+      // Use the new Place API to fetch place details
+      const place = placePrediction.toPlace();
+      await place.fetchFields({ fields: ['location', 'displayName'] });
 
-      if (result.results && result.results.length > 0) {
-        const location = result.results[0].geometry.location;
-        const point = {
-          lat: location.lat(),
-          lng: location.lng()
-        };
-
-        if (type === 'start') {
-          setStartPoint(point);
-          setStartSearchQuery(description);
-          setShowStartSuggestions(false);
-          setToastMessage(`✓ Start: ${description}`);
-        } else {
-          setEndPoint(point);
-          setEndSearchQuery(description);
-          setShowEndSuggestions(false);
-          setToastMessage(`✓ End: ${description}`);
-        }
-
-        setShowToast(true);
-        map.panTo(point);
-        map.setZoom(15);
+      const location = place.location;
+      if (!location) {
+        throw new Error('No location found for this place');
       }
+
+      const point = {
+        lat: location.lat(),
+        lng: location.lng()
+      };
+
+      if (type === 'start') {
+        setStartPoint(point);
+        setStartSearchQuery(description);
+        setShowStartSuggestions(false);
+        setToastMessage(`✓ Start: ${description}`);
+      } else {
+        setEndPoint(point);
+        setEndSearchQuery(description);
+        setShowEndSuggestions(false);
+        setToastMessage(`✓ End: ${description}`);
+      }
+
+      setShowToast(true);
+      map.panTo(point);
+      map.setZoom(15);
     } catch (error) {
       console.error('Place selection failed:', error);
       setToastMessage('Failed to select location');
@@ -446,7 +545,7 @@ const CreateRouteMap = () => {
       console.log('Algorithm returned', coordinates?.length || 0, 'coordinates');
       console.log('Safety analysis:', safetyData);
 
-      // Store safety analysis
+      // Use safety warnings directly from algorithm engine (no GPT enhancement for web)
       if (safetyData) {
         setSafetyAnalysis(safetyData);
       }
@@ -470,6 +569,12 @@ const CreateRouteMap = () => {
 
       console.log('Converted to', pathPoints.length, 'path points');
       setGeneratedPath(pathPoints);
+
+      // For distance mode, set the endpoint to the last point of the generated route
+      if (routeMode === 'distance' && pathPoints.length > 0) {
+        const lastPoint = pathPoints[pathPoints.length - 1];
+        setEndPoint(lastPoint);
+      }
 
       // Step 2: Save route to backend with status 'generated'
       const { data: { session } } = await supabase.auth.getSession();
@@ -568,15 +673,22 @@ const CreateRouteMap = () => {
         throw new Error('Please log in to save routes');
       }
 
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/routes/save/${generatedRoute.route_id}`,
-        {},
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/saved-routes/save`,
         {
-          headers: { Authorization: `Bearer ${token}` }
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            route_id: generatedRoute.route_id, // ✅ send here
+          }),
         }
       );
 
-      console.log('Route saved successfully:', response.data);
+      const responseData = await response.json();
+      console.log('Route saved successfully:', responseData);
 
       setToastMessage('✓ Route saved successfully! Redirecting...');
       setShowToast(true);
@@ -596,15 +708,24 @@ const CreateRouteMap = () => {
 
   // Cancel route creation
   const handleCancel = () => {
+    // Clear all route-related state
     setGeneratedPath([]);
     setGeneratedRoute(null);
+    setSafetyAnalysis(null);
     setShowActions(false);
+
+    // Clear markers - reset to selection stage
     setStartPoint(null);
     setEndPoint(null);
+
+    // Clear input fields
     setRouteName('');
     setStartSearchQuery('');
     setEndSearchQuery('');
+
+    // Reset pin mode
     setPinMode(null);
+
     setToastMessage('Route cancelled');
     setShowToast(true);
   };
@@ -690,19 +811,35 @@ const CreateRouteMap = () => {
                 {/* Autocomplete Suggestions */}
                 {showStartSuggestions && startSuggestions.length > 0 && (
                   <div className="suggestions-dropdown">
-                    {startSuggestions.map((suggestion) => (
-                      <div
-                        key={suggestion.place_id}
-                        className="suggestion-item"
-                        onClick={() => selectSuggestion(suggestion.place_id, suggestion.description, 'start')}
-                      >
-                        <IonIcon icon={locationOutline} className="suggestion-icon" />
-                        <div className="suggestion-text">
-                          <div className="suggestion-main">{suggestion.structured_formatting.main_text}</div>
-                          <div className="suggestion-secondary">{suggestion.structured_formatting.secondary_text}</div>
+                    {startSuggestions.map((suggestion, index) => {
+                      const placePrediction = suggestion.placePrediction;
+                      if (!placePrediction) return null;
+
+                      // Helper to extract string from FormattableText or string
+                      const getText = (value: any): string => {
+                        if (typeof value === 'string') return value;
+                        if (value?.text) return typeof value.text === 'string' ? value.text : '';
+                        return '';
+                      };
+
+                      const mainText: string = getText(placePrediction.mainText) || getText(placePrediction.text) || '';
+                      const secondaryText: string = getText(placePrediction.secondaryText);
+                      const fullText: string = getText(placePrediction.text) || `${mainText} ${secondaryText}`.trim();
+
+                      return (
+                        <div
+                          key={`start-${index}`}
+                          className="suggestion-item"
+                          onClick={() => selectSuggestion(placePrediction, fullText, 'start')}
+                        >
+                          <IonIcon icon={locationOutline} className="suggestion-icon" />
+                          <div className="suggestion-text">
+                            <div className="suggestion-main">{mainText}</div>
+                            <div className="suggestion-secondary">{secondaryText}</div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -841,19 +978,35 @@ const CreateRouteMap = () => {
                   {/* Autocomplete Suggestions */}
                   {showEndSuggestions && endSuggestions.length > 0 && (
                     <div className="suggestions-dropdown">
-                      {endSuggestions.map((suggestion) => (
-                        <div
-                          key={suggestion.place_id}
-                          className="suggestion-item"
-                          onClick={() => selectSuggestion(suggestion.place_id, suggestion.description, 'end')}
-                        >
-                          <IonIcon icon={locationOutline} className="suggestion-icon" />
-                          <div className="suggestion-text">
-                            <div className="suggestion-main">{suggestion.structured_formatting.main_text}</div>
-                            <div className="suggestion-secondary">{suggestion.structured_formatting.secondary_text}</div>
+                      {endSuggestions.map((suggestion, index) => {
+                        const placePrediction = suggestion.placePrediction;
+                        if (!placePrediction) return null;
+
+                        // Helper to extract string from FormattableText or string
+                        const getText = (value: any): string => {
+                          if (typeof value === 'string') return value;
+                          if (value?.text) return typeof value.text === 'string' ? value.text : '';
+                          return '';
+                        };
+
+                        const mainText: string = getText(placePrediction.mainText) || getText(placePrediction.text) || '';
+                        const secondaryText: string = getText(placePrediction.secondaryText);
+                        const fullText: string = getText(placePrediction.text) || `${mainText} ${secondaryText}`.trim();
+
+                        return (
+                          <div
+                            key={`end-${index}`}
+                            className="suggestion-item"
+                            onClick={() => selectSuggestion(placePrediction, fullText, 'end')}
+                          >
+                            <IonIcon icon={locationOutline} className="suggestion-icon" />
+                            <div className="suggestion-text">
+                              <div className="suggestion-main">{mainText}</div>
+                              <div className="suggestion-secondary">{secondaryText}</div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -929,7 +1082,9 @@ const CreateRouteMap = () => {
                             className={`warning-item severity-${warning.severity}`}
                           >
                             <div className="warning-message">{warning.message}</div>
-                            <div className="warning-advice">{warning.advice}</div>
+                            {warning.advice && warning.advice.trim() !== '' && (
+                              <div className="warning-advice">{warning.advice}</div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1046,11 +1201,8 @@ const CreateRouteMap = () => {
                   <Marker
                     key={hazard.report_id}
                     position={{ lat: hazard.lat, lng: hazard.lng }}
-                    icon={{
-                      url: 'http://maps.google.com/mapfiles/ms/icons/orange-dot.png',
-                      scaledSize: new google.maps.Size(32, 32)
-                    }}
-                    title={hazard.title}
+                    icon={getMarkerIcon(hazard)}
+                    title={hazard.establishment ? hazard.establishment.displayName : hazard.title}
                     onClick={() => {
                       setSelectedHazard(hazard);
                       setShowHazardModal(true);
@@ -1102,8 +1254,8 @@ const CreateRouteMap = () => {
           <IonContent className="hazard-modal-content">
             {selectedHazard && (
               <div className="hazard-detail-container">
-                {/* Hazard Image */}
-                {selectedHazard.image_url && (
+                {/* Hazard Image - only show if image_url exists and is not null/empty */}
+                {selectedHazard.image_url && selectedHazard.image_url.trim() !== '' && (
                   <div className="hazard-image-container">
                     <img
                       src={`${import.meta.env.VITE_API_URL}${selectedHazard.image_url}`}

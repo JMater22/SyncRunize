@@ -3,6 +3,7 @@ import * as RouteModel from "../models/user_route_model.js";
 import * as UserChallengeModel from "../models/user_challenge_model.js";
 import * as ChallengeModel from "../models/challenge_model.js";
 import { computeProgressPercent, awardBadgeIfQualified } from "../services/award_service.js";
+import * as NotificationService from "../services/notification_service.js";
 import { supabase } from '../utils/supabase.js';
 
 export const getUserIdFromAuth = async (_req, res) => {
@@ -143,6 +144,27 @@ export const completeRun = async (req, res) => {
           ? awardedBadge.badge_id
           : updatedProgress.awarded_badge_id,
       });
+
+      // Notify on completion and badge earned
+      try {
+        if (recomputed.completed && !updatedProgress.completed) {
+          await NotificationService.notifyChallengeComplete(
+            userId,
+            uc.challenge_id,
+            challenge.name,
+            awardedBadge?.image_url || null
+          );
+        }
+        if (awardedBadge) {
+          await NotificationService.notifyBadgeEarned(
+            userId,
+            awardedBadge.name,
+            awardedBadge.image_url || null
+          );
+        }
+      } catch (e) {
+        console.error('[Notif.error] challenge notifications failed:', e?.message || e);
+      }
 
       updates.push({
         challenge_id: uc.challenge_id,

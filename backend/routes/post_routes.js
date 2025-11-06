@@ -16,6 +16,8 @@ router.get("/user/:userId", optionalAuth, PostController.getUserPosts); // Optio
 router.post("/from-route", authenticate, PostController.createPostFromRoute);
 
 // Protected: CRUD (original)
+// Get a single post by id (public)
+router.get("/:id", PostController.getPostById);
 router.post("/", authenticate, PostController.createPost);
 router.put("/:id", authenticate, PostController.updatePost);
 router.delete("/:id", authenticate, PostController.deletePost);

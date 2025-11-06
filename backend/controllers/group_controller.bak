@@ -1,7 +1,6 @@
 import * as GroupModel from "../models/group_model.js";
 import * as GroupMemberModel from "../models/group_member_model.js";
 import { supabase } from "../utils/supabase.js";
-
 // GET all groups
 export const getAllGroups = async (req, res) => {
   try {
@@ -23,7 +22,6 @@ export const getAllGroups = async (req, res) => {
         .or(`privacy.eq.false,created_by.eq.${userId}`)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      // Show: public OR created_by me OR where I'm a member
       groups = (data || []).filter(g => g.privacy === false || g.created_by === userId || joinedIds.includes(g.group_id));
     }
     res.json(groups);
@@ -56,15 +54,15 @@ export const createGroup = async (req, res) => {
   try {
     const { name, description, privacy, group_picture } = req.body;
     const userId = parseInt(req.params.userId, 10);
-    console.log('[GroupController] createGroup received:', { name, description, privacy, group_picture, userId });
-    console.log('[GroupController] Full req.body:', req.body);
+    console.log("📤 Controller received:", { name, description, privacy, group_picture, userId });
+    console.log("📤 Full req.body:", req.body);
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized: user not authenticated" });
     }
 
-    const defaultPicture = "https://i.pinimg.com/736x/43/a5/4b/43a54b5ac213b39d702b16a503738437.jpg";
+    const defaultPicture = "https://i.pinimg.com/736x/43/a5/4b/43a54b5ac213b39d702b16a503738437.jpg"; // replace with your hosted image
 
-    // 1. Create the group
+    // 1️⃣ Create the group
     const group = await GroupModel.createGroup({
       name,
       description,
@@ -73,7 +71,8 @@ export const createGroup = async (req, res) => {
       created_by: userId
     });
 
-    // 2. Add the creator as admin in group_members
+
+    // 2️⃣ Add the creator as admin in group_members
     await GroupMemberModel.addMember(group.group_id, userId, "admin");
 
     res.status(201).json({
@@ -81,7 +80,7 @@ export const createGroup = async (req, res) => {
       group,
     });
   } catch (err) {
-    console.error('[GroupController] Error creating group:', err);
+    console.error("❌ Error creating group:", err);
     res.status(500).json({ error: "Failed to create group" });
   }
 };
@@ -130,7 +129,8 @@ export const deleteGroup = async (req, res) => {
   }
 };
 
-// Get weekly leaderboard
+
+// ✅ Get weekly leaderboard
 // GET /api/groups/:groupId/leaderboard/weekly?week=current|last
 export const getWeeklyLeaderboard = async (req, res) => {
   try {
@@ -144,12 +144,12 @@ export const getWeeklyLeaderboard = async (req, res) => {
 
     res.json(leaderboard);
   } catch (err) {
-    console.error('[GroupController] Error fetching weekly leaderboard:', err);
+    console.error("❌ Error fetching weekly leaderboard:", err);
     res.status(500).json({ error: "Failed to fetch weekly leaderboard" });
   }
 };
 
-// Get last week's leaders (top 3)
+// ✅ Get last week's leaders (top 3)
 // GET /api/groups/:groupId/leaderboard/last-week/leaders
 export const getLastWeekLeaders = async (req, res) => {
   try {
@@ -159,7 +159,8 @@ export const getLastWeekLeaders = async (req, res) => {
 
     res.json(leaders);
   } catch (err) {
-    console.error("[GroupController] Error fetching last week's leaders:", err);
+    console.error("❌ Error fetching last week's leaders:", err);
     res.status(500).json({ error: "Failed to fetch last week's leaders" });
   }
 };
+

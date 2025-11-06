@@ -1,4 +1,6 @@
 import * as GroupLikeModel from "../models/group_like_model.js";
+import * as NotificationService from "../services/notification_service.js";
+import { supabase } from "../utils/supabase.js";
 
 // ✅ GET count likes
 export const countLikes = async (req, res) => {
@@ -39,13 +41,29 @@ export const addLike = async (req, res) => {
       return res.status(200).json({ message: "Already liked" });
     }
 
+    // 🔔 Get group post owner and send notification
+    const { data: groupPost } = await supabase
+      .from("group_posts")
+      .select("user_id, group_id")
+      .eq("group_post_id", parseInt(groupPostId, 10))
+      .single();
+
+    if (groupPost) {
+      await NotificationService.notifyGroupLike(
+        groupPost.user_id,
+        likeUserId,
+        parseInt(groupPostId, 10),
+        groupPost.group_id
+      );
+    }
+
     // Get updated count
     const count = await GroupLikeModel.countLikes(parseInt(groupPostId, 10));
 
-    res.status(201).json({ 
-      like, 
+    res.status(201).json({
+      like,
       likes: count,
-      liked: true 
+      liked: true
     });
   } catch (err) {
     console.error("❌ Error adding like:", err);
@@ -116,6 +134,23 @@ export const toggleLike = async (req, res) => {
     } else {
       // Like
       await GroupLikeModel.addLike(parseInt(groupPostId, 10), userId);
+
+      // 🔔 Get group post owner and send notification
+      const { data: groupPost } = await supabase
+        .from("group_posts")
+        .select("user_id, group_id")
+        .eq("group_post_id", parseInt(groupPostId, 10))
+        .single();
+
+      if (groupPost) {
+        await NotificationService.notifyGroupLike(
+          groupPost.user_id,
+          userId,
+          parseInt(groupPostId, 10),
+          groupPost.group_id
+        );
+      }
+
       const count = await GroupLikeModel.countLikes(parseInt(groupPostId, 10));
       res.json({ liked: true, likes: count });
     }

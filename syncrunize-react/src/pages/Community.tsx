@@ -78,8 +78,11 @@ const Community: React.FC = () => {
 
         setCurrentUserId(user.user_id);
 
-        // Fetch all groups
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/groups/`);
+        // Fetch all groups (pass auth so backend returns private groups you own/joined)
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/groups/`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
         setGroups(response.data);
         setFilteredGroups(response.data);
 

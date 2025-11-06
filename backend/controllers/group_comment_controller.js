@@ -1,4 +1,6 @@
 import * as GroupCommentModel from "../models/group_comment_model.js";
+import * as NotificationService from "../services/notification_service.js";
+import { supabase } from "../utils/supabase.js";
 
 // ✅ GET comments
 export const getComments = async (req, res) => {
@@ -55,6 +57,22 @@ export const createComment = async (req, res) => {
       commentUserId,
       content
     );
+
+    // 🔔 Get group post owner and send notification
+    const { data: groupPost } = await supabase
+      .from("group_posts")
+      .select("user_id, group_id")
+      .eq("group_post_id", parseInt(groupPostId, 10))
+      .single();
+
+    if (groupPost) {
+      await NotificationService.notifyGroupComment(
+        groupPost.user_id,
+        commentUserId,
+        parseInt(groupPostId, 10),
+        groupPost.group_id
+      );
+    }
 
     res.status(201).json(comment);
   } catch (err) {

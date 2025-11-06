@@ -5,7 +5,7 @@
   min-height: 100vh;
   margin-left: 50px;
 }
- 
+
 /* ===== Header ===== */
 .activities-header {
   display: flex;
@@ -14,6 +14,7 @@
   margin-bottom: 24px;
   flex-wrap: wrap;
   gap: 16px;
+  width: 100%;
 }
 
 .activities-header h2 {
@@ -21,16 +22,19 @@
   font-weight: bold;
   color: #2c3e50;
   margin-left: 160px;
+  flex-shrink: 0;
+  margin-right: 20px;
 }
 
 /* ===== Search + Button ===== */
 .search-and-button {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: 12px;
   flex-wrap: nowrap;
-} 
+  flex: 1;
+}
 
 ion-searchbar.activities-searchbar {
   --background: #ffffff;
@@ -39,31 +43,11 @@ ion-searchbar.activities-searchbar {
   --icon-color: #555;
   --border-radius: 10px;
   --box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  width: 260px;
+  width: 100%;
+  max-width: 400px;
   min-width: 280px;
-  margin-right: 100px;
-  margin-top: 20px;  
-}
-
-.recently-deleted-btn {
-  --background: #92C628;
-  --color: #fff;
-  --border-radius: 20px;
-  font-weight: 600;
-  --padding-start: 18px;
-  --padding-end: 18px;
-  --padding-top: 12px;
-  --padding-bottom: 12px;
-  --box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-  --transition: background-color 0.3s ease, transform 0.2s ease;
-  text-transform: none;
-  flex: none;
   margin-right: 240px;
-  margin-top: 20px;
-}
-
-.recently-deleted-btn:hover {
-  --background: #7ba922;
+  margin-top: 0;
 }
 
 /* ===== Summary Section ===== */
@@ -84,77 +68,151 @@ ion-searchbar.activities-searchbar {
 }
 
 /* ===== Desktop Table View ===== */
-.activities-table {
-  border-collapse: collapse;
-  width: 100%;
+.table-container {
   max-width: calc(100% - 320px);
   margin: 0 auto;
   background: #fff;
-  border-radius: 10px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  padding: 0 !important;
 }
 
-.activities-table ion-row:first-child {
-  font-weight: bold;
-  background-color: #ecf0f1;
-  color: #2c3e50;
+.activities-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  table-layout: fixed;
 }
 
-.activities-table ion-row:first-child ion-col {
-  font-weight: bold;
-  color: #2c3e50;
-  font-size: 15px;
+.activities-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: table-header-group;
+}
+
+.activities-table thead tr {
+  display: table-row;
+  background-color: #92C628;
+}
+
+.activities-table thead th {
+  background-color: #92C628;
+  color: #ffffff;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.15px;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 14px 8px;
+  white-space: nowrap;
+  text-align: left;
+  vertical-align: middle;
+  line-height: 1;
 }
 
-.activities-table ion-row {
-  border-bottom: 1px solid #e0e0e0;
-  align-items: center;
+.activities-table thead th.sortable-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.activities-table thead th.sortable-header:hover {
+  background-color: #7ba920;
+}
+
+.activities-table thead th.sortable-header span {
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.activities-table thead th.actions-header {
+  text-align: center;
+}
+
+.sort-icon {
+  font-size: 14px;
+}
+
+.activities-table tbody {
+  background: #fff;
+}
+
+.activities-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
   transition: background 0.2s ease;
-  margin: 0;
-  padding: 0;
 }
 
-.activities-table ion-row:last-child {
+.activities-table tbody tr:last-child {
   border-bottom: none;
 }
 
-.activities-table ion-row:not(:first-child):hover {
+.activities-table tbody tr:hover {
   background-color: #f8fafd;
 }
 
-.activities-table ion-col {
-  padding: 14px 12px;
-  font-size: 15px;
+.activities-table tbody td {
+  padding: 14px 10px;
+  font-size: 13px;
   color: #333;
-  border: none;
-  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
 }
 
-.activities-table ion-row:not(:first-child) ion-col:nth-child(2) {
-  font-weight: 500;
+.activities-table tbody td.actions-cell {
+  text-align: center;
+}
+
+.activities-table th:nth-child(1),
+.activities-table td:nth-child(1) {
+  width: 140px;
+}
+
+.activities-table th:nth-child(2),
+.activities-table td:nth-child(2) {
+  min-width: 180px;
+}
+
+.activities-table th:nth-child(3),
+.activities-table td:nth-child(3) {
+  width: 120px;
+}
+
+.activities-table th:nth-child(4),
+.activities-table td:nth-child(4) {
+  width: 110px;
+}
+
+.activities-table th:nth-child(5),
+.activities-table td:nth-child(5) {
+  width: 110px;
+}
+
+.activities-table th:nth-child(6),
+.activities-table td:nth-child(6) {
+  width: 120px;
+}
+
+.activities-table th:nth-child(7),
+.activities-table td:nth-child(7) {
+  width: 110px;
 }
 
 .activities-table ion-button {
-  font-size: 14px;
+  font-size: 13px;
   text-transform: none;
-  --padding-start: 8px;
-  --padding-end: 8px;
-  --padding-top: 4px;
-  --padding-bottom: 4px;
-  margin: 0 2px;
+  --padding-start: 12px;
+  --padding-end: 12px;
 }
 
-.activities-table ion-button:hover {
-  --color: #000000;
+.delete-button {
+  --color: #e74c3c;
+  transition: all 0.2s ease;
 }
 
-.delete-button ion-button {
-  --color: #444444 !important;
-  background-color: violet;
+.delete-button:hover {
+  --color: #c0392b;
+  transform: scale(1.05);
 }
 
 /* ===== Mobile Card View ===== */
@@ -371,11 +429,6 @@ ion-searchbar.activities-searchbar {
     min-width: unset !important;
     margin: 0 !important;
   }
-  
-  .recently-deleted-btn {
-    margin: 0 !important;
-    width: 100%;
-  }
 
   .activities-summary h3 {
     margin-left: 0;
@@ -383,7 +436,7 @@ ion-searchbar.activities-searchbar {
   }
 
   /* FORCE HIDE desktop table on mobile - Multiple selectors for safety */
-  .activities-table,
+  .table-container,
   .desktop-only,
   ion-grid.activities-table,
   .desktop-only .activities-table,
@@ -452,3 +505,4 @@ ion-searchbar.activities-searchbar {
     width: 100% !important;
   }
 }
+

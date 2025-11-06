@@ -14,8 +14,20 @@ import osmnx as ox
 import networkx as nx
 import pandas as pd
 from scipy.spatial import cKDTree
+from supabase import create_client, Client
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv()
+
 app = FastAPI()
 sbert_model = SentenceTransformer('all-MiniLM-L6-v2')
+
+# Initialize Supabase client
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Allow CORS for development
 app.add_middleware(
@@ -443,6 +455,9 @@ def generate_safety_warnings(route_metadata):
     total_distance = 0
     sidewalk_distance = 0
     no_sidewalk_segments = []
+    high_speed_segments = []  # Track high-speed segments
+    unlit_segments = []  # Track unlit segments
+    has_motorway = False
 
     for i, segment in enumerate(route_metadata):
         length_km = segment["length"] / 1000
@@ -457,58 +472,79 @@ def generate_safety_warnings(route_metadata):
         if has_sidewalk:
             sidewalk_distance += length_km
 
-        # WARNING: No sidewalk on busy road
-        if not has_sidewalk and highway in ["primary", "secondary", "tertiary", "trunk"]:
-            no_sidewalk_segments.append({
-                "segment": i,
-                "type": "no_sidewalk_busy_road",
-                "severity": "high",
-                "message": f"⚠️ No sidewalk on {highway} road. Run facing traffic to stay alert.",
-                "advice": "Face oncoming traffic so you can see vehicles approaching. Stay as far right as safely possible."
-            })
-
         # WARNING: Highway/Motorway (should never happen but safety check)
         if highway in ["motorway", "motorway_link"]:
-            warnings.append({
-                "segment": i,
-                "type": "motorway",
-                "severity": "critical",
-                "message": "🚨 DANGER: Motorway detected. Do NOT run here!",
-                "advice": "Find an alternative route immediately. Running on motorways is illegal and extremely dangerous."
-            })
+            has_motorway = True
 
-        # WARNING: Poor lighting (for evening/night runs)
+        # Track poor lighting segments
         if lit == "no" and length_km > 0.5:
-            warnings.append({
+            unlit_segments.append({
                 "segment": i,
-                "type": "poor_lighting",
-                "severity": "medium",
-                "message": f"🌙 {length_km:.1f}km of unlit road ahead.",
-                "advice": "Wear reflective gear and use a headlamp. Consider alternative route if running at night."
+                "length_km": length_km
             })
 
-        # WARNING: High speed limit
+        # Track high speed limit segments
+        has_high_speed_warning = False
         try:
             speed = int(str(maxspeed).replace(" kph", "").replace(" mph", "").split()[0])
             if speed >= 60 and not has_sidewalk:
-                warnings.append({
+                high_speed_segments.append({
                     "segment": i,
-                    "type": "high_speed_no_sidewalk",
-                    "severity": "high",
-                    "message": f"⚠️ High-speed road ({speed} kph) without sidewalk.",
-                    "advice": "Stay alert. Face traffic. Consider wearing bright/reflective clothing."
+                    "speed": speed,
+                    "length_km": length_km
                 })
+                has_high_speed_warning = True
         except:
             pass
 
-    # Aggregate warning for no-sidewalk segments
-    if no_sidewalk_segments:
-        total_no_sidewalk = sum(route_metadata[seg["segment"]]["length"] / 1000 for seg in no_sidewalk_segments)
-        warnings.insert(0, {
+        # Track no sidewalk on busy road (only if not already high-speed)
+        if not has_sidewalk and highway in ["primary", "secondary", "tertiary", "trunk"] and not has_high_speed_warning:
+            no_sidewalk_segments.append({
+                "segment": i,
+                "highway": highway,
+                "length_km": length_km
+            })
+
+    # Generate consolidated warnings
+
+    # CRITICAL: Motorway warning
+    if has_motorway:
+        warnings.append({
+            "type": "motorway",
+            "severity": "critical",
+            "message": "[DANGER] Motorway detected. Do NOT run here!",
+            "advice": "Find an alternative route immediately. Running on motorways is illegal and extremely dangerous."
+        })
+
+    # HIGH: High-speed roads summary
+    if high_speed_segments:
+        total_high_speed = sum(seg["length_km"] for seg in high_speed_segments)
+        max_speed = max(seg["speed"] for seg in high_speed_segments)
+        warnings.append({
+            "type": "high_speed_no_sidewalk",
+            "severity": "high",
+            "message": f"[WARNING] {total_high_speed:.2f}km of high-speed roads (up to {max_speed} kph) without sidewalks.",
+            "advice": "Stay alert. Face traffic. Wear bright/reflective clothing for visibility."
+        })
+
+    # HIGH/MEDIUM: No sidewalk on busy roads summary
+    elif no_sidewalk_segments:  # Only show if no high-speed warning
+        total_no_sidewalk = sum(seg["length_km"] for seg in no_sidewalk_segments)
+        warnings.append({
             "type": "route_summary_sidewalk",
             "severity": "high" if total_no_sidewalk > 1 else "medium",
-            "message": f"⚠️ {total_no_sidewalk:.2f}km ({(total_no_sidewalk/total_distance*100):.1f}%) without sidewalks.",
+            "message": f"[WARNING] {total_no_sidewalk:.2f}km ({(total_no_sidewalk/total_distance*100):.1f}%) without sidewalks.",
             "advice": "Always face oncoming traffic when running on roads without sidewalks."
+        })
+
+    # MEDIUM: Unlit roads summary
+    if unlit_segments:
+        total_unlit = sum(seg["length_km"] for seg in unlit_segments)
+        warnings.append({
+            "type": "poor_lighting",
+            "severity": "medium",
+            "message": f"[NIGHT] {total_unlit:.1f}km of unlit roads.",
+            "advice": "Wear reflective gear and use a headlamp if running at night."
         })
 
     # Positive feedback
@@ -516,7 +552,7 @@ def generate_safety_warnings(route_metadata):
         warnings.insert(0, {
             "type": "route_summary_safe",
             "severity": "info",
-            "message": f"✓ Great! {(sidewalk_distance/total_distance*100):.0f}% of route has sidewalks.",
+            "message": f"[SAFE] Great! {(sidewalk_distance/total_distance*100):.0f}% of route has sidewalks.",
             "advice": "This is a safe route for running."
         })
 
@@ -603,16 +639,73 @@ def load_graph():
             dist, idx = edge_tree.query((lng, lat))  # lng = x, lat = y
             u, v, k = edge_keys[idx]
 
-            # 🔥 Add risk instead of overwrite
+            # Add risk instead of overwrite
             road_graph[u][v][k]["risk"] += risk_value
 
             if i % 100 == 0 or i == len(grouped) - 1:
                 print(f"Processed {i+1}/{len(grouped)} ({(i+1)/len(grouped):.1%}) crime records")
 
-        print("✅ Crime risk integrated into OSM graph")
+        print("[OK] Crime risk integrated into OSM graph")
 
     except Exception as e:
-        print(f"⚠️ Failed to load crime data: {e}")
+        print(f"[WARNING] Failed to load crime data: {e}")
+
+    # STEP 7: Load user-reported hazards from Supabase
+    try:
+        print("Fetching hazards from Supabase...")
+        response = supabase.table("hazard_reports").select("*").eq("status", "active").execute()
+        hazards = response.data
+
+        if hazards and len(hazards) > 0:
+            print(f"Found {len(hazards)} active hazards")
+
+            # Process each hazard
+            for i, hazard in enumerate(hazards):
+                lat = hazard.get("lat")
+                lng = hazard.get("lng")
+                incident_type = hazard.get("incident_type", "unknown")
+                severity_weight = hazard.get("severity_weight", 0.5)
+                trust_score = hazard.get("trust_score", 0.5)
+                agreement_score = hazard.get("agreement_score", 0.5)
+
+                if lat is None or lng is None:
+                    continue
+
+                # Calculate risk value based on hazard properties
+                # Higher severity, trust, and agreement = higher risk
+                base_hazard_risk = severity_weight * 100  # Base risk from severity (0-100)
+                trust_multiplier = 0.5 + (trust_score * 0.5)  # 0.5 to 1.0
+                agreement_multiplier = 0.5 + (agreement_score * 0.5)  # 0.5 to 1.0
+
+                # Final risk value for this hazard
+                hazard_risk_value = base_hazard_risk * trust_multiplier * agreement_multiplier
+
+                # Find nearest edge using KDTree
+                dist, idx = edge_tree.query((lng, lat))  # lng = x, lat = y
+                u, v, k = edge_keys[idx]
+
+                # Add hazard risk to edge (accumulate with crime risk)
+                road_graph[u][v][k]["risk"] += hazard_risk_value
+
+                # Also add risk to nearby edges (within 50 meters)
+                nearby_indices = edge_tree.query_ball_point((lng, lat), r=0.0005)  # ~50 meters
+                for nearby_idx in nearby_indices:
+                    if nearby_idx != idx:  # Skip the closest edge (already processed)
+                        u_n, v_n, k_n = edge_keys[nearby_idx]
+                        # Reduce risk for nearby edges (50% of main risk)
+                        road_graph[u_n][v_n][k_n]["risk"] += hazard_risk_value * 0.5
+
+                if (i + 1) % 50 == 0 or i == len(hazards) - 1:
+                    print(f"Processed {i+1}/{len(hazards)} ({(i+1)/len(hazards):.1%}) hazard reports")
+
+            print("[OK] Hazard risk integrated into OSM graph")
+        else:
+            print("[WARNING] No active hazards found in database")
+
+    except Exception as e:
+        print(f"[WARNING] Failed to load hazard data: {e}")
+        import traceback
+        traceback.print_exc()
 
     print(f"Graph ready: {len(road_graph.nodes)} nodes, {len(road_graph.edges)} edges")
  

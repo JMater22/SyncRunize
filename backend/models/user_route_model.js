@@ -124,7 +124,7 @@ export const getUserRoutes = async (userId, filters = {}) => {
   console.log('Received filters:', filters);
 
   const {
-    limit = 20,
+    limit = 1000, // Increased default limit to 1000 for better user experience
     offset = 0,
     start_date,
     end_date,

@@ -46,6 +46,7 @@ import TenKBeginner from "../assets/10K Beginner.jpg";
 import "../components/UserProfile/UserProfile.css";
 import { supabase } from "../supabaseClient";
 import axios from "axios";
+import { useLocation } from "react-router-dom";
 
  interface FollowsFormat {
   id:number;
@@ -119,6 +120,19 @@ const Profile: React.FC = () => {
   const [isEditPostModalOpen, setIsEditPostModalOpen] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [postToDelete, setPostToDelete] = useState<number | null>(null);
+  const location = useLocation();
+
+  // Switch profile tab based on query param ?tab=badges|challenges|activities|posts
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = (params.get('tab') || '').toLowerCase();
+    if (tab === 'badges' || tab === 'challenges' || tab === 'activities' || tab === 'posts') {
+      setActiveTab(tab as any);
+      // Clean the URL to avoid repeated switching on re-renders
+      const cleanPath = '/profile';
+      window.history.replaceState({}, '', cleanPath);
+    }
+  }, [location.search]);
 
   // Profile data state
   const [profileData, setProfileData] = useState({
@@ -244,7 +258,21 @@ useEffect(() => {
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
-      if (!session) return;
+
+      // Clear state if no session
+      if (!session) {
+        setProfileData({
+          Name: "",
+          description: "",
+          profilePic: "https://ionicframework.com/docs/img/demos/avatar.svg"
+        });
+        setCurrentUserId(null);
+        setFollowersData([]);
+        setFollowingsData([]);
+        setFollowersCount(0);
+        setFollowingCount(0);
+        return;
+      }
 
       const token = session.access_token;
       const { data: user } = await axios.get(`${import.meta.env.VITE_API_URL}/users/me`, {
@@ -256,7 +284,7 @@ useEffect(() => {
       setProfileData({
         Name: user.name || "Unknown User",
         description: user.description || "",
-        profilePic: user.profile_picture || profileData.profilePic,
+        profilePic: user.profile_picture || "https://ionicframework.com/docs/img/demos/avatar.svg",
       });
       console.log(user.description);
       // Fetch both counts at once (more efficient!)
@@ -309,6 +337,16 @@ useEffect(() => {
 
   fetchUserData();
 
+  // Subscribe to auth state changes to refetch when user logs in/out
+  const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    if (session) {
+      fetchUserData();
+    }
+  });
+
+  return () => {
+    authListener?.subscription.unsubscribe();
+  };
 }, []);
 
 
@@ -395,9 +433,9 @@ useEffect(() => {
         `${import.meta.env.VITE_API_URL}/routes/user/${currentUserId}`,
         {
           params: {
-            limit: 20,
+            limit: 100, // Increased to get all activities for accurate stats
             offset: 0,
-            activities_only: true // ✅ NEW: Only fetch completed routes for activities view
+            activities_only: true // ✅ Only fetch completed routes for activities view (excludes generated routes)
           }
         }
       );
@@ -708,8 +746,29 @@ const handleSaveProfile = async () => {
       console.error("Error logging out:", error.message);
     } else {
       console.log("User logged out and session cleared");
+
+      // Reset ALL local state to prevent data persistence
+      setProfileData({
+        Name: "",
+        description: "",
+        profilePic: "https://ionicframework.com/docs/img/demos/avatar.svg"
+      });
+      setCurrentUserId(null);
+      setUserRoutes([]);
+      setUserPosts([]);
+      setUserChallenges([]);
+      setEarnedBadges([]);
+      setFollowersData([]);
+      setFollowingsData([]);
+      setFollowersCount(0);
+      setFollowingCount(0);
+      setStatsData({
+        day: { title: "Today", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+        week: { title: "This Week", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+        month: { title: "This Month", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+      });
+
       setShowLogoutAlert(false);
-      
       history.push("/login");
     }
   };

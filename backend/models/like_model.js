@@ -44,25 +44,33 @@ export const removeLike = async (postId, userId) => {
 
 // ✅ NEW: Toggle like (like if not liked, unlike if already liked)
 export const toggleLike = async (postId, userId) => {
-  // Check if already liked
-  const { data: existing, error: checkError } = await supabase
-    .from("likes")
-    .select("like_id")
-    .eq("post_id", postId)
-    .eq("user_id", userId)
-    .single();
+  try {
+    // Check if already liked (use maybeSingle to avoid throwing on 0 rows)
+    const { data: existing, error: checkError } = await supabase
+      .from("likes")
+      .select("like_id")
+      .eq("post_id", postId)
+      .eq("user_id", userId)
+      .maybeSingle();
 
-  if (checkError && checkError.code !== 'PGRST116') throw checkError;
+    if (checkError) {
+      console.error('[LikeModel.error] toggleLike check existing failed:', checkError, { postId, userId });
+      throw checkError;
+    }
 
-  if (existing) {
-    // Unlike
-    await removeLike(postId, userId);
-    const count = await countLikes(postId);
-    return { liked: false, likes: count };
-  } else {
-    // Like
-    await addLike(postId, userId);
-    const count = await countLikes(postId);
-    return { liked: true, likes: count };
+    if (existing) {
+      // Unlike
+      await removeLike(postId, userId);
+      const count = await countLikes(postId);
+      return { liked: false, likes: count };
+    } else {
+      // Like
+      await addLike(postId, userId);
+      const count = await countLikes(postId);
+      return { liked: true, likes: count };
+    }
+  } catch (err) {
+    console.error('[LikeModel.error] toggleLike failed:', err?.message || err, { postId, userId });
+    throw err;
   }
 };
