@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useHistory } from 'react-router-dom';
 import {
   IonPage,
@@ -20,13 +20,16 @@ import {
   IonCardTitle,
   IonCardContent,
   IonToast,
-  IonAlert
+  IonAlert,
+  IonSpinner
 } from "@ionic/react";
 import '../theme/variables.css';
 import "../theme/global.css";
 import { usePushNotifications } from "../components/push-notification";
 import { PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
 import { supabase } from "../lib/supabaseClient";
+import { useUser } from "../contexts/UserContext";
+import { UsersApi } from "../services/users";
 
 interface NotificationPreferences {
   pushEnabled: boolean;
@@ -38,12 +41,18 @@ interface NotificationPreferences {
 
 export default function Settings() {
   const history = useHistory();
+  const { currentUser, refreshUser } = useUser();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [toastColor, setToastColor] = useState<'success' | 'danger' | 'warning'>('success');
   const [showTokenAlert, setShowTokenAlert] = useState(false);
-  
+
+  const [activitiesVisibility, setActivitiesVisibility] = useState<'public' | 'private'>('public');
+  const [distanceUnit, setDistanceUnit] = useState<'km' | 'mi'>('km');
+
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>({
     pushEnabled: true,
     comments: false,
@@ -51,6 +60,14 @@ export default function Settings() {
     achievementAlerts: true,
     weeklyReports: false
   });
+
+  // Load user preferences on mount
+  useEffect(() => {
+    if (currentUser) {
+      setActivitiesVisibility(currentUser.activities_visibility || 'public');
+      setDistanceUnit(currentUser.distance_unit || 'km');
+    }
+  }, [currentUser]);
 
   // Initialize push notifications
   usePushNotifications({
@@ -60,6 +77,7 @@ export default function Settings() {
       // Send token to your backend with current preferences
       sendTokenToBackend(token, notificationPrefs);
       setToastMessage("Push notifications enabled successfully!");
+      setToastColor('success');
       setShowToast(true);
     },
     onNotificationReceived: (notification: PushNotificationSchema) => {
@@ -67,6 +85,7 @@ export default function Settings() {
       // Handle settings-related notifications (e.g., security alerts)
       if (notification.data?.type === 'security_alert') {
         setToastMessage(`Security Alert: ${notification.body}`);
+        setToastColor('warning');
         setShowToast(true);
       }
     },
@@ -95,6 +114,7 @@ export default function Settings() {
       history.replace('/authentication');
     } catch (e) {
       setToastMessage('Failed to log out');
+      setToastColor('danger');
       setShowToast(true);
     } finally {
       setLoggingOut(false);
@@ -120,9 +140,11 @@ export default function Settings() {
         sendTokenToBackend(fcmToken, allDisabled);
       }
       setToastMessage("All push notifications disabled");
+      setToastColor('success');
       setShowToast(true);
     } else if (key === 'pushEnabled' && value) {
       setToastMessage("Push notifications enabled");
+      setToastColor('success');
       setShowToast(true);
     } else {
       // Update individual preference
@@ -130,16 +152,81 @@ export default function Settings() {
         sendTokenToBackend(fcmToken, newPrefs);
       }
       setToastMessage(`${key.replace(/([A-Z])/g, ' $1').trim()} ${value ? 'enabled' : 'disabled'}`);
+      setToastColor('success');
       setShowToast(true);
     }
   };
+
+  // Handle privacy settings change
+  const handlePrivacyChange = async (visibility: 'public' | 'private') => {
+    try {
+      setSaving(true);
+      setActivitiesVisibility(visibility);
+
+      await UsersApi.updatePrivacySettings({ activities_visibility: visibility });
+      await refreshUser();
+
+      setToastMessage(`Activity visibility set to ${visibility}`);
+      setToastColor('success');
+      setShowToast(true);
+    } catch (error: any) {
+      console.error('Failed to update privacy settings:', error);
+      setToastMessage('Failed to update privacy settings');
+      setToastColor('danger');
+      setShowToast(true);
+      // Revert on error
+      setActivitiesVisibility(currentUser?.activities_visibility || 'public');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Handle distance unit change
+  const handleDistanceUnitChange = async (unit: 'km' | 'mi') => {
+    try {
+      setSaving(true);
+      setDistanceUnit(unit);
+
+      await UsersApi.updateMe({ distance_unit: unit });
+      await refreshUser();
+
+      setToastMessage(`Distance unit set to ${unit}`);
+      setToastColor('success');
+      setShowToast(true);
+    } catch (error: any) {
+      console.error('Failed to update distance unit:', error);
+      setToastMessage('Failed to update distance unit');
+      setToastColor('danger');
+      setShowToast(true);
+      // Revert on error
+      setDistanceUnit(currentUser?.distance_unit || 'km');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!currentUser) {
+    return (
+      <IonPage>
+        <IonHeader className="dark-header">
+          <IonToolbar>
+            <IonTitle>Settings</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-text-center ion-padding">
+          <IonSpinner name="crescent" />
+          <p>Loading settings...</p>
+        </IonContent>
+      </IonPage>
+    );
+  }
 
   return (
     <IonPage>
       <IonHeader className="dark-header">
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/settings" />
+            <IonBackButton defaultHref="/profile" />
           </IonButtons>
           <IonTitle>Settings</IonTitle>
         </IonToolbar>
@@ -179,23 +266,17 @@ export default function Settings() {
             <IonList>
               <IonItem>
                 <IonLabel>
-                  <h2>Profile Visibility</h2>
-                  <p>Who can see your profile</p>
-                </IonLabel>
-                <IonSelect justify="end" value="public" interface="action-sheet">
-                  <IonSelectOption value="public">Everyone</IonSelectOption>
-                  <IonSelectOption value="private">Private</IonSelectOption>
-                </IonSelect>
-              </IonItem>
-
-              <IonItem>
-                <IonLabel>
                   <h2>Activity Visibility</h2>
                   <p>Default privacy for new activities</p>
                 </IonLabel>
-                <IonSelect justify="end" value="everyone" interface="action-sheet">
-                  <IonSelectOption value="everyone">Everyone</IonSelectOption>
-                  <IonSelectOption value="friends">Friends Only</IonSelectOption>
+                <IonSelect
+                  justify="end"
+                  value={activitiesVisibility}
+                  interface="action-sheet"
+                  disabled={saving}
+                  onIonChange={(e) => handlePrivacyChange(e.detail.value)}
+                >
+                  <IonSelectOption value="public">Everyone</IonSelectOption>
                   <IonSelectOption value="private">Private</IonSelectOption>
                 </IonSelect>
               </IonItem>
@@ -299,8 +380,24 @@ export default function Settings() {
                   <p>Choose kilometers or miles</p>
                 </IonLabel>
                 <div style={{ display: "flex", gap: "8px" }}>
-                  <IonButton size="small" fill="outline" color="success">km</IonButton>
-                  <IonButton size="small" fill="outline" color="success">mi</IonButton>
+                  <IonButton
+                    size="small"
+                    fill={distanceUnit === 'km' ? 'solid' : 'outline'}
+                    color="success"
+                    disabled={saving}
+                    onClick={() => handleDistanceUnitChange('km')}
+                  >
+                    km
+                  </IonButton>
+                  <IonButton
+                    size="small"
+                    fill={distanceUnit === 'mi' ? 'solid' : 'outline'}
+                    color="success"
+                    disabled={saving}
+                    onClick={() => handleDistanceUnitChange('mi')}
+                  >
+                    mi
+                  </IonButton>
                 </div>
               </IonItem>
             </IonList>
@@ -309,7 +406,13 @@ export default function Settings() {
 
         {/* Log Out */}
         <div>
-          <IonButton className="logout-btn" onClick={handleLogout} expand="block" color="danger" disabled={loggingOut}>
+          <IonButton
+            className="logout-btn"
+            onClick={handleLogout}
+            expand="block"
+            color="danger"
+            disabled={loggingOut}
+          >
             {loggingOut ? 'Logging out...' : 'Log Out'}
           </IonButton>
         </div>
@@ -321,7 +424,7 @@ export default function Settings() {
           message={toastMessage}
           duration={2000}
           position="bottom"
-          color="success"
+          color={toastColor}
         />
 
         {/* Alert to show FCM token */}
@@ -337,6 +440,7 @@ export default function Settings() {
                 if (fcmToken) {
                   navigator.clipboard.writeText(fcmToken);
                   setToastMessage("Token copied to clipboard");
+                  setToastColor('success');
                   setShowToast(true);
                 }
               }
@@ -349,5 +453,5 @@ export default function Settings() {
         />
       </IonContent>
     </IonPage>
-  )
-};
+  );
+}

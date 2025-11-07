@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   IonPage,
   IonHeader,
@@ -15,14 +15,12 @@ import {
   IonSegmentButton,
   IonIcon,
   IonImg,
-  IonAvatar,
   IonSearchbar,
   IonModal,
-  IonBackButton,
   IonButtons,
-  IonCardContent,
   IonToast,
-  IonActionSheet
+  IonActionSheet,
+  IonSpinner,
 } from "@ionic/react";
 import {
   trophy,
@@ -31,75 +29,86 @@ import {
   camera,
   images,
   close,
-  closeCircle
 } from "ionicons/icons";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
-import ChallengeCard from "../components/challenge-card";
-import PostCard from "../components/post-card";
+import CommunityChallengesTab from "../components/CommunityChallengesTab";
+import CommunityFeedTab from "../components/CommunityFeedTab";
 import GroupCard from "../components/group-card";
-import { challenges } from "../components/challenge-data";
-import { posts } from "../components/post-data";
-import { suggestedGroups, joinedGroups } from "../components/group-data";
-import ChallengePic from "../components/assets/istockphoto-143920084-612x612.jpg";
-import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
 import { usePushNotifications } from "../components/push-notification";
+import { useUser } from "../contexts/UserContext";
+import { usePosts } from "../contexts/PostsContext";
+import { GroupsApi, Group } from "../services/groups";
 import "../theme/Community.css";
 
 const Community: React.FC = () => {
-  const [tab, setTab] = useState<"challenges" | "feed" | "groups">("challenges");
-  
-  // Challenge join state with progress tracking
-  const [joinedChallenges, setJoinedChallenges] = useState<{[key: string]: {joined: boolean, progress: number}}>({});
-  
+  const [tab, setTab] = useState<"challenges" | "feed" | "groups">("feed");
+  const { currentUser } = useUser();
+  const { fetchFeed } = usePosts();
+  // Groups state
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [userGroups, setUserGroups] = useState<number[]>([]); // IDs of groups user is member of
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [groupsError, setGroupsError] = useState<string | null>(null);
+  const [groupSearchQuery, setGroupSearchQuery] = useState("");
+
   // Create Group Modal state
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
   const [groupPhoto, setGroupPhoto] = useState<string | null>(null);
   const [showPhotoActionSheet, setShowPhotoActionSheet] = useState(false);
-  
-  // Comments state
-  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
-  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
-  const [newComment, setNewComment] = useState("");
-  const [comments, setComments] = useState<{[key: number]: Array<{id: number, user: string, text: string, time: string}>}>({
-    1: [
-      { id: 1, user: "Sarah Johnson", text: "Congratulations! That's amazing! 🎉", time: "2 hrs ago" },
-      { id: 2, user: "Mike Chen", text: "Great job! Keep it up!", time: "1 hr ago" }
-    ],
-    2: [
-      { id: 1, user: "Emily Davis", text: "You guys are crushing it! 💪", time: "2 hrs ago" }
-    ],
-    3: []
-  });
-
-  // Likes state
-  const [likes, setLikes] = useState<{[key: number]: {count: number, isLiked: boolean}}>({
-    1: { count: 324, isLiked: false },
-    2: { count: 41, isLiked: false },
-    3: { count: 150, isLiked: false }
-  });
 
   // Toast notification state
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [toastColor, setToastColor] = useState<'success' | 'danger' | 'warning'>('success');
+
+  const triggerToast = (message: string, color: 'success' | 'danger' | 'warning' = 'success') => {
+    setToastMessage(message);
+    setToastColor(color);
+    setShowToast(true);
+  };
+
+  // Fetch groups when the tab is active
+  useEffect(() => {
+    if (tab === 'groups') {
+      fetchGroups();
+    }
+  }, [tab]);
+
+  const fetchGroups = async () => {
+    try {
+      setLoadingGroups(true);
+      setGroupsError(null);
+      const allGroups = await GroupsApi.getAllGroups();
+      setGroups(Array.isArray(allGroups) ? allGroups : []);
+
+      // TODO: Fetch user's group memberships to determine which groups they're in
+      // For now, we'll check this when rendering each group
+    } catch (err: any) {
+      console.error('Failed to fetch groups:', err);
+      setGroupsError(err.message || 'Failed to fetch groups');
+      setGroups([]);
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
 
   // Initialize push notifications
   usePushNotifications({
     onNotificationReceived: (notification) => {
-      // Handle notification received while app is in foreground
       console.log('Notification received:', notification);
       setToastMessage(notification.title || 'New notification');
+      setToastColor('success');
       setShowToast(true);
     },
     onNotificationActionPerformed: (notification) => {
-      // Handle notification tapped
       console.log('Notification tapped:', notification);
-      
-      // Navigate based on notification data
+
       const data = notification.notification.data;
-      if (data?.type === 'comment') {
+      if (data?.type === 'comment' || data?.type === 'like') {
         setTab('feed');
+        fetchFeed(); // Refresh feed
       } else if (data?.type === 'challenge') {
         setTab('challenges');
       } else if (data?.type === 'group') {
@@ -107,7 +116,6 @@ const Community: React.FC = () => {
       }
     }
   });
-
   /** 📸 Select Photo for Group - Android Platform */
   const selectGroupPhoto = async (source: CameraSource) => {
     try {
@@ -123,11 +131,13 @@ const Community: React.FC = () => {
       if (photo.webPath) {
         setGroupPhoto(photo.webPath);
         setToastMessage("Group photo added!");
+        setToastColor('success');
         setShowToast(true);
       }
     } catch (error) {
       console.error("Camera error:", error);
       setToastMessage("Failed to select photo.");
+      setToastColor('danger');
       setShowToast(true);
     }
   };
@@ -139,98 +149,82 @@ const Community: React.FC = () => {
   const handleRemoveGroupPhoto = () => {
     setGroupPhoto(null);
     setToastMessage("Photo removed.");
+    setToastColor('success');
     setShowToast(true);
   };
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = async () => {
+    if (!currentUser) {
+      setToastMessage('Please log in to create a group');
+      setToastColor('danger');
+      setShowToast(true);
+      return;
+    }
+
     if (!groupName.trim()) {
       setToastMessage("Please enter a group name");
+      setToastColor('warning');
       setShowToast(true);
       return;
     }
 
     if (!groupPhoto) {
       setToastMessage("Please add a group photo");
+      setToastColor('warning');
       setShowToast(true);
       return;
     }
 
-    console.log("Creating group:", {
-      name: groupName,
-      description: groupDescription,
-      photo: groupPhoto
-    });
+    try {
+      await GroupsApi.createGroup({
+        name: groupName.trim(),
+        description: groupDescription.trim(),
+        group_picture: groupPhoto,
+        privacy: false, // Public by default
+      });
 
-    setToastMessage("Group created successfully!");
-    setShowToast(true);
+      setToastMessage("Group created successfully!");
+      setToastColor('success');
+      setShowToast(true);
 
-    // Reset form and close modal
-    setGroupName("");
-    setGroupDescription("");
-    setGroupPhoto(null);
-    setIsCreateGroupModalOpen(false);
-  };
+      // Reset form and close modal
+      setGroupName("");
+      setGroupDescription("");
+      setGroupPhoto(null);
+      setIsCreateGroupModalOpen(false);
 
-  const handleLike = (postId: number) => {
-    setLikes(prev => ({
-      ...prev,
-      [postId]: {
-        count: prev[postId].isLiked ? prev[postId].count - 1 : prev[postId].count + 1,
-        isLiked: !prev[postId].isLiked
-      }
-    }));
-  };
-
-  const openComments = (postId: number) => {
-    setSelectedPostId(postId);
-    setIsCommentsOpen(true);
-  };
-
-  const closeComments = () => {
-    setIsCommentsOpen(false);
-    setNewComment("");
-  };
-
-  const handleAddComment = () => {
-    if (newComment.trim() && selectedPostId !== null) {
-      const newCommentObj = {
-        id: Date.now(),
-        user: "You",
-        text: newComment,
-        time: "Just now"
-      };
-      
-      setComments(prev => ({
-        ...prev,
-        [selectedPostId]: [...(prev[selectedPostId] || []), newCommentObj]
-      }));
-      
-      setNewComment("");
+      // Refresh groups list
+      fetchGroups();
+    } catch (error: any) {
+      console.error('Failed to create group:', error);
+      setToastMessage(error.message || 'Failed to create group');
+      setToastColor('danger');
+      setShowToast(true);
     }
   };
 
-  const handleJoinChallenge = (challengeId: string) => {
-    setJoinedChallenges(prev => {
-      const isCurrentlyJoined = prev[challengeId]?.joined;
-      
-      if (isCurrentlyJoined) {
-        const { [challengeId]: removed, ...rest } = prev;
-        return rest;
-      } else {
-        return {
-          ...prev,
-          [challengeId]: {
-            joined: true,
-            progress: 0
-          }
-        };
-      }
-    });
-  };
+  const handleJoinGroup = async (groupId: number) => {
+    if (!currentUser) {
+      setToastMessage('Please log in to join groups');
+      setToastColor('danger');
+      setShowToast(true);
+      return;
+    }
 
-  const handleJoinGroup = (groupId: string) => {
-    console.log(`Joining group: ${groupId}`);
-    // Add your join group logic here
+    try {
+      await GroupsApi.joinGroup(groupId);
+      setToastMessage('Joined group successfully!');
+      setToastColor('success');
+      setShowToast(true);
+
+      // Add to user groups list
+      setUserGroups(prev => [...prev, groupId]);
+    } catch (error: any) {
+      console.error('Failed to join group:', error);
+      setToastMessage(error.message || 'Failed to join group');
+      setToastColor('danger');
+      setShowToast(true);
+    }
   };
 
   return (
@@ -246,7 +240,7 @@ const Community: React.FC = () => {
           <IonSegment
             value={tab}
             onIonChange={(e) =>
-              setTab((e.detail.value ?? "challenges") as
+              setTab((e.detail.value ?? "feed") as
                 | "challenges"
                 | "feed"
                 | "groups")
@@ -272,120 +266,95 @@ const Community: React.FC = () => {
       </IonHeader>
 
       <IonContent className="community-content">
-        {tab === "challenges" && (
-          <div className="challenges-tab">
-            <div className="search-container">
-              <IonSearchbar
-                placeholder="Search challenges"
-                className="challenge-search"
-              />
-            </div>
-              
-            <ChallengeCard
-              id="current-challenge"
-              title="Couch to 5k"
-              description=""
-              targetDistance="5km"
-              duration=""
-              imageSrc={ChallengePic}
-              isJoined={true}
-              progress={80}
-              onJoinToggle={() => {}}
-              isCurrent={true}
-              participants={1341}
-            />
-
-            <div className="suggested-section">
-              <h2 className="section-title">Suggested Challenge</h2>
-              
-              {challenges.map((challenge) => (
-                <ChallengeCard
-                  key={challenge.id}
-                  id={challenge.id}
-                  title={challenge.title}
-                  description={challenge.description}
-                  targetDistance={challenge.targetDistance}
-                  duration={challenge.duration}
-                  imageSrc={ChallengePic}
-                  isJoined={joinedChallenges[challenge.id]?.joined || false}
-                  progress={joinedChallenges[challenge.id]?.progress || 0}
-                  onJoinToggle={handleJoinChallenge}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+        {tab === "challenges" && <CommunityChallengesTab />}
 
         {tab === "feed" && (
-          <div className="feed-tab">
-            <IonCard className="post-input-card" routerLink="/create-post">
-              <IonItem lines="none">
-                <IonAvatar slot="start">
-                  <IonImg src={ProfilePic} />
-                </IonAvatar>
-                <input type="text" placeholder="What's on your mind?" className="post-input" readOnly />
-              </IonItem>
-            </IonCard>
-
-            <div className="feed-posts">
-              {posts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  id={post.id}
-                  username={post.username}
-                  timestamp={post.timestamp}
-                  content={post.content}
-                  imageSrc={ChallengePic}
-                  profilePic={ProfilePic}
-                  likes={likes[post.id]}
-                  commentCount={comments[post.id]?.length || 0}
-                  onLike={handleLike}
-                  onOpenComments={openComments}
-                />
-              ))}
-            </div>
-          </div>
+          <CommunityFeedTab onToast={triggerToast} />
         )}
 
         {tab === "groups" && (
           <div className="groups-tab">
             <div className="groups-header">
-              <IonButton 
+              <IonButton
                 className="create-groups-btn"
                 onClick={() => setIsCreateGroupModalOpen(true)}
               >
                 Create Groups
               </IonButton>
-              <IonSearchbar placeholder="Search groups..." className="group-search" />
+              <IonSearchbar
+                placeholder="Search groups..."
+                className="group-search"
+                value={groupSearchQuery}
+                onIonInput={(e) => setGroupSearchQuery(e.detail.value || '')}
+              />
             </div>
 
-            <div className="groups-section">
-              <h2 className="section-title">Suggested Groups</h2>
+            {loadingGroups ? (
+              <div className="ion-text-center ion-padding">
+                <IonSpinner name="crescent" />
+                <p>Loading groups...</p>
+              </div>
+            ) : groupsError ? (
+              <div className="ion-text-center ion-padding">
+                <p style={{ color: 'var(--ion-color-danger)' }}>{groupsError}</p>
+                <IonButton onClick={() => fetchGroups()} size="small">
+                  Retry
+                </IonButton>
+              </div>
+            ) : (
+              <div className="groups-section">
+                {/* User's Groups */}
+                {groups.filter(g => userGroups.includes(g.group_id)).length > 0 && (
+                  <>
+                    <h2 className="section-title">Your Groups</h2>
+                    <div className="group-list">
+                      {groups
+                        .filter(g => userGroups.includes(g.group_id))
+                        .filter(g => !groupSearchQuery || g.name.toLowerCase().includes(groupSearchQuery.toLowerCase()))
+                        .map((group) => (
+                          <GroupCard
+                            key={group.group_id}
+                            name={group.name}
+                            imageSrc={group.group_picture}
+                            routerLink={`/group-feed/${group.group_id}`}
+                          />
+                        ))}
+                    </div>
+                  </>
+                )}
 
-              <div className="group-list">
-                {suggestedGroups.map((group) => (
-                  <GroupCard
-                    key={group.id}
-                    name={group.name}
-                    imageSrc={ChallengePic}
-                    showJoinButton={true}
-                    onJoin={() => handleJoinGroup(group.id)}
-                  />
-                ))}
+                {/* Available Groups (Public groups not joined) */}
+                <h2 className="section-title">
+                  {userGroups.length > 0 ? 'Discover Groups' : 'All Groups'}
+                </h2>
+                <div className="group-list">
+                  {groups
+                    .filter(g => !userGroups.includes(g.group_id) && !g.privacy) // Show public groups not joined
+                    .filter(g => !groupSearchQuery || g.name.toLowerCase().includes(groupSearchQuery.toLowerCase()) || g.description?.toLowerCase().includes(groupSearchQuery.toLowerCase()))
+                    .map((group) => (
+                      <GroupCard
+                        key={group.group_id}
+                        name={group.name}
+                        imageSrc={group.group_picture}
+                        showJoinButton={true}
+                        onJoin={() => handleJoinGroup(group.group_id)}
+                      />
+                    ))}
+                </div>
+
+                {groups.filter(g =>
+                  !userGroups.includes(g.group_id) &&
+                  !g.privacy &&
+                  (!groupSearchQuery || g.name.toLowerCase().includes(groupSearchQuery.toLowerCase()) || g.description?.toLowerCase().includes(groupSearchQuery.toLowerCase()))
+                ).length === 0 && (
+                  <div className="ion-text-center ion-padding">
+                    <p style={{ color: 'var(--ion-color-medium)' }}>
+                      {groupSearchQuery ? 'No groups found matching your search.' : 'No groups available.'}
+                    </p>
+                  </div>
+                )}
               </div>
-              
-              <h2 className="section-title">Your Group</h2>
-              <div className="group-list">
-                {joinedGroups.map((group) => (
-                  <GroupCard
-                    key={group.id}
-                    name={group.name}
-                    imageSrc={ChallengePic}
-                    routerLink="/group-feed"
-                  />
-                ))}
-              </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -394,9 +363,9 @@ const Community: React.FC = () => {
           <IonHeader>
             <IonToolbar>
               <IonTitle>Create Group</IonTitle>
-              <IonButton 
-                slot="end" 
-                fill="clear" 
+              <IonButton
+                slot="end"
+                fill="clear"
                 onClick={() => setIsCreateGroupModalOpen(false)}
               >
                 Cancel
@@ -413,7 +382,7 @@ const Community: React.FC = () => {
                   placeholder="Enter group name"
                 />
               </IonItem>
-              
+
               <IonItem>
                 <IonLabel position="stacked">Description</IonLabel>
                 <IonTextarea
@@ -427,8 +396,8 @@ const Community: React.FC = () => {
               {/* Group Photo Upload Section */}
               <div style={{ margin: "16px 0" }}>
                 {!groupPhoto ? (
-                  <IonButton 
-                    expand="block" 
+                  <IonButton
+                    expand="block"
                     fill="outline"
                     onClick={handleAddGroupPhoto}
                   >
@@ -440,118 +409,62 @@ const Community: React.FC = () => {
                     <IonImg
                       src={groupPhoto}
                       alt="Group Photo Preview"
-                      style={{ 
-                        width: "100%", 
-                        height: "200px", 
-                        objectFit: "cover", 
-                        borderRadius: "8px" 
+                      style={{
+                        width: "100%",
+                        height: "200px",
+                        objectFit: "cover",
+                        borderRadius: "8px"
                       }}
                     />
                     <IonButton
                       fill="clear"
-                      style={{
-                        position: "absolute",
-                        top: "8px",
-                        right: "8px",
-                        "--background": "rgba(0,0,0,0.5)"
-                      }}
+                      color="danger"
+                      style={{ position: "absolute", top: "8px", right: "8px" }}
                       onClick={handleRemoveGroupPhoto}
                     >
-                      <IonIcon
-                        icon={closeCircle}
-                        color="light"
-                        style={{ fontSize: "32px" }}
-                      />
+                      <IonIcon icon={close} />
                     </IonButton>
                   </div>
                 )}
               </div>
 
-              {/* Android Action Sheet for Photo Selection */}
-              <IonActionSheet
-                isOpen={showPhotoActionSheet}
-                onDidDismiss={() => setShowPhotoActionSheet(false)}
-                buttons={[
-                  {
-                    text: "Take Photo",
-                    icon: camera,
-                    handler: () => {
-                      selectGroupPhoto(CameraSource.Camera);
-                    },
-                  },
-                  {
-                    text: "Choose from Gallery",
-                    icon: images,
-                    handler: () => {
-                      selectGroupPhoto(CameraSource.Photos);
-                    },
-                  },
-                  {
-                    text: "Cancel",
-                    icon: close,
-                    role: "cancel",
-                  },
-                ]}
-              />
-              
-              <div className="form-actions">
-                <IonButton 
-                  expand="block" 
-                  className="create-challenge-final-btn"
-                  onClick={handleCreateGroup}
-                >
-                  Create Group
-                </IonButton>
-              </div>
-            </div>
-          </IonContent>
-        </IonModal>
-
-        {/* Comments Modal */}
-        <IonModal isOpen={isCommentsOpen} onDidDismiss={closeComments}>
-          <IonHeader>
-            <IonToolbar>
-              <IonTitle>Comments</IonTitle>
-              <IonButtons slot="end">
-                <IonButton onClick={closeComments}>Close</IonButton>
-              </IonButtons>
-            </IonToolbar>
-          </IonHeader>
-          <IonContent className="ion-padding">
-            {selectedPostId && comments[selectedPostId]?.map((comment) => (
-              <IonCard key={comment.id}>
-                <IonCardContent>
-                  <div style={{fontWeight: 'bold', marginBottom: '5px'}}>{comment.user}</div>
-                  <div>{comment.text}</div>
-                  <div style={{fontSize: '0.85rem', color: '#666', marginTop: '5px'}}>{comment.time}</div>
-                </IonCardContent>
-              </IonCard>
-            ))}
-            
-            <div style={{position: 'fixed', bottom: '0', left: '0', right: '0', padding: '10px', background: 'var(--ion-background-color, white)', borderTop: '1px solid #535252ff'}}>
-              <IonItem>
-                <IonTextarea
-                  value={newComment}
-                  onIonChange={(e) => setNewComment(e.detail.value || "")}
-                  placeholder="Write a comment..."
-                  autoGrow
-                />
-              </IonItem>
-              <IonButton color="success" expand="block" onClick={handleAddComment} disabled={!newComment.trim()}>
-                Post Comment
+              <IonButton expand="block" onClick={handleCreateGroup}>
+                Create Group
               </IonButton>
             </div>
           </IonContent>
         </IonModal>
 
-        {/* Toast for notifications */}
+        {/* Photo Action Sheet */}
+        <IonActionSheet
+          isOpen={showPhotoActionSheet}
+          onDidDismiss={() => setShowPhotoActionSheet(false)}
+          buttons={[
+            {
+              text: 'Take Photo',
+              icon: camera,
+              handler: () => selectGroupPhoto(CameraSource.Camera)
+            },
+            {
+              text: 'Choose from Gallery',
+              icon: images,
+              handler: () => selectGroupPhoto(CameraSource.Photos)
+            },
+            {
+              text: 'Cancel',
+              role: 'cancel'
+            }
+          ]}
+        />
+
+        {/* Toast */}
         <IonToast
           isOpen={showToast}
           onDidDismiss={() => setShowToast(false)}
           message={toastMessage}
           duration={3000}
-          position="top"
-          color="primary"
+          position="bottom"
+          color={toastColor}
         />
       </IonContent>
     </IonPage>

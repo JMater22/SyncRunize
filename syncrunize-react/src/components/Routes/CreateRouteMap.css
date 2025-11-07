@@ -972,6 +972,27 @@
   color: #f57c00;
 }
 
+.distance-warning-banner {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  border: 1px solid transparent;
+}
+
+.distance-warning-banner.success {
+  background: rgba(146, 198, 40, 0.12);
+  border-color: rgba(146, 198, 40, 0.45);
+  color: #304b0c;
+}
+
+.distance-warning-banner.warning {
+  background: rgba(248, 123, 27, 0.12);
+  border-color: rgba(248, 123, 27, 0.4);
+  color: #7a2e00;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .route-builder-container {

@@ -21,6 +21,7 @@ import {
   IonSearchbar,
   SearchbarCustomEvent,
   IonImg,
+  IonSpinner,
   IonToast,
   IonBadge
 } from "@ionic/react";
@@ -40,6 +41,7 @@ import ProfilePic from "../components/assets/close-up-portrait-serious-man-with-
 import ChallengePic from "../components/assets/istockphoto-143920084-612x612.jpg";
 import { usePushNotifications } from "../components/push-notification";
 import { UsersApi } from "../services/users";
+import { StatsApi, StatsPeriod } from "../services/stats";
 
 // Import Google Fonts
 const fontLink = document.createElement('link');
@@ -93,75 +95,143 @@ const RecordsCard: React.FC = () => {
   );
 };
 
-const DistanceChart: React.FC = () => {
-  const [timePeriod, setTimePeriod] = useState<'per-day' | 'per-week' | 'per-month'>('per-month');
+type ChartPeriod = 'per-day' | 'per-week' | 'per-month';
+const chartPeriodMap: Record<ChartPeriod, StatsPeriod> = {
+  'per-day': 'day',
+  'per-week': 'week',
+  'per-month': 'month',
+};
 
-  // Data for different time periods
-  const chartData = {
-    'per-day': [
-      { label: "Mon", distance: 5 },
-      { label: "Tue", distance: 7 },
-      { label: "Wed", distance: 10 },
-      { label: "Thu", distance: 8 },
-      { label: "Fri", distance: 12 },
-      { label: "Sat", distance: 15 },
-      { label: "Sun", distance: 6 },
-    ],
-    'per-week': [
-      { label: "Week 1", distance: 45 },
-      { label: "Week 2", distance: 52 },
-      { label: "Week 3", distance: 48 },
-      { label: "Week 4", distance: 55 },
-      { label: "Week 5", distance: 50 },
-      { label: "Week 6", distance: 60 },
-      { label: "Week 7", distance: 58 },
-      { label: "Week 8", distance: 62 },
-    ],
-    'per-month': [
-      { label: "Jan", distance: 180 },
-      { label: "Feb", distance: 195 },
-      { label: "Mar", distance: 210 },
-      { label: "Apr", distance: 225 },
-      { label: "May", distance: 200 },
-      { label: "Jun", distance: 185 },
-      { label: "Jul", distance: 190 },
-      { label: "Aug", distance: 205 },
-      { label: "Sep", distance: 220 },
-      { label: "Oct", distance: 215 },
-      { label: "Nov", distance: 230 },
-      { label: "Dec", distance: 240 },
-    ]
-  };
+interface ChartPoint {
+  label: string;
+  distance: number;
+}
 
-  const data = chartData[timePeriod];
-  const maxDistance = Math.max(...data.map(d => d.distance));
+interface ChartPeriodState {
+  points: ChartPoint[];
+  loaded: boolean;
+}
+
+const formatChartLabel = (period: ChartPeriod, value: string) => {
+  if (period === 'per-month') {
+    const [year, month] = value.split('-');
+    const date = new Date(Number(year), Number(month) - 1, 1);
+    return date.toLocaleString(undefined, { month: 'short' });
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  if (period === 'per-week') {
+    return `Week of ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+  }
+
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
+
+interface DistanceChartProps {
+  userId: number | null;
+  userLoading?: boolean;
+  userError?: string | null;
+}
+
+const DistanceChart: React.FC<DistanceChartProps> = ({ userId, userLoading = false, userError }) => {
+  const [timePeriod, setTimePeriod] = useState<ChartPeriod>('per-month');
+  const [chartData, setChartData] = useState<Partial<Record<ChartPeriod, ChartPeriodState>>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const periodState = chartData[timePeriod];
+  const data = periodState?.points ?? [];
+  const hasLoaded = periodState?.loaded ?? false;
+  const hasPoints = data.length > 0;
+
+  useEffect(() => {
+    if (!userId || userLoading || hasLoaded) return;
+
+    let isMounted = true;
+    setLoading(true);
+    setError(null);
+
+    (async () => {
+      try {
+        const stats = await StatsApi.getAggregatedStats(userId, chartPeriodMap[timePeriod]);
+        if (!isMounted) return;
+
+        const normalized: ChartPoint[] = stats.map((stat) => ({
+          label: formatChartLabel(timePeriod, stat.period_start),
+          distance: Number(stat.total_distance ?? 0),
+        }));
+
+        setChartData((prev) => ({
+          ...prev,
+          [timePeriod]: {
+            points: normalized,
+            loaded: true,
+          },
+        }));
+      } catch (err: any) {
+        if (isMounted) {
+          setError(err?.message || 'Failed to load distance stats');
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userId, userLoading, timePeriod, hasLoaded]);
+
   const padding = 10;
   const chartHeight = 40;
   const chartWidth = 80;
+  const safeMax = hasPoints ? Math.max(...data.map((d) => d.distance)) || 1 : 1;
 
-  // Generate line path
-  const linePath = data.map((d, i) => {
-    const x = padding + (i / (data.length - 1)) * chartWidth;
-    const y = padding + chartHeight - (d.distance / maxDistance) * chartHeight;
-    return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
-  }).join(' ');
+  const linePath = hasPoints
+    ? data
+        .map((d, i) => {
+          const x = padding + (i / Math.max(data.length - 1, 1)) * chartWidth;
+          const y = padding + chartHeight - (d.distance / safeMax) * chartHeight;
+          return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
+        })
+        .join(' ')
+    : '';
 
-  // Generate area path
-  const areaPath = `${linePath} L ${padding + chartWidth},${padding + chartHeight} L ${padding},${padding + chartHeight} Z`;
+  const areaPath = hasPoints
+    ? `${linePath} L ${padding + chartWidth},${padding + chartHeight} L ${padding},${padding + chartHeight} Z`
+    : '';
 
-  // Generate data points
-  const dataPoints = data.map((d, i) => {
-    const x = padding + (i / (data.length - 1)) * chartWidth;
-    const y = padding + chartHeight - (d.distance / maxDistance) * chartHeight;
-    return { x, y };
-  });
+  const dataPoints = hasPoints
+    ? data.map((d, i) => {
+        const x = padding + (i / Math.max(data.length - 1, 1)) * chartWidth;
+        const y = padding + chartHeight - (d.distance / safeMax) * chartHeight;
+        return { x, y };
+      })
+    : [];
 
   const getSubtitle = () => {
-    switch(timePeriod) {
-      case 'per-day': return 'Distance Covered Per Day';
-      case 'per-week': return 'Distance Covered Per Week';
-      case 'per-month': return 'Distance Covered Per Month';
+    switch (timePeriod) {
+      case 'per-day':
+        return 'Distance Covered Per Day';
+      case 'per-week':
+        return 'Distance Covered Per Week';
+      case 'per-month':
+        return 'Distance Covered Per Month';
     }
+  };
+
+  const handleRetry = () => {
+    if (!userId) return;
+    setChartData((prev) => {
+      const next = { ...prev };
+      delete next[timePeriod];
+      return next;
+    });
+    setError(null);
   };
 
   return (
@@ -171,11 +241,12 @@ const DistanceChart: React.FC = () => {
         <IonCardContent>
           <div className="distance-header">
             <h3 className="distance-subtitle">{getSubtitle()}</h3>
-            <IonSelect 
-              slot="end" 
-              value={timePeriod} 
+            <IonSelect
+              slot="end"
+              value={timePeriod}
               interface="action-sheet"
               onIonChange={(e) => setTimePeriod(e.detail.value)}
+              disabled={!userId || userLoading}
               className="period-select"
             >
               <IonSelectOption value="per-day">Per Day</IonSelectOption>
@@ -185,90 +256,102 @@ const DistanceChart: React.FC = () => {
           </div>
 
         <div className="line-chart-container">
-          <svg viewBox="0 0 100 60" className="line-chart-svg">
-            {/* Grid lines */}
-            {[0, 25, 50, 75, 100].map((y) => (
-              <line
-                key={y}
-                x1={padding}
-                y1={padding + (chartHeight * y / 100)}
-                x2={padding + chartWidth}
-                y2={padding + (chartHeight * y / 100)}
-                stroke="rgba(255, 255, 255, 0.05)"
-                strokeWidth="0.2"
-              />
-            ))}
-
-            {/* Area gradient fill */}
-            <defs>
-              <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#92C628" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="#92C628" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-
-            {/* Area path */}
-            <path
-              d={areaPath}
-              fill="url(#areaGradient)"
-            />
-
-            {/* Line path */}
-            <path
-              d={linePath}
-              fill="none"
-              stroke="#92C628"
-              strokeWidth="0.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-
-            {/* Data points */}
-            {dataPoints.map((point, index) => (
-              <circle
-                key={index}
-                cx={point.x}
-                cy={point.y}
-                r="1.5"
-                fill="#fff"
-                stroke="#92C628"
-                strokeWidth="0.3"
-              />
-            ))}
-          </svg>
-        </div>
-
-        {/* Distance values - Scrollable */}
-        <div className="chart-values-scroll">
-          {data.map((d, index) => (
-            <div key={index} className="value-item">
-              <span className="value-month">{d.label}</span>
-              <span className="value-distance">{d.distance}km</span>
+          {userLoading ? (
+            <div className="ion-text-center ion-padding">
+              <IonSpinner name="crescent" />
+              <p>Loading your stats...</p>
             </div>
-          ))}
+          ) : userError ? (
+            <div className="ion-text-center ion-padding">
+              <p style={{ color: 'var(--ion-color-danger)' }}>{userError}</p>
+            </div>
+          ) : !userId ? (
+            <div className="ion-text-center ion-padding">
+              <p style={{ color: 'var(--ion-color-medium)' }}>
+                Sign in to view your distance trends.
+              </p>
+            </div>
+          ) : loading && !hasLoaded ? (
+            <div className="ion-text-center ion-padding">
+              <IonSpinner name="crescent" />
+              <p>Loading distance stats...</p>
+            </div>
+          ) : error && !hasPoints ? (
+            <div className="ion-text-center ion-padding">
+              <p style={{ color: 'var(--ion-color-danger)' }}>{error}</p>
+              <IonButton size="small" onClick={handleRetry}>
+                Retry
+              </IonButton>
+            </div>
+          ) : hasPoints ? (
+            <svg viewBox="0 0 100 60" className="line-chart-svg">
+              {[0, 25, 50, 75, 100].map((y) => (
+                <line
+                  key={y}
+                  x1={padding}
+                  y1={padding + (chartHeight * y) / 100}
+                  x2={padding + chartWidth}
+                  y2={padding + (chartHeight * y) / 100}
+                  stroke="rgba(255, 255, 255, 0.05)"
+                  strokeWidth="0.2"
+                />
+              ))}
+
+              <defs>
+                <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#92C628" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#92C628" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+
+              <path d={areaPath} fill="url(#areaGradient)" />
+              <path
+                d={linePath}
+                fill="none"
+                stroke="#92C628"
+                strokeWidth="0.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {dataPoints.map((point, index) => (
+                <circle
+                  key={index}
+                  cx={point.x}
+                  cy={point.y}
+                  r="1.5"
+                  fill="#fff"
+                  stroke="#92C628"
+                  strokeWidth="0.3"
+                />
+              ))}
+            </svg>
+          ) : (
+            <div className="ion-text-center ion-padding">
+              <p style={{ color: 'var(--ion-color-medium)' }}>
+                No stats yet for this period. Complete a run to see your progress.
+              </p>
+            </div>
+          )}
         </div>
+
+        {hasPoints && (
+          <div className="chart-values-scroll">
+            {data.map((d, index) => (
+              <div key={index} className="value-item">
+                <span className="value-month">{d.label}</span>
+                <span className="value-distance">{d.distance.toFixed(1)} km</span>
+              </div>
+            ))}
+          </div>
+        )}
       </IonCardContent>
     </IonCard>
   </>
   );
 };
 
-const UserGreeting: React.FC = () => {
-  const [name, setName] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const me = await UsersApi.me();
-        setName(me.name || me.username || `User ${me.user_id}`);
-      } catch (e: any) {
-        setError(e?.message || 'Failed to load profile');
-      }
-    })();
-  }, []);
-
-  if (error) return null;
+const UserGreeting: React.FC<{ name?: string | null }> = ({ name }) => {
   if (!name) return null;
 
   return (
@@ -288,6 +371,34 @@ export default function Dashboard() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [notificationCount, setNotificationCount] = useState(0);
+  const [userProfile, setUserProfile] = useState<{ name: string; userId: number } | null>(null);
+  const [userProfileError, setUserProfileError] = useState<string | null>(null);
+  const [userProfileLoading, setUserProfileLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const me = await UsersApi.me();
+        if (!isMounted) return;
+
+        setUserProfile({
+          name: me.name || me.username || `User ${me.user_id}`,
+          userId: me.user_id,
+        });
+      } catch (err: any) {
+        if (!isMounted) return;
+        setUserProfileError(err?.message || 'Failed to load profile');
+      } finally {
+        if (isMounted) setUserProfileLoading(false);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Initialize push notifications
   usePushNotifications({
@@ -392,7 +503,7 @@ export default function Dashboard() {
 
       {/* ===== Scrollable Content ===== */}
       <IonContent fullscreen className="dark-content">
-        <UserGreeting />
+        <UserGreeting name={userProfile?.name} />
         {/* Personal Records */}
         <div className="section-header">
           <span>Personal Records</span>
@@ -400,7 +511,11 @@ export default function Dashboard() {
         <RecordsCard />
 
         {/* Distance Chart */}
-        <DistanceChart />
+        <DistanceChart
+          userId={userProfile?.userId ?? null}
+          userLoading={userProfileLoading}
+          userError={userProfileError}
+        />
 
           {/* Recent Activity */}
           <div className="section-header">

@@ -13,15 +13,11 @@ import {
 } from '@ionic/react';
 import { useNotifications } from '../../contexts/NotificationContext';
 import './NotificationMenu.css';
+import { DEFAULT_AVATAR } from '../../constants/avatar';
 
 const NotificationMenu: React.FC = () => {
   const { notifications, unreadCount, loading, markAsRead, clearAll, refreshNotifications } = useNotifications();
   const history = useHistory();
-
-  const getDefaultAvatar = () => {
-    // Use Ionic default avatar or placeholder
-    return 'https://ionicframework.com/docs/img/demos/avatar.svg';
-  };
 
   const formatTimeAgo = (timestamp: string) => {
     const now = new Date();
@@ -173,11 +169,11 @@ const NotificationMenu: React.FC = () => {
   const getNotificationAvatar = (notification: any) => {
     // For challenge and badge notifications, show the badge image
     if (notification.type === 'challenge_progress' || notification.type === 'badge_earned') {
-      return notification.badge_image_url || getDefaultAvatar();
+      return notification.badge_image_url || DEFAULT_AVATAR;
     }
 
     // For other notifications, show actor's profile picture
-    return notification.actor?.profile_picture || getDefaultAvatar();
+    return notification.actor?.profile_picture || DEFAULT_AVATAR;
   };
 
   if (loading) {

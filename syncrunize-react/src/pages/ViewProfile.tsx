@@ -37,11 +37,10 @@ import {
   eyeOutline,
   lockClosedOutline
 } from 'ionicons/icons';
+import { DEFAULT_AVATAR } from '../constants/avatar';
 import { supabase } from '../supabaseClient';
 import Banner from '../assets/Banner UP.png';
 import MapImage from '../assets/MAP 1.png';
-
-const DEFAULT_AVATAR = 'https://ionicframework.com/docs/img/demos/avatar.svg';
 
 // Import the same CSS as Profile.tsx
 import '../components/UserProfile/UserProfile.css';

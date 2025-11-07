@@ -8,11 +8,15 @@ import {
   IonAlert,
   IonModal,
   IonButton,
+  IonFab,
+  IonFabButton,
 } from "@ionic/react";
-import { arrowBack, navigateCircleOutline, locationOutline } from "ionicons/icons";
+import { arrowBack, navigateCircleOutline, locationOutline, warning } from "ionicons/icons";
 import { Geolocation } from "@capacitor/geolocation";
 import { useHideTabBar } from "../hooks/useHideTabBar";
 import { useHistory } from "react-router-dom";
+import HazardReportModal from "../components/HazardReportModal";
+import { HazardsApi } from "../services/hazards";
 import "../theme/Run-Main.css";
 
 interface Position {
@@ -38,6 +42,7 @@ const RunMap: React.FC = () => {
   const [showPermissionAlert, setShowPermissionAlert] = useState(false);
   const [showInitialPrompt, setShowInitialPrompt] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<string>("prompt");
+  const [showHazardModal, setShowHazardModal] = useState(false);
 
   useEffect(() => {
     checkInitialPermissions(); 
@@ -138,6 +143,39 @@ const RunMap: React.FC = () => {
       setLocationEnabled(false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReportHazard = async (hazardData: {
+    hazard_type: string;
+    description?: string;
+    severity: 'low' | 'medium' | 'high';
+  }) => {
+    if (!currentPosition) {
+      setToastMessage('Unable to get your location');
+      setToastColor('danger');
+      setShowToast(true);
+      throw new Error('Unable to get your location');
+    }
+
+    try {
+      await HazardsApi.reportHazard({
+        hazard_type: hazardData.hazard_type,
+        latitude: currentPosition.latitude,
+        longitude: currentPosition.longitude,
+        description: hazardData.description,
+        severity: hazardData.severity,
+      });
+
+      setToastMessage('Hazard reported successfully!');
+      setToastColor('success');
+      setShowToast(true);
+    } catch (err: any) {
+      console.error('Failed to report hazard:', err);
+      setToastMessage(err.message || 'Failed to report hazard');
+      setToastColor('danger');
+      setShowToast(true);
+      throw err;
     }
   };
 
@@ -303,6 +341,27 @@ const RunMap: React.FC = () => {
               }
             }
           ]}
+        />
+
+        {/* Report Hazard Floating Button */}
+        {locationEnabled && (
+          <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: '80px' }}>
+            <IonFabButton
+              onClick={() => setShowHazardModal(true)}
+              color="danger"
+              title="Report Hazard"
+            >
+              <IonIcon icon={warning} />
+            </IonFabButton>
+          </IonFab>
+        )}
+
+        {/* Hazard Report Modal */}
+        <HazardReportModal
+          isOpen={showHazardModal}
+          onClose={() => setShowHazardModal(false)}
+          currentPosition={currentPosition}
+          onSubmit={handleReportHazard}
         />
 
         <IonToast

@@ -38,7 +38,7 @@ import "./GroupFeed.css";
 // Import default images
 import DefaultBanner from "../../assets/Banner UP.png";
 import DefaultGroupImage from "../../assets/GROUP 1.png";
-import DefaultProfileImage from "../../assets/MAN5.png";
+import { DEFAULT_AVATAR } from "../../constants/avatar";
 
 // ==================== INTERFACES ====================
 
@@ -130,7 +130,7 @@ const GroupFeed: React.FC = () => {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [authToken, setAuthToken] = useState<string>("");
   const [currentUserName, setCurrentUserName] = useState<string>("You");
-  const [currentUserAvatar, setCurrentUserAvatar] = useState<string>(DefaultProfileImage);
+const [currentUserAvatar, setCurrentUserAvatar] = useState<string>(DEFAULT_AVATAR);
 
   // Group Data
   const [groupDetails, setGroupDetails] = useState<GroupDetails | null>(null);
@@ -203,16 +203,9 @@ const [invitingUsers, setInvitingUsers] = useState<{ [userId: number]: boolean }
 
 
   // ==================== AVATAR HELPER ====================
-  const renderAvatar = (src: string | null | undefined, alt: string, className: string, size: number = 32) => {
-    if (src) {
-      return <img src={src} alt={alt} className={className} />;
-    }
-    return (
-      <div className={className} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0', borderRadius: '50%' }}>
-        <IonIcon icon={person} style={{ fontSize: `${size}px`, color: '#92C628' }} />
-      </div>
-    );
-  };
+  const renderAvatar = (src: string | null | undefined, alt: string, className: string) => (
+    <img src={src || DEFAULT_AVATAR} alt={alt} className={className} />
+  );
 
   // ==================== ADD SEARCH FUNCTION ====================
   const searchUsers = async (query: string) => {
@@ -303,7 +296,7 @@ const handleInviteUser = async (userId: number) => {
 
         setCurrentUserId(user.user_id);
         setCurrentUserName(user.name || "You");
-        setCurrentUserAvatar(user.profile_picture || DefaultProfileImage);
+        setCurrentUserAvatar(user.profile_picture || DEFAULT_AVATAR);
       } catch (error) {
         console.error("Error fetching current user:", error);
       }
@@ -902,7 +895,7 @@ const handleInviteUser = async (userId: number) => {
                             <div className="leader-medal">
                               {index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}
                             </div>
-                            {renderAvatar(leader.avatar, leader.name, "leader-avatar", 40)}
+                          {renderAvatar(leader.avatar, leader.name, "leader-avatar")}
                             <span className="leader-name">{leader.name}</span>
                             <span className="leader-value">{leader.value}</span>
                           </div>
@@ -916,7 +909,7 @@ const handleInviteUser = async (userId: number) => {
                             <div className="leader-medal">
                               {index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}
                             </div>
-                            {renderAvatar(leader.avatar, leader.name, "leader-avatar", 40)}
+                          {renderAvatar(leader.avatar, leader.name, "leader-avatar")}
                             <span className="leader-name">{leader.name}</span>
                             <span className="leader-value">{leader.value}</span>
                           </div>
@@ -958,7 +951,7 @@ const handleInviteUser = async (userId: number) => {
                         <div key={entry.rank} className="table-row">
                           <div className="td rank-col">{entry.rank}</div>
                           <div className="td athlete-col">
-                            {renderAvatar(entry.avatar, entry.name, "athlete-avatar", 32)}
+                          {renderAvatar(entry.avatar, entry.name, "athlete-avatar")}
                             <span className="athlete-name">{entry.name}</span>
                           </div>
                           <div className="td">{entry.distance}</div>
@@ -995,7 +988,7 @@ const handleInviteUser = async (userId: number) => {
                     <div className="members-list">
                       {admins.map((admin) => (
                         <div key={admin.user_id} className="member-item">
-                          {renderAvatar(admin.users.profile_picture, admin.users.name, "member-avatar", 40)}
+                          {renderAvatar(admin.users.profile_picture, admin.users.name, "member-avatar")}
                           <div className="member-info">
                             <span className="member-name">{admin.users.name}</span>
                             {admin.users.location && (
@@ -1014,7 +1007,7 @@ const handleInviteUser = async (userId: number) => {
                     <div className="members-list">
                       {members.map((member) => (
                         <div key={member.user_id} className="member-item">
-                          {renderAvatar(member.users.profile_picture, member.users.name, "member-avatar", 40)}
+                          {renderAvatar(member.users.profile_picture, member.users.name, "member-avatar")}
                           <div className="member-info">
                             <span className="member-name">{member.users.name}</span>
                             {member.users.location && (
@@ -1147,7 +1140,7 @@ const handleInviteUser = async (userId: number) => {
                           {posts.map((post) => (
                             <div key={post.post_id} id={`gpost-${post.post_id}`} className="post-card">
                               <div className="post-header">
-                                {renderAvatar(post.avatar, post.author, "post-avatar", 40)}
+                                {renderAvatar(post.avatar, post.author, "post-avatar")}
                                 <div className="post-author-info">
                                   <span className="post-author-name">{post.author}</span>
                                   <span className="post-timestamp">{post.timestamp}</span>
@@ -1246,7 +1239,7 @@ const handleInviteUser = async (userId: number) => {
                                 <div className="comments-section">
                                   {postComments[post.post_id]?.map((comment) => (
                                     <div key={comment.comment_id} className="comment-item">
-                                      {renderAvatar(comment.avatar, comment.name, "comment-avatar", 32)}
+                                      {renderAvatar(comment.avatar, comment.name, "comment-avatar")}
                                       <div className="comment-content">
                                         <div className="comment-header">
                                           <span className="comment-author">{comment.name}</span>
@@ -1314,13 +1307,11 @@ const handleInviteUser = async (userId: number) => {
                 </h3>
                 <div className="members-avatars">
                   {members.slice(0, 3).map((member, idx) => (
-                    member.users.profile_picture ? (
-                      <img key={idx} src={member.users.profile_picture} alt={member.users.name} />
-                    ) : (
-                      <div key={idx} style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '-10px' }}>
-                        <IonIcon icon={person} style={{ fontSize: '24px', color: '#92C628' }} />
-                      </div>
-                    )
+                    <img
+                      key={idx}
+                      src={member.users.profile_picture || DEFAULT_AVATAR}
+                      alt={member.users.name}
+                    />
                   ))}
                   {members.length > 3 && (
                     <span className="more-members-text">
@@ -1470,7 +1461,7 @@ const handleInviteUser = async (userId: number) => {
                   
                   {searchResults.map((user) => (
                     <div key={user.user_id} className="user-result-item">
-                      {renderAvatar(user.profile_picture, user.name, "user-result-avatar", 40)}
+                      {renderAvatar(user.profile_picture, user.name, "user-result-avatar")}
                       <div className="user-result-info">
                         <span className="user-result-name">{user.name}</span>
                         {user.username && (

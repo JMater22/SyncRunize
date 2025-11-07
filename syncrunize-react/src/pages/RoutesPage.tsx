@@ -13,11 +13,13 @@ import {
   IonImg,
   IonSpinner,
   IonModal,
+  IonIcon,
 } from "@ionic/react";
 import "../components/Routes/RoutesPage.css";
 import CustomCard from "../components/Routes/CustomCard";
 import { useHistory } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { close } from "ionicons/icons";
 
 const RoutesPage: React.FC = () => {
   const history = useHistory();
@@ -26,6 +28,40 @@ const RoutesPage: React.FC = () => {
   const [search, setSearch] = useState("");
   const [selectedRoute, setSelectedRoute] = useState<any>(null);
   const [saving, setSaving] = useState<boolean>(false);
+
+  const formatDuration = (seconds?: number) => {
+    if (!seconds) return "N/A";
+    const minsTotal = Math.floor(seconds / 60);
+    const hours = Math.floor(minsTotal / 60);
+    const minutes = minsTotal % 60;
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
+
+  const formatPace = (route: any) => {
+    if (!route?.duration_seconds || !route?.distance_km) return "N/A";
+    const pace = route.duration_seconds / 60 / route.distance_km;
+    const minutes = Math.floor(pace);
+    const seconds = Math.round((pace - minutes) * 60)
+      .toString()
+      .padStart(2, "0");
+    return `${minutes}:${seconds} /km`;
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "Unknown";
+    return new Date(dateString).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
+  const handleCloseModal = () => setSelectedRoute(null);
 
   const handleCreateRoute = () => history.push("/create-route");
   const handleSavedRoutes = () => history.push("/saved-routes");
@@ -218,38 +254,118 @@ const RoutesPage: React.FC = () => {
         {/* ✅ Fullscreen Modal for Image Preview */}
         <IonModal
           isOpen={!!selectedRoute}
-          onDidDismiss={() => setSelectedRoute(null)}
-          className="fullscreen-modal"
+          onDidDismiss={handleCloseModal}
+          className="route-preview-modal"
         >
           {selectedRoute && (
             <div
-                className="route-modal-container"
-                onClick={() => setSelectedRoute(null)}
+              className="route-modal-container"
+              onClick={handleCloseModal}
+            >
+              <div
+                className="route-modal-content"
+                onClick={(e) => e.stopPropagation()}
               >
-                <div
-                  className="route-modal-content"
-                  onClick={(e) => e.stopPropagation()}
+                <button
+                  className="route-modal-close"
+                  onClick={handleCloseModal}
+                  aria-label="Close preview"
                 >
-                  <img
-                    src={selectedRoute.snapshot_url || "/placeholder-map.png"}
-                    alt={selectedRoute.route_name}
-                    className="route-modal-image"
-                  />
+                  <IonIcon icon={close} />
+                </button>
+                <div className="route-preview-grid">
+                  <div className="route-preview-image">
+                    <img
+                      src={selectedRoute.snapshot_url || "/placeholder-map.png"}
+                      alt={selectedRoute.route_name || "Route preview"}
+                      className="route-modal-image"
+                    />
+                    <div className="route-image-overlay">
+                      <span>{formatDate(selectedRoute.created_at)}</span>
+                    </div>
+                  </div>
+                  <div className="route-preview-details">
+                    <div className="route-preview-header">
+                      <div className="route-preview-tags">
+                        {selectedRoute.route_type && (
+                          <span className="route-tag">
+                            {selectedRoute.route_type}
+                          </span>
+                        )}
+                        <span className="route-tag">Public</span>
+                      </div>
+                      <h2>{selectedRoute.route_name || "Untitled Route"}</h2>
+                      <p className="route-preview-subtitle">
+                        Ready-made course you can duplicate to your saved
+                        routes. Review stats before you claim it.
+                      </p>
+                    </div>
 
-                  <div className="route-modal-actions">
-                    <IonButton
-                      color="success"
-                      onClick={handleSaveRoute}
-                      disabled={saving}
-                    >
-                      {saving ? "Saving..." : "Save Route"}
-                    </IonButton>
-                    <IonButton color="medium" onClick={() => setSelectedRoute(null)}>
-                      Close
-                    </IonButton>
+                    <div className="route-preview-stats">
+                      <div className="route-stat-card">
+                        <span>Distance</span>
+                        <strong>
+                          {selectedRoute.distance_km
+                            ? `${selectedRoute.distance_km.toFixed(2)} km`
+                            : "N/A"}
+                        </strong>
+                      </div>
+                      <div className="route-stat-card">
+                        <span>Est. Time</span>
+                        <strong>{formatDuration(selectedRoute.duration_seconds)}</strong>
+                      </div>
+                      <div className="route-stat-card">
+                        <span>Avg Pace</span>
+                        <strong>{formatPace(selectedRoute)}</strong>
+                      </div>
+                      <div className="route-stat-card">
+                        <span>Calories</span>
+                        <strong>
+                          {selectedRoute.estimated_calories
+                            ? `${Math.round(selectedRoute.estimated_calories)} kcal`
+                            : "N/A"}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div className="route-preview-description">
+                      <h4>Route summary</h4>
+                      <p>
+                        {selectedRoute.description ||
+                          "This creator has not added extra notes for the route. You can still preview the path and duplicate it into your own library."}
+                      </p>
+                    </div>
+
+                    <div className="route-preview-actions">
+                      <IonButton
+                        color="success"
+                        onClick={handleSaveRoute}
+                        disabled={saving}
+                        className="route-action-primary"
+                        expand="block"
+                      >
+                        {saving ? (
+                          <>
+                            <IonSpinner name="crescent" slot="start" />
+                            Saving…
+                          </>
+                        ) : (
+                          "Save to My Routes"
+                        )}
+                      </IonButton>
+                      <IonButton
+                        fill="clear"
+                        color="medium"
+                        onClick={handleCloseModal}
+                        className="route-action-secondary"
+                      >
+                        Close
+                      </IonButton>
+                    </div>
                   </div>
                 </div>
               </div>
+            </div>
           )}
         </IonModal>
       </IonContent>

@@ -176,49 +176,204 @@ ion-button.saved-routes-btn {
 
 
 
+/* Route preview modal */
+.route-preview-modal::part(backdrop) {
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(8px);
+}
 
-/* Modal container: dim background and center content */
 .route-modal-container {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(4px);
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: clamp(12px, 4vw, 28px);
+  background-color: rgba(248, 250, 252, 0.55);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  overflow-y: auto;
 }
 
-/* Content box — this defines modal size */
 .route-modal-content {
-  background: #fff;
-  border-radius: 16px;
-  padding: 24px;
-  max-width: 900px;     /* ✅ modal size */
-  width: 90%;
-  max-height: 85vh;     /* ✅ fit viewport height */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  overflow: hidden;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  width: min(1180px, 100%);
+  background: #ffffff;
+  border-radius: 26px;
+  padding: clamp(20px, 3vw, 36px);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.25);
+  position: relative;
 }
 
-/* Image — fills most of the modal space */
+.route-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(15, 23, 42, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.route-modal-close ion-icon {
+  font-size: 20px;
+  color: #1f2937;
+}
+
+.route-modal-close:hover {
+  background: rgba(15, 23, 42, 0.15);
+}
+
+.route-preview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
+  gap: clamp(18px, 3.4vw, 36px);
+  align-items: stretch;
+}
+
+.route-preview-image {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(120deg, #f8fafc, #f1f5f9);
+  min-height: 320px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
 .route-modal-image {
   width: 100%;
   height: 100%;
-  max-height: 65vh;     /* ✅ take majority of modal height */
   object-fit: contain;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  background: #f8fafc;
+  display: block;
 }
 
-/* Buttons — evenly spaced at bottom */
-.route-modal-actions {
+.route-image-overlay {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #f8fafc;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.route-preview-details {
   display: flex;
-  gap: 16px;
-  justify-content: center;
-  margin-top: 20px;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.route-preview-header h2 {
+  font-size: clamp(22px, 3vw, 28px);
+  margin: 8px 0;
+  color: #0f172a;
+}
+
+.route-preview-subtitle {
+  color: #475569;
+  margin: 0;
+}
+
+.route-preview-tags {
+  display: flex;
   flex-wrap: wrap;
+  gap: 8px;
+}
+
+.route-tag {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(146, 198, 40, 0.15);
+  color: #4c7c0a;
+  font-weight: 600;
+}
+
+.route-preview-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.route-stat-card {
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.route-stat-card span {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.route-stat-card strong {
+  font-size: 20px;
+  color: #0f172a;
+}
+
+.route-preview-description {
+  background: #fdfdfd;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.route-preview-description h4 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #475569;
+}
+
+.route-preview-description p {
+  margin: 0;
+  color: #1f2937;
+  line-height: 1.5;
+}
+
+.route-preview-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.route-action-primary {
+  --border-radius: 14px;
+  font-weight: 600;
+}
+
+.route-action-secondary {
+  align-self: center;
+  font-weight: 500;
+}
+
+@media (max-width: 900px) {
+  .route-preview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .route-preview-image {
+    min-height: 240px;
+  }
+
+  .route-modal-container {
+    padding: 16px;
+  }
 }

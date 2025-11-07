@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   IonPage,
   IonHeader,
@@ -9,40 +9,53 @@ import {
   IonBackButton,
   IonCard,
   IonCardContent,
-  IonImg
+  IonImg,
+  IonSpinner,
+  IonButton,
 } from "@ionic/react";
+import { useChallenges } from "../contexts/ChallengesContext";
+import { useUser } from "../contexts/UserContext";
 import "../theme/Badges.css";
 import GoldBadge from "../components/assets/badges/Gold Animated-modified.png"
 import BronzeBadge from "../components/assets/badges/Bronze Animated-modified.png"
 import SilverBadge from "../components/assets/badges/Silver Animated-modified.png"
 
-
-interface Badge {
-  id: number;
-  title: string;
-  color: string;
-  image?: string;
-}
-
 const Badges: React.FC = () => {
-  // Map badge IDs to their images
-  const badgeImages: { [key: number]: string } = {
-    1: BronzeBadge,
-    2: SilverBadge,
-    3: GoldBadge,
-    4: BronzeBadge,
-    5: SilverBadge,
-    6: GoldBadge
+  const { currentUser } = useUser();
+  const { badges, loading, error, fetchBadges } = useChallenges();
+
+  useEffect(() => {
+    if (currentUser && badges.length === 0 && !loading) {
+      fetchBadges();
+    }
+  }, [currentUser]);
+
+  // Map badge tiers to their default images
+  const getDefaultBadgeImage = (tier: 'Bronze' | 'Silver' | 'Gold') => {
+    switch (tier) {
+      case 'Bronze': return BronzeBadge;
+      case 'Silver': return SilverBadge;
+      case 'Gold': return GoldBadge;
+      default: return BronzeBadge;
+    }
   };
 
-  const badges: Badge[] = [
-    { id: 1, title: "First Run", color: "#C84B31", image: badgeImages[1] },
-    { id: 2, title: "10K", color: "#8AB446", image: badgeImages[2] },
-    { id: 3, title: "21K Run", color: "#4A7BA7", image: badgeImages[3] },
-    { id: 4, title: "5 Runs", color: "#4DB8AC", image: badgeImages[4] },
-    { id: 5, title: "Consistent Master", color: "#A93226", image: badgeImages[5] },
-    { id: 6, title: "Runstreak", color: "#D4D41F", image: badgeImages[6] }
-  ];
+  // Map badge tiers to colors
+  const getBadgeColor = (tier: 'Bronze' | 'Silver' | 'Gold') => {
+    switch (tier) {
+      case 'Bronze': return "#CD7F32";
+      case 'Silver': return "#C0C0C0";
+      case 'Gold': return "#FFD700";
+      default: return "#CD7F32";
+    }
+  };
+
+  // Group badges by tier
+  const badgesByTier = {
+    Gold: badges.filter(b => b.badge_tier === 'Gold'),
+    Silver: badges.filter(b => b.badge_tier === 'Silver'),
+    Bronze: badges.filter(b => b.badge_tier === 'Bronze'),
+  };
 
   return (
     <IonPage>
@@ -56,20 +69,120 @@ const Badges: React.FC = () => {
       </IonHeader>
 
       <IonContent className="badges-content">
-        <div className="badges-grid">
-          {badges.map((badge) => (
-            <IonCard key={badge.id} className="badge-card">
-              <IonCardContent className="badge-card-content">
-                <div className="badge-circle" style={{ backgroundColor: badge.color }}>
-                  {badge.image && (
-                    <IonImg src={badge.image} alt={badge.title} className="badge-icon" />
-                  )}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '32px' }}>
+            <IonSpinner name="crescent" />
+            <p>Loading badges...</p>
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '32px' }}>
+            <p style={{ color: 'var(--ion-color-danger)' }}>{error}</p>
+            <IonButton onClick={() => fetchBadges()} size="small">
+              Retry
+            </IonButton>
+          </div>
+        ) : !currentUser ? (
+          <div style={{ textAlign: 'center', padding: '32px' }}>
+            <p style={{ color: 'var(--ion-color-medium)' }}>
+              Please log in to view your badges.
+            </p>
+          </div>
+        ) : badges.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px' }}>
+            <p style={{ color: 'var(--ion-color-medium)' }}>
+              No badges earned yet. Complete challenges to earn badges!
+            </p>
+            <IonButton routerLink="/community" size="small">
+              View Challenges
+            </IonButton>
+          </div>
+        ) : (
+          <>
+            {/* Gold Badges */}
+            {badgesByTier.Gold.length > 0 && (
+              <div style={{ marginBottom: '24px' }}>
+                <h2 style={{ padding: '0 16px', fontSize: '20px', fontWeight: 'bold', color: '#FFD700' }}>
+                  Gold Badges ({badgesByTier.Gold.length})
+                </h2>
+                <div className="badges-grid">
+                  {badgesByTier.Gold.map((badge) => (
+                    <IonCard key={badge.badge_id} className="badge-card">
+                      <IonCardContent className="badge-card-content">
+                        <div className="badge-circle" style={{ backgroundColor: getBadgeColor('Gold') }}>
+                          <IonImg
+                            src={badge.badge_image_url || getDefaultBadgeImage('Gold')}
+                            alt={badge.badge_name}
+                            className="badge-icon"
+                          />
+                        </div>
+                        <h3 className="badge-title">{badge.badge_name}</h3>
+                        <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)', marginTop: '4px' }}>
+                          {badge.badge_description}
+                        </p>
+                      </IonCardContent>
+                    </IonCard>
+                  ))}
                 </div>
-                <h3 className="badge-title">{badge.title}</h3>
-              </IonCardContent>
-            </IonCard>
-          ))}
-        </div>
+              </div>
+            )}
+
+            {/* Silver Badges */}
+            {badgesByTier.Silver.length > 0 && (
+              <div style={{ marginBottom: '24px' }}>
+                <h2 style={{ padding: '0 16px', fontSize: '20px', fontWeight: 'bold', color: '#C0C0C0' }}>
+                  Silver Badges ({badgesByTier.Silver.length})
+                </h2>
+                <div className="badges-grid">
+                  {badgesByTier.Silver.map((badge) => (
+                    <IonCard key={badge.badge_id} className="badge-card">
+                      <IonCardContent className="badge-card-content">
+                        <div className="badge-circle" style={{ backgroundColor: getBadgeColor('Silver') }}>
+                          <IonImg
+                            src={badge.badge_image_url || getDefaultBadgeImage('Silver')}
+                            alt={badge.badge_name}
+                            className="badge-icon"
+                          />
+                        </div>
+                        <h3 className="badge-title">{badge.badge_name}</h3>
+                        <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)', marginTop: '4px' }}>
+                          {badge.badge_description}
+                        </p>
+                      </IonCardContent>
+                    </IonCard>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Bronze Badges */}
+            {badgesByTier.Bronze.length > 0 && (
+              <div style={{ marginBottom: '24px' }}>
+                <h2 style={{ padding: '0 16px', fontSize: '20px', fontWeight: 'bold', color: '#CD7F32' }}>
+                  Bronze Badges ({badgesByTier.Bronze.length})
+                </h2>
+                <div className="badges-grid">
+                  {badgesByTier.Bronze.map((badge) => (
+                    <IonCard key={badge.badge_id} className="badge-card">
+                      <IonCardContent className="badge-card-content">
+                        <div className="badge-circle" style={{ backgroundColor: getBadgeColor('Bronze') }}>
+                          <IonImg
+                            src={badge.badge_image_url || getDefaultBadgeImage('Bronze')}
+                            alt={badge.badge_name}
+                            className="badge-icon"
+                          />
+                        </div>
+                        <h3 className="badge-title">{badge.badge_name}</h3>
+                        <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)', marginTop: '4px' }}>
+                          {badge.badge_description}
+                        </p>
+                      </IonCardContent>
+                    </IonCard>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </IonContent>
     </IonPage>
   );

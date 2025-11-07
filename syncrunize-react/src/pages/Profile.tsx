@@ -44,6 +44,7 @@ import TenKBeginner from "../assets/10K Beginner.jpg";
 
 
 import "../components/UserProfile/UserProfile.css";
+import { DEFAULT_AVATAR } from "../constants/avatar";
 import { supabase } from "../supabaseClient";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
@@ -140,7 +141,7 @@ const Profile: React.FC = () => {
   const [profileData, setProfileData] = useState({
     Name: "",
     description: "",
-    profilePic: "https://ionicframework.com/docs/img/demos/avatar.svg"
+    profilePic: DEFAULT_AVATAR
   });
 
   // Full user data for settings
@@ -269,7 +270,7 @@ useEffect(() => {
         setProfileData({
           Name: "",
           description: "",
-          profilePic: "https://ionicframework.com/docs/img/demos/avatar.svg"
+          profilePic: DEFAULT_AVATAR
         });
         setCurrentUserId(null);
         setFollowersData([]);
@@ -290,7 +291,7 @@ useEffect(() => {
       setProfileData({
         Name: user.name || "Unknown User",
         description: user.description || "",
-        profilePic: user.profile_picture || "https://ionicframework.com/docs/img/demos/avatar.svg",
+        profilePic: user.profile_picture || DEFAULT_AVATAR,
       });
       console.log(user.description);
       // Fetch both counts at once (more efficient!)
@@ -317,7 +318,7 @@ useEffect(() => {
         id: follower.follower_id,
         name: follower.username,
         username: `@${follower.username.toLowerCase()}`,
-        avatar: follower.profile_picture,
+        avatar: follower.profile_picture || DEFAULT_AVATAR,
         isFollowing: follower.isFollowedBack
       }));
 
@@ -326,7 +327,7 @@ useEffect(() => {
         id: following.followed_id,
         name: following.username,
         username: `@${following.username.toLowerCase()}`,
-        avatar: following.profile_picture,
+        avatar: following.profile_picture || DEFAULT_AVATAR,
       }));
 
       // Save to state
@@ -813,7 +814,7 @@ const handleSaveProfile = async () => {
       setProfileData({
         Name: "",
         description: "",
-        profilePic: "https://ionicframework.com/docs/img/demos/avatar.svg"
+        profilePic: DEFAULT_AVATAR
       });
       setCurrentUserId(null);
       setUserRoutes([]);
