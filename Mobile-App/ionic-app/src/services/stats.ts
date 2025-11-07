@@ -16,6 +16,25 @@ export interface CurrentStatsResponse extends AggregatedStat {
   current?: boolean;
 }
 
+export interface PersonalRecordEntry {
+  run_id: number | null;
+  route_id: number | null;
+  occurred_at: string | null;
+  value: number | null;
+  previous_value: number | null;
+  improvement_percent: number | null;
+}
+
+export interface PersonalRecordsResponse {
+  user_id: number;
+  records: {
+    distance: PersonalRecordEntry;
+    duration: PersonalRecordEntry;
+    pace: PersonalRecordEntry;
+    calories: PersonalRecordEntry;
+  };
+}
+
 export const StatsApi = {
   getAggregatedStats: async (userId: number, period: StatsPeriod): Promise<AggregatedStat[]> => {
     const { data } = await api.get(`/stats/${userId}`, {
@@ -36,5 +55,10 @@ export const StatsApi = {
     });
 
     return data ?? null;
+  },
+
+  getPersonalRecords: async (userId: number): Promise<PersonalRecordsResponse> => {
+    const { data } = await api.get(`/stats/${userId}/records`);
+    return data;
   },
 };

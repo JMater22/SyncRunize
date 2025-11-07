@@ -1,23 +1,35 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   IonPage,
   IonHeader,
+
   IonToolbar,
+
   IonTitle,
+
   IonButtons,
+
   IonButton,
+
   IonIcon,
+
   IonContent,
+
   IonCard,
   IonCardHeader,
   IonCardTitle,
   IonCardContent,
   IonList,
   IonItem,
+
   IonLabel,
+
   IonAvatar,
+
   IonSelect,
+
   IonSelectOption,
+
   IonSearchbar,
   SearchbarCustomEvent,
   IonImg,
@@ -26,74 +38,189 @@ import {
   IonBadge
 } from "@ionic/react";
 import {
+
   notifications,
+
   search,
+
   trophy,
+
   calendarOutline,
+
   analyticsOutline,
+
   close,
+
 } from "ionicons/icons";
 
+
+
 import "../theme/Home.css"; 
+
 import "../theme/global.css";
 
+
+
 import ProfilePic from "../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg";
+
 import ChallengePic from "../components/assets/istockphoto-143920084-612x612.jpg";
+
 import { usePushNotifications } from "../components/push-notification";
 import { UsersApi } from "../services/users";
-import { StatsApi, StatsPeriod } from "../services/stats";
+import { StatsApi, StatsPeriod, PersonalRecordsResponse, PersonalRecordEntry } from "../services/stats";
+import { formatDistance, formatPace, formatCalories } from "../lib/utils";
+import { useChallenges } from "../contexts/ChallengesContext";
+import { useHistory } from "react-router-dom";
+
 
 // Import Google Fonts
+
 const fontLink = document.createElement('link');
+
 fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap';
+
 fontLink.rel = 'stylesheet';
+
 if (!document.head.querySelector(`link[href="${fontLink.href}"]`)) {
+
   document.head.appendChild(fontLink);
+
 }
 
-// =======================
-// Interface & Subcomponents
+
+
 // =======================
 
-interface Stat {
+// Interface & Subcomponents
+
+// =======================
+
+
+
+interface PersonalRecord {
   label: string;
   value: string;
-  change: number;
+  changeLabel?: string;
+  trend?: 'positive' | 'negative';
 }
 
-const RecordsCard: React.FC = () => {
-  const stats: Stat[] = [
-    { label: "Distance", value: "45 km", change: 18.4 },
-    { label: "Duration", value: "4.2 hrs", change: 12.5 },
-    { label: "Avg Pace", value: "5:36", change: -3.2 },
-    { label: "Calories", value: "3,240", change: 15.8 },
+const formatRecordChange = (percent: number | null | undefined) => {
+  if (percent === null || percent === undefined) {
+    return { label: undefined, trend: undefined };
+  }
+  const fixed = Number(percent.toFixed(1));
+  const label = `${fixed >= 0 ? '+' : ''}${fixed.toFixed(1)}% vs last`;
+  return {
+    label,
+    trend: fixed >= 0 ? 'positive' : 'negative' as 'positive' | 'negative',
+  };
+};
+
+const formatRecordValue = (
+  value: number | null | undefined,
+  formatter: (value: number) => string,
+  fallback = '--'
+) => {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+  return formatter(value);
+};
+
+const formatDurationReadable = (seconds: number): string => {
+  if (!Number.isFinite(seconds) || seconds < 0) return '--';
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  if (hrs > 0) {
+    return `${hrs}h ${mins}m`;
+  }
+  if (mins > 0) {
+    return `${mins}m ${secs}s`;
+  }
+  return `${secs}s`;
+};
+
+const mapRecordsToDisplay = (records: PersonalRecordsResponse['records']): PersonalRecord[] => {
+  const entries: Array<{ label: string; entry: PersonalRecordEntry; formatter: (value: number) => string }> = [
+    {
+      label: 'Distance',
+      entry: records.distance,
+      formatter: (value) => formatDistance(value, 'km', 2),
+    },
+    {
+      label: 'Duration',
+      entry: records.duration,
+      formatter: (value) => formatDurationReadable(value),
+    },
+    {
+      label: 'Avg Pace',
+      entry: records.pace,
+      formatter: (value) => formatPace(value),
+    },
+    {
+      label: 'Calories',
+      entry: records.calories,
+      formatter: (value) => formatCalories(value),
+    },
   ];
 
+  return entries.map(({ label, entry, formatter }) => {
+    const value = formatRecordValue(entry?.value, formatter);
+    const { label: changeLabel, trend } = entry ? formatRecordChange(entry.improvement_percent) : { label: undefined, trend: undefined };
+    return { label, value, changeLabel, trend };
+  });
+};
+
+const RecordsCard: React.FC<{
+  loading: boolean;
+  error: string | null;
+  records: PersonalRecord[];
+  onRetry: () => void;
+}> = ({ loading, error, records, onRetry }) => {
   return (
     <IonCard className="records-card">
-      <IonCardHeader>
-      </IonCardHeader>
+      <IonCardHeader></IonCardHeader>
       <IonCardContent>
-        <div className="stats-container">
-          {stats.map((stat, index) => (
-            <div key={index} className="stat">
-              <div className="stat-label">{stat.label}</div>
-              <div className="stat-value">{stat.value}</div>
-              <div
-                className={`stat-change ${
-                  stat.change >= 0 ? "positive" : "negative"
-                }`}
-              >
-                {stat.change >= 0 ? "+" : ""}
-                {stat.change}%
+        {loading ? (
+          <div className="ion-text-center ion-padding">
+            <IonSpinner name="crescent" />
+            <p>Loading personal records...</p>
+          </div>
+        ) : error ? (
+          <div className="ion-text-center ion-padding">
+            <p style={{ color: 'var(--ion-color-danger)' }}>{error}</p>
+            <IonButton size="small" onClick={onRetry}>
+              Retry
+            </IonButton>
+          </div>
+        ) : records.length === 0 ? (
+          <div className="ion-text-center ion-padding">
+            <p style={{ color: 'var(--ion-color-medium)' }}>
+              No running data yet. Complete a workout to see your records.
+            </p>
+          </div>
+        ) : (
+          <div className="stats-container">
+            {records.map((stat, index) => (
+              <div key={index} className="stat">
+                <div className="stat-label">{stat.label}</div>
+                <div className="stat-value">{stat.value}</div>
+                {stat.changeLabel && (
+                  <div className={`stat-change ${stat.trend === 'negative' ? 'negative' : 'positive'}`}>
+                    {stat.changeLabel}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </IonCardContent>
     </IonCard>
   );
 };
+
 
 type ChartPeriod = 'per-day' | 'per-week' | 'per-month';
 const chartPeriodMap: Record<ChartPeriod, StatsPeriod> = {
@@ -234,13 +361,21 @@ const DistanceChart: React.FC<DistanceChartProps> = ({ userId, userLoading = fal
     setError(null);
   };
 
+
   return (
+
     <>
+
       <div className="section-header"></div>
+
       <IonCard className="chart-card">
+
         <IonCardContent>
+
           <div className="distance-header">
+
             <h3 className="distance-subtitle">{getSubtitle()}</h3>
+
             <IonSelect
               slot="end"
               value={timePeriod}
@@ -250,10 +385,16 @@ const DistanceChart: React.FC<DistanceChartProps> = ({ userId, userLoading = fal
               className="period-select"
             >
               <IonSelectOption value="per-day">Per Day</IonSelectOption>
+
               <IonSelectOption value="per-week">Per Week</IonSelectOption>
+
               <IonSelectOption value="per-month">Per Month</IonSelectOption>
+
             </IonSelect>
+
           </div>
+
+
 
         <div className="line-chart-container">
           {userLoading ? (
@@ -346,9 +487,13 @@ const DistanceChart: React.FC<DistanceChartProps> = ({ userId, userLoading = fal
           </div>
         )}
       </IonCardContent>
+
     </IonCard>
+
   </>
+
   );
+
 };
 
 const UserGreeting: React.FC<{ name?: string | null }> = ({ name }) => {
@@ -361,9 +506,14 @@ const UserGreeting: React.FC<{ name?: string | null }> = ({ name }) => {
   );
 };
 
+
 // =======================
+
 // Main Dashboard Component
+
 // =======================
+
+
 
 export default function Dashboard() {
   const [showSearchbar, setShowSearchbar] = useState(false);
@@ -374,6 +524,15 @@ export default function Dashboard() {
   const [userProfile, setUserProfile] = useState<{ name: string; userId: number } | null>(null);
   const [userProfileError, setUserProfileError] = useState<string | null>(null);
   const [userProfileLoading, setUserProfileLoading] = useState(true);
+  const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(false);
+  const [recordsError, setRecordsError] = useState<string | null>(null);
+  const { challenges } = useChallenges();
+  const history = useHistory();
+  const suggestedChallenge = useMemo(
+    () => challenges.find((challenge) => !challenge.joined && !challenge.completed),
+    [challenges]
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -400,115 +559,249 @@ export default function Dashboard() {
     };
   }, []);
 
+  const fetchPersonalRecords = useCallback(async () => {
+    if (!userProfile?.userId) return;
+    setRecordsLoading(true);
+    setRecordsError(null);
+    try {
+      const data = await StatsApi.getPersonalRecords(userProfile.userId);
+      setPersonalRecords(mapRecordsToDisplay(data.records));
+    } catch (err: any) {
+      setRecordsError(err?.message || 'Failed to load personal records');
+      setPersonalRecords([]);
+    } finally {
+      setRecordsLoading(false);
+    }
+  }, [userProfile?.userId]);
+
+  useEffect(() => {
+    if (!userProfile?.userId) return;
+    fetchPersonalRecords();
+  }, [userProfile?.userId, fetchPersonalRecords]);
+
   // Initialize push notifications
   usePushNotifications({
     onNotificationReceived: (notification) => {
+
       // Handle notification received while app is in foreground
+
       console.log('Notification received on Home:', notification);
+
       setToastMessage(notification.title || 'New notification');
+
       setShowToast(true);
+
       setNotificationCount(prev => prev + 1);
+
     },
+
     onNotificationActionPerformed: (notification) => {
+
       // Handle notification tap
+
       console.log('Notification tapped on Home:', notification);
+
       setNotificationCount(prev => prev + 1);
+
       
+
       // You can add navigation logic here based on notification type
+
       // For example, navigate to specific challenge, activity, or leaderboard
+
       const data = notification.notification.data;
+
       if (data?.type === 'challenge') {
+
         // Navigate to challenge page if needed
+
         console.log('Navigate to challenge:', data?.challengeId);
+
       } else if (data?.type === 'activity') {
+
         // Navigate to activity page
+
         console.log('Navigate to activity:', data?.activityId);
+
       }
+
     }
+
   });
 
+
+
   const toggleSearchbar = () => {
+
     setShowSearchbar(!showSearchbar);
+
     if (showSearchbar) setSearchText("");
+
   };
+
+
 
   const handleNotificationClick = () => {
     // Reset notification count when user opens notifications
     setNotificationCount(0);
   };
 
+  const handleRecordsRetry = () => {
+    fetchPersonalRecords();
+  };
+
+  const handleSuggestedChallengeClick = () => {
+    if (!suggestedChallenge) return;
+    history.push("/community", { focusChallengeId: suggestedChallenge.challenge_id });
+  };
+
+
   return (
+
     <IonPage>
+
       {/* ===== Header ===== */}
+
       <IonHeader className="dark-header">
+
         <IonToolbar className="dashboard-toolbar">
+
           {!showSearchbar ? (
+
             <>
+
               <IonTitle slot="start" className="dashboard-title">SyncRunize</IonTitle>
+
               <IonButtons slot="end">
+
                 <IonButton 
+
                   routerLink="/notification"
+
                   onClick={handleNotificationClick}
+
                   style={{ position: 'relative' }}
+
                 >
+
                   <IonIcon className="header-icon" icon={notifications} />
+
                   {notificationCount > 0 && (
+
                     <IonBadge 
+
                       color="danger" 
+
                       style={{
+
                         position: 'absolute',
+
                         top: '8px',
+
                         right: '8px',
+
                         fontSize: '10px',
+
                         minWidth: '16px',
+
                         height: '16px',
+
                         borderRadius: '8px',
+
                         padding: '0 4px'
+
                       }}
+
                     >
+
                       {notificationCount > 9 ? '9+' : notificationCount}
+
                     </IonBadge>
+
                   )}
+
                 </IonButton>
+
                 <IonButton onClick={toggleSearchbar}>
+
                   <IonIcon className="header-icon" icon={search} />
+
                 </IonButton>
+
                 <IonButton routerLink="/profile">
+
                   <IonAvatar className="header-avatar">
+
                     <img src={ProfilePic} alt="Profile" />
+
                   </IonAvatar>
+
                 </IonButton>
+
               </IonButtons>
+
             </>
+
           ) : (
+
             <>
+
               <IonSearchbar
+
                 value={searchText}
+
                 onIonInput={(e: SearchbarCustomEvent) =>
+
                   setSearchText(e.detail.value!)
+
                 }
+
                 placeholder="Search athletes"
+
                 animated={true}
+
                 showCancelButton="never"
+
               />
+
               <IonButtons slot="end">
+
                 <IonButton onClick={toggleSearchbar}>
+
                   <IonIcon className="header-icon" icon={close} />
+
                 </IonButton>
+
               </IonButtons>
+
             </>
+
           )}
+
         </IonToolbar>
+
       </IonHeader>
+
+
 
       {/* ===== Scrollable Content ===== */}
       <IonContent fullscreen className="dark-content">
         <UserGreeting name={userProfile?.name} />
         {/* Personal Records */}
+
         <div className="section-header">
+
           <span>Personal Records</span>
+
         </div>
-        <RecordsCard />
+
+        <RecordsCard
+          loading={userProfileLoading || recordsLoading}
+          error={recordsError || userProfileError}
+          records={personalRecords}
+          onRetry={handleRecordsRetry}
+        />
+
 
         {/* Distance Chart */}
         <DistanceChart
@@ -517,57 +810,110 @@ export default function Dashboard() {
           userError={userProfileError}
         />
 
+
           {/* Recent Activity */}
+
           <div className="section-header">
+
             <IonIcon icon={calendarOutline} className="section-icon" />
+
             <span>Recent Activity</span>
+
           </div>
 
+
+
           <IonCard className="activity-card">
+
             <IonCardContent>
+
               <IonList className="activity-list">
+
                 {[
+
                   {
+
                     title: "Morning Run",
+
                     distance: "14.3km",
+
                     pace: "5:18/km",
+
                     time: "1h 6m",
+
                     calories: "876 kcal"
+
                   },
+
                   {
+
                     title: "Quick Run!",
+
                     distance: "3.3km",
+
                     pace: "6:58/km",
+
                     time: "23m",
+
                     calories: "245 kcal"
+
                   },
+
                 ].map((activity, index) => (
+
                   <IonItem key={index} className="activity-item">
+
                     <IonAvatar slot="start" className="activity-avatar">
+
                       <img src={ProfilePic} alt="Profile" />
+
                     </IonAvatar>
+
                     <IonLabel>
+
                       <h2 className="activity-title">{activity.title}</h2>
+
                       <div className="activity-details">
+
                         <span className="activity-stat">
+
                           Distance: <strong>{activity.distance}</strong>
+
                         </span>
+
                         <span className="activity-stat">
+
                           Pace: <strong>{activity.pace}</strong>
+
                         </span>
+
                         <span className="activity-stat">
+
                           Time: <strong>{activity.time}</strong>
+
                         </span>
+
                         <span className="activity-stat">
+
                           Calories: <strong>{activity.calories}</strong>
+
                         </span>
+
                       </div>
+
                     </IonLabel>
+
                   </IonItem>
+
                 ))}
+
               </IonList>
+
             </IonCardContent>
+
           </IonCard>
+
+
 
         {/* Suggested Challenges */}
         <div className="section-header">
@@ -575,96 +921,200 @@ export default function Dashboard() {
           <span>Suggested Challenges</span>
         </div>
 
-        <IonCard className="current-challenge-card">
-          <div className="challenge-image-container">
-            <IonImg src={ChallengePic} alt="Running Challenge" />
-            <div className="challenge-badge">
-              <span>Join Challenge</span>
+        {suggestedChallenge ? (
+          <IonCard
+            className="current-challenge-card"
+            onClick={handleSuggestedChallengeClick}
+            style={{ cursor: 'pointer' }}
+          >
+            <div className="challenge-image-container">
+              <IonImg
+                src={suggestedChallenge.challenge_image || suggestedChallenge.image_url || ChallengePic}
+                alt={suggestedChallenge.challenge_name ?? 'Suggested Challenge'}
+              />
+              <div className="challenge-badge">
+                <span>View Challenge</span>
+              </div>
             </div>
-          </div>
-          <IonCardContent className="challenge-content">
-            <h3 className="challenge-title">Couch to 5k</h3>
-            <p className="challenge-description">
-              Build from walking to running 5K continuously with intervals.
-            </p>
-            <div className="challenge-details">
-              <span>Target Distance: 5km • Duration: 56 days</span>
-            </div>
-          </IonCardContent>
-        </IonCard>
+            <IonCardContent className="challenge-content">
+              <h3 className="challenge-title">
+                {suggestedChallenge.challenge_name ?? 'Suggested Challenge'}
+              </h3>
+              <p className="challenge-description">
+                {suggestedChallenge.challenge_description ?? suggestedChallenge.description ?? 'Explore this community challenge to keep your momentum going.'}
+              </p>
+              <div className="challenge-details">
+                <span>
+                  Target Distance: {suggestedChallenge.target_distance_km ?? 'N/A'} km � Duration: {suggestedChallenge.challenge_duration_days ?? suggestedChallenge.duration_days ?? 'N/A'} days
+                </span>
+              </div>
+              <p style={{ marginTop: '12px', color: 'var(--ion-color-primary)', fontWeight: 500 }}>
+                Tap to open in Community
+              </p>
+            </IonCardContent>
+          </IonCard>
+        ) : (
+          <IonCard className="current-challenge-card">
+            <IonCardContent className="challenge-content">
+              <h3 className="challenge-title">All community challenges are done - amazing work {userProfile?.name ?? 'there'}!</h3>
+              <p className="challenge-description">
+                Check back later for new community challenges.
+              </p>
+            </IonCardContent>
+          </IonCard>
+        )}
 
         {/* Leaderboard */}
+
         <div className="section-header">
+
           <IonIcon icon={analyticsOutline} className="section-icon" />
+
           <span>Leaderboard</span>
+
         </div>
 
+
+
         <IonCard className="leaderboard-card">
+
           <IonCardContent>
+
             <div className="leaderboard-header">
+
               <span>Rank</span>
+
               <span>Distance</span>
+
             </div>
+
             <IonList className="leaderboard-list">
+
               {[
+
                 { rank: 1, name: "John Doe", runs: 4, distance: "543 km" },
+
                 { rank: 2, name: "Jane Smith", runs: 6, distance: "502 km" },
+
                 { rank: 3, name: "Alex Tan", runs: 3, distance: "499 km" },
+
                 { rank: 4, name: "Amelia", runs: 5, distance: "241 km" },
+
               ].map((leader, index) => (
+
                 <IonItem
+
                   key={index}
+
                   routerLink="/profile"
+
                   className="leaderboard-item"
+
                 >
+
                   <span className="rank">{leader.rank}</span>
+
                   <IonAvatar className="leaderboard-avatar">
+
                     <img src={ProfilePic} alt="Avatar" />
+
                   </IonAvatar>
+
                   <IonLabel className="leader-name">
+
                     <h3>{leader.name}</h3>
+
                     <p>{leader.runs} Runs this week </p>
+
                   </IonLabel>
+
                   <span
+
                     className={`leader-distance ${
+
                       index < 4 ? "green-text" : ""
+
                     }`}
+
                   >
+
                     {leader.distance}
+
                   </span>
+
                 </IonItem>
+
               ))}
+
             </IonList>
+
             <IonButton
+
               className="view-more"
+
               routerLink="/leaderboards"
+
             >
+
               View Full Leaderboard
+
             </IonButton>
+
           </IonCardContent>
+
         </IonCard>
 
+
+
         {/* Toast for notifications */}
+
         <IonToast
+
           isOpen={showToast}
+
           onDidDismiss={() => setShowToast(false)}
+
           message={toastMessage}
+
           duration={3000}
+
           position="top"
+
           color="primary"
+
           buttons={[
+
             {
+
               text: 'View',
+
               role: 'info',
+
               handler: () => {
+
                 // Navigate to notification page
+
                 window.location.href = '/notification';
+
               }
+
             }
+
           ]}
+
         />
+
       </IonContent>
+
     </IonPage>
+
   );
+
 }
+
+
+
+
+
+
 

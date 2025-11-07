@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   IonButton,
   IonCard,
@@ -17,7 +17,15 @@ import { ChallengeWithStatus } from '../services/challenges';
 
 type ToastColor = 'success' | 'danger';
 
-const CommunityChallengesTab: React.FC = () => {
+interface CommunityChallengesTabProps {
+  focusChallengeId?: number;
+  onFocusHandled?: () => void;
+}
+
+const CommunityChallengesTab: React.FC<CommunityChallengesTabProps> = ({
+  focusChallengeId,
+  onFocusHandled,
+}) => {
   const { currentUser } = useUser();
   const {
     challenges,
@@ -52,6 +60,27 @@ const CommunityChallengesTab: React.FC = () => {
   const showToast = (message: string, color: ToastColor = 'success') => {
     setToastState({ open: true, message, color });
   };
+
+  useEffect(() => {
+    if (!focusChallengeId) return;
+    const numericId = Number(focusChallengeId);
+    if (!Number.isFinite(numericId)) return;
+
+    const challengeExists = challenges.some(
+      (challenge) => Number(challenge.challenge_id) === numericId
+    );
+    if (!challengeExists) return;
+
+    const timeout = setTimeout(() => {
+      const card = document.querySelector(`[data-challenge-id="${numericId}"]`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      onFocusHandled?.();
+    }, 200);
+
+    return () => clearTimeout(timeout);
+  }, [focusChallengeId, challenges, onFocusHandled]);
 
   const handleJoin = async (challengeId: number) => {
     if (!currentUser) {
@@ -183,14 +212,19 @@ const CommunityChallengesTab: React.FC = () => {
     return (
       <div className="suggested-section">
         {filteredChallenges.map((challenge) => {
-          const imageSrc = challenge.challenge_image || ChallengePic;
+          const imageSrc = challenge.challenge_image ||  ChallengePic;
           const name = challenge.challenge_name ?? 'Unnamed Challenge';
-          const description = challenge.challenge_description ?? challenge.description ?? '';
+          const description = challenge.challenge_description ?? challenge.description ?? 'No description available.';
           const targetDistance = challenge.target_distance_km ? `${challenge.target_distance_km} km` : 'Flexible';
           const duration = challenge.challenge_duration_days ?? 0;
+          const cardId = Number(challenge.challenge_id);
 
           return (
-            <IonCard className="suggested-challenge-card" key={`${challenge.challenge_id}-${name}`}>
+            <IonCard
+              className="suggested-challenge-card"
+              key={`${cardId}-${name}`}
+              data-challenge-id={cardId}
+            >
               <div className="challenge-image-container">
                 <IonImg src={imageSrc} alt={name} />
               </div>

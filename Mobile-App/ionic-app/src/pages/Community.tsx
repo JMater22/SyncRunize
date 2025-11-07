@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useHistory, useLocation } from "react-router-dom";
 import {
   IonPage,
   IonHeader,
@@ -44,6 +45,9 @@ const Community: React.FC = () => {
   const [tab, setTab] = useState<"challenges" | "feed" | "groups">("feed");
   const { currentUser } = useUser();
   const { fetchFeed } = usePosts();
+  const location = useLocation<{ focusChallengeId?: number }>();
+  const history = useHistory();
+  const [focusedChallengeId, setFocusedChallengeId] = useState<number | undefined>(undefined);
   // Groups state
   const [groups, setGroups] = useState<Group[]>([]);
   const [userGroups, setUserGroups] = useState<number[]>([]); // IDs of groups user is member of
@@ -68,6 +72,21 @@ const Community: React.FC = () => {
     setToastColor(color);
     setShowToast(true);
   };
+
+  useEffect(() => {
+    const focusId = location.state?.focusChallengeId;
+    if (focusId) {
+      setTab('challenges');
+      setFocusedChallengeId(focusId);
+      const { focusChallengeId: _removed, ...rest } = location.state || {};
+      history.replace({
+        pathname: location.pathname,
+        search: location.search,
+        hash: location.hash,
+        state: Object.keys(rest).length ? rest : undefined,
+      });
+    }
+  }, [history, location]);
 
   // Fetch groups when the tab is active
   useEffect(() => {
@@ -266,7 +285,12 @@ const Community: React.FC = () => {
       </IonHeader>
 
       <IonContent className="community-content">
-        {tab === "challenges" && <CommunityChallengesTab />}
+        {tab === "challenges" && (
+          <CommunityChallengesTab
+            focusChallengeId={focusedChallengeId}
+            onFocusHandled={() => setFocusedChallengeId(undefined)}
+          />
+        )}
 
         {tab === "feed" && (
           <CommunityFeedTab onToast={triggerToast} />

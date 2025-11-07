@@ -92,3 +92,111 @@ export const getCurrentPeriodStats = async (userId, period = "month") => {
     period_start: null,
   };
 };
+
+/**
+ * Compute personal records for a user (longest distance, duration, fastest pace, max calories)
+ */
+export const getPersonalRecords = async (userId) => {
+  const { data, error } = await supabase
+    .from("user_routes")
+    .select(`
+      route_id,
+      distance_km,
+      duration_seconds,
+      average_pace,
+      estimated_calories,
+      created_at,
+      route_status
+    `)
+    .eq("user_id", userId)
+    .eq("route_status", "completed");
+
+  if (error) throw error;
+
+  const responseTemplate = {
+    run_id: null,
+    route_id: null,
+    occurred_at: null,
+    value: null,
+    previous_value: null,
+    improvement_percent: null,
+  };
+
+  if (!data || data.length === 0) {
+    return {
+      distance: { ...responseTemplate },
+      duration: { ...responseTemplate },
+      pace: { ...responseTemplate },
+      calories: { ...responseTemplate },
+    };
+  }
+
+  const coerceNumber = (value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === "number") return Number.isFinite(value) ? value : null;
+    if (typeof value === "string") {
+      if (value.includes(":")) {
+        const [mins, secs = "0"] = value.split(":");
+        const parsedMins = Number(mins);
+        const parsedSecs = Number(secs);
+        if (Number.isFinite(parsedMins) && Number.isFinite(parsedSecs)) {
+          return parsedMins + parsedSecs / 60;
+        }
+      }
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
+
+  const buildRecord = (records, key, { higherIsBetter = true, minDistance = null } = {}) => {
+    const filtered = records
+      .filter((r) => {
+        const value = coerceNumber(r[key]);
+        if (value === null) return false;
+        if (minDistance !== null) {
+          const distance = coerceNumber(r.distance_km);
+          if (distance === null || distance < minDistance) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const aVal = coerceNumber(a[key]) ?? 0;
+        const bVal = coerceNumber(b[key]) ?? 0;
+        return higherIsBetter ? bVal - aVal : aVal - bVal;
+      });
+
+    if (filtered.length === 0) {
+      return { ...responseTemplate };
+    }
+
+    const best = filtered[0];
+    const runnerUp = filtered[1];
+
+    const bestValue = coerceNumber(best[key]);
+    const prevValue = runnerUp ? coerceNumber(runnerUp[key]) : null;
+
+    let improvementPercent = null;
+    if (bestValue !== null && prevValue !== null && prevValue !== 0) {
+      improvementPercent = higherIsBetter
+        ? ((bestValue - prevValue) / prevValue) * 100
+        : ((prevValue - bestValue) / prevValue) * 100;
+    }
+
+    return {
+      run_id: best.route_id,
+      route_id: best.route_id,
+      occurred_at: best.created_at,
+      value: bestValue,
+      previous_value: prevValue,
+      improvement_percent: improvementPercent,
+    };
+  };
+
+  return {
+    distance: buildRecord(data, "distance_km"),
+    duration: buildRecord(data, "duration_seconds"),
+    pace: buildRecord(data, "average_pace", { higherIsBetter: false, minDistance: 3 }),
+    calories: buildRecord(data, "estimated_calories"),
+  };
+};

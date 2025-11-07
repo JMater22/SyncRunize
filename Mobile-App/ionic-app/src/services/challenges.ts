@@ -2,7 +2,7 @@ import api from '../lib/api';
 
 export interface Challenge {
   challenge_id: number;
-  challenge_name: string;
+  name: string;
   challenge_slug: string;
   challenge_description: string;
   challenge_image: string;
@@ -50,7 +50,18 @@ export const ChallengesApi = {
   // Get all challenges with user's join status
   getAllChallengesWithStatus: async (userId: number): Promise<ChallengeWithStatus[]> => {
     const { data } = await api.get(`/challenges/${userId}/all`);
-    return Array.isArray(data) ? data : (Array.isArray(data.challenges) ? data.challenges : []);
+    const challenges = Array.isArray(data) ? data : (Array.isArray(data.challenges) ? data.challenges : []);
+
+    // Transform backend properties to match mobile expectations
+    return challenges.map(ch => ({
+      ...ch,
+      challenge_name: ch.challenge_name || ch.name,
+      challenge_slug: ch.challenge_slug || ch.slug,
+      challenge_description: ch.challenge_description || ch.description,
+      challenge_image: ch.challenge_image || ch.image_url,
+      challenge_duration_days: ch.challenge_duration_days || ch.duration_days,
+      description: ch.description || ch.challenge_description,
+    }));
   },
 
   // Get all available challenges (legacy - keeping for backward compatibility)
@@ -61,7 +72,7 @@ export const ChallengesApi = {
 
   // Get user's challenges (active and completed)
   getUserChallenges: async (userId: number): Promise<UserChallenge[]> => {
-    const { data } = await api.get(`/routes/challenges/${userId}`);
+    const { data } = await api.get(`/challenges/user/`);
     return Array.isArray(data) ? data : [];
   },
 
@@ -80,8 +91,8 @@ export const ChallengesApi = {
   },
 
   // Leave a challenge
-  leaveChallenge: async (currentUserId: number, userChallengeId: number): Promise<void> => {
-    await api.delete(`/challenges/${currentUserId}/leave/${userChallengeId}`);
+  leaveChallenge: async (userId: number, challengeId: number): Promise<void> => {
+    await api.delete(`/challenges/${userId}/leave/${challengeId}`);
   },
 };
  

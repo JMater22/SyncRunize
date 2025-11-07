@@ -12,4 +12,7 @@ router.get("/:userId", authenticate, StatsController.getStats);
 // GET /stats/:userId/current?period=day
 router.get("/:userId/current", authenticate, StatsController.getCurrentStats);
 
+// GET /stats/:userId/records
+router.get("/:userId/records", authenticate, StatsController.getPersonalRecords);
+
 export default router;
