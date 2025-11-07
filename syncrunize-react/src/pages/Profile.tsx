@@ -47,6 +47,7 @@ import "../components/UserProfile/UserProfile.css";
 import { supabase } from "../supabaseClient";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
+import Settings from "../components/Settings/Settings";
 
  interface FollowsFormat {
   id:number;
@@ -108,6 +109,7 @@ const Profile: React.FC = () => {
   const [showLogoutAlert, setShowLogoutAlert] = useState(false);
   const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
   const [followersModalType, setFollowersModalType] = useState<"followers" | "following">("followers");
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month'>('day');
   
   const [userRoutes, setUserRoutes] = useState<any[]>([]);
@@ -140,6 +142,9 @@ const Profile: React.FC = () => {
     description: "",
     profilePic: "https://ionicframework.com/docs/img/demos/avatar.svg"
   });
+
+  // Full user data for settings
+  const [fullUserData, setFullUserData] = useState<any>(null);
 
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
@@ -280,6 +285,7 @@ useEffect(() => {
       });
 
       setCurrentUserId(user.user_id);
+      setFullUserData(user); // Store full user data for settings
 
       setProfileData({
         Name: user.name || "Unknown User",
@@ -428,10 +434,14 @@ useEffect(() => {
     try {
       setLoadingRoutes(true);
 
-      // No need for authentication token
+      // Get authentication token to prove ownership
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const response = await axios.get(
         `${import.meta.env.VITE_API_URL}/routes/user/${currentUserId}`,
         {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
           params: {
             limit: 100, // Increased to get all activities for accurate stats
             offset: 0,
@@ -593,6 +603,58 @@ const handleDeletePost = async () => {
   } catch (error) {
     console.error("Error deleting post:", error);
     alert("Failed to delete post");
+  }
+};
+
+// Handle settings updates
+const handleSettingsUpdate = async (updatedSettings: any) => {
+  // Refresh profile data to reflect updated settings
+  setProfileData(prev => ({
+    ...prev,
+    ...updatedSettings,
+  }));
+
+  // Update full user data as well
+  setFullUserData((prev: any) => ({
+    ...prev,
+    ...updatedSettings,
+  }));
+
+  // Refetch user data from backend to ensure we have the latest settings
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const token = session.access_token;
+      const { data: user } = await axios.get(`${import.meta.env.VITE_API_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setFullUserData(user);
+    }
+  } catch (error) {
+    console.error("Error refetching user data:", error);
+  }
+
+  // If distance unit changed, refetch routes to update display
+  if (updatedSettings.distance_unit && currentUserId) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/routes/user/${currentUserId}`,
+          {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+            params: {
+              limit: 100,
+              offset: 0,
+              activities_only: true
+            }
+          }
+        );
+        setUserRoutes(Array.isArray(response.data) ? response.data : []);
+      }
+    } catch (error) {
+      console.error("Error refreshing user routes:", error);
+    }
   }
 };
 
@@ -1221,16 +1283,25 @@ const handleSaveProfile = async () => {
 
           {/* Profile Action Buttons - Moved Under Content Section */}
           <div className="profile-action-buttons-bottom">
-            <IonButton 
-              className="edit-profile-button" 
+            <IonButton
+              className="edit-profile-button"
               fill="clear"
               onClick={() => setIsEditModalOpen(true)}
             >
-              <IonIcon icon={settings} slot="start" />
+              <IonIcon icon={createOutline} slot="start" />
               Edit Profile
             </IonButton>
-            
-            <IonButton 
+
+            <IonButton
+              className="settings-button"
+              fill="clear"
+              onClick={() => setIsSettingsModalOpen(true)}
+            >
+              <IonIcon icon={settings} slot="start" />
+              Settings
+            </IonButton>
+
+            <IonButton
               className="logout-button"
               fill="clear"
               onClick={() => setShowLogoutAlert(true)}
@@ -1581,6 +1652,14 @@ const handleSaveProfile = async () => {
               handler: handleDeletePost
             }
           ]}
+        />
+
+        {/* Settings Modal */}
+        <Settings
+          isOpen={isSettingsModalOpen}
+          onDidDismiss={() => setIsSettingsModalOpen(false)}
+          currentUser={fullUserData}
+          onSettingsUpdate={handleSettingsUpdate}
         />
       </IonContent>
     </IonPage>

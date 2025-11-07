@@ -272,18 +272,53 @@ export const getUserRoutes = async (req, res) => {
 
 export const getUserRoutesByUserId = async (req, res) => {
   try {
-    const userId = req.params.userId; // Get from URL parameter
+    const userId = parseInt(req.params.userId, 10); // target user
 
-    // ✅ NEW: Parse filters including activities_only
     const filters = {
       ...req.query,
-      // Convert string 'true'/'false' to boolean for activities_only
       activities_only: req.query.activities_only === 'true',
     };
 
     console.log('Fetching routes for user:', userId);
     console.log('Filters:', filters);
 
+    const viewerId = req.user?.user_id ?? null;
+    const isOwner = viewerId && viewerId === userId;
+
+    // Check user's activities_visibility setting (controls access to Activities tab)
+    // This is SEPARATE from route-level visibility (which controls public route directory)
+    if (!isOwner) {
+      // Fetch the target user's activities_visibility preference
+      const { data: targetUser, error: userError } = await supabase
+        .from('users')
+        .select('activities_visibility')
+        .eq('user_id', userId)
+        .single();
+
+      if (userError) {
+        console.error('Error fetching user visibility setting:', userError);
+        // Default to private if we can't fetch user settings
+        return res.status(403).json({
+          success: false,
+          error: 'private',
+          message: 'Sorry, you cannot see it because it was private.',
+        });
+      }
+
+      // If user has set activities_visibility to private, deny access to their activities
+      if (targetUser.activities_visibility === 'private') {
+        return res.status(403).json({
+          success: false,
+          error: 'private',
+          message: 'Sorry, you cannot see it because it was private.',
+        });
+      }
+    }
+
+    // Fetch routes (user-level privacy already checked above)
+    // Note: We do NOT filter by route.visibility here because:
+    // - route.visibility controls whether a route appears in PUBLIC ROUTES DIRECTORY
+    // - users.activities_visibility controls whether others can see your ACTIVITIES
     const routes = await RouteModel.getUserRoutes(userId, filters);
 
     console.log('Routes found:', routes.length);
@@ -377,3 +412,5 @@ export const deleteRoute = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+
+

@@ -8,6 +8,7 @@ import {
   setupIonicReact,
 } from "@ionic/react";
 import { IonReactRouter } from "@ionic/react-router";
+import { useSupabaseSession } from "./lib/useSession";
 
 import Home from "./pages/Home";
 import Community from "./pages/Community";
@@ -40,6 +41,8 @@ import ViewPost from "./pages/View-Posts";
 import ViewActivity from "./pages/View-Activity";
 import Badges from "./pages/Badges";
 import CreatePost from "./pages/Create-Post";
+import ForgotPassword from "./pages/forgot-password";
+import ResetPassword from "./pages/reset-password";
 
 import HomeIcon from "./components/assets/icons/home.svg";
 import RouteIcon from "./components/assets/icons/conversion_path.svg";
@@ -66,7 +69,40 @@ import "./theme/global.css";
 
 setupIonicReact();
 
-const App: React.FC = () => (
+const App: React.FC = () => {
+  const { session, loading } = useSupabaseSession();
+
+  if (loading) {
+    return (
+      <IonApp>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+          <span>Loading...</span>
+        </div>
+      </IonApp>
+    );
+  }
+
+  // Unauthenticated: allow only create-account/authentication/forgot/reset; root -> /authentication
+  if (!session) {
+    return (
+      <IonApp>
+        <IonReactRouter>
+          <IonRouterOutlet>
+            <Route exact path="/log-in" component={LogIn} />
+            <Route exact path="/authentication" component={Authentication} />
+            <Route exact path="/create-account" component={CreateAccount} />
+            <Route exact path="/forgot-password" component={ForgotPassword} />
+            <Route exact path="/reset-password" component={ResetPassword} />
+            <Route>
+              <Redirect to="/authentication" />
+            </Route>
+          </IonRouterOutlet>
+        </IonReactRouter>
+      </IonApp>
+    );
+  }
+
+  return (
   <IonApp>
     <IonReactRouter>
       <IonTabs>
@@ -94,6 +130,7 @@ const App: React.FC = () => (
           <Route exact path="/activity-summary" component={ActivitySummary} />
           <Route exact path="/profile-info" component={Information} />
           <Route exact path="/security" component={PasswordSecurity} />
+          {/* Auth screens remain accessible but are redundant when logged in */}
           <Route exact path="/create-account" component={CreateAccount} />
           <Route exact path="/log-in" component={LogIn} />
           <Route exact path="/authentication" component={Authentication} />
@@ -138,6 +175,7 @@ const App: React.FC = () => (
       </IonTabs>
     </IonReactRouter>
   </IonApp>
-);
+  );
+};
 
 export default App;

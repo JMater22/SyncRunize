@@ -195,6 +195,11 @@ export const getUserChallengesWithBadge = async (userId) => {
     .from("user_challenges")
     .select(`
       *,
+      challenges:challenge_id (
+        challenge_id,
+        name,
+        slug
+      ),
       badges:awarded_badge_id (
         badge_id,
         code,
@@ -212,6 +217,8 @@ export const getUserChallengesWithBadge = async (userId) => {
   // Transform the data to flatten badge info and handle null badges
   return data.map(challenge => ({
     ...challenge,
+    challenge_name: challenge.challenges?.name || null,
+    challenge_slug: challenge.challenges?.slug || null,
     badge_id: challenge.badges?.badge_id || null,
     badge_code: challenge.badges?.code || null,
     badge_name: challenge.badges?.name || null,
@@ -219,7 +226,8 @@ export const getUserChallengesWithBadge = async (userId) => {
     badge_image_url: challenge.badges?.image_url || null,
     badge_description: challenge.badges?.description || null,
     // Remove the nested badges object for cleaner response
-    badges: undefined
+    badges: undefined,
+    challenges: undefined
   }));
 };
 
