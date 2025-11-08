@@ -32,6 +32,10 @@ export const FollowsApi = {
 
   // Toggle follow/unfollow
   toggleFollow: async (userId: number): Promise<ToggleFollowResponse> => {
+    if (!userId || typeof userId !== 'number') {
+      console.error('[FollowsApi] toggleFollow called with invalid userId:', userId);
+      throw new Error('Invalid user ID');
+    }
     const { data } = await api.post(`/follows/${userId}/toggle`);
     return data;
   },

@@ -12,7 +12,10 @@ import {
   IonImg,
   IonSpinner,
   IonButton,
+  IonModal,
+  IonIcon,
 } from "@ionic/react";
+import { close, checkmark } from "ionicons/icons";
 import { useChallenges } from "../contexts/ChallengesContext";
 import { useUser } from "../contexts/UserContext";
 import "../theme/Badges.css";
@@ -23,6 +26,10 @@ import SilverBadge from "../components/assets/badges/Silver Animated-modified.pn
 const Badges: React.FC = () => {
   const { currentUser } = useUser();
   const { badges, loading, error, fetchBadges } = useChallenges();
+
+  // Badge history modal state
+  const [isBadgeHistoryModalOpen, setIsBadgeHistoryModalOpen] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
 
   useEffect(() => {
     if (currentUser && badges.length === 0 && !loading) {
@@ -51,11 +58,19 @@ const Badges: React.FC = () => {
   };
 
   // Group badges by tier
+  console.log('[Badges] Badges from context:', badges);
+  console.log('[Badges] Badges length:', badges.length);
+
   const badgesByTier = {
     Gold: badges.filter(b => b.badge_tier === 'Gold'),
     Silver: badges.filter(b => b.badge_tier === 'Silver'),
     Bronze: badges.filter(b => b.badge_tier === 'Bronze'),
   };
+
+  console.log('[Badges] Badges by tier:', badgesByTier);
+  console.log('[Badges] Gold count:', badgesByTier.Gold.length);
+  console.log('[Badges] Silver count:', badgesByTier.Silver.length);
+  console.log('[Badges] Bronze count:', badgesByTier.Bronze.length);
 
   return (
     <IonPage>
@@ -106,8 +121,34 @@ const Badges: React.FC = () => {
                 </h2>
                 <div className="badges-grid">
                   {badgesByTier.Gold.map((badge) => (
-                    <IonCard key={badge.badge_id} className="badge-card">
+                    <IonCard
+                      key={badge.badge_id}
+                      className="badge-card"
+                      onClick={() => {
+                        setSelectedBadge(badge);
+                        setIsBadgeHistoryModalOpen(true);
+                      }}
+                      style={{ cursor: 'pointer', position: 'relative' }}
+                    >
                       <IonCardContent className="badge-card-content">
+                        {/* Count indicator - only show if earned 2 or more times */}
+                        {badge.count && badge.count > 1 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                            color: 'white',
+                            borderRadius: '12px',
+                            padding: '4px 10px',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            zIndex: 10
+                          }}>
+                            ×{badge.count}
+                          </div>
+                        )}
+
                         <div className="badge-circle" style={{ backgroundColor: getBadgeColor('Gold') }}>
                           <IonImg
                             src={badge.badge_image_url || getDefaultBadgeImage('Gold')}
@@ -119,6 +160,11 @@ const Badges: React.FC = () => {
                         <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)', marginTop: '4px' }}>
                           {badge.badge_description}
                         </p>
+                        {badge.count && badge.count > 1 && (
+                          <p style={{ fontSize: '11px', color: 'var(--ion-color-primary)', marginTop: '6px', fontWeight: '600' }}>
+                            Earned {badge.count} times
+                          </p>
+                        )}
                       </IonCardContent>
                     </IonCard>
                   ))}
@@ -134,8 +180,34 @@ const Badges: React.FC = () => {
                 </h2>
                 <div className="badges-grid">
                   {badgesByTier.Silver.map((badge) => (
-                    <IonCard key={badge.badge_id} className="badge-card">
+                    <IonCard
+                      key={badge.badge_id}
+                      className="badge-card"
+                      onClick={() => {
+                        setSelectedBadge(badge);
+                        setIsBadgeHistoryModalOpen(true);
+                      }}
+                      style={{ cursor: 'pointer', position: 'relative' }}
+                    >
                       <IonCardContent className="badge-card-content">
+                        {/* Count indicator - only show if earned 2 or more times */}
+                        {badge.count && badge.count > 1 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                            color: 'white',
+                            borderRadius: '12px',
+                            padding: '4px 10px',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            zIndex: 10
+                          }}>
+                            ×{badge.count}
+                          </div>
+                        )}
+
                         <div className="badge-circle" style={{ backgroundColor: getBadgeColor('Silver') }}>
                           <IonImg
                             src={badge.badge_image_url || getDefaultBadgeImage('Silver')}
@@ -147,6 +219,11 @@ const Badges: React.FC = () => {
                         <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)', marginTop: '4px' }}>
                           {badge.badge_description}
                         </p>
+                        {badge.count && badge.count > 1 && (
+                          <p style={{ fontSize: '11px', color: 'var(--ion-color-primary)', marginTop: '6px', fontWeight: '600' }}>
+                            Earned {badge.count} times
+                          </p>
+                        )}
                       </IonCardContent>
                     </IonCard>
                   ))}
@@ -162,8 +239,34 @@ const Badges: React.FC = () => {
                 </h2>
                 <div className="badges-grid">
                   {badgesByTier.Bronze.map((badge) => (
-                    <IonCard key={badge.badge_id} className="badge-card">
+                    <IonCard
+                      key={badge.badge_id}
+                      className="badge-card"
+                      onClick={() => {
+                        setSelectedBadge(badge);
+                        setIsBadgeHistoryModalOpen(true);
+                      }}
+                      style={{ cursor: 'pointer', position: 'relative' }}
+                    >
                       <IonCardContent className="badge-card-content">
+                        {/* Count indicator - only show if earned 2 or more times */}
+                        {badge.count && badge.count > 1 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                            color: 'white',
+                            borderRadius: '12px',
+                            padding: '4px 10px',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            zIndex: 10
+                          }}>
+                            ×{badge.count}
+                          </div>
+                        )}
+
                         <div className="badge-circle" style={{ backgroundColor: getBadgeColor('Bronze') }}>
                           <IonImg
                             src={badge.badge_image_url || getDefaultBadgeImage('Bronze')}
@@ -175,6 +278,11 @@ const Badges: React.FC = () => {
                         <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)', marginTop: '4px' }}>
                           {badge.badge_description}
                         </p>
+                        {badge.count && badge.count > 1 && (
+                          <p style={{ fontSize: '11px', color: 'var(--ion-color-primary)', marginTop: '6px', fontWeight: '600' }}>
+                            Earned {badge.count} times
+                          </p>
+                        )}
                       </IonCardContent>
                     </IonCard>
                   ))}
@@ -183,6 +291,94 @@ const Badges: React.FC = () => {
             )}
           </>
         )}
+
+        {/* Badge History Modal */}
+        <IonModal
+          isOpen={isBadgeHistoryModalOpen}
+          onDidDismiss={() => {
+            setIsBadgeHistoryModalOpen(false);
+            setSelectedBadge(null);
+          }}
+        >
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Badge History</IonTitle>
+              <IonButtons slot="end">
+                <IonButton
+                  onClick={() => {
+                    setIsBadgeHistoryModalOpen(false);
+                    setSelectedBadge(null);
+                  }}
+                >
+                  <IonIcon icon={close} />
+                </IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+
+          <IonContent>
+            {selectedBadge && (
+              <div style={{ padding: '20px' }}>
+                {/* Badge Details */}
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  padding: '20px',
+                  borderBottom: '1px solid #e0e0e0',
+                  marginBottom: '20px'
+                }}>
+                  <IonImg
+                    src={selectedBadge.badge_image_url || getDefaultBadgeImage(selectedBadge.badge_tier)}
+                    alt={selectedBadge.badge_name}
+                    style={{ width: '120px', height: '120px', marginBottom: '15px' }}
+                  />
+                  <h2 style={{ margin: '0 0 8px 0', fontSize: '22px', fontWeight: 'bold', textAlign: 'center' }}>
+                    {selectedBadge.badge_name}
+                  </h2>
+                  <p style={{ margin: '0', color: '#666', textAlign: 'center', fontSize: '14px' }}>
+                    {selectedBadge.badge_description}
+                  </p>
+                  <p style={{ marginTop: '10px', fontSize: '13px', color: '#999' }}>
+                    Earned {selectedBadge.count || 1} {selectedBadge.count === 1 ? 'time' : 'times'}
+                  </p>
+                </div>
+
+                {/* Challenge History */}
+                <div>
+                  <h3 style={{ marginBottom: '15px', fontSize: '18px', fontWeight: 'bold' }}>
+                    Challenges Completed
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {selectedBadge.challenges?.map((challenge: any, index: number) => (
+                      <div
+                        key={index}
+                        style={{
+                          padding: '15px',
+                          backgroundColor: '#f5f5f5',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '600', fontSize: '15px', marginBottom: '4px' }}>
+                            {challenge.challenge_name}
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#666' }}>
+                            Completed: {challenge.completed_date}
+                          </div>
+                        </div>
+                        <IonIcon icon={checkmark} style={{ color: '#4CAF50', fontSize: '28px', marginLeft: '12px' }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </IonContent>
+        </IonModal>
       </IonContent>
     </IonPage>
   );

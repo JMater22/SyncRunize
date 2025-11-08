@@ -71,15 +71,75 @@ export const ChallengesProvider: React.FC<{ children: ReactNode }> = ({ children
     try {
       setLoading(true);
       setError(null);
-      const data = await ChallengesApi.getUserBadges(currentUser.user_id);
-      // Ensure data is an array before filtering
-      if (Array.isArray(data)) {
-        // Filter for completed badges only
-        const earnedBadges = data.filter(badge => badge.earned_at);
-        setBadges(earnedBadges);
-      } else {
-        setBadges([]);
+      const response = await ChallengesApi.getUserBadges(currentUser.user_id);
+
+      console.log('[ChallengesContext] getUserBadges raw response:', response);
+      console.log('[ChallengesContext] Response type:', typeof response);
+      console.log('[ChallengesContext] Is array?', Array.isArray(response));
+      console.log('[ChallengesContext] Response.data exists?', !!(response as any)?.data);
+
+      // The API returns { success: true, data: [...] }
+      // Handle both direct array and wrapped response
+      let data: any[] = [];
+      if (Array.isArray(response)) {
+        data = response;
+      } else if ((response as any)?.data) {
+        data = (response as any).data;
       }
+
+      console.log('[ChallengesContext] Extracted data:', data);
+      console.log('[ChallengesContext] Data length:', data?.length || 0);
+      console.log('[ChallengesContext] First item:', data?.[0]);
+
+      // Filter for completed challenges with badges
+      const completedChallenges = data.filter((item: any) => item.completed && item.badge_image_url);
+
+      console.log('[ChallengesContext] Completed challenges with badges:', completedChallenges.length);
+
+      // Group badges by badge_name to avoid duplicates
+      const badgeGroups = completedChallenges.reduce((acc: any, challenge: any) => {
+        const badgeName = challenge.badge_name || "Badge";
+
+        if (!acc[badgeName]) {
+          // Capitalize the first letter of badge_tier to match Badge page filter
+          const tier = challenge.badge_tier || 'Bronze';
+          const capitalizedTier = tier.charAt(0).toUpperCase() + tier.slice(1).toLowerCase();
+
+          acc[badgeName] = {
+            badge_id: challenge.badge_id || 0,
+            badge_name: badgeName,
+            badge_tier: capitalizedTier,
+            badge_image_url: challenge.badge_image_url,
+            badge_description: challenge.badge_description || "Achievement unlocked",
+            earned_at: challenge.updated_at || challenge.earned_at,
+            challenges: []
+          };
+        }
+
+        // Add this challenge to the badge's history
+        acc[badgeName].challenges.push({
+          challenge_name: challenge.challenge_name || "Challenge",
+          completed_date: new Date(challenge.updated_at).toLocaleDateString(),
+          updated_at: challenge.updated_at
+        });
+
+        return acc;
+      }, {});
+
+      // Convert to array and sort challenges by date (most recent first)
+      const badges = Object.values(badgeGroups).map((badge: any) => ({
+        ...badge,
+        count: badge.challenges.length,
+        challenges: badge.challenges.sort((a: any, b: any) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        )
+      }));
+
+      console.log('[ChallengesContext] Final badges array:', badges);
+      console.log('[ChallengesContext] Badges count:', badges.length);
+      console.log('[ChallengesContext] First badge:', badges[0]);
+
+      setBadges(badges);
     } catch (err: any) {
       console.error('Failed to fetch badges:', err);
       setError(err.message || 'Failed to fetch badges');

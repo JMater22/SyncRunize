@@ -22,11 +22,10 @@ import {
   IonCardTitle,
   IonCardContent,
   IonRouterLink,
-  IonImg,
   IonSpinner,
   IonToast,
 } from "@ionic/react";
-import { settingsOutline, chevronForwardOutline, location, people } from "ionicons/icons";
+import { settingsOutline, chevronForwardOutline, location } from "ionicons/icons";
 import { useUser } from "../contexts/UserContext";
 import { useChallenges } from "../contexts/ChallengesContext";
 import { RoutesApi } from "../services/routes";
@@ -36,56 +35,87 @@ import "../theme/User-Profile.css";
 
 export default function Profile() {
   const { currentUser, loading: userLoading } = useUser();
-  const { userChallenges, badges } = useChallenges();
+  const { badges } = useChallenges();
 
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
-  const [weeklyStats, setWeeklyStats] = useState<any[]>([]);
-  const [timePeriod, setTimePeriod] = useState<'day' | 'week' | 'month'>('week');
+  const [userRoutes, setUserRoutes] = useState<any[]>([]);
+  const [timePeriod, setTimePeriod] = useState<'day' | 'week' | 'month'>('day');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const isMountedRef = useRef(true);
 
-  const fetchWeeklyStats = useCallback(async () => {
-    if (!currentUser) return;
+  // Performance stats state
+  interface StatSummary {
+    title: string;
+    runs_count: number;
+    total_distance: string;
+    avg_pace: string;
+    total_calories: string;
+  }
 
-    try {
-      // Fetch user routes for the last 7 days
-      const routes = await RoutesApi.getUserRoutes(currentUser.user_id, true);
+  const [statsData, setStatsData] = useState<{
+    day: StatSummary;
+    week: StatSummary;
+    month: StatSummary;
+  }>({
+    day: { title: "Today", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+    week: { title: "This Week", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+    month: { title: "This Month", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+  });
 
-      // Group by day of week
-      const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const now = new Date();
-      const stats: any[] = [];
+  // Calculate performance stats from user routes
+  useEffect(() => {
+    if (!userRoutes || userRoutes.length === 0) return;
 
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - i);
-        const dayName = daysOfWeek[date.getDay()];
+    // Helper function to calculate pace (min/km)
+    const calculatePace = (durationSeconds: number, distanceKm: number) => {
+      if (distanceKm === 0) return "0:00 /km";
+      const pace = durationSeconds / 60 / distanceKm; // min per km
+      const minutes = Math.floor(pace);
+      const seconds = Math.round((pace - minutes) * 60);
+      return `${minutes}:${seconds.toString().padStart(2, "0")} /km`;
+    };
 
-        // Filter routes for this day
-        const dayRoutes = routes.filter(route => {
-          const routeDate = new Date(route.created_at);
-          return routeDate.toDateString() === date.toDateString();
-        });
+    const now = new Date();
 
-        const totalDistance = dayRoutes.reduce((sum, route) => sum + route.distance_km, 0);
+    // Helper to filter routes by time period
+    const filterByPeriod = (routes: any[], days: number) =>
+      routes.filter(route => {
+        const created = new Date(route.created_at);
+        const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+        return diffDays <= days;
+      });
 
-        stats.push({
-          day: dayName,
-          distance: totalDistance,
-          percentage: Math.min((totalDistance / 20) * 100, 100), // Scale to 20km max
-        });
-      }
+    const calcStats = (filteredRoutes: any[]) => {
+      const runs_count = filteredRoutes.length;
+      const total_distance = filteredRoutes.reduce((sum, r) => sum + (r.distance_km || 0), 0);
+      const total_duration = filteredRoutes.reduce((sum, r) => sum + (r.duration_seconds || 0), 0);
+      const estimated_calories = filteredRoutes.reduce((sum, r) => sum + (r.estimated_calories || 0), 0);
+      const avg_pace = total_duration && total_distance
+        ? calculatePace(total_duration, total_distance)
+        : "0:00 /km";
 
-      if (isMountedRef.current) {
-        setWeeklyStats(stats);
-      }
-    } catch (err) {
-      console.error('Failed to fetch weekly stats:', err);
-    }
-  }, [currentUser]);
+      return {
+        runs_count,
+        total_distance: `${total_distance.toFixed(1)} km`,
+        avg_pace,
+        total_calories: `${Math.round(estimated_calories)} kcal`
+      };
+    };
+
+    // Compute by period
+    const dayRoutes = filterByPeriod(userRoutes, 1);
+    const weekRoutes = filterByPeriod(userRoutes, 7);
+    const monthRoutes = filterByPeriod(userRoutes, 30);
+
+    setStatsData({
+      day: { title: "Today", ...calcStats(dayRoutes) },
+      week: { title: "This Week", ...calcStats(weekRoutes) },
+      month: { title: "This Month", ...calcStats(monthRoutes) },
+    });
+  }, [userRoutes]);
 
   const fetchProfileData = useCallback(async () => {
     if (!currentUser) return;
@@ -105,10 +135,11 @@ export default function Profile() {
       }
 
       // Fetch user routes (used for stats calculation)
-      await RoutesApi.getUserRoutes(currentUser.user_id, true);
+      const routes = await RoutesApi.getUserRoutes(currentUser.user_id, true);
 
-      // Fetch weekly stats for chart
-      await fetchWeeklyStats();
+      if (isMountedRef.current) {
+        setUserRoutes(Array.isArray(routes) ? routes : []);
+      }
     } catch (err: any) {
       console.error('Failed to fetch profile data:', err);
       if (isMountedRef.current) {
@@ -119,7 +150,7 @@ export default function Profile() {
         setLoading(false);
       }
     }
-  }, [currentUser, fetchWeeklyStats]);
+  }, [currentUser]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -132,6 +163,8 @@ export default function Profile() {
       isMountedRef.current = false;
     };
   }, [currentUser, fetchProfileData]);
+
+  const currentStats = statsData[timePeriod];
 
   if (userLoading || loading) {
     return (
@@ -256,9 +289,6 @@ export default function Profile() {
     );
   }
 
-  // Get active challenge (first non-completed challenge)
-  const activeChallenge = userChallenges.find(c => !c.completed);
-
   return (
     <IonPage>
       {/* Header */}
@@ -302,13 +332,13 @@ export default function Profile() {
         <IonGrid>
           <IonRow>
             <IonCol>
-              <IonRouterLink routerLink="/following">
+              <IonRouterLink routerLink="/following?tab=following">
                 <h2>{followingCount}</h2>
                 <p>Following</p>
               </IonRouterLink>
             </IonCol>
             <IonCol>
-              <IonRouterLink routerLink="/following">
+              <IonRouterLink routerLink="/following?tab=followers">
                 <h2>{followerCount}</h2>
                 <p>Followers</p>
               </IonRouterLink>
@@ -322,42 +352,42 @@ export default function Profile() {
           </IonRow>
         </IonGrid>
 
-        {/* Distance Chart */}
-        <IonCard>
+        {/* Performance Stats */}
+        <IonCard className="performance-stats-card">
           <IonCardHeader>
-            <IonCardTitle>Distance</IonCardTitle>
-            <p>Distance covered per day (last 7 days)</p>
+            <IonCardTitle>Performance Stats</IonCardTitle>
           </IonCardHeader>
           <IonCardContent>
+            {/* Time Range Selector */}
             <IonSelect
               value={timePeriod}
               interface="popover"
               onIonChange={(e) => setTimePeriod(e.detail.value)}
+              className="time-range-select"
             >
-              <IonSelectOption value="day">Per Day</IonSelectOption>
-              <IonSelectOption value="week">Per Week</IonSelectOption>
-              <IonSelectOption value="month">Per Month</IonSelectOption>
+              <IonSelectOption value="day">Today</IonSelectOption>
+              <IonSelectOption value="week">This Week</IonSelectOption>
+              <IonSelectOption value="month">This Month</IonSelectOption>
             </IonSelect>
 
-            <div className="chart">
-              {weeklyStats.length > 0 ? (
-                weeklyStats.map((stat) => (
-                  <div className="chart-row" key={stat.day}>
-                    <span>{stat.day}</span>
-                    <div className="bar" style={{ width: `${stat.percentage}%` }}></div>
-                  </div>
-                ))
-              ) : (
-                <p className="ion-text-center">No activity data yet</p>
-              )}
-            </div>
-
-            <div className="chart-scale">
-              <span>0</span>
-              <span>5km</span>
-              <span>10km</span>
-              <span>15km</span>
-              <span>20km</span>
+            {/* Stats Display */}
+            <div className="stats-grid">
+              <div className="stat-item">
+                <div className="stat-label">Runs</div>
+                <div className="stat-value">{currentStats.runs_count}</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-label">Distance</div>
+                <div className="stat-value">{currentStats.total_distance}</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-label">Pace</div>
+                <div className="stat-value">{currentStats.avg_pace}</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-label">Calories</div>
+                <div className="stat-value">{currentStats.total_calories}</div>
+              </div>
             </div>
           </IonCardContent>
         </IonCard>
@@ -378,52 +408,15 @@ export default function Profile() {
               <p>View all your posts</p>
             </IonLabel>
           </IonItem>
-          <IonItem className="dark-content" routerLink="/analytics" lines="none">
+          <IonItem className="dark-content" routerLink="/my-challenges" lines="none">
             <IonIcon icon={chevronForwardOutline} slot="end" />
             <IonLabel>
-              <h2>Statistics</h2>
-              <p>Check your running stats</p>
+              <h2>View Challenges</h2>
+              <p>See your active and completed challenges</p>
             </IonLabel>
           </IonItem>
         </div>
 
-        {/* Active Challenge */}
-        {activeChallenge && (
-          <>
-            <h3 className="groups-title">Current Challenge</h3>
-            <IonCard className="current-challenge-card">
-              <div className="challenge-image-container">
-                <IonImg src={activeChallenge.challenge_image} alt={activeChallenge.challenge_name} />
-                <div className="challenge-overlay">
-                  <h3 className="challenge-title">{activeChallenge.challenge_name}</h3>
-                  <div className="participants">
-                    <IonIcon icon={people} className="participants-icon" />
-                    <span>Challenge Active</span>
-                  </div>
-                </div>
-              </div>
-              <IonCardContent className="challenge-content">
-                <p>{activeChallenge.challenge_description}</p>
-                <div className="progress-section">
-                  <span className="progress-label">
-                    Progress: {activeChallenge.progress_percent.toFixed(0)}%
-                  </span>
-                  <div className="progress-bar">
-                    <div
-                      className="progress-fill"
-                      style={{ width: `${activeChallenge.progress_percent}%` }}
-                    ></div>
-                  </div>
-                </div>
-              </IonCardContent>
-            </IonCard>
-          </>
-        )}
-
-        {/* All Challenges Link */}
-        <IonButton expand="block" routerLink="/community" className="ion-margin">
-          View All Challenges
-        </IonButton>
       </IonContent>
 
       {/* Error Toast */}

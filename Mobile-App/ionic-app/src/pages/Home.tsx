@@ -731,16 +731,6 @@ export default function Dashboard() {
 
                 </IonButton>
 
-                <IonButton routerLink="/profile">
-
-                  <IonAvatar className="header-avatar">
-
-                    <img src={ProfilePic} alt="Profile" />
-
-                  </IonAvatar>
-
-                </IonButton>
-
               </IonButtons>
 
             </>

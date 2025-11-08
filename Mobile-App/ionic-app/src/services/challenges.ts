@@ -23,10 +23,14 @@ export interface UserChallenge {
   challenge_description: string;
   challenge_image: string;
   challenge_duration_days: number;
+  days_remaining: number | null;
   progress_percent: number;
   completed: boolean;
   started_at: string;
   completed_at?: string;
+  badge_name?: string;
+  badge_tier?: string;
+  badge_image_url?: string;
 }
 
 export interface Badge {
@@ -36,6 +40,12 @@ export interface Badge {
   badge_image_url: string;
   badge_description: string;
   earned_at: string;
+  count?: number; // Number of times this badge was earned
+  challenges?: Array<{ // Challenges that earned this badge
+    challenge_name: string;
+    completed_date: string;
+    updated_at: string;
+  }>;
 }
 
 export interface ChallengeWithStatus extends Challenge {
@@ -72,8 +82,9 @@ export const ChallengesApi = {
 
   // Get user's challenges (active and completed)
   getUserChallenges: async (userId: number): Promise<UserChallenge[]> => {
-    const { data } = await api.get(`/challenges/user/`);
-    return Array.isArray(data) ? data : [];
+    const { data } = await api.get(`/routes/challenges/${userId}`);
+    // The endpoint returns { challenges: [...] }
+    return Array.isArray(data.challenges) ? data.challenges : [];
   },
 
   // Get user's earned badges

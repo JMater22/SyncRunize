@@ -5,8 +5,10 @@ import {
   IonTabBar,
   IonTabButton,
   IonTabs,
+  IonIcon,
   setupIonicReact,
 } from "@ionic/react";
+import { personOutline } from "ionicons/icons";
 import { IonReactRouter } from "@ionic/react-router";
 import { useSupabaseSession } from "./lib/useSession";
 import { UserProvider } from "./contexts/UserContext";
@@ -18,8 +20,8 @@ import Home from "./pages/Home";
 import Community from "./pages/Community";
 import RunTracking from "./pages/RunTracking";
 import RoutesPage from "./pages/RoutesPage";
-import Analytics from "./pages/Analytics";
 import UserProfile from "./pages/UserProfile";
+import MyChallenges from "./pages/MyChallenges";
 import Settings from "./pages/Settings";
 import Leaderboards from "./pages/leaderboards";
 import Notification from "./pages/notification";
@@ -52,7 +54,6 @@ import HomeIcon from "./components/assets/icons/home.svg";
 import RouteIcon from "./components/assets/icons/conversion_path.svg";
 import RunIcon from "./components/assets/icons/open_run.svg";
 import GroupsIcon from "./components/assets/icons/groups.svg";
-import StatsIcon from "./components/assets/icons/query_stats.svg";
 
 /* Ionic Core & CSS */
 import "@ionic/react/css/core.css";
@@ -119,8 +120,8 @@ const App: React.FC = () => {
                   <Route exact path="/community" component={Community} />
                   <Route exact path="/run-tracking" component={RunTracking} />
                   <Route exact path="/routes" component={RoutesPage} />
-                  <Route exact path="/analytics" component={Analytics} />
                   <Route exact path="/profile" component={UserProfile} />
+                  <Route exact path="/my-challenges" component={MyChallenges} />
                   <Route exact path="/settings" component={Settings} />
                   <Route exact path="/leaderboards" component={Leaderboards} />
                   <Route exact path="/notification" component={Notification} />
@@ -176,9 +177,9 @@ const App: React.FC = () => {
                     Community
                   </IonTabButton>
 
-                  <IonTabButton tab="analytics" href="/analytics">
-                    <img src={StatsIcon} alt="Analytics" className="nav-icon" />
-                    Analytics
+                  <IonTabButton tab="profile" href="/profile">
+                    <IonIcon icon={personOutline} />
+                    Profile
                   </IonTabButton>
                 </IonTabBar>
               </IonTabs>

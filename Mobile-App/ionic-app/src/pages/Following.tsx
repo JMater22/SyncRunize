@@ -18,7 +18,7 @@ import {
   IonSpinner,
 } from "@ionic/react";
 import { useState, useEffect } from "react";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import '../theme/variables.css';
 import { usePushNotifications } from "../components/push-notification";
 import { PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
@@ -28,8 +28,13 @@ import { getAvatarUrl } from "../lib/utils";
 
 export default function FollowingFollowers() {
   const history = useHistory();
+  const location = useLocation();
   const { currentUser } = useUser();
-  const [tab, setTab] = useState<"following" | "followers">("following");
+
+  // Read initial tab from URL query param
+  const queryParams = new URLSearchParams(location.search);
+  const initialTab = (queryParams.get('tab') === 'followers' ? 'followers' : 'following') as "following" | "followers";
+  const [tab, setTab] = useState<"following" | "followers">(initialTab);
   const [following, setFollowing] = useState<FollowUser[]>([]);
   const [followers, setFollowers] = useState<FollowUser[]>([]);
   const [loading, setLoading] = useState(true);

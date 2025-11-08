@@ -68,7 +68,6 @@ export default function ViewPosts() {
   const [selectedPostComments, setSelectedPostComments] = useState<Comment[]>([]);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
   const [loadingComments, setLoadingComments] = useState(false);
-  const [newComment, setNewComment] = useState('');
 
   // Fetch posts
   useEffect(() => {
@@ -166,50 +165,6 @@ export default function ViewPosts() {
     }
   };
 
-  // Handle add comment
-  const handleAddComment = async () => {
-    if (!selectedPostId || !newComment.trim()) return;
-
-    try {
-      const comment = await CommentsApi.addComment(selectedPostId, { content: newComment });
-      setSelectedPostComments(prev => [comment, ...prev]);
-      setNewComment('');
-
-      // Update comment count in posts list
-      setPosts(prevPosts =>
-        prevPosts.map(post =>
-          post.post_id === selectedPostId
-            ? { ...post, comments_count: (post.comments_count || 0) + 1 }
-            : post
-        )
-      );
-    } catch (error) {
-      console.error("Error adding comment:", error);
-      alert("Failed to add comment");
-    }
-  };
-
-  // Handle delete comment
-  const handleDeleteComment = async (commentId: number) => {
-    try {
-      await CommentsApi.deleteComment(commentId);
-      setSelectedPostComments(prev => prev.filter(c => c.comment_id !== commentId));
-
-      // Update comment count in posts list
-      if (selectedPostId) {
-        setPosts(prevPosts =>
-          prevPosts.map(post =>
-            post.post_id === selectedPostId
-              ? { ...post, comments_count: Math.max(0, (post.comments_count || 0) - 1) }
-              : post
-          )
-        );
-      }
-    } catch (error) {
-      console.error("Error deleting comment:", error);
-      alert("Failed to delete comment");
-    }
-  };
 
   return (
     <IonPage>
@@ -458,7 +413,7 @@ export default function ViewPosts() {
                     borderBottom: '1px solid #eee'
                   }}>
                     <IonAvatar style={{ width: '40px', height: '40px' }}>
-                      <img src={liker.profile_picture || 'https://via.placeholder.com/40'} alt={liker.name} />
+                      <img src={getAvatarUrl(liker.profile_picture)} alt={liker.name} />
                     </IonAvatar>
                     <div>
                       <div style={{ fontWeight: 'bold' }}>{liker.name}</div>
@@ -478,7 +433,6 @@ export default function ViewPosts() {
             setIsCommentsModalOpen(false);
             setSelectedPostComments([]);
             setSelectedPostId(null);
-            setNewComment('');
           }}
         >
           <IonHeader>
@@ -491,7 +445,6 @@ export default function ViewPosts() {
                   setIsCommentsModalOpen(false);
                   setSelectedPostComments([]);
                   setSelectedPostId(null);
-                  setNewComment('');
                 }}
               >
                 <IonIcon icon={close} />
@@ -501,35 +454,14 @@ export default function ViewPosts() {
 
           <IonContent>
             <div style={{ padding: '20px' }}>
-              {/* Add Comment Form */}
-              <div style={{ marginBottom: '20px' }}>
-                <IonItem>
-                  <IonLabel position="stacked">Add a comment</IonLabel>
-                  <IonTextarea
-                    value={newComment}
-                    onIonChange={(e) => setNewComment(e.detail.value!)}
-                    placeholder="Write your comment..."
-                    rows={3}
-                  />
-                </IonItem>
-                <IonButton
-                  expand="block"
-                  onClick={handleAddComment}
-                  disabled={!newComment.trim()}
-                  style={{ marginTop: '10px' }}
-                >
-                  Post Comment
-                </IonButton>
-              </div>
-
-              {/* Comments List */}
+              {/* Comments List - Read Only */}
               {loadingComments ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
                   <IonSpinner name="crescent" />
                 </div>
               ) : selectedPostComments.length === 0 ? (
                 <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-                  No comments yet. Be the first to comment!
+                  No comments yet.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -544,26 +476,14 @@ export default function ViewPosts() {
                     >
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                         <IonAvatar style={{ width: '40px', height: '40px', minWidth: '40px' }}>
-                          <img src={comment.profile_picture || 'https://via.placeholder.com/40'} alt={comment.name} />
+                          <img src={getAvatarUrl(comment.profile_picture)} alt={comment.name} />
                         </IonAvatar>
                         <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                              <strong style={{ fontSize: '14px' }}>{comment.name}</strong>
-                              <span style={{ color: '#666', fontSize: '12px', marginLeft: '8px' }}>
-                                @{comment.username}
-                              </span>
-                            </div>
-                            {comment.user_id === currentUser?.user_id && (
-                              <IonButton
-                                fill="clear"
-                                size="small"
-                                color="danger"
-                                onClick={() => handleDeleteComment(comment.comment_id)}
-                              >
-                                <IonIcon icon={trashOutline} slot="icon-only" />
-                              </IonButton>
-                            )}
+                          <div>
+                            <strong style={{ fontSize: '14px' }}>{comment.name}</strong>
+                            <span style={{ color: '#666', fontSize: '12px', marginLeft: '8px' }}>
+                              @{comment.username}
+                            </span>
                           </div>
                           <p style={{ margin: '8px 0 0 0', fontSize: '14px' }}>{comment.content}</p>
                           <span style={{ fontSize: '12px', color: '#999', marginTop: '4px', display: 'block' }}>

@@ -384,3 +384,83 @@ ion-card p {
   color: #ffffff;
   font-weight: 500;
 }
+
+/* Performance Stats Card */
+.performance-stats-card {
+  background: #1a1a1a;
+  border-radius: 16px;
+  margin: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  border: 1px solid #2a2a2a;
+}
+
+.performance-stats-card ion-card-header {
+  padding: 16px 20px 8px 20px;
+}
+
+.performance-stats-card ion-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.performance-stats-card ion-card-content {
+  padding: 0 20px 20px 20px;
+}
+
+/* Time Range Selector */
+.time-range-select {
+  width: 100%;
+  margin: 12px 0 20px 0;
+  background: #2a2a2a;
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  --placeholder-color: #888;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.stat-item {
+  background: #2a2a2a;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  border: 1px solid rgba(146, 198, 40, 0.2);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.stat-item:active {
+  transform: scale(0.98);
+  border-color: rgba(146, 198, 40, 0.4);
+}
+
+.stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #92C628;
+  line-height: 1.2;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

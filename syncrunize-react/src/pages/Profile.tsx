@@ -134,7 +134,10 @@ const Profile: React.FC = () => {
   const [selectedPostComments, setSelectedPostComments] = useState<any[]>([]);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
   const [loadingComments, setLoadingComments] = useState(false);
-  const [newComment, setNewComment] = useState('');
+
+  // Badge history modal state
+  const [isBadgeHistoryModalOpen, setIsBadgeHistoryModalOpen] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
 
   const location = useLocation();
 
@@ -373,23 +376,49 @@ useEffect(() => {
   const fetchEarnedBadges = async (userId: number, token: string) => {
     try {
       setLoadingBadges(true);
-      
+
       const { data: response } = await axios.get(
         `${import.meta.env.VITE_API_URL}/routes/badges/${userId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       // Filter only completed challenges with badges
-      const badges = response.data
-        .filter((challenge: any) => challenge.completed && challenge.badge_image_url)
-        .map((challenge: any) => ({
-          title: challenge.badge_name || "Badge",
-          description: challenge.badge_description || "Achievement unlocked",
-          tier: challenge.badge_tier || "Bronze",
-          earned: true,
-          date: new Date(challenge.updated_at).toLocaleDateString(),
-          image: challenge.badge_image_url
-        }));
+      const completedChallenges = response.data
+        .filter((challenge: any) => challenge.completed && challenge.badge_image_url);
+
+      // Group badges by badge_name to avoid duplicates
+      const badgeGroups = completedChallenges.reduce((acc: any, challenge: any) => {
+        const badgeName = challenge.badge_name || "Badge";
+
+        if (!acc[badgeName]) {
+          acc[badgeName] = {
+            title: badgeName,
+            description: challenge.badge_description || "Achievement unlocked",
+            tier: challenge.badge_tier || "Bronze",
+            earned: true,
+            image: challenge.badge_image_url,
+            challenges: []
+          };
+        }
+
+        // Add this challenge to the badge's history
+        acc[badgeName].challenges.push({
+          challenge_name: challenge.challenge_name || "Challenge",
+          completed_date: new Date(challenge.updated_at).toLocaleDateString(),
+          updated_at: challenge.updated_at
+        });
+
+        return acc;
+      }, {});
+
+      // Convert to array and sort challenges by date (most recent first)
+      const badges = Object.values(badgeGroups).map((badge: any) => ({
+        ...badge,
+        count: badge.challenges.length,
+        challenges: badge.challenges.sort((a: any, b: any) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        )
+      }));
 
       setEarnedBadges(badges);
       setLoadingBadges(false);
@@ -729,69 +758,6 @@ const handleViewComments = async (postId: number) => {
   }
 };
 
-// Handle adding comment
-const handleAddComment = async () => {
-  if (!selectedPostId || !newComment.trim()) return;
-
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-
-    const response = await axios.post(
-      `${import.meta.env.VITE_API_URL}/comments/${selectedPostId}`,
-      { content: newComment },
-      {
-        headers: { Authorization: `Bearer ${token}` }
-      }
-    );
-
-    setSelectedPostComments(prev => [response.data, ...prev]);
-    setNewComment('');
-
-    // Update comment count in posts list
-    setUserPosts(prevPosts =>
-      prevPosts.map(post =>
-        post.post_id === selectedPostId
-          ? { ...post, comments_count: (post.comments_count || 0) + 1 }
-          : post
-      )
-    );
-  } catch (error) {
-    console.error("Error adding comment:", error);
-    alert("Failed to add comment");
-  }
-};
-
-// Handle deleting comment
-const handleDeleteComment = async (commentId: number) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-
-    await axios.delete(
-      `${import.meta.env.VITE_API_URL}/comments/${commentId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` }
-      }
-    );
-
-    setSelectedPostComments(prev => prev.filter(c => c.comment_id !== commentId));
-
-    // Update comment count in posts list
-    if (selectedPostId) {
-      setUserPosts(prevPosts =>
-        prevPosts.map(post =>
-          post.post_id === selectedPostId
-            ? { ...post, comments_count: Math.max(0, (post.comments_count || 0) - 1) }
-            : post
-        )
-      );
-    }
-  } catch (error) {
-    console.error("Error deleting comment:", error);
-    alert("Failed to delete comment");
-  }
-};
 
 
     const handleFollowToggle = async (targetUserId: number) => {
@@ -1202,14 +1168,40 @@ const handleSaveProfile = async () => {
                   ) : (
                     <div className="badges-grid">
                       {earnedBadges.map((badge, i) => (
-                        <IonCard key={i} className={`badge-card-modern ${!badge.earned ? 'locked' : ''}`}>
+                        <IonCard
+                          key={i}
+                          className={`badge-card-modern ${!badge.earned ? 'locked' : ''}`}
+                          onClick={() => {
+                            setSelectedBadge(badge);
+                            setIsBadgeHistoryModalOpen(true);
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        >
                           <div className={`badge-glow ${badge.tier.toLowerCase()}`}></div>
                           <IonImg src={badge.image} alt={badge.title} className="badge-image" />
+
+                          {/* Count indicator - only show if earned 2 or more times */}
+                          {badge.count > 1 && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '10px',
+                              right: '10px',
+                              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                              color: 'white',
+                              borderRadius: '12px',
+                              padding: '4px 10px',
+                              fontSize: '13px',
+                              fontWeight: 'bold'
+                            }}>
+                              ×{badge.count}
+                            </div>
+                          )}
+
                           <IonCardContent>
                             <h4 className="badge-title">{badge.title}</h4>
                             <p className="badge-description">{badge.description}</p>
                             <div className={`badge-earned ${!badge.earned ? 'locked-text' : ''}`}>
-                              Earned {badge.date}
+                              {badge.count > 1 ? `Earned ${badge.count} times` : `Earned`}
                             </div>
                           </IonCardContent>
                         </IonCard>
@@ -1248,7 +1240,18 @@ const handleSaveProfile = async () => {
                               <IonCardContent>
                                 <h4 className="challenge-title">{challenge.challenge_name}</h4>
                                 <p className="challenge-target">{challenge.challenge_description}</p>
-                                <p className="challenge-duration">{challenge.challenge_duration_days} days</p>
+                                {challenge.days_remaining !== null && challenge.days_remaining !== undefined ? (
+                                  <p className="challenge-duration" style={{
+                                    color: challenge.days_remaining <= 3 ? '#eb445a' : 'inherit',
+                                    fontWeight: challenge.days_remaining <= 3 ? 600 : 'normal'
+                                  }}>
+                                    {challenge.days_remaining === 0 ? 'Last day!' :
+                                     challenge.days_remaining === 1 ? '1 day remaining' :
+                                     `${challenge.days_remaining} days remaining`}
+                                  </p>
+                                ) : (
+                                  <p className="challenge-duration">{challenge.challenge_duration_days} days</p>
+                                )}
                               </IonCardContent>
                             </IonCard>
                           ))
@@ -1345,26 +1348,38 @@ const handleSaveProfile = async () => {
 
                               {/* Stats (if route-based post) */}
                               {post.route_id && (
-                                <div className="activity-stats-row">
-                                  <div className="activity-stat">
-                                    <IonIcon icon={locationOutline} />
-                                    <strong>{post.distance_km?.toFixed(1)} km</strong>
-                                    <span>Distance</span>
-                                  </div>
-                                  <div className="activity-stat">
-                                    <IonIcon icon={timeOutline} />
-                                    <strong>{formatDuration(post.duration_seconds)}</strong>
-                                    <span>Time</span>
-                                  </div>
-                                  <div className="activity-stat">
-                                    <IonIcon icon={speedometerOutline} />
-                                    <strong>{post.average_pace || 'N/A'}</strong>
-                                    <span>Pace</span>
-                                  </div>
-                                  <div className="activity-stat">
-                                    <IonIcon icon={flameIcon} />
-                                    <strong>{post.estimated_calories || 'N/A'}</strong>
-                                    <span>Calories</span>
+                                <div style={{
+                                  backgroundColor: '#f5f5f5',
+                                  padding: '12px',
+                                  borderRadius: '8px',
+                                  marginBottom: '12px'
+                                }}>
+                                  {post.route_name && (
+                                    <h4 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600 }}>
+                                      {post.route_name}
+                                    </h4>
+                                  )}
+                                  <div className="activity-stats-row">
+                                    <div className="activity-stat">
+                                      <IonIcon icon={locationOutline} />
+                                      <strong>{post.distance_km?.toFixed(1)} km</strong>
+                                      <span>Distance</span>
+                                    </div>
+                                    <div className="activity-stat">
+                                      <IonIcon icon={timeOutline} />
+                                      <strong>{formatDuration(post.duration_seconds)}</strong>
+                                      <span>Time</span>
+                                    </div>
+                                    <div className="activity-stat">
+                                      <IonIcon icon={speedometerOutline} />
+                                      <strong>{post.average_pace || 'N/A'}</strong>
+                                      <span>Pace</span>
+                                    </div>
+                                    <div className="activity-stat">
+                                      <IonIcon icon={flameIcon} />
+                                      <strong>{post.estimated_calories || 'N/A'}</strong>
+                                      <span>Calories</span>
+                                    </div>
                                   </div>
                                 </div>
                               )}
@@ -1866,7 +1881,6 @@ const handleSaveProfile = async () => {
             setIsCommentsModalOpen(false);
             setSelectedPostComments([]);
             setSelectedPostId(null);
-            setNewComment('');
           }}
           className="edit-profile-modal"
         >
@@ -1880,7 +1894,6 @@ const handleSaveProfile = async () => {
                   setIsCommentsModalOpen(false);
                   setSelectedPostComments([]);
                   setSelectedPostId(null);
-                  setNewComment('');
                 }}
               >
                 <IonIcon icon={close} />
@@ -1890,36 +1903,14 @@ const handleSaveProfile = async () => {
 
           <IonContent className="edit-modal-content">
             <div className="edit-form-container">
-              {/* Add Comment Form */}
-              <div className="edit-form-fields" style={{ marginBottom: '20px' }}>
-                <IonItem className="edit-form-item description-item">
-                  <IonLabel position="stacked">Add a comment</IonLabel>
-                  <IonTextarea
-                    value={newComment}
-                    onIonInput={(e) => setNewComment(e.detail.value!)}
-                    placeholder="Write your comment..."
-                    rows={3}
-                    className="edit-textarea"
-                  />
-                </IonItem>
-                <IonButton
-                  expand="block"
-                  onClick={handleAddComment}
-                  disabled={!newComment.trim()}
-                  style={{ marginTop: '10px' }}
-                >
-                  Post Comment
-                </IonButton>
-              </div>
-
-              {/* Comments List */}
+              {/* Comments List - Read Only */}
               {loadingComments ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
                   <IonSpinner name="crescent" />
                 </div>
               ) : selectedPostComments.length === 0 ? (
                 <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-                  No comments yet. Be the first to comment!
+                  No comments yet.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -1938,23 +1929,11 @@ const handleSaveProfile = async () => {
                           <IonImg src={comment.profile_picture || DEFAULT_AVATAR} />
                         </IonAvatar>
                         <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                              <strong style={{ fontSize: '14px' }}>{comment.name}</strong>
-                              <span style={{ color: '#666', fontSize: '12px', marginLeft: '8px' }}>
-                                @{comment.username}
-                              </span>
-                            </div>
-                            {comment.user_id === currentUserId && (
-                              <IonButton
-                                fill="clear"
-                                size="small"
-                                color="danger"
-                                onClick={() => handleDeleteComment(comment.comment_id)}
-                              >
-                                <IonIcon icon={trashOutline} slot="icon-only" />
-                              </IonButton>
-                            )}
+                          <div>
+                            <strong style={{ fontSize: '14px' }}>{comment.name}</strong>
+                            <span style={{ color: '#666', fontSize: '12px', marginLeft: '8px' }}>
+                              @{comment.username}
+                            </span>
                           </div>
                           <p style={{ margin: '8px 0 0 0', fontSize: '14px' }}>{comment.content}</p>
                           <span style={{ fontSize: '12px', color: '#999', marginTop: '4px', display: 'block' }}>
@@ -1965,6 +1944,97 @@ const handleSaveProfile = async () => {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          </IonContent>
+        </IonModal>
+
+        {/* Badge History Modal */}
+        <IonModal
+          isOpen={isBadgeHistoryModalOpen}
+          onDidDismiss={() => {
+            setIsBadgeHistoryModalOpen(false);
+            setSelectedBadge(null);
+          }}
+          className="edit-profile-modal"
+        >
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Badge History</IonTitle>
+              <IonButton
+                slot="end"
+                fill="clear"
+                onClick={() => {
+                  setIsBadgeHistoryModalOpen(false);
+                  setSelectedBadge(null);
+                }}
+              >
+                <IonIcon icon={close} />
+              </IonButton>
+            </IonToolbar>
+          </IonHeader>
+
+          <IonContent className="edit-modal-content">
+            <div className="edit-form-container">
+              {selectedBadge && (
+                <>
+                  {/* Badge Details */}
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    padding: '20px',
+                    borderBottom: '1px solid #e0e0e0',
+                    marginBottom: '20px'
+                  }}>
+                    <IonImg
+                      src={selectedBadge.image}
+                      alt={selectedBadge.title}
+                      style={{ width: '120px', height: '120px', marginBottom: '15px' }}
+                    />
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 'bold' }}>
+                      {selectedBadge.title}
+                    </h3>
+                    <p style={{ margin: '0', color: '#666', textAlign: 'center' }}>
+                      {selectedBadge.description}
+                    </p>
+                    <div style={{ marginTop: '10px', fontSize: '14px', color: '#999' }}>
+                      Earned {selectedBadge.count} {selectedBadge.count === 1 ? 'time' : 'times'}
+                    </div>
+                  </div>
+
+                  {/* Challenge History */}
+                  <div style={{ padding: '0 20px 20px 20px' }}>
+                    <h4 style={{ marginBottom: '15px', fontSize: '16px', fontWeight: 'bold' }}>
+                      Challenges Completed
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {selectedBadge.challenges.map((challenge: any, index: number) => (
+                        <div
+                          key={index}
+                          style={{
+                            padding: '15px',
+                            backgroundColor: '#f5f5f5',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '4px' }}>
+                              {challenge.challenge_name}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#666' }}>
+                              Completed: {challenge.completed_date}
+                            </div>
+                          </div>
+                          <IonIcon icon={checkmark} style={{ color: '#4CAF50', fontSize: '24px' }} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </IonContent>
