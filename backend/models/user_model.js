@@ -89,7 +89,7 @@ export const getUserById = async (user_id) => {
 export const getPublicUserById = async (id) => {
   const { data, error } = await supabase
     .from("users")
-    .select("user_id, name, gender, age, created_at, profile_picture, description")
+    .select("user_id, name, username, gender, age, created_at, profile_picture, description, location, activities_visibility")
     .eq("user_id", id)
     .single();
 

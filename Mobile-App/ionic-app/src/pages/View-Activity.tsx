@@ -12,6 +12,7 @@ import {
   IonSpinner,
   IonImg
 } from "@ionic/react";
+import { useLocation } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { RoutesApi, Route } from "../services/routes";
 import { formatDate, formatDurationShort } from "../lib/utils";
@@ -20,21 +21,32 @@ import "./View-Activity.css";
 // Fallback image for routes without map images
 import MapImage from '../components/assets/istockphoto-143920084-612x612.jpg';
 
+interface LocationState {
+  userId?: number;
+  userName?: string;
+}
+
 const ViewActivity: React.FC = () => {
   const { currentUser } = useUser();
+  const location = useLocation<LocationState>();
   const [userRoutes, setUserRoutes] = useState<Route[]>([]);
   const [loadingRoutes, setLoadingRoutes] = useState(false);
+
+  // Determine which user's activities to fetch
+  const userId = location.state?.userId || currentUser?.user_id;
+  const userName = location.state?.userName;
+  const isViewingOtherUser = !!location.state?.userId;
 
   // Fetch user routes when component mounts
   useEffect(() => {
     const fetchUserRoutes = async () => {
-      if (!currentUser) return;
+      if (!userId) return;
 
       try {
         setLoadingRoutes(true);
 
         // Fetch routes with activities_only flag to get completed routes
-        const routes = await RoutesApi.getUserRoutes(currentUser.user_id, true);
+        const routes = await RoutesApi.getUserRoutes(userId, true);
         setUserRoutes(Array.isArray(routes) ? routes : []);
       } catch (error) {
         console.error("Error fetching user routes:", error);
@@ -45,7 +57,7 @@ const ViewActivity: React.FC = () => {
     };
 
     fetchUserRoutes();
-  }, [currentUser]);
+  }, [userId]);
 
   return (
     <IonPage>
@@ -53,9 +65,9 @@ const ViewActivity: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/HomeModule/homeM1" />
+            <IonBackButton defaultHref={isViewingOtherUser ? "/other-profile" : "/HomeModule/homeM1"} />
           </IonButtons>
-          <IonTitle>Activities</IonTitle>
+          <IonTitle>{isViewingOtherUser && userName ? `${userName}'s Activities` : "Activities"}</IonTitle>
         </IonToolbar>
       </IonHeader>
 

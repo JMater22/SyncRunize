@@ -205,14 +205,6 @@ const Activity: React.FC = () => {
             </IonRow>
             
           </IonGrid>
-          <IonButton
-            expand="block"
-            fill="outline"
-            onClick={handleChangeMapType}
-            className="change-map-type-btn"
-          >
-            Change Map Type
-          </IonButton>
         </div>
 
         {/* Run Stats Summary */}

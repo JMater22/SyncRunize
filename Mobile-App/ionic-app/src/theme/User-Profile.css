@@ -244,6 +244,9 @@ ion-grid {
   margin-top: 8px;
   text-align: center;
 }
+h2 {
+  color: #fff;
+}
 ion-col h2 {
   color: #fff;
   margin: 0;

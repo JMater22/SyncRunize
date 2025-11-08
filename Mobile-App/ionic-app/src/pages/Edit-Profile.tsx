@@ -8,51 +8,60 @@ import {
   IonTitle,
   IonButton,
   IonContent,
-  IonImg,
   IonItem,
   IonLabel,
   IonInput,
-  IonSelect,
-  IonSelectOption,
+  IonTextarea,
   IonToast,
   IonActionSheet,
   IonIcon,
+  IonAvatar,
+  IonImg,
+  IonSpinner,
 } from "@ionic/react";
-import { camera, images, close } from "ionicons/icons";
+import { camera, images, close, checkmark } from "ionicons/icons";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { supabase } from "../lib/supabaseClient";
+import { useUser } from "../contexts/UserContext";
+import { getAvatarUrl } from "../lib/utils";
 import '../theme/Edit-Profile.css';
-import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
-import { UsersApi } from "../services/users";
-
 
 const EditProfile: React.FC = () => {
-  const [name, setName] = useState("");
-  const [gender, setGender] = useState<'male' | 'female' | 'other' | ''>('');
-  const [description, setDescription] = useState("");
-  const [profilePhoto, setProfilePhoto] = useState(ProfilePic);
+  const { currentUser, refreshUser } = useUser();
+
+  // Form state matching web version
+  const [editForm, setEditForm] = useState({
+    Name: "",
+    description: "",
+    profilePic: "",
+  });
+
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [toastColor, setToastColor] = useState<'success' | 'danger'>('success');
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
+  // Initialize form with current user data
   useEffect(() => {
-    (async () => {
-      try {
-        const me = await UsersApi.me();
-        setName(me.name || "");
-        setGender((me.gender as any) || '');
-        setDescription(me.description || "");
-      } catch (e) {
-        // ignore; show empty
-      }
-    })();
-  }, []);
+    if (currentUser) {
+      setEditForm({
+        Name: currentUser.name || "",
+        description: currentUser.description || "",
+        profilePic: getAvatarUrl(currentUser.profile_picture),
+      });
+    }
+  }, [currentUser]);
 
-  /** 📸 Select Photo - Android Platform */
-  const selectPhoto = async (source: CameraSource) => {
+  /** 📸 Upload photo to Supabase Storage */
+  const handleImageSelection = async (source: CameraSource) => {
     try {
+      setUploading(true);
+
+      // Get photo from camera or gallery
       const photo = await Camera.getPhoto({
-        resultType: CameraResultType.Uri,
+        resultType: CameraResultType.DataUrl,
         source: source,
         quality: 90,
         allowEditing: true,
@@ -60,96 +69,247 @@ const EditProfile: React.FC = () => {
         height: 600,
       });
 
-      if (photo.webPath) {
-        setProfilePhoto(photo.webPath);
-        setToastMessage("Profile photo updated!");
-        setShowToast(true);
+      if (!photo.dataUrl) {
+        throw new Error("No image data");
       }
-    } catch (error) {
-      console.error("Camera error:", error);
-      setToastMessage("Failed to select photo.");
+
+      // Convert data URL to blob
+      const response = await fetch(photo.dataUrl);
+      const blob = await response.blob();
+
+      // Create file with timestamp
+      const fileExt = 'jpg';
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `profile-pictures/${fileName}`;
+
+      // Upload to Supabase Storage (bucket: assets)
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("assets")
+        .upload(filePath, blob, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from("assets")
+        .getPublicUrl(filePath);
+
+      const publicUrl = urlData.publicUrl;
+
+      // Update form preview
+      setEditForm((prev) => ({ ...prev, profilePic: publicUrl }));
+
+      setToastMessage("Profile photo uploaded!");
+      setToastColor('success');
       setShowToast(true);
+    } catch (error: any) {
+      console.error("Photo upload error:", error);
+      setToastMessage(error?.message || "Failed to upload photo");
+      setToastColor('danger');
+      setShowToast(true);
+    } finally {
+      setUploading(false);
+      setShowActionSheet(false);
     }
   };
 
-  const handlePhotoButtonClick = () => {
-    setShowActionSheet(true);
-  };
-
-  const handleDone = async () => {
-    if (!name.trim()) {
+  /** 💾 Save profile changes - matching web implementation */
+  const handleSaveProfile = async () => {
+    if (!editForm.Name.trim()) {
       setToastMessage("Please enter your name");
+      setToastColor('danger');
       setShowToast(true);
       return;
     }
+
     try {
       setSaving(true);
-      await UsersApi.updateMe({ name, gender: gender || null, description });
+
+      // Get authentication token
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error("No active session");
+
+      // Prepare payload (match backend field names) - EXACTLY like web
+      const updateData = {
+        name: editForm.Name,
+        description: editForm.description,
+        profile_picture: editForm.profilePic,
+      };
+
+      // Send update request to same endpoint as web
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/users/update-me`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update profile');
+      }
+
+      const data = await response.json();
+
+      // Refresh user context to get latest data
+      if (refreshUser) {
+        await refreshUser();
+      }
+
       setToastMessage("Profile updated successfully!");
+      setToastColor('success');
       setShowToast(true);
-    } catch (e: any) {
-      setToastMessage(e?.message || 'Failed to update profile');
+
+      // Navigate back after short delay
+      setTimeout(() => {
+        window.history.back();
+      }, 1000);
+    } catch (error: any) {
+      console.error("Error updating profile:", error);
+      setToastMessage(error?.message || 'Failed to update profile');
+      setToastColor('danger');
       setShowToast(true);
     } finally {
       setSaving(false);
     }
   };
 
+  const handleCancel = () => {
+    window.history.back();
+  };
+
   return (
     <IonPage>
       {/* Header */}
-      <IonHeader>
+      <IonHeader className="dark-header">
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/" />
+            <IonBackButton defaultHref="/profile" text="" />
           </IonButtons>
           <IonTitle>Edit Profile</IonTitle>
           <IonButtons slot="end">
-            <IonButton strong={true} onClick={handleDone}>
-              Done
+            <IonButton fill="clear" onClick={handleCancel}>
+              <IonIcon icon={close} />
             </IonButton>
           </IonButtons>
         </IonToolbar>
       </IonHeader>
 
       {/* Main Content */}
-      <IonContent className="ion-padding">
-        {/* Profile Photo */}
-        <div className="profile-photo-section">
-          <div className="profile-photo-container">
-            <IonImg
-              src={profilePhoto}
-              alt="Profile Photo"
-              className="profile-photo"
-            />
+      <IonContent className="edit-profile-content">
+        <div className="edit-form-container">
+
+          {/* Profile Picture Section */}
+          <div className="edit-avatar-section">
+            <IonAvatar className="edit-avatar">
+              <IonImg src={editForm.profilePic} alt="Profile" />
+            </IonAvatar>
             <IonButton
-              className="edit-photo-btn"
+              fill="outline"
               size="small"
-              fill="clear"
-              onClick={handlePhotoButtonClick}
+              className="change-photo-btn"
+              onClick={() => setShowActionSheet(true)}
+              disabled={uploading}
             >
-              📷
+              {uploading ? (
+                <>
+                  <IonSpinner name="crescent" style={{ marginRight: '8px' }} />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <IonIcon icon={camera} slot="start" />
+                  Change Photo
+                </>
+              )}
+            </IonButton>
+          </div>
+
+          {/* Form Fields */}
+          <div className="edit-form-fields">
+            <IonItem className="edit-form-item">
+              <IonLabel position="stacked">Full Name</IonLabel>
+              <IonInput
+                value={editForm.Name}
+                onIonInput={(e) => setEditForm({
+                  ...editForm,
+                  Name: e.detail.value!
+                })}
+                placeholder="Enter your name"
+                className="edit-input"
+              />
+            </IonItem>
+
+            <IonItem className="edit-form-item description-item">
+              <IonLabel position="stacked">Description</IonLabel>
+              <IonTextarea
+                value={editForm.description}
+                onIonInput={(e) => setEditForm({
+                  ...editForm,
+                  description: e.detail.value!
+                })}
+                placeholder="Tell us about yourself..."
+                rows={3}
+                className="edit-textarea"
+              />
+            </IonItem>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="edit-form-actions">
+            <IonButton
+              expand="block"
+              fill="solid"
+              onClick={handleSaveProfile}
+              className="save-profile-btn"
+              disabled={saving || uploading}
+            >
+              {saving ? (
+                <>
+                  <IonSpinner name="crescent" style={{ marginRight: '8px' }} />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <IonIcon icon={checkmark} slot="start" />
+                  Save Changes
+                </>
+              )}
+            </IonButton>
+
+            <IonButton
+              expand="block"
+              fill="outline"
+              onClick={handleCancel}
+              className="cancel-profile-btn"
+              disabled={saving}
+            >
+              Cancel
             </IonButton>
           </div>
         </div>
 
-        {/* Android Action Sheet for Photo Selection */}
+        {/* Action Sheet for Photo Selection */}
         <IonActionSheet
           isOpen={showActionSheet}
           onDidDismiss={() => setShowActionSheet(false)}
+          header="Change Profile Picture"
           buttons={[
             {
               text: "Take Photo",
               icon: camera,
               handler: () => {
-                selectPhoto(CameraSource.Camera);
+                handleImageSelection(CameraSource.Camera);
               },
             },
             {
               text: "Choose from Gallery",
               icon: images,
               handler: () => {
-                selectPhoto(CameraSource.Photos);
+                handleImageSelection(CameraSource.Photos);
               },
             },
             {
@@ -160,49 +320,14 @@ const EditProfile: React.FC = () => {
           ]}
         />
 
-        {/* Edit Form */}
-        <form className="edit-form">
-          {/* Name */}
-          <IonItem className="form-group full-width">
-            <IonLabel position="stacked">Name</IonLabel>
-            <IonInput
-              value={name}
-              placeholder="Enter your name"
-              onIonInput={(e) => setName(e.detail.value!)}
-            />
-          </IonItem>
-
-          {/* Gender */}
-          <IonItem className="form-group full-width">
-            <IonLabel position="stacked">Gender</IonLabel>
-            <IonSelect
-              value={gender}
-              placeholder="Select gender"
-              onIonChange={(e) => setGender(e.detail.value!)}
-            >
-              <IonSelectOption value="male">Male</IonSelectOption>
-              <IonSelectOption value="female">Female</IonSelectOption>
-              <IonSelectOption value="other">Other</IonSelectOption>
-            </IonSelect>
-          </IonItem>
-
-          {/* Description */}
-          <IonItem className="form-group full-width">
-            <IonLabel position="stacked">Bio</IonLabel>
-            <IonInput
-              value={description}
-              placeholder="Tell others about you"
-              onIonInput={(e) => setDescription(e.detail.value!)}
-            />
-          </IonItem>
-        </form>
-
         {/* Toast Feedback */}
         <IonToast
           isOpen={showToast}
           message={toastMessage}
-          duration={2000}
+          duration={3000}
           onDidDismiss={() => setShowToast(false)}
+          color={toastColor}
+          position="top"
         />
       </IonContent>
     </IonPage>

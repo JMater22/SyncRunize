@@ -28,15 +28,19 @@ import {
   createOutline,
   trashOutline,
   heartOutline,
+  heart,
   chatbubbleEllipses,
+  chatbubbleOutline,
   eyeOutline,
   lockClosedOutline,
   close,
   locationOutline,
   timeOutline,
   speedometerOutline,
-  flameOutline
+  flameOutline,
+  sendOutline
 } from "ionicons/icons";
+import { useLocation } from "react-router-dom";
 import { PostsApi, Post } from "../services/posts";
 import { LikesApi, Liker } from "../services/likes";
 import { CommentsApi, Comment } from "../services/comments";
@@ -45,10 +49,21 @@ import { formatDurationShort, formatDate, getAvatarUrl } from "../lib/utils";
 import "../theme/Community.css";
 import "./View-Activity.css";
 
+interface LocationState {
+  userId?: number;
+  userName?: string;
+}
+
 export default function ViewPosts() {
   const { currentUser } = useUser();
+  const location = useLocation<LocationState>();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Determine which user's posts to fetch
+  const userId = location.state?.userId;
+  const userName = location.state?.userName;
+  const isViewingOtherUser = !!userId;
 
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -68,6 +83,7 @@ export default function ViewPosts() {
   const [selectedPostComments, setSelectedPostComments] = useState<Comment[]>([]);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [newComment, setNewComment] = useState("");
 
   // Fetch posts
   useEffect(() => {
@@ -75,7 +91,9 @@ export default function ViewPosts() {
       if (!currentUser) return;
       try {
         setLoading(true);
-        const data = await PostsApi.getMyPosts();
+        const data = isViewingOtherUser && userId
+          ? await PostsApi.getUserPosts(userId)
+          : await PostsApi.getMyPosts();
         setPosts(data);
       } catch (error) {
         console.error("Error fetching posts:", error);
@@ -86,7 +104,7 @@ export default function ViewPosts() {
     };
 
     fetchPosts();
-  }, [currentUser]);
+  }, [currentUser, userId, isViewingOtherUser]);
 
   // Handle edit post
   const handleEditPost = (post: Post) => {
@@ -165,15 +183,65 @@ export default function ViewPosts() {
     }
   };
 
+  // Handle toggle like (for viewing other users' posts)
+  const handleToggleLike = async (postId: number) => {
+    try {
+      const response = await LikesApi.toggleLike(postId);
+
+      // Update the post's like status and count
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.post_id === postId
+            ? {
+                ...post,
+                is_liked: response.isLiked,
+                likes_count: response.isLiked
+                  ? post.likes_count + 1
+                  : Math.max(0, post.likes_count - 1)
+              }
+            : post
+        )
+      );
+    } catch (error) {
+      console.error("Error toggling like:", error);
+    }
+  };
+
+  // Handle add comment
+  const handleAddComment = async () => {
+    if (!selectedPostId || !newComment.trim()) return;
+
+    try {
+      await CommentsApi.addComment(selectedPostId, newComment.trim());
+      setNewComment("");
+
+      // Refresh comments
+      const comments = await CommentsApi.getComments(selectedPostId);
+      setSelectedPostComments(comments);
+
+      // Update comment count
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.post_id === selectedPostId
+            ? { ...post, comments_count: post.comments_count + 1 }
+            : post
+        )
+      );
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      alert("Failed to add comment");
+    }
+  };
+
 
   return (
     <IonPage>
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/HomeModule/homeM1" />
+            <IonBackButton defaultHref={isViewingOtherUser ? "/other-profile" : "/HomeModule/homeM1"} />
           </IonButtons>
-          <IonTitle>Your Posts</IonTitle>
+          <IonTitle>{isViewingOtherUser && userName ? `${userName}'s Posts` : "Your Posts"}</IonTitle>
         </IonToolbar>
       </IonHeader>
 
@@ -194,25 +262,27 @@ export default function ViewPosts() {
                   <IonCardHeader>
                     <div className="post-header">
                       <div className="user-info">
-                        <span className="username">Your Post</span>
+                        <span className="username">{isViewingOtherUser ? post.author_name : "Your Post"}</span>
                         <span className="timestamp">{formatDate(post.created_at)}</span>
                       </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <IonButton fill="clear" size="small" onClick={() => handleEditPost(post)}>
-                          <IonIcon icon={createOutline} slot="icon-only" />
-                        </IonButton>
-                        <IonButton
-                          fill="clear"
-                          size="small"
-                          color="danger"
-                          onClick={() => {
-                            setPostToDelete(post.post_id);
-                            setShowDeleteAlert(true);
-                          }}
-                        >
-                          <IonIcon icon={trashOutline} slot="icon-only" />
-                        </IonButton>
-                      </div>
+                      {!isViewingOtherUser && (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <IonButton fill="clear" size="small" onClick={() => handleEditPost(post)}>
+                            <IonIcon icon={createOutline} slot="icon-only" />
+                          </IonButton>
+                          <IonButton
+                            fill="clear"
+                            size="small"
+                            color="danger"
+                            onClick={() => {
+                              setPostToDelete(post.post_id);
+                              setShowDeleteAlert(true);
+                            }}
+                          >
+                            <IonIcon icon={trashOutline} slot="icon-only" />
+                          </IonButton>
+                        </div>
+                      )}
                     </div>
                   </IonCardHeader>
                   <IonCardContent>
@@ -259,13 +329,43 @@ export default function ViewPosts() {
                     {/* Map image */}
                     {post.snapshot_url && <IonImg src={post.snapshot_url} className="post-image" />}
 
+                    {/* Action buttons for other users' posts */}
+                    {isViewingOtherUser && (
+                      <div style={{
+                        display: 'flex',
+                        gap: '12px',
+                        marginTop: '12px',
+                        paddingTop: '12px',
+                        borderTop: '1px solid #e2e8f0'
+                      }}>
+                        <IonButton
+                          fill="clear"
+                          size="small"
+                          color={post.is_liked ? "danger" : "medium"}
+                          onClick={() => handleToggleLike(post.post_id)}
+                        >
+                          <IonIcon icon={post.is_liked ? heart : heartOutline} slot="start" />
+                          {post.is_liked ? "Liked" : "Like"}
+                        </IonButton>
+                        <IonButton
+                          fill="clear"
+                          size="small"
+                          color="medium"
+                          onClick={() => handleViewComments(post.post_id)}
+                        >
+                          <IonIcon icon={chatbubbleOutline} slot="start" />
+                          Comment
+                        </IonButton>
+                      </div>
+                    )}
+
                     {/* Post stats */}
                     <div style={{
                       display: 'flex',
                       gap: '16px',
                       marginTop: '12px',
-                      paddingTop: '12px',
-                      borderTop: '1px solid #e2e8f0',
+                      paddingTop: isViewingOtherUser ? '8px' : '12px',
+                      borderTop: isViewingOtherUser ? 'none' : '1px solid #e2e8f0',
                       fontSize: '14px',
                       color: '#666'
                     }}>
@@ -283,10 +383,12 @@ export default function ViewPosts() {
                         <IonIcon icon={chatbubbleEllipses} />
                         <span style={{ textDecoration: 'underline' }}>{post.comments_count || 0} Comments</span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
-                        <IonIcon icon={post.visibility === 'public' ? eyeOutline : lockClosedOutline} />
-                        <span>{post.visibility === 'public' ? 'Public' : 'Private'}</span>
-                      </div>
+                      {!isViewingOtherUser && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
+                          <IonIcon icon={post.visibility === 'public' ? eyeOutline : lockClosedOutline} />
+                          <span>{post.visibility === 'public' ? 'Public' : 'Private'}</span>
+                        </div>
+                      )}
                     </div>
                   </IonCardContent>
                 </IonCard>
@@ -454,14 +556,14 @@ export default function ViewPosts() {
 
           <IonContent>
             <div style={{ padding: '20px' }}>
-              {/* Comments List - Read Only */}
+              {/* Comments List */}
               {loadingComments ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
                   <IonSpinner name="crescent" />
                 </div>
               ) : selectedPostComments.length === 0 ? (
                 <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-                  No comments yet.
+                  No comments yet. {isViewingOtherUser && "Be the first to comment!"}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -493,6 +595,35 @@ export default function ViewPosts() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Add comment section - only for viewing other users' posts */}
+              {isViewingOtherUser && (
+                <div style={{
+                  position: 'sticky',
+                  bottom: 0,
+                  backgroundColor: 'white',
+                  padding: '16px',
+                  borderTop: '1px solid #e2e8f0',
+                  marginTop: '20px'
+                }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                    <IonTextarea
+                      value={newComment}
+                      onIonChange={(e) => setNewComment(e.detail.value!)}
+                      placeholder="Write a comment..."
+                      rows={2}
+                      style={{ flex: 1 }}
+                    />
+                    <IonButton
+                      onClick={handleAddComment}
+                      disabled={!newComment.trim()}
+                      size="small"
+                    >
+                      <IonIcon icon={sendOutline} slot="icon-only" />
+                    </IonButton>
+                  </div>
                 </div>
               )}
             </div>

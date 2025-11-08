@@ -46,6 +46,12 @@ export const PostsApi = {
     return data;
   },
 
+  // Get posts by user ID (only public posts if not following)
+  getUserPosts: async (userId: number): Promise<Post[]> => {
+    const { data } = await api.get(`/posts/user/${userId}`);
+    return data;
+  },
+
   // Get single post by ID
   getPost: async (postId: number): Promise<Post> => {
     const { data } = await api.get(`/posts/${postId}`);

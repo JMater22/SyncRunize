@@ -1,43 +1,248 @@
-.profile-photo-section {
-  display: flex;
-  justify-content: center;
-  margin: 20px 0;
+/* Edit Profile Page Styles */
 
+.edit-profile-content {
+  --background: #0a0a0a;
+  --color: #ffffff;
 }
 
-.profile-photo-container {
-  position: relative;
+.edit-form-container {
+  padding: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Avatar Section */
+.edit-avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px 0;
+  border-bottom: 1px solid #2a2a2a;
+  margin-bottom: 30px;
+}
+
+.edit-avatar {
   width: 120px;
   height: 120px;
-  
+  margin-bottom: 20px;
+  border: 3px solid #92C628;
+  box-shadow: 0 4px 16px rgba(146, 198, 40, 0.3);
 }
 
-.profile-photo {
-  border-radius: 50%;
-  height: 110px;
-  object-fit: cover;
-  overflow: hidden;
-}
-
-.edit-photo-btn {
-  position: absolute;
-  bottom: 5px;
-  right: 5px;
-  border-radius: 50%;
-  font-size: 1.2rem;
-  
-}
-
-.form-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.form-group {
-  flex: 1;
-}
-
-.full-width {
+.edit-avatar img {
   width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.change-photo-btn {
+  --background: transparent;
+  --background-activated: rgba(146, 198, 40, 0.1);
+  --background-focused: rgba(146, 198, 40, 0.1);
+  --background-hover: rgba(146, 198, 40, 0.1);
+  --border-color: #92C628;
+  --border-width: 2px;
+  --color: #92C628;
+  --color-activated: #92C628;
+  --color-focused: #92C628;
+  --padding-start: 24px;
+  --padding-end: 24px;
+  --border-radius: 24px;
+  font-weight: 600;
+  text-transform: none;
+  height: 44px;
+}
+
+/* Form Fields */
+.edit-form-fields {
+  margin-bottom: 30px;
+}
+
+.edit-form-item {
+  --background: #1a1a1a;
+  --border-color: #2a2a2a;
+  --border-radius: 12px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  --min-height: auto;
+  margin-bottom: 20px;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+}
+
+.edit-form-item ion-label {
+  --color: #92C628 !important;
+  color: #92C628 !important;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.edit-input,
+.edit-textarea {
+  --background: transparent !important;
+  --color: #ffffff !important;
+  --placeholder-color: #666 !important;
+  --placeholder-opacity: 1 !important;
+  color: #ffffff !important;
+  font-size: 16px;
+  margin-top: 8px;
+}
+
+/* Fix input text visibility */
+.edit-input input,
+.edit-textarea textarea {
+  color: #ffffff !important;
+  background: transparent !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.edit-input input::placeholder,
+.edit-textarea textarea::placeholder {
+  color: #666 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #666 !important;
+}
+
+.description-item {
+  --min-height: 120px;
+}
+
+.edit-textarea {
+  min-height: 100px;
+}
+
+/* Action Buttons */
+.edit-form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.save-profile-btn {
+  --background: linear-gradient(135deg, #92C628 0%, #7ab020 100%);
+  --background-activated: linear-gradient(135deg, #7ab020 0%, #6a9518 100%);
+  --background-focused: linear-gradient(135deg, #7ab020 0%, #6a9518 100%);
+  --background-hover: linear-gradient(135deg, #7ab020 0%, #6a9518 100%);
+  --color: #ffffff;
+  --border-radius: 12px;
+  --padding-top: 16px;
+  --padding-bottom: 16px;
+  font-weight: 700;
+  font-size: 16px;
+  text-transform: none;
+  height: 52px;
+  box-shadow: 0 4px 16px rgba(146, 198, 40, 0.3);
+}
+
+.cancel-profile-btn {
+  --background: transparent;
+  --background-activated: rgba(255, 255, 255, 0.05);
+  --background-focused: rgba(255, 255, 255, 0.05);
+  --background-hover: rgba(255, 255, 255, 0.05);
+  --border-color: #444;
+  --border-width: 2px;
+  --color: #aaa;
+  --color-activated: #fff;
+  --color-focused: #fff;
+  --border-radius: 12px;
+  --padding-top: 16px;
+  --padding-bottom: 16px;
+  font-weight: 600;
+  font-size: 16px;
+  text-transform: none;
+  height: 52px;
+}
+
+/* Dark Header */
+.dark-header ion-toolbar {
+  --background: #1a1a1a;
+  --color: #ffffff;
+  --border-color: #2a2a2a;
+}
+
+.dark-header ion-title {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.dark-header ion-back-button {
+  --color: #92C628;
+}
+
+.dark-header ion-button {
+  --color: #92C628;
+}
+
+/* Loading States */
+ion-spinner {
+  --color: #92C628;
+  width: 20px;
+  height: 20px;
+}
+
+/* Action Sheet Customization */
+ion-action-sheet {
+  --background: #1a1a1a;
+  --color: #ffffff;
+}
+
+ion-action-sheet .action-sheet-button {
+  color: #ffffff;
+}
+
+ion-action-sheet .action-sheet-button.action-sheet-cancel {
+  color: #eb445a;
+}
+
+/* Toast Customization */
+ion-toast.toast-success {
+  --background: #2dd36f;
+  --color: #ffffff;
+}
+
+ion-toast.toast-danger {
+  --background: #eb445a;
+  --color: #ffffff;
+}
+
+/* Focus States */
+.edit-form-item.item-has-focus {
+  border-color: #92C628;
+  box-shadow: 0 0 0 2px rgba(146, 198, 40, 0.2);
+}
+
+/* Responsive Design */
+@media (min-width: 768px) {
+  .edit-form-container {
+    padding: 40px;
+  }
+
+  .edit-avatar {
+    width: 150px;
+    height: 150px;
+  }
+
+  .edit-form-actions {
+    flex-direction: row;
+    gap: 16px;
+  }
+
+  .save-profile-btn,
+  .cancel-profile-btn {
+    flex: 1;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
 }

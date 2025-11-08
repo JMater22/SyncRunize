@@ -7,7 +7,7 @@ import { haversineDistance } from "../utils/geo_utils.js";
 /**
  * Estimate calories burned based on average pace and duration
  */
-export const estimateCalories = (paceMinPerKm, durationSec, weightKg = 70) => {
+export const estimateCalories = (paceMinPerKm, durationSec, weightKg) => {
   const durationHrs = durationSec / 3600;
 
   let MET;
@@ -40,8 +40,8 @@ export const createRoute = async (data) => {
     duration_seconds,
     average_pace,
     risk_score = 0,
-    route_name = "Unnamed Route",
-    weight_kg = 70,
+    route_name = data.route_name || "Unnamed Route",
+    weight_kg = data.weight_kg || 0,
     visibility = "private", // ✅ NEW: default
     route_status = "generated" // ✅ NEW: default to 'generated' for route creation
   } = data;
@@ -74,7 +74,7 @@ export const createRoute = async (data) => {
     snapshot_url = generateRouteSnapshot(pathArray, {
       width: 800,
       height: 600,
-      lineColor: "0080ff",
+      lineColor: "#008000",
     });
   } catch (error) {
     console.error("Snapshot generation failed:", error);

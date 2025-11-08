@@ -21,6 +21,7 @@ import Community from "./pages/Community";
 import RunTracking from "./pages/RunTracking";
 import RoutesPage from "./pages/RoutesPage";
 import UserProfile from "./pages/UserProfile";
+import OtherUserProfile from "./pages/OtherUserProfile";
 import MyChallenges from "./pages/MyChallenges";
 import Settings from "./pages/Settings";
 import Leaderboards from "./pages/leaderboards";
@@ -121,6 +122,7 @@ const App: React.FC = () => {
                   <Route exact path="/run-tracking" component={RunTracking} />
                   <Route exact path="/routes" component={RoutesPage} />
                   <Route exact path="/profile" component={UserProfile} />
+                  <Route exact path="/other-profile" component={OtherUserProfile} />
                   <Route exact path="/my-challenges" component={MyChallenges} />
                   <Route exact path="/settings" component={Settings} />
                   <Route exact path="/leaderboards" component={Leaderboards} />

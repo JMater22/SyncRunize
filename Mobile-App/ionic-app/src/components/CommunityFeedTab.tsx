@@ -6,7 +6,6 @@ import {
   IonCardContent,
   IonContent,
   IonImg,
-  IonItem,
   IonModal,
   IonRefresher,
   IonRefresherContent,
@@ -17,7 +16,7 @@ import {
   IonHeader,
   IonIcon,
 } from '@ionic/react';
-import { heart, heartOutline, chatbubbleOutline, close } from 'ionicons/icons';
+import { heart, heartOutline, chatbubbleOutline, close, searchOutline } from 'ionicons/icons';
 import { RefresherEventDetail } from '@ionic/react';
 import { useUser } from '../contexts/UserContext';
 import { usePosts } from '../contexts/PostsContext';
@@ -128,14 +127,15 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
           <IonRefresherContent></IonRefresherContent>
         </IonRefresher>
 
-        <IonCard className="post-input-card" routerLink="/create-post">
-          <IonItem lines="none">
-            <IonAvatar slot="start">
-              <IonImg src={getAvatarUrl(currentUser?.profile_picture)} />
-            </IonAvatar>
-            <input type="text" placeholder="What's on your mind?" className="post-input" readOnly />
-          </IonItem>
-        </IonCard>
+        <IonButton
+          expand="block"
+          fill="outline"
+          routerLink="/search-runners"
+          style={{ margin: '16px' }}
+        >
+          <IonIcon slot="start" icon={searchOutline} />
+          Find Athletes
+        </IonButton>
 
         {loading ? (
           <div className="ion-text-center ion-padding">

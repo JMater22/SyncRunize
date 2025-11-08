@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   IonPage,
   IonHeader,
@@ -16,12 +16,52 @@ import {
   IonLabel,
 } from "@ionic/react";
 import { people, timeOutline, trophy, checkmarkCircle } from "ionicons/icons";
+import { useLocation } from "react-router-dom";
 import { useChallenges } from "../contexts/ChallengesContext";
+import { ChallengesApi, UserChallenge } from "../services/challenges";
 import "../theme/MyChallenges.css";
 
+interface LocationState {
+  userId?: number;
+  userName?: string;
+}
+
 const MyChallenges: React.FC = () => {
-  const { userChallenges, loading } = useChallenges();
+  const location = useLocation<LocationState>();
+  const { userChallenges: contextChallenges, loading: contextLoading } = useChallenges();
   const [selectedSegment, setSelectedSegment] = useState<'active' | 'completed'>('active');
+  const [otherUserChallenges, setOtherUserChallenges] = useState<UserChallenge[]>([]);
+  const [loadingOtherUser, setLoadingOtherUser] = useState(false);
+
+  // Determine which user's challenges to display
+  const userId = location.state?.userId;
+  const userName = location.state?.userName;
+  const isViewingOtherUser = !!userId;
+
+  const userChallenges = isViewingOtherUser ? otherUserChallenges : contextChallenges;
+  const loading = isViewingOtherUser ? loadingOtherUser : contextLoading;
+
+  // Fetch other user's challenges if viewing another user
+  useEffect(() => {
+    const fetchOtherUserChallenges = async () => {
+      if (!userId) return;
+
+      try {
+        setLoadingOtherUser(true);
+        const challenges = await ChallengesApi.getUserChallenges(userId);
+        setOtherUserChallenges(Array.isArray(challenges) ? challenges : []);
+      } catch (error) {
+        console.error('Error fetching other user challenges:', error);
+        setOtherUserChallenges([]);
+      } finally {
+        setLoadingOtherUser(false);
+      }
+    };
+
+    if (isViewingOtherUser) {
+      fetchOtherUserChallenges();
+    }
+  }, [userId, isViewingOtherUser]);
 
   // Debug: Log challenges data
   React.useEffect(() => {
@@ -39,9 +79,9 @@ const MyChallenges: React.FC = () => {
         <IonHeader>
           <IonToolbar>
             <IonButtons slot="start">
-              <IonBackButton defaultHref="/profile" />
+              <IonBackButton defaultHref={isViewingOtherUser ? "/other-profile" : "/profile"} />
             </IonButtons>
-            <IonTitle>My Challenges</IonTitle>
+            <IonTitle>{isViewingOtherUser && userName ? `${userName}'s Challenges` : "My Challenges"}</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding ion-text-center">
@@ -57,9 +97,9 @@ const MyChallenges: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/profile" />
+            <IonBackButton defaultHref={isViewingOtherUser ? "/other-profile" : "/profile"} />
           </IonButtons>
-          <IonTitle>My Challenges</IonTitle>
+          <IonTitle>{isViewingOtherUser && userName ? `${userName}'s Challenges` : "My Challenges"}</IonTitle>
         </IonToolbar>
       </IonHeader>
 

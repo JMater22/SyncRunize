@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   IonPage,
   IonContent,
@@ -8,15 +8,11 @@ import {
   IonAlert,
   IonModal,
   IonButton,
-  IonFab,
-  IonFabButton,
 } from "@ionic/react";
-import { arrowBack, navigateCircleOutline, locationOutline, warning } from "ionicons/icons";
+import { arrowBack, navigateCircleOutline, locationOutline } from "ionicons/icons";
 import { Geolocation } from "@capacitor/geolocation";
 import { useHideTabBar } from "../hooks/useHideTabBar";
 import { useHistory } from "react-router-dom";
-import HazardReportModal from "../components/HazardReportModal";
-import { HazardsApi } from "../services/hazards";
 import "../theme/Run-Main.css";
 
 interface Position {
@@ -25,12 +21,71 @@ interface Position {
   accuracy?: number;
   altitude?: number | null;
   speed?: number | null;
-} 
+}
+
+declare global {
+  interface Window {
+    __gmapsPromise?: Promise<void>;
+    __gmapsModules?: {
+      mapsLib?: any;
+      markerLib?: any;
+    };
+  }
+}
+
+const googleMapDefaultCenter = { lat: 15.4755, lng: 120.5963 };
+
+const ensureGoogleMapsLoaded = (apiKey: string) => {
+  const win = window as any;
+  if (win.__gmapsPromise) return win.__gmapsPromise;
+
+  win.__gmapsPromise = new Promise<void>((resolve, reject) => {
+    const finishLoad = async () => {
+      try {
+        if (win.google?.maps?.importLibrary) {
+          const [mapsLib, markerLib] = await Promise.all([
+            win.google.maps.importLibrary("maps"),
+            win.google.maps.importLibrary("marker"),
+          ]);
+          win.__gmapsModules = { mapsLib, markerLib };
+        }
+        resolve();
+      } catch (err) {
+        reject(err);
+      }
+    };
+
+    if (win.google?.maps) {
+      finishLoad();
+      return;
+    }
+
+    const existing = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]') as HTMLScriptElement | null;
+    if (existing) {
+      if (win.google?.maps) {
+        finishLoad();
+      } else {
+        existing.addEventListener("load", finishLoad, { once: true });
+        existing.addEventListener("error", () => reject(new Error("Failed to load Google Maps")), { once: true });
+      }
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly&loading=async&libraries=marker`;
+    script.async = true;
+    script.defer = true;
+    script.onload = finishLoad;
+    script.onerror = () => reject(new Error("Failed to load Google Maps"));
+    document.head.appendChild(script);
+  });
+
+  return win.__gmapsPromise;
+};
 
 const RunMap: React.FC = () => {
-  // Hide the tab bar on this page
   useHideTabBar();
-  const history = useHistory()
+  const history = useHistory();
 
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
   const [loading, setLoading] = useState(false);
@@ -42,11 +97,110 @@ const RunMap: React.FC = () => {
   const [showPermissionAlert, setShowPermissionAlert] = useState(false);
   const [showInitialPrompt, setShowInitialPrompt] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<string>("prompt");
-  const [showHazardModal, setShowHazardModal] = useState(false);
+  const [trackingState, setTrackingState] = useState<'idle' | 'running' | 'paused'>('idle');
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<any | null>(null);
+  const markerRef = useRef<any | null>(null);
+  const [mapsModule, setMapsModule] = useState<{ mapsLib?: any; markerLib?: any }>({});
+  const [mapError, setMapError] = useState<string | null>(null);
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+  const mapInitAttemptsRef = useRef(0);
 
   useEffect(() => {
-    checkInitialPermissions(); 
+    checkInitialPermissions();
   }, []);
+
+  useEffect(() => {
+    if (!googleMapsApiKey) {
+      setMapError("Google Maps API key is missing");
+      return;
+    }
+
+    ensureGoogleMapsLoaded(googleMapsApiKey)
+      .then(() => {
+        const win = window as any;
+        setMapsModule(win.__gmapsModules || {});
+      })
+      .catch(() => setMapError("Unable to load the map"));
+  }, [googleMapsApiKey]);
+
+  useEffect(() => {
+    if (!mapContainerRef.current || mapInstanceRef.current) return;
+    const win = window as any;
+    const MapConstructor =
+      mapsModule.mapsLib?.Map || win.google?.maps?.Map;
+
+    if (!MapConstructor) {
+      if (mapInitAttemptsRef.current < 10) {
+        mapInitAttemptsRef.current += 1;
+        setTimeout(() => {
+          setMapsModule({ ...mapsModule });
+        }, 150);
+      } else {
+        console.warn("Google Maps Map constructor not available yet.");
+      }
+      return;
+    }
+
+    const initialCenter = currentPosition
+      ? { lat: currentPosition.latitude, lng: currentPosition.longitude }
+      : googleMapDefaultCenter;
+
+    try {
+    mapInstanceRef.current = new MapConstructor(mapContainerRef.current, {
+      center: initialCenter,
+      mapTypeId: "roadmap",
+      disableDefaultUI: true,
+      zoom: 15,
+      styles: [],
+    });
+    } catch (e) {
+      console.error("Failed to init Google Map:", e);
+    }
+  }, [mapsModule, currentPosition]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current || !currentPosition) return;
+    const win = window as any;
+    const position = { lat: currentPosition.latitude, lng: currentPosition.longitude };
+    mapInstanceRef.current.panTo(position);
+
+    const advancedCtor =
+      mapsModule.markerLib?.AdvancedMarkerElement ||
+      win.google?.maps?.marker?.AdvancedMarkerElement;
+    const legacyCtor =
+      mapsModule.mapsLib?.Marker || win.google?.maps?.Marker;
+
+    if (!markerRef.current) {
+      if (advancedCtor) {
+        markerRef.current = new advancedCtor({
+          map: mapInstanceRef.current,
+          position,
+        });
+      } else if (legacyCtor) {
+        markerRef.current = new legacyCtor({
+          map: mapInstanceRef.current,
+          position,
+          icon: {
+            path: win.google.maps.SymbolPath.CIRCLE,
+            scale: 9,
+            fillColor: "#92C628",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+        });
+      } else {
+        console.warn("Google Maps marker constructors not available yet.");
+      }
+    } else {
+      if ("position" in (markerRef.current as any)) {
+        (markerRef.current as any).position = position;
+      } else if (markerRef.current.setPosition) {
+        markerRef.current.setPosition(position);
+      }
+    }
+  }, [currentPosition, mapsModule]);
 
   const checkInitialPermissions = async () => {
     try {
@@ -146,70 +300,58 @@ const RunMap: React.FC = () => {
     }
   };
 
-  const handleReportHazard = async (hazardData: {
-    hazard_type: string;
-    description?: string;
-    severity: 'low' | 'medium' | 'high';
-  }) => {
-    if (!currentPosition) {
-      setToastMessage('Unable to get your location');
-      setToastColor('danger');
-      setShowToast(true);
-      throw new Error('Unable to get your location');
-    }
-
-    try {
-      await HazardsApi.reportHazard({
-        hazard_type: hazardData.hazard_type,
-        latitude: currentPosition.latitude,
-        longitude: currentPosition.longitude,
-        description: hazardData.description,
-        severity: hazardData.severity,
-      });
-
-      setToastMessage('Hazard reported successfully!');
-      setToastColor('success');
-      setShowToast(true);
-    } catch (err: any) {
-      console.error('Failed to report hazard:', err);
-      setToastMessage(err.message || 'Failed to report hazard');
-      setToastColor('danger');
-      setShowToast(true);
-      throw err;
+  const handleToggleTracking = () => {
+    if (trackingState === "running") {
+      setTrackingState("paused");
+    } else {
+      setTrackingState("running");
     }
   };
+
+  const handleStopRun = () => {
+    if (trackingState !== "running") return;
+    setTrackingState("paused");
+    history.push("/paused");
+  };
+
+  const runStateLabel =
+    trackingState === "running"
+      ? "Tracking live"
+      : trackingState === "paused"
+        ? "Paused"
+        : "Ready to run";
+
+  const gpsStatusText = loading
+    ? "Acquiring GPS..."
+    : locationEnabled
+      ? "GPS Online - Ready to run"
+      : "Location disabled";
+
+  const startButtonLabel =
+    trackingState === "running"
+      ? "Pause"
+      : trackingState === "paused"
+        ? "Resume"
+        : "Run";
 
   return (
     <IonPage>
       <IonContent fullscreen className="run-map-content">
         <div className="map-container">
-          {/* Back Button */}
-           <button
-            onClick={() => history.push('/routes')}
+          <button
+            onClick={() => history.push("/routes")}
             className="custom-back-button-icon"
           >
             <IonIcon icon={arrowBack} className="back-icon" />
           </button>
 
-          {/* Map Iframe */}
-          <iframe
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d27403.697792075374!2d120.58200860881004!3d15.48705054784102!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3396c63f4ab68e0d%3A0x13f9415d7a5bfd4b!2sTarlac%20City%2C%20Tarlac!5e0!3m2!1sen!2sph!4v1761910044713!5m2!1sen!2sph"
-            className="map-iframe"
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            title="Running Map"
-          />
-
-          {/* Location Indicator */}
-          {currentPosition && (
-            <>
-              <div className="location-indicator" />
-              <div className="location-pulse" />
-            </>
+          <div ref={mapContainerRef} className="map-iframe" />
+          {mapError && (
+            <p className="mini-note" style={{ position: "absolute", left: 16, bottom: 200 }}>
+              {mapError}
+            </p>
           )}
 
-          {/* GPS Button */}
           <button
             onClick={getCurrentPosition}
             disabled={loading}
@@ -220,92 +362,114 @@ const RunMap: React.FC = () => {
             ) : (
               <IonIcon
                 icon={navigateCircleOutline}
-                className={`gps-icon ${locationEnabled ? 'gps-enabled' : ''}`}
+                className={`gps-icon ${locationEnabled ? "gps-enabled" : ""}`}
               />
             )}
           </button>
 
-          {/* Stats Panel */}
           <div className="stats-panel">
-            {/* GPS Status Bar */}
-            <div className={`gps-status-bar ${locationEnabled ? 'gps-acquired' : 'gps-disabled'}`}>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <div className="gps-signal-bars">
-                  {[1, 2, 3, 4].map((bar) => (
-                    <div key={bar} className={`signal-bar bar-${bar}`} />
-                  ))}
+            <div className="tracking-overlay">
+              <div className="tracking-status">
+                <div className="tracking-status-info">
+                  <span className="status-label">GPS status</span>
+                  <h3 className="status-value">{gpsStatusText}</h3>
+                  <p className="status-subtext">{runStateLabel}</p>
                 </div>
-                <span className="gps-status-text">
-                  {locationEnabled ? "GPS Acquired" : "No GPS Signal"}
-                </span>
+                <div className="tracking-status-actions">
+                  <button
+                    className="ghost-button"
+                    onClick={getCurrentPosition}
+                    disabled={loading}
+                  >
+                    <IonIcon icon={navigateCircleOutline} />
+                    Recenter
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Stats Row */}
-            <div className="stats-row">
-              <div className="stat-item">
-                <div className="stat-value">00:00</div>
-                <div className="stat-label">Time</div>
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <span className="card-label">Elapsed</span>
+                  <strong className="card-value">00:00</strong>
+                </div>
+                <div className="stat-card">
+                  <span className="card-label">Pace</span>
+                  <strong className="card-value">--:-- /km</strong>
+                </div>
+                <div className="stat-card">
+                  <span className="card-label">Distance</span>
+                  <strong className="card-value">0.0 km</strong>
+                </div>
               </div>
-              <div className="stat-item">
-                <div className="stat-value">--:--</div>
-                <div className="stat-label">Split avg. (/km)</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-value">0</div>
-                <div className="stat-label">Distance (km)</div>
-              </div>
-            </div>
 
-            {/* Start Button */}
-            <div className="start-button-container">
-              <button
-                onClick={() => locationEnabled && (window.location.href = '/notice')}
-                disabled={!locationEnabled}
-                className={`start-run-button ${!locationEnabled ? 'disabled' : ''}`} 
-              >
-                <span style={{ fontSize: '32px' }}>▶</span>
-              </button>
-            </div>
-
-            {/* Location Prompt */}
-            {!locationEnabled && !loading && (
-              <div className="location-prompt">
-                Enable location to start tracking
+              <div className="action-row">
+                <button
+                  className="ghost-button ghost-secondary"
+                  onClick={handleStopRun}
+                  disabled={trackingState !== "running"}
+                >
+                  Stop
+                </button>
+                <button
+                  className={`start-btn ${trackingState === "running" ? "running" : ""}`}
+                  onClick={handleToggleTracking}
+                >
+                  {startButtonLabel}
+                </button>
               </div>
-            )}
+
+              {!locationEnabled && !loading && (
+                <p className="mini-note">
+                  Enable your device location to begin recording. Grant access above if prompted.
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Initial Location Prompt Modal */}
         <IonModal isOpen={showInitialPrompt} backdropDismiss={false}>
-          <div style={{
-            padding: '32px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%',
-            textAlign: 'center'
-          }}>
+          <div
+            style={{
+              padding: "32px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              textAlign: "center",
+            }}
+          >
             <IonIcon
               icon={locationOutline}
               style={{
-                fontSize: '80px',
-                color: '#4285f4',
-                marginBottom: '24px'
+                fontSize: "80px",
+                color: "#4285f4",
+                marginBottom: "24px",
               }}
             />
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>
+            <h2
+              style={{
+                fontSize: "24px",
+                fontWeight: "bold",
+                marginBottom: "12px",
+              }}
+            >
               Allow Location Access
             </h2>
-            <p style={{ fontSize: '16px', color: '#666', marginBottom: '32px', lineHeight: '1.5' }}>
+            <p
+              style={{
+                fontSize: "16px",
+                color: "#666",
+                marginBottom: "32px",
+                lineHeight: "1.5",
+              }}
+            >
               RunTracker needs access to your location to track your runs, calculate distance, and provide accurate pace information.
             </p>
             <IonButton
               expand="block"
               onClick={requestLocationAccess}
-              style={{ marginBottom: '12px', width: '100%' }}
+              style={{ marginBottom: "12px", width: "100%" }}
             >
               Allow Location Access
             </IonButton>
@@ -322,7 +486,6 @@ const RunMap: React.FC = () => {
           </div>
         </IonModal>
 
-        {/* Permission Denied Alert */}
         <IonAlert
           isOpen={showPermissionAlert}
           onDidDismiss={() => setShowPermissionAlert(false)}
@@ -332,36 +495,15 @@ const RunMap: React.FC = () => {
             {
               text: "Cancel",
               role: "cancel",
-              handler: () => window.history.back()
+              handler: () => window.history.back(),
             },
             {
               text: "Open Settings",
               handler: () => {
                 alert("Please enable location in your device settings");
-              }
-            }
+              },
+            },
           ]}
-        />
-
-        {/* Report Hazard Floating Button */}
-        {locationEnabled && (
-          <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: '80px' }}>
-            <IonFabButton
-              onClick={() => setShowHazardModal(true)}
-              color="danger"
-              title="Report Hazard"
-            >
-              <IonIcon icon={warning} />
-            </IonFabButton>
-          </IonFab>
-        )}
-
-        {/* Hazard Report Modal */}
-        <HazardReportModal
-          isOpen={showHazardModal}
-          onClose={() => setShowHazardModal(false)}
-          currentPosition={currentPosition}
-          onSubmit={handleReportHazard}
         />
 
         <IonToast
@@ -378,3 +520,5 @@ const RunMap: React.FC = () => {
 };
 
 export default RunMap;
+
+

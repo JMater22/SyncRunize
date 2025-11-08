@@ -28,8 +28,6 @@ export const createHazardReport = async (data) => {
       image_url,
       severity_weight,
       status: 'active',
-      trust_score: 0.5,
-      agreement_score: 0.0,
       reported_at: new Date().toISOString()
     })
     .select()
