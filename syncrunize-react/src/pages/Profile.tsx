@@ -123,6 +123,19 @@ const Profile: React.FC = () => {
   const [isEditPostModalOpen, setIsEditPostModalOpen] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [postToDelete, setPostToDelete] = useState<number | null>(null);
+
+  // Likes modal state
+  const [isLikesModalOpen, setIsLikesModalOpen] = useState(false);
+  const [selectedPostLikers, setSelectedPostLikers] = useState<any[]>([]);
+  const [loadingLikers, setLoadingLikers] = useState(false);
+
+  // Comments modal state
+  const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
+  const [selectedPostComments, setSelectedPostComments] = useState<any[]>([]);
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [newComment, setNewComment] = useState('');
+
   const location = useLocation();
 
   // Switch profile tab based on query param ?tab=badges|challenges|activities|posts
@@ -557,6 +570,7 @@ const handleSavePostEdit = async () => {
       `${import.meta.env.VITE_API_URL}/posts/${editingPost.post_id}`,
       {
         content: editingPost.content,
+        route_name: editingPost.route_name,
         visibility: editingPost.visibility
       },
       {
@@ -662,6 +676,121 @@ const handleSettingsUpdate = async (updatedSettings: any) => {
 const openDeleteConfirmation = (postId: number) => {
   setPostToDelete(postId);
   setShowDeleteAlert(true);
+};
+
+// Handle viewing likes
+const handleViewLikes = async (postId: number) => {
+  try {
+    setLoadingLikers(true);
+    setIsLikesModalOpen(true);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_URL}/likes/${postId}/users`,
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      }
+    );
+
+    setSelectedPostLikers(Array.isArray(response.data) ? response.data : []);
+  } catch (error) {
+    console.error("Error fetching likers:", error);
+    setSelectedPostLikers([]);
+  } finally {
+    setLoadingLikers(false);
+  }
+};
+
+// Handle viewing comments
+const handleViewComments = async (postId: number) => {
+  try {
+    setLoadingComments(true);
+    setSelectedPostId(postId);
+    setIsCommentsModalOpen(true);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_URL}/comments/${postId}`,
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      }
+    );
+
+    setSelectedPostComments(Array.isArray(response.data) ? response.data : []);
+  } catch (error) {
+    console.error("Error fetching comments:", error);
+    setSelectedPostComments([]);
+  } finally {
+    setLoadingComments(false);
+  }
+};
+
+// Handle adding comment
+const handleAddComment = async () => {
+  if (!selectedPostId || !newComment.trim()) return;
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_URL}/comments/${selectedPostId}`,
+      { content: newComment },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+
+    setSelectedPostComments(prev => [response.data, ...prev]);
+    setNewComment('');
+
+    // Update comment count in posts list
+    setUserPosts(prevPosts =>
+      prevPosts.map(post =>
+        post.post_id === selectedPostId
+          ? { ...post, comments_count: (post.comments_count || 0) + 1 }
+          : post
+      )
+    );
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    alert("Failed to add comment");
+  }
+};
+
+// Handle deleting comment
+const handleDeleteComment = async (commentId: number) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    await axios.delete(
+      `${import.meta.env.VITE_API_URL}/comments/${commentId}`,
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+
+    setSelectedPostComments(prev => prev.filter(c => c.comment_id !== commentId));
+
+    // Update comment count in posts list
+    if (selectedPostId) {
+      setUserPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.post_id === selectedPostId
+            ? { ...post, comments_count: Math.max(0, (post.comments_count || 0) - 1) }
+            : post
+        )
+      );
+    }
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    alert("Failed to delete comment");
+  }
 };
 
 
@@ -1257,13 +1386,19 @@ const handleSaveProfile = async () => {
                                 fontSize: '14px',
                                 color: '#666'
                               }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <div
+                                  style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+                                  onClick={() => handleViewLikes(post.post_id)}
+                                >
                                   <IonIcon icon={heartOutline} />
-                                  <span>{post.likes_count || 0} Likes</span>
+                                  <span style={{ textDecoration: 'underline' }}>{post.likes_count || 0} Likes</span>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <div
+                                  style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+                                  onClick={() => handleViewComments(post.post_id)}
+                                >
                                   <IonIcon icon={chatbubbleEllipses} />
-                                  <span>{post.comments_count || 0} Comments</span>
+                                  <span style={{ textDecoration: 'underline' }}>{post.comments_count || 0} Comments</span>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
                                   <IonIcon icon={post.visibility === 'public' ? eyeOutline : lockClosedOutline} />
@@ -1565,6 +1700,19 @@ const handleSaveProfile = async () => {
             <div className="edit-form-container">
               {/* Form Fields */}
               <div className="edit-form-fields">
+                <IonItem className="edit-form-item">
+                  <IonLabel position="stacked">Title / Activity Name</IonLabel>
+                  <IonInput
+                    value={editingPost?.route_name || ''}
+                    onIonInput={(e) => setEditingPost({
+                      ...editingPost,
+                      route_name: e.detail.value!
+                    })}
+                    placeholder="Enter activity title..."
+                    className="edit-input"
+                  />
+                </IonItem>
+
                 <IonItem className="edit-form-item description-item">
                   <IonLabel position="stacked">Post Content</IonLabel>
                   <IonTextarea
@@ -1654,6 +1802,173 @@ const handleSaveProfile = async () => {
             }
           ]}
         />
+
+        {/* Likes Modal */}
+        <IonModal
+          isOpen={isLikesModalOpen}
+          onDidDismiss={() => {
+            setIsLikesModalOpen(false);
+            setSelectedPostLikers([]);
+          }}
+          className="followers-modal"
+        >
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Likes</IonTitle>
+              <IonButton
+                slot="end"
+                fill="clear"
+                onClick={() => {
+                  setIsLikesModalOpen(false);
+                  setSelectedPostLikers([]);
+                }}
+              >
+                <IonIcon icon={close} />
+              </IonButton>
+            </IonToolbar>
+          </IonHeader>
+
+          <IonContent className="followers-modal-content">
+            {loadingLikers ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+                <IonSpinner name="crescent" />
+              </div>
+            ) : selectedPostLikers.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+                No likes yet
+              </div>
+            ) : (
+              <div className="followers-list">
+                {selectedPostLikers.map((liker) => (
+                  <div key={liker.user_id} className="follower-item">
+                    <div className="follower-avatar-container">
+                      <IonImg
+                        src={liker.profile_picture || DEFAULT_AVATAR}
+                        alt={liker.name}
+                        className="follower-avatar"
+                      />
+                    </div>
+                    <div className="follower-info">
+                      <h4 className="follower-name">{liker.name}</h4>
+                      <p className="follower-username">@{liker.username}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </IonContent>
+        </IonModal>
+
+        {/* Comments Modal */}
+        <IonModal
+          isOpen={isCommentsModalOpen}
+          onDidDismiss={() => {
+            setIsCommentsModalOpen(false);
+            setSelectedPostComments([]);
+            setSelectedPostId(null);
+            setNewComment('');
+          }}
+          className="edit-profile-modal"
+        >
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Comments</IonTitle>
+              <IonButton
+                slot="end"
+                fill="clear"
+                onClick={() => {
+                  setIsCommentsModalOpen(false);
+                  setSelectedPostComments([]);
+                  setSelectedPostId(null);
+                  setNewComment('');
+                }}
+              >
+                <IonIcon icon={close} />
+              </IonButton>
+            </IonToolbar>
+          </IonHeader>
+
+          <IonContent className="edit-modal-content">
+            <div className="edit-form-container">
+              {/* Add Comment Form */}
+              <div className="edit-form-fields" style={{ marginBottom: '20px' }}>
+                <IonItem className="edit-form-item description-item">
+                  <IonLabel position="stacked">Add a comment</IonLabel>
+                  <IonTextarea
+                    value={newComment}
+                    onIonInput={(e) => setNewComment(e.detail.value!)}
+                    placeholder="Write your comment..."
+                    rows={3}
+                    className="edit-textarea"
+                  />
+                </IonItem>
+                <IonButton
+                  expand="block"
+                  onClick={handleAddComment}
+                  disabled={!newComment.trim()}
+                  style={{ marginTop: '10px' }}
+                >
+                  Post Comment
+                </IonButton>
+              </div>
+
+              {/* Comments List */}
+              {loadingComments ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+                  <IonSpinner name="crescent" />
+                </div>
+              ) : selectedPostComments.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+                  No comments yet. Be the first to comment!
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  {selectedPostComments.map((comment) => (
+                    <div
+                      key={comment.comment_id}
+                      style={{
+                        padding: '15px',
+                        backgroundColor: '#f5f5f5',
+                        borderRadius: '8px',
+                        position: 'relative'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                        <IonAvatar style={{ width: '40px', height: '40px', minWidth: '40px' }}>
+                          <IonImg src={comment.profile_picture || DEFAULT_AVATAR} />
+                        </IonAvatar>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <strong style={{ fontSize: '14px' }}>{comment.name}</strong>
+                              <span style={{ color: '#666', fontSize: '12px', marginLeft: '8px' }}>
+                                @{comment.username}
+                              </span>
+                            </div>
+                            {comment.user_id === currentUserId && (
+                              <IonButton
+                                fill="clear"
+                                size="small"
+                                color="danger"
+                                onClick={() => handleDeleteComment(comment.comment_id)}
+                              >
+                                <IonIcon icon={trashOutline} slot="icon-only" />
+                              </IonButton>
+                            )}
+                          </div>
+                          <p style={{ margin: '8px 0 0 0', fontSize: '14px' }}>{comment.content}</p>
+                          <span style={{ fontSize: '12px', color: '#999', marginTop: '4px', display: 'block' }}>
+                            {new Date(comment.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </IonContent>
+        </IonModal>
 
         {/* Settings Modal */}
         <Settings

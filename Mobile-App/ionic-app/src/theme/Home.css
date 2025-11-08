@@ -305,52 +305,78 @@ ion-select.period-select {
 }
 
 /* Activity Styles */
-.activity-card ion-list {
+.activity-card {
   background: #1e1e1e;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-.activity-item {
+.activity-card-item {
   background: #1e1e1e;
-  margin-top: -10px;
-
+  border-radius: 12px;
+  margin: 15px;
 }
 
-.activity-avatar {
-  width: 34px;
-  height: 34px;
-  margin-left: -13px;
+.activity-card-content {
+  padding: 16px;
 }
 
-.activity-title {
+.activity-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.activity-name {
   color: #ffffff;
   font-weight: 700;
   font-family: 'Poppins', sans-serif;
+  font-size: 1.1rem;
+  margin: 0;
   letter-spacing: 0.01em;
-  padding-bottom: 8px;
 }
 
-.activity-details {
+.activity-date {
+  color: #92C628;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+}
+
+.activity-stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 3px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
 
-.activity-stat {
+.activity-stat-box {
+  background: #363636;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  color: #999999;
-  font-size: 0.8rem;
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
+  align-items: flex-start;
 }
 
-.activity-stat strong {
-  color: #ffffff;
-  font-weight: 700;
+.activity-stat-box .stat-label {
+  color: #999999;
+  font-size: 0.75rem;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   font-family: 'Inter', sans-serif;
-  font-size: 0.95rem;
-  margin-top: 4px;
-  letter-spacing: 0.01em;
+}
+
+.activity-stat-box .stat-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #ffffff;
+  line-height: 1;
+  font-family: 'Inter', sans-serif;
 }
 /* Challenge Styles */
 .challenge-card {

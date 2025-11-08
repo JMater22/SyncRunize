@@ -292,6 +292,7 @@ export const updatePost = async (postId, updates, userId) => {
   if (updates.content !== undefined) updateData.content = updates.content;
   if (updates.imageUrl !== undefined) updateData.image_url = updates.imageUrl;
   if (updates.visibility !== undefined) updateData.visibility = updates.visibility;
+  if (updates.route_name !== undefined) updateData.route_name = updates.route_name;
 
   const { data, error } = await supabase
     .from("posts")

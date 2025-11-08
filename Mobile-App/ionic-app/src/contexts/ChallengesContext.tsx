@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { ChallengesApi, UserChallenge, Badge, ChallengeWithStatus } from '../services/challenges';
 import { useUser } from './UserContext';
 
@@ -25,7 +25,7 @@ export const ChallengesProvider: React.FC<{ children: ReactNode }> = ({ children
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchChallenges = async () => {
+  const fetchChallenges = useCallback(async () => {
     if (!currentUser) {
       setChallenges([]);
       return;
@@ -45,9 +45,9 @@ export const ChallengesProvider: React.FC<{ children: ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]);
 
-  const fetchUserChallenges = async () => {
+  const fetchUserChallenges = useCallback(async () => {
     if (!currentUser) return;
 
     try {
@@ -63,9 +63,9 @@ export const ChallengesProvider: React.FC<{ children: ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]);
 
-  const fetchBadges = async () => {
+  const fetchBadges = useCallback(async () => {
     if (!currentUser) return;
 
     try {
@@ -87,7 +87,7 @@ export const ChallengesProvider: React.FC<{ children: ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]);
 
   const joinChallenge = async (challengeId: number) => {
     if (!currentUser) {
@@ -145,15 +145,30 @@ export const ChallengesProvider: React.FC<{ children: ReactNode }> = ({ children
 
   // Fetch data when user changes
   useEffect(() => {
-    if (currentUser) {
-      fetchChallenges();
-      fetchUserChallenges();
-      fetchBadges();
-    } else {
-      setUserChallenges([]);
-      setBadges([]);
-    }
-  }, [currentUser]);
+    let cancelled = false;
+
+    const loadData = async () => {
+      if (!currentUser) {
+        setUserChallenges([]);
+        setBadges([]);
+        return;
+      }
+
+      if (cancelled) return;
+
+      await Promise.all([
+        fetchChallenges(),
+        fetchUserChallenges(),
+        fetchBadges()
+      ]);
+    };
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, fetchChallenges, fetchUserChallenges, fetchBadges]);
 
   return (
     <ChallengesContext.Provider

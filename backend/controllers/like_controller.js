@@ -101,4 +101,16 @@ export const toggleLike = async (req, res) => {
   }
 };
 
+// GET: Get list of users who liked a post
+export const getLikers = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const likers = await LikeModel.getLikers(postId);
+    res.json(likers);
+  } catch (err) {
+    console.error("Get likers error:", err);
+    res.status(500).json({ error: "Failed to get likers" });
+  }
+};
+
 

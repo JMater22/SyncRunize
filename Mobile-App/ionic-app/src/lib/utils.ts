@@ -52,12 +52,47 @@ export const formatPace = (
 // TIME FORMATTING UTILITIES
 // ========================================
 
-export const formatDuration = (seconds?: number): string => {
-  if (!seconds) return '00:00:00';
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
+export const formatDuration = (duration?: number | string): string => {
+  if (!duration) return '00:00:00';
+
+  // If duration is already a string in HH:MM:SS format, return as-is
+  if (typeof duration === 'string' && duration.includes(':')) {
+    return duration;
+  }
+
+  // Convert to number if string
+  const totalSeconds = typeof duration === 'number' ? duration : parseInt(duration);
+  if (isNaN(totalSeconds)) return '00:00:00';
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+};
+
+export const formatDurationShort = (duration?: number | string): string => {
+  if (!duration) return '0m';
+
+  // Convert to number if string
+  const totalSeconds = typeof duration === 'number' ? duration : parseInt(duration);
+  if (isNaN(totalSeconds)) return '0m';
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  // If more than 1 hour, show hours and minutes
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+
+  // If more than 1 minute, show minutes (and seconds if significant)
+  if (minutes > 0) {
+    return seconds > 0 && minutes < 5 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+  }
+
+  // Less than a minute, show seconds
+  return `${seconds}s`;
 };
 
 export const formatRelativeTime = (dateString: string): string => {

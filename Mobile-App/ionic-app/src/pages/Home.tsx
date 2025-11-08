@@ -68,9 +68,10 @@ import ChallengePic from "../components/assets/istockphoto-143920084-612x612.jpg
 import { usePushNotifications } from "../components/push-notification";
 import { UsersApi } from "../services/users";
 import { StatsApi, StatsPeriod, PersonalRecordsResponse, PersonalRecordEntry } from "../services/stats";
-import { formatDistance, formatPace, formatCalories } from "../lib/utils";
+import { formatDistance, formatPace, formatCalories, formatDuration, formatDurationShort, formatDate } from "../lib/utils";
 import { useChallenges } from "../contexts/ChallengesContext";
 import { useHistory } from "react-router-dom";
+import { RoutesApi, Route } from "../services/routes";
 
 
 // Import Google Fonts
@@ -109,7 +110,7 @@ const formatRecordChange = (percent: number | null | undefined) => {
     return { label: undefined, trend: undefined };
   }
   const fixed = Number(percent.toFixed(1));
-  const label = `${fixed >= 0 ? '+' : ''}${fixed.toFixed(1)}% vs last`;
+  const label = `${fixed >= 0 ? '+' : ''}${fixed.toFixed(1)}%`;
   return {
     label,
     trend: fixed >= 0 ? 'positive' : 'negative' as 'positive' | 'negative',
@@ -127,21 +128,6 @@ const formatRecordValue = (
   return formatter(value);
 };
 
-const formatDurationReadable = (seconds: number): string => {
-  if (!Number.isFinite(seconds) || seconds < 0) return '--';
-  const hrs = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-
-  if (hrs > 0) {
-    return `${hrs}h ${mins}m`;
-  }
-  if (mins > 0) {
-    return `${mins}m ${secs}s`;
-  }
-  return `${secs}s`;
-};
-
 const mapRecordsToDisplay = (records: PersonalRecordsResponse['records']): PersonalRecord[] => {
   const entries: Array<{ label: string; entry: PersonalRecordEntry; formatter: (value: number) => string }> = [
     {
@@ -152,7 +138,7 @@ const mapRecordsToDisplay = (records: PersonalRecordsResponse['records']): Perso
     {
       label: 'Duration',
       entry: records.duration,
-      formatter: (value) => formatDurationReadable(value),
+      formatter: (value) => formatDurationShort(value) || '--',
     },
     {
       label: 'Avg Pace',
@@ -501,9 +487,9 @@ const UserGreeting: React.FC<{ name?: string | null }> = ({ name }) => {
 
   return (
     <div style={{ padding: '12px 16px' }}>
-      <IonTitle style={{ fontSize: '16px' }}>Welcome, {name}</IonTitle>
+      <IonTitle style={{ fontSize: '16px' }}>Welcome {name}!</IonTitle>
     </div>
-  );
+  );  
 };
 
 
@@ -527,6 +513,8 @@ export default function Dashboard() {
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [recordsError, setRecordsError] = useState<string | null>(null);
+  const [recentActivities, setRecentActivities] = useState<Route[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
   const { challenges } = useChallenges();
   const history = useHistory();
   const suggestedChallenge = useMemo(
@@ -574,10 +562,25 @@ export default function Dashboard() {
     }
   }, [userProfile?.userId]);
 
+  const fetchRecentActivities = useCallback(async () => {
+    if (!userProfile?.userId) return;
+    setActivitiesLoading(true);
+    try {
+      const routes = await RoutesApi.getUserRoutes(userProfile.userId, true);
+      setRecentActivities(routes.slice(0, 2)); // Get only the first 2 activities
+    } catch (err: any) {
+      console.error('Failed to load recent activities:', err);
+      setRecentActivities([]);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  }, [userProfile?.userId]);
+
   useEffect(() => {
     if (!userProfile?.userId) return;
     fetchPersonalRecords();
-  }, [userProfile?.userId, fetchPersonalRecords]);
+    fetchRecentActivities();
+  }, [userProfile?.userId, fetchPersonalRecords, fetchRecentActivities]);
 
   // Initialize push notifications
   usePushNotifications({
@@ -791,7 +794,7 @@ export default function Dashboard() {
 
         <div className="section-header">
 
-          <span>Personal Records</span>
+          <span>Personal Record</span>
 
         </div>
 
@@ -812,106 +815,60 @@ export default function Dashboard() {
 
 
           {/* Recent Activity */}
-
           <div className="section-header">
-
             <IonIcon icon={calendarOutline} className="section-icon" />
-
-            <span>Recent Activity</span>
-
+            <span>Recent Activities</span>
           </div>
 
-
-
-          <IonCard className="activity-card">
-
-            <IonCardContent>
-
-              <IonList className="activity-list">
-
-                {[
-
-                  {
-
-                    title: "Morning Run",
-
-                    distance: "14.3km",
-
-                    pace: "5:18/km",
-
-                    time: "1h 6m",
-
-                    calories: "876 kcal"
-
-                  },
-
-                  {
-
-                    title: "Quick Run!",
-
-                    distance: "3.3km",
-
-                    pace: "6:58/km",
-
-                    time: "23m",
-
-                    calories: "245 kcal"
-
-                  },
-
-                ].map((activity, index) => (
-
-                  <IonItem key={index} className="activity-item">
-
-                    <IonAvatar slot="start" className="activity-avatar">
-
-                      <img src={ProfilePic} alt="Profile" />
-
-                    </IonAvatar>
-
-                    <IonLabel>
-
-                      <h2 className="activity-title">{activity.title}</h2>
-
-                      <div className="activity-details">
-
-                        <span className="activity-stat">
-
-                          Distance: <strong>{activity.distance}</strong>
-
-                        </span>
-
-                        <span className="activity-stat">
-
-                          Pace: <strong>{activity.pace}</strong>
-
-                        </span>
-
-                        <span className="activity-stat">
-
-                          Time: <strong>{activity.time}</strong>
-
-                        </span>
-
-                        <span className="activity-stat">
-
-                          Calories: <strong>{activity.calories}</strong>
-
-                        </span>
-
-                      </div>
-
-                    </IonLabel>
-
-                  </IonItem>
-
-                ))}
-
-              </IonList>
-
-            </IonCardContent>
-
-          </IonCard>
+          {activitiesLoading ? (
+            <IonCard className="activity-card">
+              <IonCardContent>
+                <div className="ion-text-center ion-padding">
+                  <IonSpinner name="crescent" />
+                  <p style={{ color: 'var(--ion-color-medium)', fontSize: '14px' }}>Loading activities...</p>
+                </div>
+              </IonCardContent>
+            </IonCard>
+          ) : recentActivities.length === 0 ? (
+            <IonCard className="activity-card">
+              <IonCardContent>
+                <div className="ion-text-center ion-padding">
+                  <p style={{ color: 'var(--ion-color-medium)', fontSize: '14px' }}>
+                    No recent activities. Start running to track your progress!
+                  </p>
+                </div>
+              </IonCardContent>
+            </IonCard>
+          ) : (
+            recentActivities.map((activity, index) => (
+              <IonCard key={activity.route_id || index} className="activity-card-item">
+                <IonCardContent className="activity-card-content">
+                  <div className="activity-header-row">
+                    <h3 className="activity-name">{activity.route_name || 'Untitled Run'}</h3>
+                    <span className="activity-date">{formatDate(activity.created_at)}</span>
+                  </div>
+                  <div className="activity-stats-grid">
+                    <div className="activity-stat-box">
+                      <div className="stat-label">Distance</div>
+                      <div className="stat-value">{Number(activity.distance_km).toFixed(1)} km</div>
+                    </div>
+                    <div className="activity-stat-box">
+                      <div className="stat-label">Duration</div>
+                      <div className="stat-value">{formatDurationShort(activity.duration_seconds)}</div>
+                    </div>
+                    <div className="activity-stat-box">
+                      <div className="stat-label">Pace</div>
+                      <div className="stat-value">{activity.average_pace || 'N/A'}</div>
+                    </div>
+                    <div className="activity-stat-box">
+                      <div className="stat-label">Calories</div>
+                      <div className="stat-value">{activity.estimated_calories || 'N/A'}</div>
+                    </div>
+                  </div>
+                </IonCardContent>
+              </IonCard>
+            ))
+          )}
 
 
 
@@ -929,7 +886,7 @@ export default function Dashboard() {
           >
             <div className="challenge-image-container">
               <IonImg
-                src={suggestedChallenge.challenge_image || suggestedChallenge.image_url || ChallengePic}
+                src={suggestedChallenge.challenge_image || ChallengePic}
                 alt={suggestedChallenge.challenge_name ?? 'Suggested Challenge'}
               />
               <div className="challenge-badge">
@@ -945,7 +902,7 @@ export default function Dashboard() {
               </p>
               <div className="challenge-details">
                 <span>
-                  Target Distance: {suggestedChallenge.target_distance_km ?? 'N/A'} km � Duration: {suggestedChallenge.challenge_duration_days ?? suggestedChallenge.duration_days ?? 'N/A'} days
+                  Target Distance: {suggestedChallenge.target_distance_km ?? 'N/A'} km � Duration: {suggestedChallenge.challenge_duration_days ?? 'N/A'} days
                 </span>
               </div>
               <p style={{ marginTop: '12px', color: 'var(--ion-color-primary)', fontWeight: 500 }}>

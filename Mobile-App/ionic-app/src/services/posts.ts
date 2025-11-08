@@ -29,6 +29,7 @@ export interface CreatePostData {
 
 export interface UpdatePostData {
   content?: string;
+  route_name?: string;
   visibility?: 'public' | 'private';
 }
 

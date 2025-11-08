@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   IonPage,
   IonHeader,
@@ -45,38 +45,9 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (currentUser) {
-      fetchProfileData();
-    }
-  }, [currentUser]);
+  const isMountedRef = useRef(true);
 
-  const fetchProfileData = async () => {
-    if (!currentUser) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Fetch follow counts
-      const followCounts = await FollowsApi.getFollowCounts(currentUser.user_id);
-      setFollowerCount(followCounts.followers);
-      setFollowingCount(followCounts.following);
-
-      // Fetch user routes (used for stats calculation)
-      await RoutesApi.getUserRoutes(currentUser.user_id, true);
-
-      // Fetch weekly stats for chart
-      await fetchWeeklyStats();
-    } catch (err: any) {
-      console.error('Failed to fetch profile data:', err);
-      setError('Failed to load profile data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchWeeklyStats = async () => {
+  const fetchWeeklyStats = useCallback(async () => {
     if (!currentUser) return;
 
     try {
@@ -108,23 +79,163 @@ export default function Profile() {
         });
       }
 
-      setWeeklyStats(stats);
+      if (isMountedRef.current) {
+        setWeeklyStats(stats);
+      }
     } catch (err) {
       console.error('Failed to fetch weekly stats:', err);
     }
-  };
+  }, [currentUser]);
+
+  const fetchProfileData = useCallback(async () => {
+    if (!currentUser) return;
+
+    try {
+      if (isMountedRef.current) {
+        setLoading(true);
+        setError(null);
+      }
+
+      // Fetch follow counts
+      const followCounts = await FollowsApi.getFollowCounts(currentUser.user_id);
+
+      if (isMountedRef.current) {
+        setFollowerCount(followCounts.followers);
+        setFollowingCount(followCounts.following);
+      }
+
+      // Fetch user routes (used for stats calculation)
+      await RoutesApi.getUserRoutes(currentUser.user_id, true);
+
+      // Fetch weekly stats for chart
+      await fetchWeeklyStats();
+    } catch (err: any) {
+      console.error('Failed to fetch profile data:', err);
+      if (isMountedRef.current) {
+        setError('Failed to load profile data');
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [currentUser, fetchWeeklyStats]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    if (!currentUser) return;
+
+    fetchProfileData();
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [currentUser, fetchProfileData]);
 
   if (userLoading || loading) {
     return (
       <IonPage>
         <IonHeader className="dark-header">
           <IonToolbar>
+            <IonButtons slot="start">
+              <IonBackButton defaultHref="/home" className="back-button" text="" />
+            </IonButtons>
             <IonTitle>Profile</IonTitle>
+            <IonButtons slot="end">
+              <IonButton routerLink="/settings">
+                <IonIcon icon={settingsOutline} />
+              </IonButton>
+            </IonButtons>
           </IonToolbar>
         </IonHeader>
-        <IonContent className="ion-text-center ion-padding">
-          <IonSpinner name="crescent" />
-          <p>Loading profile...</p>
+        <IonContent className="profile-content">
+          {/* Profile Header Skeleton */}
+          <div className="profile-header" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                background: 'linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%)',
+                backgroundSize: '200% 100%',
+                animation: 'loading 1.5s ease-in-out infinite'
+              }} />
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  width: '150px',
+                  height: '24px',
+                  borderRadius: '4px',
+                  background: 'linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%)',
+                  backgroundSize: '200% 100%',
+                  animation: 'loading 1.5s ease-in-out infinite',
+                  marginBottom: '8px'
+                }} />
+                <div style={{
+                  width: '100px',
+                  height: '16px',
+                  borderRadius: '4px',
+                  background: 'linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%)',
+                  backgroundSize: '200% 100%',
+                  animation: 'loading 1.5s ease-in-out infinite'
+                }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Grid Skeleton */}
+          <IonGrid style={{ padding: '0 20px' }}>
+            <IonRow>
+              {[1, 2, 3].map((i) => (
+                <IonCol key={i} size="4">
+                  <div style={{
+                    height: '60px',
+                    borderRadius: '12px',
+                    background: 'linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'loading 1.5s ease-in-out infinite',
+                    animationDelay: `${i * 0.1}s`
+                  }} />
+                </IonCol>
+              ))}
+            </IonRow>
+          </IonGrid>
+
+          {/* Chart Skeleton */}
+          <IonCard style={{ margin: '15px' }}>
+            <IonCardContent>
+              <div style={{
+                width: '120px',
+                height: '20px',
+                borderRadius: '4px',
+                background: 'linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%)',
+                backgroundSize: '200% 100%',
+                animation: 'loading 1.5s ease-in-out infinite',
+                marginBottom: '15px'
+              }} />
+              <div style={{
+                width: '100%',
+                height: '150px',
+                borderRadius: '8px',
+                background: 'linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%)',
+                backgroundSize: '200% 100%',
+                animation: 'loading 1.5s ease-in-out infinite'
+              }} />
+            </IonCardContent>
+          </IonCard>
+
+          {/* Loading Text */}
+          <div className="ion-text-center" style={{ marginTop: '20px' }}>
+            <IonSpinner name="crescent" style={{ color: '#92C628' }} />
+            <p style={{ color: '#999', marginTop: '10px', fontSize: '14px' }}>Loading your profile...</p>
+          </div>
+
+          <style>{`
+            @keyframes loading {
+              0% { background-position: 200% 0; }
+              100% { background-position: -200% 0; }
+            }
+          `}</style>
         </IonContent>
       </IonPage>
     );
