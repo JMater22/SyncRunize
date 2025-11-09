@@ -58,7 +58,7 @@ const InRunActivity: React.FC = () => {
               TRAFFIC NOTICE
             </IonButton>
             <IonButton
-              routerLink="/hazard-notice"
+              routerLink="/hazard-report"
               expand="block"
               className="notice-btn orange"
             >

@@ -44,6 +44,26 @@ const RunTrackerPage: React.FC = () => {
   const lastHazardFetchRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
   const lastRealtimeRefreshRef = useRef<number>(0);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+  const hazardSummaryText = hazardLoading
+    ? 'Checking nearby hazards...'
+    : hazards.length
+      ? `${hazards.length} hazard${hazards.length > 1 ? 's' : ''} nearby`
+      : 'No hazards nearby';
+
+  const computeHazardDistanceKm = useCallback((hazard?: HazardReport | null) => {
+    if (!hazard) return null;
+    if (typeof hazard.distance_km === 'number') return hazard.distance_km;
+    const latest = latestLocationRef.current;
+    if (!latest) return null;
+    return haversineDistanceMeters(latest, { lat: hazard.lat, lng: hazard.lng }) / 1000;
+  }, []);
+
+  const getHazardIconUrl = useCallback((hazard: HazardReport) => {
+    const severity = hazard.severity_weight ?? 0;
+    if (severity >= 0.7) return 'https://maps.google.com/mapfiles/ms/icons/red-dot.png';
+    if (severity >= 0.4) return 'https://maps.google.com/mapfiles/ms/icons/orange-dot.png';
+    return 'https://maps.google.com/mapfiles/ms/icons/yellow-dot.png';
+  }, []);
 
   const pathCoords = useMemo(
     () => session.samples.map((sample) => ({ lat: sample.lat, lng: sample.lng })),
@@ -180,7 +200,42 @@ const RunTrackerPage: React.FC = () => {
     }
   };
 
+  const updateHazardStatus = useCallback(async (status: 'active' | 'resolved') => {
+    if (!selectedHazard) return;
+    try {
+      setHazardActionLoading(true);
+      await HazardsApi.updateHazardStatus(selectedHazard.report_id, status);
+      const latest = latestLocationRef.current;
+      if (latest) {
+        await loadHazards(latest, { force: true });
+      }
+      setToastMessage(status === 'resolved' ? 'Thanks! Hazard cleared.' : 'Hazard confirmed. Stay alert!');
+      if (status === 'resolved') {
+        setSelectedHazard(null);
+      }
+    } catch (err: any) {
+      const message = err?.response?.data?.error || err?.message || 'Unable to update hazard.';
+      setToastMessage(message);
+    } finally {
+      setHazardActionLoading(false);
+    }
+  }, [selectedHazard, loadHazards]);
+
   const paceLabel = session.avgPaceMinPerKm > 0 ? formatPace(session.avgPaceMinPerKm) : '--';
+  const selectedHazardDistance = computeHazardDistanceKm(selectedHazard);
+
+  const handleReportHazard = () => {
+    const latest = latestLocationRef.current;
+    if (!latest) {
+      setToastMessage('Need GPS lock before reporting a hazard.');
+      return;
+    }
+    history.push('/hazard-report', {
+      lat: latest.lat,
+      lng: latest.lng,
+      source: 'run-tracking',
+    });
+  };
   const liveMarkerIcon = useMemo<google.maps.Symbol | undefined>(() => {
     const googleObj = (window as any)?.google;
     if (!googleObj?.maps?.SymbolPath) return undefined;
@@ -238,6 +293,27 @@ const RunTrackerPage: React.FC = () => {
                     />
                   </>
                 )}
+                {latestCoord && (
+                  <CircleF
+                    center={latestCoord}
+                    radius={HAZARD_RADIUS_METERS}
+                    options={{
+                      fillColor: '#FFB74D',
+                      fillOpacity: 0.2,
+                      strokeColor: '#FB8C00',
+                      strokeWeight: 1,
+                      strokeOpacity: 0.7,
+                    }}
+                  />
+                )}
+                {hazards.map((hazard) => (
+                  <MarkerF
+                    key={`hazard-${hazard.report_id}`}
+                    position={{ lat: hazard.lat, lng: hazard.lng }}
+                    icon={getHazardIconUrl(hazard)}
+                    onClick={() => setSelectedHazard(hazard)}
+                  />
+                ))}
               </GoogleMap>
             </LoadScript>
           )}
@@ -270,6 +346,30 @@ const RunTrackerPage: React.FC = () => {
                   Recenter
                 </button>
               </div>
+
+              <button
+                className={`hazard-summary ${hazards.length ? 'has-hazards' : ''}`}
+                onClick={() => {
+                  if (hazards.length) {
+                    setMapOnlyView(false);
+                  }
+                }}
+                disabled={hazardLoading && !hazards.length}
+              >
+                <IonIcon icon={warningOutline} />
+                <span>{hazardSummaryText}</span>
+              </button>
+              <IonButton
+                expand="block"
+                size="small"
+                fill="solid"
+                color="warning"
+                className="report-hazard-btn"
+                onClick={handleReportHazard}
+              >
+                <IonIcon slot="start" icon={warningOutline} />
+                Report hazard
+              </IonButton>
 
               <div className="stats-grid">
                 <div className="stat-card">
@@ -318,6 +418,61 @@ const RunTrackerPage: React.FC = () => {
           onDiscard={discardRun}
           onDismiss={() => undefined}
         />
+
+        <IonModal isOpen={!!selectedHazard} onDidDismiss={() => setSelectedHazard(null)} className="hazard-detail-modal">
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Hazard details</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setSelectedHazard(null)}>Close</IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+          <IonContent className="hazard-detail-body">
+            {selectedHazard && (
+              <div className="hazard-detail-content">
+                <div className="hazard-detail-header">
+                  <IonIcon icon={warningOutline} />
+                  <div>
+                    <h3>{selectedHazard.title}</h3>
+                    <p className="hazard-meta">
+                      {selectedHazard.incident_type}
+                      {' · '}
+                      Reported {formatRelativeTime(selectedHazard.reported_at)} by {selectedHazard.users?.username ?? 'runner'}
+                    </p>
+                    {selectedHazardDistance && (
+                      <p className="hazard-meta">Approximately {selectedHazardDistance.toFixed(2)} km away</p>
+                    )}
+                  </div>
+                </div>
+
+                {selectedHazard.description && (
+                  <p className="hazard-detail-description">{selectedHazard.description}</p>
+                )}
+
+                <div className="hazard-detail-actions">
+                  <IonButton
+                    fill="clear"
+                    color="warning"
+                    onClick={() => updateHazardStatus('active')}
+                    disabled={hazardActionLoading}
+                  >
+                    <IonIcon slot="start" icon={checkmarkCircle} />
+                    Still there
+                  </IonButton>
+                  <IonButton
+                    color="success"
+                    onClick={() => updateHazardStatus('resolved')}
+                    disabled={hazardActionLoading}
+                  >
+                    <IonIcon slot="start" icon={banOutline} />
+                    Hazard cleared
+                  </IonButton>
+                </div>
+              </div>
+            )}
+          </IonContent>
+        </IonModal>
 
         <IonAlert
           isOpen={showFinishConfirm}

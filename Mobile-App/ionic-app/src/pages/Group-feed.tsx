@@ -26,7 +26,9 @@ import {
   IonSpinner,
   IonSearchbar,
   IonSegment,
-  IonSegmentButton
+  IonSegmentButton,
+  IonInput,
+  IonText
 } from "@ionic/react";
 import {
   heartOutline,
@@ -38,17 +40,21 @@ import {
   personAddOutline,
   trophyOutline,
   documentTextOutline,
-  searchOutline
+  searchOutline,
+  camera,
+  close,
+  images as imagesIcon
 } from "ionicons/icons";
 import { useHistory, useParams } from "react-router-dom";
 import ChallengePic from '../components/assets/istockphoto-143920084-612x612.jpg';
 import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
 import { usePushNotifications } from "../components/push-notification";
 import { PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { GroupsApi, Group, GroupMember, GroupPost } from "../services/groups";
 import { UsersApi } from "../services/users";
 import { useUser } from "../contexts/UserContext";
-import { getAvatarUrl } from "../lib/utils";
+import { getAvatarUrl, formatRelativeTime, DEFAULT_AVATAR } from "../lib/utils";
 import "../theme/Group-feed.css";
 
 interface Post {
@@ -115,6 +121,13 @@ const GroupFeed: React.FC = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [invitingUsers, setInvitingUsers] = useState<{[userId: number]: boolean}>({});
+
+  // Create Post Modal state
+  const [showCreatePostModal, setShowCreatePostModal] = useState(false);
+  const [postTitle, setPostTitle] = useState("");
+  const [postContent, setPostContent] = useState("");
+  const [postImages, setPostImages] = useState<string[]>([]);
+  const [isCreatingPost, setIsCreatingPost] = useState(false);
 
   // Fetch group data from backend
   useEffect(() => {
@@ -301,6 +314,64 @@ const GroupFeed: React.FC = () => {
       setShowToast(true);
     } finally {
       setInvitingUsers(prev => ({ ...prev, [userId]: false }));
+    }
+  };
+
+  const handleAddPostImage = async () => {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 80,
+        allowEditing: true,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Prompt, // Allows user to choose camera or gallery
+      });
+
+      if (image.dataUrl) {
+        setPostImages(prev => [...prev, image.dataUrl!]);
+      }
+    } catch (error) {
+      console.error('Error selecting image:', error);
+      setToastMessage('Failed to select image');
+      setToastColor('danger');
+      setShowToast(true);
+    }
+  };
+
+  const handleRemovePostImage = (index: number) => {
+    setPostImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleCreatePost = async () => {
+    if (!groupId || !currentUser || !postContent.trim()) return;
+
+    try {
+      setIsCreatingPost(true);
+
+      await GroupsApi.createGroupPost(parseInt(groupId), {
+        title: postTitle.trim() || undefined,
+        content: postContent.trim(),
+        images: postImages.length > 0 ? postImages : undefined
+      });
+
+      setToastMessage('Post created successfully!');
+      setToastColor('success');
+      setShowToast(true);
+
+      // Close modal and reset
+      setShowCreatePostModal(false);
+      setPostTitle("");
+      setPostContent("");
+      setPostImages([]);
+
+      // Refresh posts
+      fetchGroupData();
+    } catch (err: any) {
+      console.error('Failed to create post:', err);
+      setToastMessage(err.message || 'Failed to create post');
+      setToastColor('danger');
+      setShowToast(true);
+    } finally {
+      setIsCreatingPost(false);
     }
   };
 
@@ -644,18 +715,23 @@ const GroupFeed: React.FC = () => {
               <>
                 {/* Post Creation Input - Only shown if user has joined */}
                 {isUserJoined && (
-                  <IonCard className="post-input-card" routerLink="/create-post">
+                  <IonCard
+                    className="post-input-card"
+                    onClick={() => setShowCreatePostModal(true)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <IonItem lines="none">
                       <IonAvatar slot="start">
-                        <IonImg src={currentUser?.profile_picture || ProfilePic} />
+                        <img src={getAvatarUrl(currentUser?.profile_picture)} alt="You" />
                       </IonAvatar>
-                      <input
-                        type="text"
-                        placeholder="What's on your mind?"
-                        className="post-input"
-                        style={{border: 'none', outline: 'none', width: '100%', padding: '10px'}}
-                        readOnly
-                      />
+                      <div style={{
+                        flex: 1,
+                        padding: '12px',
+                        color: '#999999',
+                        fontSize: '15px'
+                      }}>
+                        What's on your mind?
+                      </div>
                     </IonItem>
                   </IonCard>
                 )}
@@ -663,57 +739,102 @@ const GroupFeed: React.FC = () => {
                 {/* Feed Posts from Backend */}
                 <div className="feed-posts">
                   {groupPosts.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '32px' }}>
-                      <p style={{ color: 'var(--ion-color-medium)' }}>
-                        No posts yet. {isUserJoined && 'Be the first to post!'}
+                    <div style={{ textAlign: 'center', padding: '48px 16px' }}>
+                      <IonIcon icon={documentTextOutline} style={{ fontSize: '64px', color: '#666666', marginBottom: '16px' }} />
+                      <h3 style={{ color: '#ffffff', margin: '0 0 8px 0', fontSize: '18px' }}>No Posts Yet</h3>
+                      <p style={{ color: '#999999', margin: 0, fontSize: '14px' }}>
+                        {isUserJoined ? 'Be the first to share something with the group!' : 'Join the group to see posts.'}
                       </p>
                     </div>
                   ) : (
                     groupPosts.map((post) => (
                       <IonCard key={post.post_id} className="post-card">
-                        <IonCardHeader>
-                          <div className="post-header" style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                            <IonAvatar>
-                              <IonImg src={post.author_avatar || getAvatarUrl(post.author_username)} />
+                        <IonCardContent style={{ padding: '16px' }}>
+                          <div className="post-header" style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px'}}>
+                            <IonAvatar style={{ width: '44px', height: '44px' }}>
+                              <img
+                                src={getAvatarUrl((post as any).author_avatar || (post as any).users?.profile_picture)}
+                                alt={post.author_name}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = DEFAULT_AVATAR;
+                                }}
+                              />
                             </IonAvatar>
-                            <div className="user-info">
-                              <div style={{fontWeight: 'bold'}}>{post.author_name}</div>
-                              <div style={{fontSize: '0.85rem', color: '#666'}}>
-                                {new Date(post.created_at).toLocaleDateString()}
+                            <div className="user-info" style={{ flex: 1 }}>
+                              <div className="username" style={{fontWeight: '700', color: '#ffffff', fontSize: '15px', marginBottom: '2px'}}>
+                                {post.author_name || (post as any).users?.name || 'Unknown User'}
+                              </div>
+                              <div className="timestamp" style={{fontSize: '13px', color: '#999999'}}>
+                                {formatRelativeTime(post.created_at)}
                               </div>
                             </div>
                           </div>
-                        </IonCardHeader>
-                        <IonCardContent>
-                          {post.title && <h3 style={{ marginTop: 0 }}>{post.title}</h3>}
-                          <p className="post-text">{post.content}</p>
-                          {post.images && post.images.length > 0 && (
-                            <IonImg
+
+                          {post.title && (
+                            <h3 style={{ margin: '0 0 8px 0', color: '#ffffff', fontSize: '17px', fontWeight: '700' }}>
+                              {post.title}
+                            </h3>
+                          )}
+                          <p className="post-text" style={{ color: '#ffffff', fontSize: '15px', lineHeight: '1.5', margin: '0 0 12px 0' }}>
+                            {post.content}
+                          </p>
+
+                          {post.images && post.images.length > 0 && post.images[0] && (
+                            <img
                               src={post.images[0]}
+                              alt="Post content"
                               className="post-image"
-                              style={{borderRadius: '8px', marginTop: '10px'}}
+                              style={{
+                                borderRadius: '12px',
+                                marginBottom: '12px',
+                                width: '100%',
+                                maxHeight: '400px',
+                                objectFit: 'cover'
+                              }}
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                              }}
                             />
                           )}
-                          <div className="post-actions" style={{display: 'flex', gap: '20px', marginTop: '15px', padding: '10px 0', borderTop: '1px solid #eee'}}>
-                            <div
-                              className="action-item"
+
+                          <div className="post-actions" style={{
+                            display: 'flex',
+                            gap: '24px',
+                            paddingTop: '12px',
+                            borderTop: '1px solid #2a2a2a'
+                          }}>
+                            <IonButton
+                              fill="clear"
+                              size="small"
                               onClick={() => handleLike(post.post_id)}
-                              style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
+                              style={{ '--padding-start': '0', '--padding-end': '0', margin: 0 }}
                             >
                               <IonIcon
                                 icon={likes[post.post_id]?.isLiked ? heart : heartOutline}
                                 color={likes[post.post_id]?.isLiked ? "danger" : "medium"}
+                                style={{ fontSize: '22px', marginRight: '6px' }}
                               />
-                              <span>{likes[post.post_id]?.count || 0}</span>
-                            </div>
-                            <div
-                              className="action-item"
+                              <span style={{ color: '#ffffff', fontSize: '14px' }}>
+                                {likes[post.post_id]?.count || 0}
+                              </span>
+                            </IonButton>
+                            <IonButton
+                              fill="clear"
+                              size="small"
                               onClick={() => openComments(post.post_id)}
-                              style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
+                              style={{ '--padding-start': '0', '--padding-end': '0', margin: 0 }}
                             >
-                              <IonIcon icon={chatbubbleOutline} color="medium" />
-                              <span>{post.comments_count || 0}</span>
-                            </div>
+                              <IonIcon
+                                icon={chatbubbleOutline}
+                                color="medium"
+                                style={{ fontSize: '22px', marginRight: '6px' }}
+                              />
+                              <span style={{ color: '#ffffff', fontSize: '14px' }}>
+                                {post.comments_count || 0}
+                              </span>
+                            </IonButton>
                           </div>
                         </IonCardContent>
                       </IonCard>
@@ -814,7 +935,14 @@ const GroupFeed: React.FC = () => {
                                     {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
                                   </div>
                                   <IonAvatar style={{ width: '60px', height: '60px', margin: '0 auto 8px' }}>
-                                    <img src={leader.avatar || ProfilePic} alt={leader.name} />
+                                    <img
+                                      src={getAvatarUrl(leader.avatar || leader.profile_picture)}
+                                      alt={leader.name}
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.src = DEFAULT_AVATAR;
+                                      }}
+                                    />
                                   </IonAvatar>
                                   <p style={{ fontWeight: '600', color: '#ffffff', fontSize: '14px', margin: '4px 0' }}>
                                     {leader.name}
@@ -843,7 +971,14 @@ const GroupFeed: React.FC = () => {
                                       {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
                                     </div>
                                     <IonAvatar style={{ width: '60px', height: '60px', margin: '0 auto 8px' }}>
-                                      <img src={leader.avatar || ProfilePic} alt={leader.name} />
+                                      <img
+                                        src={getAvatarUrl(leader.avatar || leader.profile_picture)}
+                                        alt={leader.name}
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.src = DEFAULT_AVATAR;
+                                        }}
+                                      />
                                     </IonAvatar>
                                     <p style={{ fontWeight: '600', color: '#ffffff', fontSize: '14px', margin: '4px 0' }}>
                                       {leader.name}
@@ -891,7 +1026,14 @@ const GroupFeed: React.FC = () => {
                                     <td style={{ padding: '12px 8px' }}>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                         <IonAvatar style={{ width: '36px', height: '36px', flexShrink: 0 }}>
-                                          <img src={entry.avatar || ProfilePic} alt={entry.name} />
+                                          <img
+                                            src={getAvatarUrl(entry.avatar || entry.profile_picture)}
+                                            alt={entry.name}
+                                            onError={(e) => {
+                                              const target = e.target as HTMLImageElement;
+                                              target.src = DEFAULT_AVATAR;
+                                            }}
+                                          />
                                         </IonAvatar>
                                         <span style={{ color: '#ffffff', fontWeight: '600', fontSize: '14px' }}>
                                           {entry.name || 'Unknown'}
@@ -953,8 +1095,15 @@ const GroupFeed: React.FC = () => {
                   <IonList>
                     {filteredMembers.map((member) => (
                       <IonItem key={member.user_id}>
-                        <IonAvatar slot="start">
-                          <IonImg src={member.users?.profile_picture || getAvatarUrl(member.users?.username || '')} />
+                        <IonAvatar slot="start" style={{ width: '48px', height: '48px' }}>
+                          <img
+                            src={getAvatarUrl(member.users?.profile_picture)}
+                            alt={member.users?.name}
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = DEFAULT_AVATAR;
+                            }}
+                          />
                         </IonAvatar>
                         <IonLabel>
                           <h2>{member.users?.name || 'Unknown User'}</h2>
@@ -1051,8 +1200,15 @@ const GroupFeed: React.FC = () => {
               <IonList>
                 {filteredMembers.map((member) => (
                   <IonItem key={member.user_id}>
-                    <IonAvatar slot="start">
-                      <IonImg src={member.users?.profile_picture || getAvatarUrl(member.users?.username || '')} />
+                    <IonAvatar slot="start" style={{ width: '48px', height: '48px' }}>
+                      <img
+                        src={getAvatarUrl(member.users?.profile_picture)}
+                        alt={member.users?.name}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = DEFAULT_AVATAR;
+                        }}
+                      />
                     </IonAvatar>
                     <IonLabel>
                       <h2>{member.users?.name || 'Unknown User'}</h2>
@@ -1074,6 +1230,134 @@ const GroupFeed: React.FC = () => {
                 ))}
               </IonList>
             )}
+          </IonContent>
+        </IonModal>
+
+        {/* Create Post Modal */}
+        <IonModal isOpen={showCreatePostModal} onDidDismiss={() => {
+          setShowCreatePostModal(false);
+          setPostTitle("");
+          setPostContent("");
+          setPostImages([]);
+        }}>
+          <IonHeader>
+            <IonToolbar style={{ '--background': '#000000', '--color': '#ffffff' }}>
+              <IonButtons slot="start">
+                <IonButton onClick={() => {
+                  setShowCreatePostModal(false);
+                  setPostTitle("");
+                  setPostContent("");
+                  setPostImages([]);
+                }} style={{ color: '#3b82f6' }}>
+                  Cancel
+                </IonButton>
+              </IonButtons>
+              <IonTitle style={{ color: '#ffffff', fontWeight: '700' }}>Create Post</IonTitle>
+              <IonButtons slot="end">
+                <IonButton
+                  onClick={handleCreatePost}
+                  disabled={!postContent.trim() || isCreatingPost}
+                  style={{ color: postContent.trim() ? '#84cc16' : '#666666', fontWeight: '700' }}
+                  strong
+                >
+                  {isCreatingPost ? 'Posting...' : 'Post'}
+                </IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+          <IonContent style={{ '--background': '#000000' }}>
+            <div style={{ padding: '16px' }}>
+              <IonItem style={{ '--background': '#1a1a1a', '--border-radius': '12px', '--border-color': '#2a2a2a', '--color': '#ffffff', marginBottom: '16px' }}>
+                <IonLabel position="stacked" style={{ color: '#ffffff', fontWeight: '600', marginBottom: '8px' }}>
+                  Title (Optional)
+                </IonLabel>
+                <IonInput
+                  value={postTitle}
+                  onIonInput={e => setPostTitle(e.detail.value!)}
+                  placeholder="Add a title..."
+                  maxlength={100}
+                  style={{ '--color': '#ffffff', '--placeholder-color': '#666666' }}
+                />
+              </IonItem>
+              <IonText color="medium" style={{ fontSize: '12px', padding: '0 4px', display: 'block', marginTop: '-8px', marginBottom: '16px' }}>
+                {postTitle.length}/100 characters
+              </IonText>
+
+              <IonItem style={{ '--background': '#1a1a1a', '--border-radius': '12px', '--border-color': '#2a2a2a', '--color': '#ffffff' }}>
+                <IonLabel position="stacked" style={{ color: '#ffffff', fontWeight: '600', marginBottom: '8px' }}>
+                  What's on your mind?
+                </IonLabel>
+                <IonTextarea
+                  value={postContent}
+                  onIonInput={e => setPostContent(e.detail.value!)}
+                  placeholder="Share something with the group..."
+                  rows={8}
+                  autoGrow
+                  style={{ '--color': '#ffffff', '--placeholder-color': '#666666', minHeight: '150px' }}
+                />
+              </IonItem>
+
+              {/* Image Upload Section */}
+              <div style={{ marginTop: '16px' }}>
+                <IonButton
+                  expand="block"
+                  fill="outline"
+                  color="success"
+                  onClick={handleAddPostImage}
+                  disabled={postImages.length >= 4}
+                  style={{ '--border-width': '2px' }}
+                >
+                  <IonIcon slot="start" icon={imagesIcon} />
+                  Add Images ({postImages.length}/4)
+                </IonButton>
+
+                {/* Image Previews */}
+                {postImages.length > 0 && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '8px',
+                    marginTop: '16px'
+                  }}>
+                    {postImages.map((image, index) => (
+                      <div key={index} style={{ position: 'relative' }}>
+                        <img
+                          src={image}
+                          alt={`Preview ${index + 1}`}
+                          style={{
+                            width: '100%',
+                            height: '120px',
+                            objectFit: 'cover',
+                            borderRadius: '8px',
+                            border: '2px solid #2a2a2a'
+                          }}
+                        />
+                        <IonButton
+                          fill="solid"
+                          color="danger"
+                          size="small"
+                          style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            '--padding-start': '8px',
+                            '--padding-end': '8px',
+                            height: '32px',
+                            minWidth: '32px'
+                          }}
+                          onClick={() => handleRemovePostImage(index)}
+                        >
+                          <IonIcon icon={close} slot="icon-only" />
+                        </IonButton>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <IonText color="medium" style={{ fontSize: '12px', padding: '8px 4px', display: 'block' }}>
+                  You can add up to 4 images
+                </IonText>
+              </div>
+            </div>
           </IonContent>
         </IonModal>
 

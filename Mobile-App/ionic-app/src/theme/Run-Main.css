@@ -136,6 +136,89 @@
   outline: 2px solid #92C628;
 }
 
+.hazard-summary {
+  margin: 12px 0;
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+}
+
+.hazard-summary.has-hazards {
+  background: rgba(255, 87, 34, 0.2);
+}
+
+.hazard-summary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.hazard-summary ion-icon {
+  font-size: 18px;
+}
+
+.hazard-summary span {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.report-hazard-btn {
+  margin-top: 8px;
+  --background: #ff9800;
+  --border-radius: 12px;
+  font-weight: 600;
+}
+
+.hazard-detail-modal .hazard-detail-body {
+  padding: 16px;
+}
+
+.hazard-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hazard-detail-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.hazard-detail-header ion-icon {
+  font-size: 28px;
+  color: #ff7043;
+}
+
+.hazard-detail-header h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.hazard-meta {
+  margin: 2px 0;
+  font-size: 13px;
+  color: var(--ion-color-medium);
+}
+
+.hazard-detail-description {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.hazard-detail-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 /* GPS Status Bar */
 .gps-status-bar {
   color: white;

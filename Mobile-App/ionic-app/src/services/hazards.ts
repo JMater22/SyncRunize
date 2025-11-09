@@ -25,8 +25,8 @@ export interface CreateHazardData {
   description: string;
   lat: number;
   lng: number;
-  image_url?: string;
   severity_weight?: number;
+  imageFile?: Blob | File | null;
 }
 
 export interface SafetyWarning {
@@ -60,8 +60,22 @@ export const HazardsApi = {
 
   // Report a hazard
   reportHazard: async (hazardData: CreateHazardData): Promise<HazardReport> => {
-    const { data } = await api.post('/hazards', hazardData);
-    return data;
+    const formData = new FormData();
+    formData.append('title', hazardData.title);
+    formData.append('incident_type', hazardData.incident_type);
+    formData.append('description', hazardData.description);
+    formData.append('lat', hazardData.lat.toString());
+    formData.append('lng', hazardData.lng.toString());
+    if (typeof hazardData.severity_weight === 'number') {
+      formData.append('severity_weight', hazardData.severity_weight.toString());
+    }
+    if (hazardData.imageFile) {
+      formData.append('image', hazardData.imageFile, 'hazard.jpg');
+    }
+    const { data } = await api.post('/hazards', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data?.hazard ?? data;
   },
 
   updateHazardStatus: async (hazardId: number, status: 'active' | 'resolved' | 'hidden'): Promise<HazardReport> => {

@@ -26,28 +26,60 @@
 /* Segment Navigation */
 .segment-toolbar {
   --background: #000000;
-  --border-color: #333333;
+  --border-color: #2a2a2a;
+  border-bottom: 1px solid #2a2a2a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .community-segment {
-  --background: #000000;
-  --indicator-color: #84cc16;
+  --background: #0a0a0a;
+  padding: 6px;
+  border-radius: 12px;
+  margin: 8px 16px;
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  justify-content: space-evenly;
 }
 
 .segment-btn {
-  --color: #666666;
-  --color-checked: #84cc16;
+  --color: #999999;
+  --color-checked: #000000;
   --indicator-color: #84cc16;
+  --background-checked: #84cc16;
+  --border-radius: 8px;
+  min-height: 48px;
+  flex: 1;
+  margin: 2px;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 4px;
 }
 
 .segment-btn ion-icon {
-  font-size: 18px;
+  font-size: 24px;
   margin-bottom: 4px;
 }
 
 .segment-btn ion-label {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+  margin: 0;
+  padding: 0;
+}
+
+.segment-btn.segment-button-checked {
+  font-weight: 700;
+}
+
+.segment-btn.segment-button-checked ion-label {
+  font-weight: 700;
 }
 
 /* Search Container */

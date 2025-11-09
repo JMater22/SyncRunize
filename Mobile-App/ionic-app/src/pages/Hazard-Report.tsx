@@ -1,132 +1,184 @@
-import React, { useState } from "react";
+import { useEffect, useMemo, useState } from 'react';
 import {
-  IonContent,
-  IonHeader,
   IonPage,
-  IonTitle,
+  IonHeader,
   IonToolbar,
-  IonButton,
+  IonTitle,
+  IonButtons,
+  IonBackButton,
+  IonContent,
   IonItem,
   IonLabel,
   IonRadioGroup,
   IonRadio,
-  IonInput,
-  IonIcon,
-  IonBackButton,
-  IonButtons,
+  IonTextarea,
+  IonRange,
+  IonText,
   IonGrid,
   IonRow,
   IonCol,
-  IonText,
-  IonImg,
+  IonButton,
+  IonIcon,
   IonToast,
-} from "@ionic/react";
+  IonSpinner,
+  IonInput,
+} from '@ionic/react';
+import { useHistory, useLocation } from 'react-router-dom';
 import {
-  cameraOutline,
-  locationOutline,
-  pinOutline,
-  star,
-  starOutline,
+  warningOutline,
   trailSignOutline,
   carOutline,
-  warningOutline,
   buildOutline,
-  closeCircle, imageOutline
-} from "ionicons/icons";
-import { useHistory } from "react-router-dom";
-import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
-import { useHideTabBar } from "../hooks/useHideTabBar";
+  ellipsisHorizontal,
+  locateOutline,
+  mapOutline,
+  cameraOutline,
+  trashOutline,
+} from 'ionicons/icons';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Geolocation } from '@capacitor/geolocation';
+import { HazardsApi } from '../services/hazards';
+import '../theme/Hazard-Report.css';
 
-import "../theme/Hazard-Report.css";
+type LocationState = {
+  lat?: number;
+  lng?: number;
+  source?: string;
+};
+
+const hazardTypes = [
+  { id: 'pothole', label: 'Pothole / Road damage', icon: trailSignOutline },
+  { id: 'heavy_traffic', label: 'Heavy traffic', icon: carOutline },
+  { id: 'construction', label: 'Construction zone', icon: buildOutline },
+  { id: 'unsafe_area', label: 'Unsafe area', icon: warningOutline },
+  { id: 'other', label: 'Other hazard', icon: ellipsisHorizontal },
+];
+
+const defaultDescription: Record<string, string> = {
+  pothole: 'Large pothole along the route.',
+  heavy_traffic: 'Significant traffic congestion in this segment.',
+  construction: 'Construction zone blocking part of the path.',
+  unsafe_area: 'Reported unsafe area. Stay alert.',
+  other: 'Reported hazard.',
+};
 
 const ReportHazard: React.FC = () => {
   const history = useHistory();
+  const location = useLocation<LocationState>();
+  const [hazardType, setHazardType] = useState<string>('pothole');
+  const [title, setTitle] = useState<string>('Pothole / Road damage');
+  const [description, setDescription] = useState<string>('Large pothole along the route.');
+  const [severity, setSeverity] = useState<number>(50);
+  const [lat, setLat] = useState<string>('');
+  const [lng, setLng] = useState<string>('');
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState<{ message: string; color?: 'success' | 'danger' } | null>(null);
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
 
-  const [selectedHazard, setSelectedHazard] = useState<string>("pothole");
-  const [otherHazardText, setOtherHazardText] = useState<string>("");
-  const [confidenceRating, setConfidenceRating] = useState<number>(4);
-  const [hazardPhoto, setHazardPhoto] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string>("");
-  const [showToast, setShowToast] = useState<boolean>(false);
-    const [image, setImage] = useState<string | null>(null);
+  const initialLocation = useMemo(() => ({
+    lat: location.state?.lat,
+    lng: location.state?.lng,
+  }), [location.state]);
 
-// Take or pick a photo
-  const handleAddPhoto = async () => {
+  useEffect(() => {
+    if (initialLocation.lat && initialLocation.lng) {
+      setLat(initialLocation.lat.toString());
+      setLng(initialLocation.lng.toString());
+    }
+  }, [initialLocation]);
+
+  useEffect(() => {
+    const selected = hazardTypes.find((t) => t.id === hazardType);
+    if (selected) {
+      setTitle(selected.label);
+      setDescription(defaultDescription[hazardType] || 'Reported hazard.');
+    }
+  }, [hazardType]);
+
+  const handleUseMyLocation = async () => {
+    try {
+      setLoadingLocation(true);
+      const permission = await Geolocation.requestPermissions();
+      if (permission.location === 'denied') {
+        setToast({ message: 'Location permission denied', color: 'danger' });
+        return;
+      }
+      const coords = await Geolocation.getCurrentPosition({ enableHighAccuracy: true });
+      setLat(coords.coords.latitude.toFixed(6));
+      setLng(coords.coords.longitude.toFixed(6));
+      setToast({ message: 'Location captured', color: 'success' });
+    } catch (err) {
+      console.error(err);
+      setToast({ message: 'Unable to get location', color: 'danger' });
+    } finally {
+      setLoadingLocation(false);
+    }
+  };
+
+  const handleTakePhoto = async () => {
     try {
       const photo = await Camera.getPhoto({
-        quality: 90,
-        allowEditing: false,
+        quality: 80,
         resultType: CameraResultType.DataUrl,
-        source: CameraSource.Prompt, // Allows choosing camera or gallery
+        source: CameraSource.Prompt,
       });
-
       if (photo?.dataUrl) {
-        setImage(photo.dataUrl);
+        setPhotoDataUrl(photo.dataUrl);
       }
-    } catch (error) {
-      console.error("Camera error:", error);
-      showToastMessage("Failed to select photo.");
+    } catch (err) {
+      console.error(err);
+      setToast({ message: 'Camera unavailable', color: 'danger' });
     }
   };
 
-  const handleRemovePhoto = () => setImage(null);
+  const toBlob = (dataUrl: string) => {
+    const arr = dataUrl.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] ?? 'image/jpeg';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  };
 
-  /** 🚀 Submit logic */
-  const handleSubmit = () => {
-    if (!hazardPhoto) {
-      showToastMessage("Please add a photo of the hazard");
+  const handleSubmit = async () => {
+    if (!lat || !lng) {
+      setToast({ message: 'Provide the hazard location first.', color: 'danger' });
       return;
     }
 
-    if (selectedHazard === "other" && !otherHazardText.trim()) {
-      showToastMessage("Please describe the hazard");
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    if (isNaN(latNum) || isNaN(lngNum)) {
+      setToast({ message: 'Invalid coordinates', color: 'danger' });
       return;
     }
 
-    console.log("Submitting hazard report:", {
-      hazardType: selectedHazard,
-      otherHazard: otherHazardText,
-      confidence: confidenceRating,
-      photo: hazardPhoto,
-    });
-
-    showToastMessage("Hazard report submitted!");
-
-    setTimeout(() => {
-      history.push("/run-tracking");
-    }, 800);
-  };
-
-  const handleUseMyLocation = () => {
-    showToastMessage("Using current location...");
-    // TODO: implement geolocation
-  };
-
-  const handlePinOnMap = () => {
-    showToastMessage("Opening map to pin location...");
-    // TODO: implement map picker
-  };
-
-  /** ⭐ Confidence Rating Stars */
-  const renderStars = () =>
-    Array.from({ length: 5 }, (_, index) => (
-      <IonIcon
-        key={index}
-        icon={index < confidenceRating ? star : starOutline}
-        style={{
-          fontSize: "24px",
-          color: index < confidenceRating ? "#ffd700" : "#ccc",
-          cursor: "pointer",
-          margin: "0 2px",
-        }}
-        onClick={() => setConfidenceRating(index + 1)}
-      />
-    ));
-
-  /** 🔔 Toast handler */
-  const showToastMessage = (message: string) => {
-    setToastMessage(message);
-    setShowToast(true);
+    try {
+      setSubmitting(true);
+      await HazardsApi.reportHazard({
+        title: title.trim() || 'Hazard report',
+        incident_type: hazardType,
+        description: description.trim() || defaultDescription[hazardType] || 'Hazard reported.',
+        lat: latNum,
+        lng: lngNum,
+        severity_weight: severity / 100,
+        imageFile: photoDataUrl ? toBlob(photoDataUrl) : undefined,
+      });
+      setToast({ message: 'Hazard reported. Thank you!', color: 'success' });
+      setTimeout(() => {
+        history.replace('/run-tracking');
+      }, 1200);
+    } catch (err: any) {
+      console.error(err);
+      const msg = err?.response?.data?.error || err?.message || 'Failed to submit hazard.';
+      setToast({ message: msg, color: 'danger' });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -134,150 +186,128 @@ const ReportHazard: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/run-tracking" />
+            <IonBackButton defaultHref="/run-tracking" text="" />
           </IonButtons>
-          <IonTitle>Report</IonTitle>
+          <IonTitle>Report hazard</IonTitle>
         </IonToolbar>
       </IonHeader>
 
-      <IonContent fullscreen className="ion-padding">
-        <IonText color="dark">
-          <h2>Report Hazard</h2>
-        </IonText>
+      <IonContent className="hazard-report-content">
+        <section className="hazard-section">
+          <IonText color="medium">
+            <h3 className="section-heading">Hazard type</h3>
+          </IonText>
+          <IonRadioGroup value={hazardType} onIonChange={(e) => setHazardType(e.detail.value)}>
+            {hazardTypes.map((hazard) => (
+              <IonItem key={hazard.id} lines="full">
+                <IonIcon slot="start" icon={hazard.icon} color="warning" />
+                <IonLabel>{hazard.label}</IonLabel>
+                <IonRadio slot="end" value={hazard.id} />
+              </IonItem>
+            ))}
+          </IonRadioGroup>
+        </section>
 
-       {/* Image Upload Section */}
-               <div className="image-upload-section">
-                 {!image ? (
-                   <IonButton expand="block" fill="outline" onClick={handleAddPhoto}>
-                     <IonIcon slot="start" icon={imageOutline} />
-                     Add Image
-                   </IonButton>
-                 ) : (
-                   <div className="preview-container">
-                     <IonImg src={image} alt="Preview" className="preview-image" />
-                     <IonButton
-                       fill="clear"
-                       className="remove-image-btn"
-                       onClick={handleRemovePhoto}
-                     >
-                       <IonIcon icon={closeCircle} color="light" style={{ fontSize: "32px" }} />
-                     </IonButton>
-                   </div>
-                 )}
-               </div>
-
-        {/* 🚧 Hazard Type */}
-        <IonText color="medium">
-          <h3 style={{ margin: "20px 0 16px 0" }}>
-            Select the type of hazard you'd like to report:
-          </h3>
-        </IonText>
-
-        <IonRadioGroup
-          value={selectedHazard}
-          onIonChange={(e) => setSelectedHazard(e.detail.value)}
-        >
+        <section className="hazard-section">
+          <IonText color="medium">
+            <h3 className="section-heading">Details</h3>
+          </IonText>
           <IonItem>
-            <IonIcon icon={trailSignOutline} slot="start" color="warning" />
-            <IonLabel>Pothole or Road Damage</IonLabel>
-            <IonRadio slot="end" value="pothole" />
+            <IonLabel position="stacked">Title</IonLabel>
+            <IonInput value={title} onIonInput={(e) => setTitle(e.detail.value ?? '')} placeholder="Hazard title" />
           </IonItem>
-
           <IonItem>
-            <IonIcon icon={carOutline} slot="start" color="danger" />
-            <IonLabel>Heavy Traffic</IonLabel>
-            <IonRadio slot="end" value="heavy_traffic" />
-          </IonItem>
-
-          <IonItem>
-            <IonIcon icon={warningOutline} slot="start" color="warning" />
-            <IonLabel>Unsafe Area</IonLabel>
-            <IonRadio slot="end" value="unsafe_area" />
-          </IonItem>
-
-          <IonItem>
-            <IonIcon icon={buildOutline} slot="start" color="medium" />
-            <IonLabel>Construction</IonLabel>
-            <IonRadio slot="end" value="construction" />
-          </IonItem>
-
-          <IonItem>
-            <IonIcon icon={warningOutline} slot="start" color="warning" />
-            <IonLabel>Other Hazard</IonLabel>
-            <IonRadio slot="end" value="other" />
-          </IonItem>
-        </IonRadioGroup>
-
-        {selectedHazard === "other" && (
-          <IonItem style={{ marginTop: "8px" }}>
-            <IonInput
-              value={otherHazardText}
-              placeholder="Enter and describe the hazard"
-              onIonInput={(e) => setOtherHazardText(e.detail.value ?? "")}
+            <IonLabel position="stacked">Description</IonLabel>
+            <IonTextarea
+              autoGrow
+              value={description}
+              onIonInput={(e) => setDescription(e.detail.value ?? '')}
+              placeholder="Describe what other runners should know"
             />
           </IonItem>
-        )}
+        </section>
 
-        {/* 📍 Location */}
-        <IonText color="medium">
-          <h3 style={{ margin: "24px 0 16px 0" }}>Select Location Method</h3>
-        </IonText>
+        <section className="hazard-section">
+          <IonText color="medium">
+            <h3 className="section-heading">Severity</h3>
+          </IonText>
+          <IonRange min={0} max={100} value={severity} onIonChange={(e) => setSeverity(e.detail.value as number)}>
+            <IonIcon size="small" slot="start" icon={warningOutline} />
+            <IonIcon size="small" slot="end" icon={warningOutline} />
+          </IonRange>
+          <p className="severity-label">{Math.round(severity)}% severity</p>
+        </section>
 
-        <IonGrid>
-          <IonRow>
-            <IonCol size="6">
-              <IonButton
-                expand="block"
-                fill="outline"
-                onClick={handleUseMyLocation}
-                style={{ height: "60px" }}
-              >
-                <IonIcon icon={locationOutline} slot="start" />
-                Use My Location
+        <section className="hazard-section">
+          <IonText color="medium">
+            <h3 className="section-heading">Location</h3>
+          </IonText>
+          <IonGrid>
+            <IonRow>
+              <IonCol size="6">
+                <IonButton expand="block" fill="outline" onClick={handleUseMyLocation} disabled={loadingLocation}>
+                  {loadingLocation ? <IonSpinner name="crescent" /> : <IonIcon slot="start" icon={locateOutline} />}
+                  Use location
+                </IonButton>
+              </IonCol>
+              <IonCol size="6">
+                <IonButton
+                  expand="block"
+                  fill="outline"
+                  onClick={() => {
+                    setLat('');
+                    setLng('');
+                  }}
+                >
+                  <IonIcon slot="start" icon={mapOutline} />
+                  Clear
+                </IonButton>
+              </IonCol>
+            </IonRow>
+          </IonGrid>
+          <IonItem>
+            <IonLabel position="stacked">Latitude</IonLabel>
+            <IonInput value={lat} onIonInput={(e) => setLat(e.detail.value ?? '')} placeholder="e.g. 15.123456" inputmode="decimal" />
+          </IonItem>
+          <IonItem>
+            <IonLabel position="stacked">Longitude</IonLabel>
+            <IonInput value={lng} onIonInput={(e) => setLng(e.detail.value ?? '')} placeholder="e.g. 120.123456" inputmode="decimal" />
+          </IonItem>
+        </section>
+
+        <section className="hazard-section">
+          <IonText color="medium">
+            <h3 className="section-heading">Photo (optional)</h3>
+          </IonText>
+          <div className="photo-actions">
+            <IonButton fill="outline" onClick={handleTakePhoto}>
+              <IonIcon slot="start" icon={cameraOutline} />
+              {photoDataUrl ? 'Retake photo' : 'Add photo'}
+            </IonButton>
+            {photoDataUrl && (
+              <IonButton fill="clear" color="medium" onClick={() => setPhotoDataUrl(null)}>
+                <IonIcon slot="start" icon={trashOutline} />
+                Remove
               </IonButton>
-            </IonCol>
-            <IonCol size="6">
-              <IonButton
-                expand="block"
-                fill="outline"
-                onClick={handlePinOnMap}
-                style={{ height: "60px" }}
-              >
-                <IonIcon icon={pinOutline} slot="start" />
-                Pin on Map
-              </IonButton>
-            </IonCol>
-          </IonRow>
-        </IonGrid>
+            )}
+          </div>
+          {photoDataUrl && (
+            <div className="photo-preview">
+              <img src={photoDataUrl} alt="Hazard preview" />
+            </div>
+          )}
+        </section>
 
-        {/* ⭐ Confidence */}
-        <IonText color="medium">
-          <h3 style={{ margin: "24px 0 16px 0" }}>
-            How confident are you about this report?
-          </h3>
-        </IonText>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            marginBottom: "32px",
-          }}
-        >
-          {renderStars()}
-        </div>
-
-        {/* 🚀 Submit */}
-        <IonButton expand="block" size="large" onClick={handleSubmit}>
-          Submit
+        <IonButton expand="block" size="large" onClick={handleSubmit} disabled={submitting}>
+          {submitting ? <IonSpinner name="crescent" /> : 'Submit hazard'}
         </IonButton>
 
         <IonToast
-          isOpen={showToast}
-          message={toastMessage}
+          isOpen={!!toast}
           duration={2000}
-          onDidDismiss={() => setShowToast(false)}
+          onDidDismiss={() => setToast(null)}
+          message={toast?.message}
+          color={toast?.color}
         />
       </IonContent>
     </IonPage>

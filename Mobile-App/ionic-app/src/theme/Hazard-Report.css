@@ -1,99 +1,66 @@
-/* ReportHazard.css */
-
-/* Photo Card Section */
-.photo-card {
-  margin-bottom: 20px;
+.hazard-report-content {
+  --padding-bottom: 32px;
+  padding: 16px;
 }
 
-.photo-card-content {
-  text-align: center;
-  padding: 20px;
+.hazard-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--ion-color-light-shade, rgba(255,255,255,0.05));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.photo-button {
+.section-heading {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.severity-label {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--ion-color-medium);
+}
+
+.photo-actions {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.photo-icon {
-  font-size: 48px;
+.photo-preview {
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 
-/* Section Titles */
-.section-title {
-  margin: 20px 0 16px 0;
+.photo-preview img {
+  width: 100%;
+  display: block;
 }
 
-.section-title:first-of-type {
-  margin-top: 24px;
+.hazard-section ion-item {
+  margin-bottom: 8px;
 }
 
-/* Other Hazard Input */
-.other-hazard-input {
-  margin-top: 8px;
+.severity-label,
+.hazard-meta,
+.section-heading {
+  letter-spacing: 0.2px;
 }
 
-/* Location Buttons */
-.location-button {
-  height: 60px;
-}
-
-/* Confidence Rating */
-.confidence-rating-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 32px;
-}
-
-.star-rating {
-  font-size: 24px;
-  cursor: pointer;
-  margin: 0 2px;
-  color: #ccc;
-  transition: color 0.2s ease;
-}
-
-.star-rating.filled {
-  color: #ffd700;
-}
-
-.star-rating:hover {
-  color: #ffd700;
-}
-
-/* Submit Button */
-.submit-button {
-  margin: 20px 0;
+.hazard-section ion-button {
   --border-radius: 12px;
 }
 
-/* Responsive adjustments */
 @media (max-width: 768px) {
-  .photo-icon {
-    font-size: 40px;
+  .hazard-section {
+    padding: 14px;
   }
-  
-  .location-button {
-    height: 50px;
-    font-size: 14px;
-  }
-  
-  .star-rating {
-    font-size: 20px;
-    margin: 0 1px;
-  }
-}
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .star-rating {
-    color: #666;
-  }
-  
-  .star-rating:hover {
-    color: #ffd700;
+  .photo-actions {
+    flex-direction: column;
   }
 }

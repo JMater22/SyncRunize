@@ -35,7 +35,6 @@ import SearchRunners from "./pages/Search-Runners";
 import SavedRoutes from "./pages/saved-routes";
 import EstimatedTime from "./pages/Estimated-Time";
 import TrafficNotice from "./pages/Traffic-Notice";
-import HazardNotice from "./pages/Hazard-Notice";
 import HazardReport from "./pages/Hazard-Report";
 import ActivitySummary from "./pages/Activity-Summary";
 import Information from "./pages/Profile-Information";
@@ -141,7 +140,6 @@ const App: React.FC = () => {
                   <Route exact path="/saved-routes" component={SavedRoutes} />
                   <Route exact path="/estimated-time" component={EstimatedTime} />
                   <Route exact path="/traffic-notice" component={TrafficNotice} />
-                  <Route exact path="/hazard-notice" component={HazardNotice} />
                   <Route exact path="/hazard-report" component={HazardReport} />
                   <Route exact path="/activity-summary" component={ActivitySummary} />
                   <Route exact path="/profile-info" component={Information} />
