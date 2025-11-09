@@ -49,47 +49,7 @@
   opacity: 0.9;
 }
 
-/* Location Indicator */
-.location-indicator {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 20px;
-  height: 20px;
-  background-color: #2196F3;
-  border: 4px solid white;
-  border-radius: 50%;
-  box-shadow: 0 0 20px rgba(33, 150, 243, 0.8);
-  z-index: 5;
-}
-
-.location-pulse {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 40px;
-  height: 40px;
-  background-color: rgba(33, 150, 243, 0.3);
-  border-radius: 50%;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.7;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.5);
-    opacity: 0.3;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(2);
-    opacity: 0;
-  }
-}
+/* Location indicator visuals removed per updated UX */
 
 /* GPS Button */
 .gps-button {
@@ -204,72 +164,178 @@
   cursor: pointer;
 }
 
-/* Stats Row */
-.stats-row {
+/* Stats Panel Redesigned */
+.stats-panel {
+  position: absolute;
+  bottom: 24px;
+  left: 16px;
+  right: 16px;
+  z-index: 10;
+}
+
+.tracking-overlay {
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 20px;
+  padding: 18px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
   display: flex;
-  justify-content: space-around;
-  margin-bottom: 24px;
-  color: white;
+  flex-direction: column;
+  gap: 16px;
+  backdrop-filter: blur(12px);
 }
 
-.stat-item {
-  text-align: center;
+.tracking-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.stat-value {
-  font-size: 24px;
-  font-weight: bold;
+.tracking-status-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tracking-status-actions {
+  display: flex;
+  align-items: center;
+}
+
+.status-label {
+  text-transform: uppercase;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.08em;
   margin-bottom: 4px;
 }
 
-.stat-label {
+.status-value {
+  font-size: 20px;
+  margin: 0;
+}
+
+.status-subtext {
+  margin: 4px 0 0;
   font-size: 12px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.7);
 }
 
-/* Start Button */
-.start-button-container {
-  display: flex;
-  justify-content: center;
-}
-
-.start-run-button {
-  width: 80px;
-  height: 80px;
+.ghost-button {
+  border: 1px solid rgba(255, 255, 255, 0.4);
   background: transparent;
-  border: 7px solid #92C628;
-  border-radius: 50%;
-  cursor: pointer;
-  opacity: 1;
-  transition: all 0.3s ease;
-  padding: 0;
-  display: flex;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: #ffffff;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  color: #92C628;
+  gap: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease, border 0.2s ease;
 }
 
-.start-run-button.disabled {
+.ghost-button:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
-  opacity: 0.5;
-  background: transparent;
-  border-color: #666;
-  color: #666;
 }
 
-.start-button-icon {
-  width: 100%;
-  height: 100%;
+.ghost-secondary {
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
-.start-run-button.disabled .start-button-icon {
-  filter: grayscale(100%);
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
-/* Location Prompt */
-.location-prompt {
+.stat-card {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 12px;
   text-align: center;
-  color: #999;
-  font-size: 12px;
-  margin-top: 12px;
+}
+
+.card-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.card-value {
+  display: block;
+  margin-top: 6px;
+  font-size: 18px;
+}
+
+.action-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.start-btn {
+  flex: 1;
+  border: none;
+  border-radius: 14px;
+  padding: 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #000;
+  background: linear-gradient(135deg, #92c628, #6cb400);
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.start-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  background: rgba(146, 198, 40, 0.35);
+}
+
+.start-btn:not(.disabled):hover {
+  transform: translateY(-1px);
+}
+
+.mini-note {
+  font-size: 11px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.65);
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .tracking-status {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .tracking-status-actions,
+  .ghost-button {
+    width: 100%;
+  }
+
+  .ghost-button {
+    justify-content: center;
+  }
+
+  .action-row {
+    flex-direction: column;
+  }
+
+  .start-btn,
+  .ghost-button.ghost-secondary {
+    width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

@@ -21,4 +21,8 @@ router.put("/settings/password", authenticate, UserController.updatePassword);
 
 // Search users
 router.get("/search", authenticate, UserController.searchUsers);
+
+// Get user by ID (protected - for viewing other user profiles)
+router.get("/:id", authenticate, UserController.getPublicProfile);
+
 export default router;

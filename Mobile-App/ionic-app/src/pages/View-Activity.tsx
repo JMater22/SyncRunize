@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   IonPage,
   IonHeader,
@@ -6,256 +6,133 @@ import {
   IonTitle,
   IonContent,
   IonCard,
-  IonCardHeader,
   IonCardContent,
-  IonButton,
-  IonItem,
-  IonAvatar,
-  IonImg,
-  IonIcon,
   IonButtons,
   IonBackButton,
-  IonModal,
-  IonTextarea
+  IonSpinner,
+  IonImg
 } from "@ionic/react";
-import {
-  heartOutline,
-  heart,
-  chatbubbleOutline
-} from "ionicons/icons";
+import { useLocation } from "react-router-dom";
+import { useUser } from "../contexts/UserContext";
+import { RoutesApi, Route } from "../services/routes";
+import { formatDate, formatDurationShort } from "../lib/utils";
+import "./View-Activity.css";
 
-import ChallengePic from '../components/assets/istockphoto-143920084-612x612.jpg';
-import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
+// Fallback image for routes without map images
+import MapImage from '../components/assets/istockphoto-143920084-612x612.jpg';
+
+interface LocationState {
+  userId?: number;
+  userName?: string;
+}
 
 const ViewActivity: React.FC = () => {
-  // Comments state
-  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
-  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
-  const [newComment, setNewComment] = useState("");
-  const [comments, setComments] = useState<{[key: number]: Array<{id: number, user: string, text: string, time: string}>}>({
-    1: [
-      { id: 1, user: "Sarah Johnson", text: "Congratulations! That's amazing! 🎉", time: "2 hrs ago" },
-      { id: 2, user: "Mike Chen", text: "Great job! Keep it up!", time: "1 hr ago" }
-    ],
-    2: [
-      { id: 1, user: "Emily Davis", text: "You guys are crushing it! 💪", time: "2 hrs ago" }
-    ],
-    3: []
-  });
+  const { currentUser } = useUser();
+  const location = useLocation<LocationState>();
+  const [userRoutes, setUserRoutes] = useState<Route[]>([]);
+  const [loadingRoutes, setLoadingRoutes] = useState(false);
 
-  // Likes state
-  const [likes, setLikes] = useState<{[key: number]: {count: number, isLiked: boolean}}>({
-    1: { count: 324, isLiked: false },
-    2: { count: 41, isLiked: false },
-    3: { count: 150, isLiked: false }
-  });
+  // Determine which user's activities to fetch
+  const userId = location.state?.userId || currentUser?.user_id;
+  const userName = location.state?.userName;
+  const isViewingOtherUser = !!location.state?.userId;
 
-  const handleLike = (postId: number) => {
-    setLikes(prev => ({
-      ...prev,
-      [postId]: {
-        count: prev[postId].isLiked ? prev[postId].count - 1 : prev[postId].count + 1,
-        isLiked: !prev[postId].isLiked
+  // Fetch user routes when component mounts
+  useEffect(() => {
+    const fetchUserRoutes = async () => {
+      if (!userId) return;
+
+      try {
+        setLoadingRoutes(true);
+
+        // Fetch routes with activities_only flag to get completed routes
+        const routes = await RoutesApi.getUserRoutes(userId, true);
+        setUserRoutes(Array.isArray(routes) ? routes : []);
+      } catch (error) {
+        console.error("Error fetching user routes:", error);
+        setUserRoutes([]);
+      } finally {
+        setLoadingRoutes(false);
       }
-    }));
-  };
+    };
 
-  const openComments = (postId: number) => {
-    setSelectedPostId(postId);
-    setIsCommentsOpen(true);
-  };
-
-  const closeComments = () => {
-    setIsCommentsOpen(false);
-    setNewComment("");
-  };
-
-  const handleAddComment = () => {
-    if (newComment.trim() && selectedPostId !== null) {
-      const newCommentObj = {
-        id: Date.now(),
-        user: "You",
-        text: newComment,
-        time: "Just now"
-      };
-      
-      setComments(prev => ({
-        ...prev,
-        [selectedPostId]: [...(prev[selectedPostId] || []), newCommentObj]
-      }));
-      
-      setNewComment("");
-    }
-  };
+    fetchUserRoutes();
+  }, [userId]);
 
   return (
     <IonPage>
-      {/* Top Header */}
+      {/* Header */}
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/HomeModule/homeM1" />
+            <IonBackButton defaultHref={isViewingOtherUser ? "/other-profile" : "/HomeModule/homeM1"} />
           </IonButtons>
-          <IonTitle>Activities</IonTitle>
+          <IonTitle>{isViewingOtherUser && userName ? `${userName}'s Activities` : "Activities"}</IonTitle>
         </IonToolbar>
       </IonHeader>
 
       {/* Content */}
       <IonContent fullscreen className="ion-padding">
-        <div className="feed-tab">
-
-
-          {/* Feed Posts */}
-          <div className="feed-posts">
-            {/* Post 1 */}
-            <IonCard className="post-card">
-              <IonCardHeader>
-                <div className="post-header" style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                  <IonAvatar>
-                    <IonImg src={ProfilePic} />
-                  </IonAvatar>
-                  <div className="user-info">
-                    <div style={{fontWeight: 'bold'}}>Adams Smith</div>
-                    <div style={{fontSize: '0.85rem', color: '#666'}}>3 hrs ago</div>
-                  </div>
-                </div>
-              </IonCardHeader>
-              <IonCardContent>
-                <p className="post-text">Just completed my first 10K! 🏃 Feeling amazing!</p>
-                <IonImg src={ChallengePic} className="post-image" style={{borderRadius: '8px', marginTop: '10px'}} />
-                <div className="post-actions" style={{display: 'flex', gap: '20px', marginTop: '15px', padding: '10px 0', borderTop: '1px solid #eee'}}>
-                  <div 
-                    className="action-item" 
-                    onClick={() => handleLike(1)}
-                    style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
-                  >
-                    <IonIcon icon={likes[1].isLiked ? heart : heartOutline} color={likes[1].isLiked ? "danger" : "medium"} /> 
-                    <span>{likes[1].count}</span>
-                  </div>
-                  <div 
-                    className="action-item" 
-                    onClick={() => openComments(1)}
-                    style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
-                  >
-                    <IonIcon icon={chatbubbleOutline} color="medium" /> 
-                    <span>{comments[1].length}</span>
-                  </div>
-                </div>
-              </IonCardContent>
-            </IonCard>
-
-            {/* Post 2 */}
-            <IonCard className="post-card">
-              <IonCardHeader>
-                <div className="post-header" style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                  <IonAvatar>
-                    <IonImg src={ProfilePic} />
-                  </IonAvatar>
-                  <div className="user-info">
-                    <div style={{fontWeight: 'bold'}}>Adams Smith</div>
-                    <div style={{fontSize: '0.85rem', color: '#666'}}>4 hrs ago</div>
-                  </div>
-                </div>
-              </IonCardHeader>
-              <IonCardContent>
-                <p className="post-text">Great run with the team today! Marathon training is on track! 🏃‍♀️🏃‍♂️</p>
-                <IonImg src={ChallengePic} className="post-image" style={{borderRadius: '8px', marginTop: '10px'}} />
-                <div className="post-actions" style={{display: 'flex', gap: '20px', marginTop: '15px', padding: '10px 0', borderTop: '1px solid #eee'}}>
-                  <div 
-                    className="action-item" 
-                    onClick={() => handleLike(2)}
-                    style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
-                  >
-                    <IonIcon icon={likes[2].isLiked ? heart : heartOutline} color={likes[2].isLiked ? "danger" : "medium"} /> 
-                    <span>{likes[2].count}</span>
-                  </div>
-                  <div 
-                    className="action-item" 
-                    onClick={() => openComments(2)}
-                    style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
-                  >
-                    <IonIcon icon={chatbubbleOutline} color="medium" /> 
-                    <span>{comments[2].length}</span>
-                  </div>
-                </div>
-              </IonCardContent>
-            </IonCard>
-
-            {/* Post 3 */}
-            <IonCard className="post-card">
-              <IonCardHeader>
-                <div className="post-header" style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                  <IonAvatar>
-                    <IonImg src={ProfilePic} />
-                  </IonAvatar>
-                  <div className="user-info">
-                    <div style={{fontWeight: 'bold'}}>Adams Smith</div>
-                    <div style={{fontSize: '0.85rem', color: '#666'}}>5 hrs ago</div>
-                  </div>
-                </div>
-              </IonCardHeader>
-              <IonCardContent>
-                <p className="post-text">Morning jog in the park. So refreshing! 🌳</p>
-                <IonImg src={ChallengePic} className="post-image" style={{borderRadius: '8px', marginTop: '10px'}} />
-                <div className="post-actions" style={{display: 'flex', gap: '20px', marginTop: '15px', padding: '10px 0', borderTop: '1px solid #eee'}}>
-                  <div 
-                    className="action-item" 
-                    onClick={() => handleLike(3)}
-                    style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
-                  >
-                    <IonIcon icon={likes[3].isLiked ? heart : heartOutline} color={likes[3].isLiked ? "danger" : "medium"} /> 
-                    <span>{likes[3].count}</span>
-                  </div>
-                  <div 
-                    className="action-item" 
-                    onClick={() => openComments(3)}
-                    style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
-                  >
-                    <IonIcon icon={chatbubbleOutline} color="medium" /> 
-                    <span>{comments[3].length}</span>
-                  </div>
-                </div>
-              </IonCardContent>
-            </IonCard>
+        {loadingRoutes ? (
+          <div className="loading-center">
+            <IonSpinner name="crescent" />
+            <p>Loading activities...</p>
           </div>
-        </div>
-
-        {/* Comments Modal */}
-        <IonModal isOpen={isCommentsOpen} onDidDismiss={closeComments}>
-          <IonHeader>
-            <IonToolbar>
-              <IonTitle>Comments</IonTitle>
-              <IonButtons slot="end">
-                <IonButton onClick={closeComments}>Close</IonButton>
-              </IonButtons>
-            </IonToolbar>
-          </IonHeader>
-          <IonContent className="ion-padding">
-            {selectedPostId && comments[selectedPostId]?.map((comment) => (
-              <IonCard key={comment.id}>
+        ) : userRoutes.length === 0 ? (
+          <div className="loading-center">
+            <p>No activities yet. Start running to see your progress here!</p>
+          </div>
+        ) : (
+          <div className="activities-list">
+            {userRoutes.map((route, index) => (
+              <IonCard key={route.route_id || index} className="activity-card-modern">
                 <IonCardContent>
-                  <div style={{fontWeight: 'bold', marginBottom: '5px'}}>{comment.user}</div>
-                  <div>{comment.text}</div>
-                  <div style={{fontSize: '0.85rem', color: '#666', marginTop: '5px'}}>{comment.time}</div>
+                  {/* Top Section - Meta Info */}
+                  <div className="activity-top">
+                    <div className="activity-meta">
+                      <span className="activity-type">
+                        {route.route_type?.charAt(0).toUpperCase() + route.route_type?.slice(1) || "Run"}
+                      </span>
+                      <span className="activity-date">{formatDate(route.created_at)}</span>
+                    </div>
+
+                    <h3 className="activity-title">
+                      {route.route_name || "Untitled Route"}
+                    </h3>
+                  </div>
+
+                  {/* Stats Row - 2x2 Grid */}
+                  <div className="activity-stats-row">
+                    <div className="activity-stat">
+                      <strong>{Number(route.distance_km).toFixed(1)} km</strong>
+                      <span>Distance</span>
+                    </div>
+                    <div className="activity-stat">
+                      <strong>{formatDurationShort(route.duration_seconds)}</strong>
+                      <span>Duration</span>
+                    </div>
+                    <div className="activity-stat">
+                      <strong>{route.average_pace || "N/A"}</strong>
+                      <span>Pace</span>
+                    </div>
+                    <div className="activity-stat">
+                      <strong>{route.estimated_calories || "N/A"}</strong>
+                      <span>Calories</span>
+                    </div>
+                  </div>
+
+                  {/* Map Image */}
+                  <div className="activity-map">
+                    <IonImg
+                      src={route.snapshot_url || route.map_image_url || MapImage}
+                      alt="Activity Map"
+                    />
+                  </div>
                 </IonCardContent>
               </IonCard>
             ))}
-            
-            <div style={{position: 'fixed', bottom: '0', left: '0', right: '0', padding: '10px', background: 'black', borderTop: '1px solid #535252ff'}}>
-              <IonItem>
-                <IonTextarea
-                  value={newComment}
-                  onIonChange={(e) => setNewComment(e.detail.value || "")}
-                  placeholder="Write a comment..."
-                  autoGrow
-                />
-              </IonItem>
-              <IonButton color="success" expand="block" onClick={handleAddComment} disabled={!newComment.trim()}>
-                Post Comment
-              </IonButton>
-            </div>
-          </IonContent>
-        </IonModal>
+          </div>
+        )}
       </IonContent>
     </IonPage>
   );

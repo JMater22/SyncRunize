@@ -5,17 +5,24 @@ import {
   IonTabBar,
   IonTabButton,
   IonTabs,
+  IonIcon,
   setupIonicReact,
 } from "@ionic/react";
+import { personOutline } from "ionicons/icons";
 import { IonReactRouter } from "@ionic/react-router";
 import { useSupabaseSession } from "./lib/useSession";
+import { UserProvider } from "./contexts/UserContext";
+import { PostsProvider } from "./contexts/PostsContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
+import { ChallengesProvider } from "./contexts/ChallengesContext";
 
 import Home from "./pages/Home";
 import Community from "./pages/Community";
 import RunTracking from "./pages/RunTracking";
 import RoutesPage from "./pages/RoutesPage";
-import Analytics from "./pages/Analytics";
 import UserProfile from "./pages/UserProfile";
+import OtherUserProfile from "./pages/OtherUserProfile";
+import MyChallenges from "./pages/MyChallenges";
 import Settings from "./pages/Settings";
 import Leaderboards from "./pages/leaderboards";
 import Notification from "./pages/notification";
@@ -48,7 +55,6 @@ import HomeIcon from "./components/assets/icons/home.svg";
 import RouteIcon from "./components/assets/icons/conversion_path.svg";
 import RunIcon from "./components/assets/icons/open_run.svg";
 import GroupsIcon from "./components/assets/icons/groups.svg";
-import StatsIcon from "./components/assets/icons/query_stats.svg";
 
 /* Ionic Core & CSS */
 import "@ionic/react/css/core.css";
@@ -104,76 +110,86 @@ const App: React.FC = () => {
 
   return (
   <IonApp>
-    <IonReactRouter>
-      <IonTabs>
-        <IonRouterOutlet>
-          <Route exact path="/home" component={Home} />
-          <Route exact path="/community" component={Community} />
-          <Route exact path="/run-tracking" component={RunTracking} />
-          <Route exact path="/routes" component={RoutesPage} />
-          <Route exact path="/analytics" component={Analytics} />
-          <Route exact path="/profile" component={UserProfile} />
-          <Route exact path="/settings" component={Settings} />
-          <Route exact path="/leaderboards" component={Leaderboards} />
-          <Route exact path="/notification" component={Notification} />
-          <Route exact path="/edit-profile" component={EditProfile} />
-          <Route exact path="/paused" component={PausedRun} />
-          <Route exact path="/notice" component={Notice} />
-          <Route exact path="/create-route" component={CreateRoute} />
-          <Route exact path="/following" component={Following} />
-          <Route exact path="/search-runners" component={SearchRunners} />
-          <Route exact path="/saved-routes" component={SavedRoutes} />
-          <Route exact path="/estimated-time" component={EstimatedTime} />
-          <Route exact path="/traffic-notice" component={TrafficNotice} />
-          <Route exact path="/hazard-notice" component={HazardNotice} />
-          <Route exact path="/hazard-report" component={HazardReport} />
-          <Route exact path="/activity-summary" component={ActivitySummary} />
-          <Route exact path="/profile-info" component={Information} />
-          <Route exact path="/security" component={PasswordSecurity} />
-          {/* Auth screens remain accessible but are redundant when logged in */}
-          <Route exact path="/create-account" component={CreateAccount} />
-          <Route exact path="/log-in" component={LogIn} />
-          <Route exact path="/authentication" component={Authentication} />
-          <Route exact path="/group-feed" component={GroupFeed} />
-          <Route exact path="/posts" component={ViewPost} />
-          <Route exact path="/activities" component={ViewActivity} />
-          <Route exact path="/badges" component={Badges} />
-          <Route exact path="/create-post" component={CreatePost} />
+    <UserProvider>
+      <PostsProvider>
+        <NotificationProvider>
+          <ChallengesProvider>
+            <IonReactRouter>
+              <IonTabs>
+                <IonRouterOutlet>
+                  <Route exact path="/home" component={Home} />
+                  <Route exact path="/community" component={Community} />
+                  <Route exact path="/run-tracking" component={RunTracking} />
+                  <Route exact path="/routes" component={RoutesPage} />
+                  <Route exact path="/profile" component={UserProfile} />
+                  <Route exact path="/other-profile" component={OtherUserProfile} />
+                  <Route exact path="/my-challenges" component={MyChallenges} />
+                  <Route exact path="/settings" component={Settings} />
+                  <Route exact path="/leaderboards" component={Leaderboards} />
+                  <Route exact path="/notification" component={Notification} />
+                  <Route exact path="/edit-profile" component={EditProfile} />
+                  <Route exact path="/paused" component={PausedRun} />
+                  <Route exact path="/notice" component={Notice} />
+                  <Route exact path="/create-route" component={CreateRoute} />
+                  <Route exact path="/following" component={Following} />
+                  <Route exact path="/search-runners" component={SearchRunners} />
+                  <Route exact path="/saved-routes" component={SavedRoutes} />
+                  <Route exact path="/estimated-time" component={EstimatedTime} />
+                  <Route exact path="/traffic-notice" component={TrafficNotice} />
+                  <Route exact path="/hazard-notice" component={HazardNotice} />
+                  <Route exact path="/hazard-report" component={HazardReport} />
+                  <Route exact path="/activity-summary" component={ActivitySummary} />
+                  <Route exact path="/profile-info" component={Information} />
+                  <Route exact path="/security" component={PasswordSecurity} />
+                  {/* Auth screens remain accessible but are redundant when logged in */}
+                  <Route exact path="/create-account" component={CreateAccount} />
+                  <Route exact path="/log-in" component={LogIn} />
+                  <Route exact path="/authentication" component={Authentication} />
+                  <Route exact path="/group-feed/:groupId" component={GroupFeed} />
+                  <Route exact path="/leaderboards/:groupId" component={Leaderboards} />
+                  <Route exact path="/posts" component={ViewPost} />
+                  <Route exact path="/activities" component={ViewActivity} />
+                  <Route exact path="/badges" component={Badges} />
+                  <Route exact path="/create-post" component={CreatePost} />
 
-          <Route exact path="/">
-            <Redirect to="/home" />
-          </Route>
-        </IonRouterOutlet>
+                  <Route exact path="/">
+                    <Redirect to="/home" />
+                  </Route>
+                </IonRouterOutlet>
 
-        {/* ✅ SVG Icon Tab Bar */}
-        <IonTabBar slot="bottom">
-          <IonTabButton tab="home" href="/home">
-            <img src={HomeIcon} alt="Home" className="nav-icon" />
-            Home
-          </IonTabButton>
+                {/* ✅ SVG Icon Tab Bar */}
+                <IonTabBar slot="bottom">
+                  <IonTabButton tab="home" href="/home">
+                    <img src={HomeIcon} alt="Home" className="nav-icon" />
+                    Home
+                  </IonTabButton>
 
-          <IonTabButton tab="routes" href="/routes">
-            <img src={RouteIcon} alt="Routes" className="nav-icon" />
-            Route
-          </IonTabButton>
+                  <IonTabButton tab="routes" href="/routes">
+                    <img src={RouteIcon} alt="Routes" className="nav-icon" />
+                    Route
+                  </IonTabButton>
 
-          <IonTabButton tab="run-tracking" href="/run-tracking">
-            <img src={RunIcon} alt="Run Tracking" className="nav-icon" />
-            Run
-          </IonTabButton>
+                  <IonTabButton tab="run-tracking" href="/run-tracking">
+                    <img src={RunIcon} alt="Run Tracking" className="nav-icon" />
+                    Run
+                  </IonTabButton>
 
-          <IonTabButton tab="community" href="/community">
-            <img src={GroupsIcon} alt="Community" className="nav-icon" />
-            Community
-          </IonTabButton>
+                  <IonTabButton tab="community" href="/community">
+                    <img src={GroupsIcon} alt="Community" className="nav-icon" />
+                    Community
+                  </IonTabButton>
 
-          <IonTabButton tab="analytics" href="/analytics">
-            <img src={StatsIcon} alt="Analytics" className="nav-icon" />
-            Analytics
-          </IonTabButton>
-        </IonTabBar>
-      </IonTabs>
-    </IonReactRouter>
+                  <IonTabButton tab="profile" href="/profile">
+                    <IonIcon icon={personOutline} />
+                    Profile
+                  </IonTabButton>
+                </IonTabBar>
+              </IonTabs>
+            </IonReactRouter>
+          </ChallengesProvider>
+        </NotificationProvider>
+      </PostsProvider>
+    </UserProvider>
   </IonApp>
   );
 };

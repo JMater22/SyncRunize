@@ -21,12 +21,15 @@ import {
   IonItem,
   IonSearchbar,
   IonSpinner,
-  IonToast, 
+  IonToast,
   IonAlert,
   IonModal
 } from "@ionic/react";
 import { bookmark, pencil, locate, locationOutline } from "ionicons/icons";
 import { Geolocation } from "@capacitor/geolocation";
+import { RoutesApi, Route } from "../services/routes";
+import { SavedRoutesApi } from "../services/saved-routes";
+import { useUser } from "../contexts/UserContext";
 import "../theme/Routes.css"
 
 interface Position {
@@ -35,8 +38,10 @@ interface Position {
 }
 
 const RouteSuggestion: React.FC = () => {
+  const { currentUser } = useUser();
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingRoutes, setLoadingRoutes] = useState(false);
   const [error, setError] = useState<string>("");
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -46,10 +51,63 @@ const RouteSuggestion: React.FC = () => {
   const [showInitialPrompt, setShowInitialPrompt] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<string>("prompt");
   const [hasCheckedPermission, setHasCheckedPermission] = useState(false);
+  const [publicRoutes, setPublicRoutes] = useState<Route[]>([]);
+  const [filteredRoutes, setFilteredRoutes] = useState<Route[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     checkInitialPermissions();
+    fetchPublicRoutes();
   }, []);
+
+  useEffect(() => {
+    // Filter routes based on search query
+    if (searchQuery.trim()) {
+      const filtered = publicRoutes.filter(route =>
+        route.route_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        route.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredRoutes(filtered);
+    } else {
+      setFilteredRoutes(publicRoutes);
+    }
+  }, [searchQuery, publicRoutes]);
+
+  const fetchPublicRoutes = async () => {
+    try {
+      setLoadingRoutes(true);
+      const routes = await RoutesApi.getPublicRoutes();
+      setPublicRoutes(Array.isArray(routes) ? routes : []);
+      setFilteredRoutes(Array.isArray(routes) ? routes : []);
+    } catch (err: any) {
+      console.error('Failed to fetch public routes:', err);
+      setPublicRoutes([]);
+      setFilteredRoutes([]);
+    } finally {
+      setLoadingRoutes(false);
+    }
+  };
+
+  const handleSaveRoute = async (routeId: number) => {
+    if (!currentUser) {
+      setToastMessage('Please log in to save routes');
+      setToastColor('danger');
+      setShowToast(true);
+      return;
+    }
+
+    try {
+      await SavedRoutesApi.saveRouteToLibrary({ route_id: routeId });
+      setToastMessage('Route saved successfully!');
+      setToastColor('success');
+      setShowToast(true);
+    } catch (err: any) {
+      console.error('Failed to save route:', err);
+      setToastMessage(err.message || 'Failed to save route');
+      setToastColor('danger');
+      setShowToast(true);
+    }
+  };
 
   const checkInitialPermissions = async () => {
     try {
@@ -193,9 +251,11 @@ const RouteSuggestion: React.FC = () => {
 
       <IonContent fullscreen>
         <div style={{ padding: '16px 16px 8px' }}>
-          <IonSearchbar 
-            placeholder="Search location" 
-            style={{ 
+          <IonSearchbar
+            placeholder="Search routes"
+            value={searchQuery}
+            onIonInput={(e) => setSearchQuery(e.detail.value || '')}
+            style={{
               '--background': '#f5f5f5',
               '--border-radius': '12px'
             }}
@@ -248,127 +308,80 @@ const RouteSuggestion: React.FC = () => {
             </IonItem>
 
             <div slot="content" style={{ padding: '16px' }}>
-              {/* Route Card 1 */}
-              <IonCard style={{ marginBottom: '16px' }}>
-                <IonCardHeader>
-                  <IonCardTitle>Capas Route</IonCardTitle>
-                </IonCardHeader>
-
-                <IonCardContent>
-                  <div style={{ 
-                    display: 'flex', 
-                    gap: '8px', 
-                    fontSize: '14px', 
-                    color: '#666',
-                    marginBottom: '8px',
-                  }}>
-                    <span> 5.21 km</span>
-                    <span> 1h 12m</span>
-                  </div>
-                  <p style={{ fontSize: '14px', color: '#888', marginBottom: '16px',}}>
-                    Capas, Tarlac, Philippines
+              {loadingRoutes ? (
+                <div style={{ textAlign: 'center', padding: '32px' }}>
+                  <IonSpinner name="crescent" />
+                  <p style={{ marginTop: '16px', color: '#666' }}>Loading routes...</p>
+                </div>
+              ) : filteredRoutes.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px' }}>
+                  <p style={{ color: '#666' }}>
+                    {searchQuery ? 'No routes found matching your search.' : 'No public routes available.'}
                   </p>
+                </div>
+              ) : (
+                filteredRoutes.map((route, index) => (
+                  <IonCard key={route.route_id} style={{ marginBottom: '16px' }}>
+                    <IonCardHeader>
+                      <IonCardTitle>{route.route_name}</IonCardTitle>
+                    </IonCardHeader>
 
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                    <IonButton 
-                      size="small" 
-                      color="success"
-                      onClick={() => {
-                        setToastMessage("✅ Route saved successfully!");
-                        setToastColor("success");
-                        setShowToast(true);
-                      }}
-                    >
-                      Save
-                    </IonButton>
-                    <IonButton 
-                      size="small" 
-                      color="success" 
-                      fill="outline"
-                      disabled={!currentPosition}
-                      onClick={() => {
-                        if (!currentPosition) {
-                          setShowInitialPrompt(true);
-                        }
-                      }}
-                    >
-                      From your location
-                    </IonButton>
-                  </div>
+                    <IonCardContent>
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        fontSize: '14px',
+                        color: '#666',
+                        marginBottom: '8px',
+                      }}>
+                        <span>{route.distance_km.toFixed(2)} km</span>
+                        <span>
+                          {Math.floor(route.duration_seconds / 60)}m {route.duration_seconds % 60}s
+                        </span>
+                        <span style={{ textTransform: 'capitalize' }}>• {route.route_type}</span>
+                      </div>
+                      {route.description && (
+                        <p style={{ fontSize: '14px', color: '#888', marginBottom: '16px' }}>
+                          {route.description}
+                        </p>
+                      )}
 
-                  <div style={{ borderRadius: '8px', overflow: 'hidden', height: '200px' }}>
-                    <iframe
-                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d27403.697792075374!2d120.58200860881004!3d15.48705054784102!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3396c63f4ab68e0d%3A0x13f9415d7a5bfd4b!2sTarlac%20City%2C%20Tarlac!5e0!3m2!1sen!2sph!4v1761910044713!5m2!1sen!2sph"
-                      style={{ width: '100%', height: '100%', border: 'none' }}
-                      allowFullScreen
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                      title="Route Map 1"
-                    />
-                  </div>
-                </IonCardContent>
-              </IonCard>
+                      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                        <IonButton
+                          size="small"
+                          color="success"
+                          onClick={() => handleSaveRoute(route.route_id)}
+                        >
+                          Save
+                        </IonButton>
+                        <IonButton
+                          size="small"
+                          color="success"
+                          fill="outline"
+                          disabled={!currentPosition}
+                          onClick={() => {
+                            if (!currentPosition) {
+                              setShowInitialPrompt(true);
+                            }
+                          }}
+                        >
+                          From your location
+                        </IonButton>
+                      </div>
 
-              {/* Route Card 2 */}
-              <IonCard>
-                <IonCardHeader>
-                  <IonCardTitle>San. Roque Route</IonCardTitle>
-                </IonCardHeader>
-
-                <IonCardContent>
-                  <div style={{ 
-                    display: 'flex', 
-                    gap: '8px', 
-                    fontSize: '14px', 
-                    color: '#666',
-                    marginBottom: '8px', 
-                  }}>
-                    <span> 7.5 km</span>
-                    <span> 1h 45m</span>
-                  </div>
-                  <p style={{ fontSize: '14px', color: '#888', marginBottom: '16px' }}>
-                    Tarlac City, Tarlac, Philippines
-                  </p>
-
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                    <IonButton 
-                      size="small" 
-                      color="success"
-                      onClick={() => {
-                        setToastMessage("✅ Route saved successfully!");
-                        setToastColor("success");
-                        setShowToast(true);
-                      }}
-                    >
-                      Save
-                    </IonButton>
-                    <IonButton 
-                      size="small" 
-                      color="success" 
-                      fill="outline"
-                      disabled={!currentPosition}
-                      onClick={() => {
-                        if (!currentPosition) {
-                          setShowInitialPrompt(true);
-                        }
-                      }}
-                    >
-                      From your location
-                    </IonButton>
-                  </div>
-
-                  <div style={{ borderRadius: '8px', overflow: 'hidden', height: '200px' }}>
-                    <iframe
-                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d27403.697792075374!2d120.58200860881004!3d15.48705054784102!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3396c63f4ab68e0d%3A0x13f9415d7a5bfd4b!2sTarlac%20City%2C%20Tarlac!5e0!3m2!1sen!2sph!4v1761910044713!5m2!1sen!2sph"
-                      style={{ width: '100%', height: '100%', border: 'none' }}
-                      allowFullScreen
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                      title="Route Map 2"
-                    />
-                  </div>
-                </IonCardContent>
-              </IonCard>
+                      {route.snapshot_url && (
+                        <div style={{ borderRadius: '8px', overflow: 'hidden', height: '200px' }}>
+                          <img
+                            src={route.snapshot_url}
+                            alt={`${route.route_name} map`}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        </div>
+                      )}
+                    </IonCardContent>
+                  </IonCard>
+                ))
+              )}
             </div>
           </IonAccordion>
         </IonAccordionGroup>

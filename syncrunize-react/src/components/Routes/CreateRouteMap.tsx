@@ -22,13 +22,15 @@ import {
   closeCircleOutline,
   saveOutline,
   pinOutline,
-  locationOutline
+  locationOutline,
+  informationCircleOutline
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { GoogleMap, LoadScript, Polyline } from '@react-google-maps/api';
 import { MarkerF } from '@react-google-maps/api';
 import axios from 'axios';
 import { supabase } from '../../supabaseClient';
+import { DEFAULT_AVATAR } from '../../constants/avatar';
 import { kmToMiles } from '../../utils/distanceConverter';
 import './CreateRouteMap.css';
 
@@ -117,6 +119,11 @@ const CreateRouteMap = () => {
   const [trafficLayer, setTrafficLayer] = useState<google.maps.TrafficLayer | null>(null);
   const [generatedPath, setGeneratedPath] = useState<LatLng[]>([]);
   const [generatedRoute, setGeneratedRoute] = useState<GeneratedRoute | null>(null);
+  const [distanceInfo, setDistanceInfo] = useState<{
+    distance_warning: boolean;
+    requested_distance_km: number;
+    generated_distance_km: number;
+  } | null>(null);
   // Keep an imperative reference to the rendered polyline to force-remove on cancel if needed
   const polylineRef = useRef<google.maps.Polyline | null>(null);
   const [safetyAnalysis, setSafetyAnalysis] = useState<SafetyAnalysis | null>(null);
@@ -478,6 +485,7 @@ const CreateRouteMap = () => {
     }
 
     try {
+      setDistanceInfo(null);
       setIsGenerating(true);
       setGeneratedPath([]);
       setGeneratedRoute(null);
@@ -508,6 +516,13 @@ const CreateRouteMap = () => {
 
       const coordinates = algoResponse.data.coordinates;
       const safetyData = algoResponse.data.safety;
+      const distanceInfoData = algoResponse.data.distance_info;
+
+      if (routeMode === 'distance') {
+        setDistanceInfo(distanceInfoData ?? null);
+      } else {
+        setDistanceInfo(null);
+      }
 
       console.log('Algorithm returned', coordinates?.length || 0, 'coordinates');
       console.log('Safety analysis:', safetyData);
@@ -589,16 +604,29 @@ const CreateRouteMap = () => {
         setEndPoint(chosenEnd);
       }
 
+      // Determine if the returned path is a closed loop (end near start)
+      const isClosedLoop = (() => {
+        if (!startPoint || pathPoints.length < 2) return false;
+        const toRad = (deg: number) => deg * Math.PI / 180;
+        const haversineKm = (a: LatLng, b: LatLng) => {
+          const R = 6371;
+          const dLat = toRad(b.lat - a.lat);
+          const dLng = toRad(b.lng - a.lng);
+          const s = Math.sin(dLat/2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng/2) ** 2;
+          return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+        };
+        return haversineKm(startPoint, pathPoints[pathPoints.length - 1]) < 0.05;
+      })();
+
       // Align polyline endpoints exactly to the selected pins (to avoid subtle offsets)
       if (pathPoints.length > 0 && startPoint) {
         pathPoints[0] = { lat: +startPoint.lat.toFixed(6), lng: +startPoint.lng.toFixed(6) };
       }
-      if (pathPoints.length > 1 && chosenEnd) {
+      if (pathPoints.length > 1 && chosenEnd && !isClosedLoop) {
         pathPoints[pathPoints.length - 1] = { lat: +chosenEnd.lat.toFixed(6), lng: +chosenEnd.lng.toFixed(6) };
       }
 
-      // Reflect the adjusted path on the map
-      setGeneratedPath(pathPoints);
+      // Do not render the interim path; render the saved path returned by backend below
 
       // Step 2: Save route to backend with status 'generated'
       const { data: { session } } = await supabase.auth.getSession();
@@ -655,14 +683,41 @@ const CreateRouteMap = () => {
       );
 
       console.log('Route saved to backend:', routeResponse.data.route);
-      setGeneratedRoute(routeResponse.data.route);
+      const savedRoute = routeResponse.data.route;
+      setGeneratedRoute(savedRoute);
+
+      // Parse chosen_path from saved route and render exactly what is persisted
+      let savedPath: any = savedRoute?.chosen_path;
+      try {
+        savedPath = typeof savedPath === 'string' ? JSON.parse(savedPath) : savedPath;
+      } catch {
+        // keep as-is
+      }
+      const drawingPoints: LatLng[] = Array.isArray(savedPath)
+        ? savedPath
+            .map((p: any) => ({
+              lat: parseFloat(p.lat ?? p.latitude),
+              lng: parseFloat(p.lng ?? p.lon ?? p.longitude),
+            }))
+            .filter((p: LatLng) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
+        : [];
+
+      if (drawingPoints.length > 0) {
+        setGeneratedPath(drawingPoints);
+      } else {
+        // Fallback to algorithm path if parsing failed
+        setGeneratedPath(pathPoints);
+      }
       setShowActions(true);
 
-      // Fit map to show the route
-      if (map && pathPoints.length > 0) {
+      // Fit map to show the route (saved path preferred)
+      if (map) {
         const bounds = new google.maps.LatLngBounds();
-        pathPoints.forEach(point => bounds.extend(point));
-        map.fitBounds(bounds);
+        const pts = (drawingPoints && drawingPoints.length > 0) ? drawingPoints : pathPoints;
+        if (pts.length > 0) {
+          pts.forEach(point => bounds.extend(point));
+          map.fitBounds(bounds);
+        }
       }
 
       setToastMessage(`Route generated! Distance: ${distanceKm.toFixed(2)} km`);
@@ -742,6 +797,7 @@ const CreateRouteMap = () => {
     setGeneratedRoute(null);
     setSafetyAnalysis(null);
     setShowActions(false);
+    setDistanceInfo(null);
 
     // Clear markers - reset to selection stage
     setStartPoint(null);
@@ -762,6 +818,13 @@ const CreateRouteMap = () => {
     setTimeout(() => {
       try { window.location.reload(); } catch {}
     }, 300);
+  };
+
+  const formatDisplayDistance = (valueKm: number) => {
+    if (distanceUnit === 'km') {
+      return `${valueKm.toFixed(2)} km`;
+    }
+    return `${kmToMiles(valueKm).toFixed(2)} miles`;
   };
 
   const handleBack = () => {
@@ -935,6 +998,10 @@ const CreateRouteMap = () => {
                   <div className="step-number">4</div>
                   <div className="section-title-wrapper">
                     <span className="section-title">TARGET DISTANCE</span>
+                    <span style={{ marginLeft: 8, display: 'inline-flex', alignItems: 'center', color: '#6b7280', fontSize: 12 }}>
+                      <IonIcon icon={informationCircleOutline} style={{ marginRight: 4, fontSize: 14 }} />
+                      Distance is approximate — safety prioritized
+                    </span>
                   </div>
                 </div>
 
@@ -1103,22 +1170,43 @@ const CreateRouteMap = () => {
                       </button>
                     </div>
 
-                    <div className="route-stats">
-                      <div className="stat-item">
-                        <span className="stat-label">Distance</span>
-                        <span className="stat-value">
-                          {distanceUnit === 'km'
-                            ? `${generatedRoute.distance_km.toFixed(2)} km`
-                            : `${kmToMiles(generatedRoute.distance_km).toFixed(2)} miles`}
-                        </span>
-                      </div>
+                      <div className="route-stats">
+                        <div className="stat-item">
+                          <span className="stat-label">Distance</span>
+                          <span className="stat-value">
+                            {distanceUnit === 'km'
+                              ? `${(distanceInfo?.generated_distance_km ?? generatedRoute.distance_km).toFixed(2)} km`
+                              : `${kmToMiles(distanceInfo?.generated_distance_km ?? generatedRoute.distance_km).toFixed(2)} miles`}
+                          </span>
+                        </div>
                       <div className="stat-item">
                         <span className="stat-label">Est. Time</span>
                         <span className="stat-value">{Math.round(generatedRoute.duration_seconds / 60)} min</span>
                       </div>
                     </div>
-                  </IonCardContent>
-                </IonCard>
+                </IonCardContent>
+              </IonCard>
+
+              {routeMode === 'distance' && distanceInfo && (
+                <div
+                  className={`distance-warning-banner ${distanceInfo.distance_warning ? 'warning' : 'success'}`}
+                >
+                  {distanceInfo.distance_warning ? (
+                    <>
+                      <strong>Safety first.</strong> We couldn't find a safe{' '}
+                      {formatDisplayDistance(distanceInfo.requested_distance_km)} loop starting here. This route covers{' '}
+                      <strong>{formatDisplayDistance(distanceInfo.generated_distance_km)}</strong> to avoid hazards near
+                      your start point. Try choosing another start location if you need an exact distance.
+                    </>
+                  ) : (
+                    <>
+                      <strong>Great news!</strong> This route closely matches your{' '}
+                      {formatDisplayDistance(distanceInfo.requested_distance_km)} target while keeping you on the safest
+                      streets nearby.
+                    </>
+                  )}
+                </div>
+              )}
 
                 {/* Safety Warnings Card */}
                 {safetyAnalysis && safetyAnalysis.warnings.length > 0 && (
@@ -1324,17 +1412,11 @@ const CreateRouteMap = () => {
                 <div className="hazard-info">
                   <div className="hazard-header">
                     <div className="hazard-user-info">
-                      {selectedHazard.users?.profile_picture ? (
-                        <img
-                          src={selectedHazard.users.profile_picture}
-                          alt={selectedHazard.users.username}
-                          className="user-avatar"
-                        />
-                      ) : (
-                        <div className="user-avatar-placeholder">
-                          {selectedHazard.users?.username?.charAt(0).toUpperCase() || 'U'}
-                        </div>
-                      )}
+                    <img
+                      src={selectedHazard.users?.profile_picture || DEFAULT_AVATAR}
+                      alt={selectedHazard.users?.username || 'Anonymous'}
+                      className="user-avatar"
+                    />
                       <div className="user-details">
                         <span className="username">
                           {selectedHazard.users?.username || 'Anonymous'}

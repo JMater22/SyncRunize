@@ -55,20 +55,75 @@ export const getUserChallenges = async (userId) => {
 
   if (error) throw error;
 
-  return data.map(item => ({
-    ...item,
-    challenge_name: item.challenges?.name || null,
-    challenge_slug: item.challenges?.slug || null,
-    challenge_description: item.challenges?.description || null,
-    challenge_image: item.challenges?.image_url || null,
-    challenge_duration_days: item.challenges?.duration_days || null,
-    badge_id: item.badges?.badge_id || null,
-    badge_name: item.badges?.name || null,
-    badge_image: item.badges?.image_url || null,
-    badge_tier: item.badges?.tier || null,
-    badges: undefined,
-    challenges: undefined
-  }));
+  // Calculate current date for expiration check
+  const currentDate = new Date();
+  const expiredChallengeIds = [];
+
+  // Check each challenge for expiration
+  const filteredData = data.filter(item => {
+    // Skip if challenge is already completed
+    if (item.completed) return true;
+
+    // Check if challenge has duration
+    const durationDays = item.challenges?.duration_days;
+    if (!durationDays) return true; // No duration = no expiration
+
+    // Calculate days since user joined the challenge
+    const joinedDate = new Date(item.created_at);
+    const daysSinceJoined = Math.floor((currentDate - joinedDate) / (1000 * 60 * 60 * 24));
+
+    // Check if challenge has expired
+    if (daysSinceJoined > durationDays) {
+      console.log(`⏰ Challenge expired: ${item.challenges?.name} (joined ${daysSinceJoined} days ago, duration: ${durationDays} days)`);
+      expiredChallengeIds.push(item.user_challenge_id);
+      return false; // Filter out expired challenge
+    }
+
+    return true; // Keep non-expired challenge
+  });
+
+  // Auto-remove expired challenges from database
+  if (expiredChallengeIds.length > 0) {
+    console.log(`🗑️ Auto-removing ${expiredChallengeIds.length} expired challenge(s)...`);
+    const { error: deleteError } = await supabase
+      .from("user_challenges")
+      .delete()
+      .in("user_challenge_id", expiredChallengeIds);
+
+    if (deleteError) {
+      console.error("❌ Failed to auto-remove expired challenges:", deleteError);
+    } else {
+      console.log(`✅ Successfully removed ${expiredChallengeIds.length} expired challenge(s)`);
+    }
+  }
+
+  return filteredData.map(item => {
+    // Calculate remaining days for active challenges
+    let daysRemaining = null;
+    if (!item.completed && item.challenges?.duration_days) {
+      const joinedDate = new Date(item.created_at);
+      const daysSinceJoined = Math.floor((currentDate - joinedDate) / (1000 * 60 * 60 * 24));
+      daysRemaining = item.challenges.duration_days - daysSinceJoined;
+      // Ensure it's not negative (should be filtered already, but just in case)
+      daysRemaining = Math.max(0, daysRemaining);
+    }
+
+    return {
+      ...item,
+      challenge_name: item.challenges?.name || null,
+      challenge_slug: item.challenges?.slug || null,
+      challenge_description: item.challenges?.description || null,
+      challenge_image: item.challenges?.image_url || null,
+      challenge_duration_days: item.challenges?.duration_days || null,
+      days_remaining: daysRemaining,
+      badge_id: item.badges?.badge_id || null,
+      badge_name: item.badges?.name || null,
+      badge_image: item.badges?.image_url || null,
+      badge_tier: item.badges?.tier || null,
+      badges: undefined,
+      challenges: undefined
+    };
+  });
 };
 
 
@@ -94,17 +149,59 @@ export const getAllChallengesWithStatus = async (userId) => {
 
   if (challengesError) throw challengesError;
 
-  // 2️⃣ Fetch user_challenges of this user (include progress info)
+  // 2️⃣ Fetch user_challenges of this user (include progress info and created_at for expiration check)
   const { data: userChallenges, error: userError } = await supabase
     .from("user_challenges")
-    .select("challenge_id, completed, progress_percent")
+    .select("user_challenge_id, challenge_id, completed, progress_percent, created_at")
     .eq("user_id", userId);
 
   if (userError) throw userError;
 
-  // 3️⃣ Build a lookup map for fast matching
+  // Check for expired challenges and remove them
+  const currentDate = new Date();
+  const expiredChallengeIds = [];
+
+  userChallenges.forEach((uc) => {
+    // Skip if already completed
+    if (uc.completed) return;
+
+    // Find the challenge to get duration
+    const challenge = challenges.find(ch => ch.challenge_id === uc.challenge_id);
+    if (!challenge || !challenge.duration_days) return;
+
+    // Calculate days since joined
+    const joinedDate = new Date(uc.created_at);
+    const daysSinceJoined = Math.floor((currentDate - joinedDate) / (1000 * 60 * 60 * 24));
+
+    // Check if expired
+    if (daysSinceJoined > challenge.duration_days) {
+      console.log(`⏰ [getAllChallengesWithStatus] Challenge expired: ${challenge.name} (joined ${daysSinceJoined} days ago, duration: ${challenge.duration_days} days)`);
+      expiredChallengeIds.push(uc.user_challenge_id);
+    }
+  });
+
+  // Auto-remove expired challenges from database
+  if (expiredChallengeIds.length > 0) {
+    console.log(`🗑️ [getAllChallengesWithStatus] Auto-removing ${expiredChallengeIds.length} expired challenge(s)...`);
+    const { error: deleteError } = await supabase
+      .from("user_challenges")
+      .delete()
+      .in("user_challenge_id", expiredChallengeIds);
+
+    if (deleteError) {
+      console.error("❌ Failed to auto-remove expired challenges:", deleteError);
+    } else {
+      console.log(`✅ Successfully removed ${expiredChallengeIds.length} expired challenge(s)`);
+    }
+  }
+
+  // 3️⃣ Build a lookup map for fast matching (exclude expired challenges)
+  const expiredSet = new Set(expiredChallengeIds);
   const joinedMap = new Map();
   userChallenges.forEach((uc) => {
+    // Skip expired challenges
+    if (expiredSet.has(uc.user_challenge_id)) return;
+
     joinedMap.set(uc.challenge_id, {
       joined: true,
       completed: uc.completed,
@@ -198,7 +295,8 @@ export const getUserChallengesWithBadge = async (userId) => {
       challenges:challenge_id (
         challenge_id,
         name,
-        slug
+        slug,
+        duration_days
       ),
       badges:awarded_badge_id (
         badge_id,
@@ -211,24 +309,79 @@ export const getUserChallengesWithBadge = async (userId) => {
     `)
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
-  
+
   if (error) throw error;
-  
+
+  // Calculate current date for expiration check
+  const currentDate = new Date();
+  const expiredChallengeIds = [];
+
+  // Check each challenge for expiration
+  const filteredData = data.filter(item => {
+    // Skip if challenge is already completed
+    if (item.completed) return true;
+
+    // Check if challenge has duration
+    const durationDays = item.challenges?.duration_days;
+    if (!durationDays) return true; // No duration = no expiration
+
+    // Calculate days since user joined the challenge
+    const joinedDate = new Date(item.created_at);
+    const daysSinceJoined = Math.floor((currentDate - joinedDate) / (1000 * 60 * 60 * 24));
+
+    // Check if challenge has expired
+    if (daysSinceJoined > durationDays) {
+      console.log(`⏰ [getUserChallengesWithBadge] Challenge expired: ${item.challenges?.name} (joined ${daysSinceJoined} days ago, duration: ${durationDays} days)`);
+      expiredChallengeIds.push(item.user_challenge_id);
+      return false; // Filter out expired challenge
+    }
+
+    return true; // Keep non-expired challenge
+  });
+
+  // Auto-remove expired challenges from database
+  if (expiredChallengeIds.length > 0) {
+    console.log(`🗑️ [getUserChallengesWithBadge] Auto-removing ${expiredChallengeIds.length} expired challenge(s)...`);
+    const { error: deleteError } = await supabase
+      .from("user_challenges")
+      .delete()
+      .in("user_challenge_id", expiredChallengeIds);
+
+    if (deleteError) {
+      console.error("❌ Failed to auto-remove expired challenges:", deleteError);
+    } else {
+      console.log(`✅ Successfully removed ${expiredChallengeIds.length} expired challenge(s)`);
+    }
+  }
+
   // Transform the data to flatten badge info and handle null badges
-  return data.map(challenge => ({
-    ...challenge,
-    challenge_name: challenge.challenges?.name || null,
-    challenge_slug: challenge.challenges?.slug || null,
-    badge_id: challenge.badges?.badge_id || null,
-    badge_code: challenge.badges?.code || null,
-    badge_name: challenge.badges?.name || null,
-    badge_tier: challenge.badges?.tier || null,
-    badge_image_url: challenge.badges?.image_url || null,
-    badge_description: challenge.badges?.description || null,
-    // Remove the nested badges object for cleaner response
-    badges: undefined,
-    challenges: undefined
-  }));
+  return filteredData.map(challenge => {
+    // Calculate remaining days for active challenges
+    let daysRemaining = null;
+    if (!challenge.completed && challenge.challenges?.duration_days) {
+      const joinedDate = new Date(challenge.created_at);
+      const daysSinceJoined = Math.floor((currentDate - joinedDate) / (1000 * 60 * 60 * 24));
+      daysRemaining = challenge.challenges.duration_days - daysSinceJoined;
+      daysRemaining = Math.max(0, daysRemaining);
+    }
+
+    return {
+      ...challenge,
+      challenge_name: challenge.challenges?.name || null,
+      challenge_slug: challenge.challenges?.slug || null,
+      challenge_duration_days: challenge.challenges?.duration_days || null,
+      days_remaining: daysRemaining,
+      badge_id: challenge.badges?.badge_id || null,
+      badge_code: challenge.badges?.code || null,
+      badge_name: challenge.badges?.name || null,
+      badge_tier: challenge.badges?.tier || null,
+      badge_image_url: challenge.badges?.image_url || null,
+      badge_description: challenge.badges?.description || null,
+      // Remove the nested badges object for cleaner response
+      badges: undefined,
+      challenges: undefined
+    };
+  });
 };
 
 /**

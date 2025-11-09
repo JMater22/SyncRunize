@@ -13,21 +13,77 @@ import {
   IonCardContent,
   IonCardHeader,
   IonCardTitle,
+  IonSpinner,
+  IonToast,
 } from "@ionic/react";
+import { SavedRoutesApi } from "../services/saved-routes";
+import { Route } from "../services/routes";
+import { useUser } from "../contexts/UserContext";
+import { useHistory } from "react-router-dom";
 import "../theme/saved-routes.css";
 
 const SavedRoutes: React.FC = () => {
-  const [currentPosition, setCurrentPosition] = useState<GeolocationPosition | null>(null);
+  const { currentUser } = useUser();
+  const history = useHistory();
+  const [savedRoutes, setSavedRoutes] = useState<Route[]>([]);
+  const [filteredRoutes, setFilteredRoutes] = useState<Route[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastColor, setToastColor] = useState<'success' | 'danger'>('success');
 
   useEffect(() => {
-    // ✅ Try to get current location once
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => setCurrentPosition(position),
-        (error) => console.warn("Error getting location:", error)
-      );
+    if (currentUser) {
+      fetchSavedRoutes();
     }
-  }, []);
+  }, [currentUser]);
+
+  useEffect(() => {
+    // Filter routes based on search query
+    if (searchQuery.trim()) {
+      const filtered = savedRoutes.filter(route =>
+        route.route_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        route.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredRoutes(filtered);
+    } else {
+      setFilteredRoutes(savedRoutes);
+    }
+  }, [searchQuery, savedRoutes]);
+
+  const fetchSavedRoutes = async () => {
+    if (!currentUser) return;
+
+    try {
+      setLoading(true);
+      const routes = await SavedRoutesApi.getSavedRoutes(currentUser.user_id);
+      setSavedRoutes(Array.isArray(routes) ? routes : []);
+      setFilteredRoutes(Array.isArray(routes) ? routes : []);
+    } catch (err: any) {
+      console.error('Failed to fetch saved routes:', err);
+      setSavedRoutes([]);
+      setFilteredRoutes([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnsaveRoute = async (routeId: number) => {
+    try {
+      await SavedRoutesApi.unsaveRoute(routeId);
+      setToastMessage('Route removed from saved routes');
+      setToastColor('success');
+      setShowToast(true);
+      // Refresh the list
+      fetchSavedRoutes();
+    } catch (err: any) {
+      console.error('Failed to unsave route:', err);
+      setToastMessage(err.message || 'Failed to remove route');
+      setToastColor('danger');
+      setShowToast(true);
+    }
+  };
 
   return (
     <IonPage>
@@ -44,89 +100,94 @@ const SavedRoutes: React.FC = () => {
       {/* Main Content */}
       <IonContent>
         {/* Search Bar */}
-        <IonSearchbar placeholder="Search by keywords"></IonSearchbar>
+        <IonSearchbar
+          placeholder="Search saved routes"
+          value={searchQuery}
+          onIonInput={(e) => setSearchQuery(e.detail.value || '')}
+        />
 
-        {/* Route Card 1 */}
-        <IonCard className="route-card">
-          <div className="route-card-inner">
-            <IonCardHeader>
-              <IonCardTitle className="route-card-title">Capas Route</IonCardTitle>
-            </IonCardHeader>
-
-            <IonCardContent>
-              <div className="route-meta">
-                <span>5.21 km : 1h 12m</span>
-              </div>
-              <p className="route-location">Capas, Tarlac, Philippines</p>
-
-              <div className="route-buttons">
-                <IonButton size="small" color="success" className="route-action-btn">
-                  Save
-                </IonButton>
-                <IonButton
-                  size="small"
-                  color="success"
-                  disabled={!currentPosition}
-                  className="route-action-btn"
-                >
-                  From your location
-                </IonButton>
-              </div>
-            </IonCardContent>
-
-            <div className="route-map-container">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d27403.697792075374!2d120.58200860881004!3d15.48705054784102!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3396c63f4ab68e0d%3A0x13f9415d7a5bfd4b!2sTarlac%20City%2C%20Tarlac!5e0!3m2!1sen!2sph!4v1761910044713!5m2!1sen!2sph"
-                className="route-map-iframe"
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="Route Map 1"
-              ></iframe>
-            </div>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '32px' }}>
+            <IonSpinner name="crescent" />
+            <p style={{ marginTop: '16px', color: '#666' }}>Loading saved routes...</p>
           </div>
-        </IonCard>
-
-        {/* Route Card 2 */}
-        <IonCard className="route-card">
-          <div className="route-card-inner"> 
-            <IonCardHeader>
-              <IonCardTitle className="route-card-title">San Roque Route</IonCardTitle>
-            </IonCardHeader>
-
-            <IonCardContent>
-              <div className="route-meta">
-                <span>7.5 km : 1h 45m</span>
-              </div>
-              <p className="route-location">Tarlac City, Tarlac, Philippines</p>
-
-              <div className="route-buttons">
-                <IonButton size="small" color="success" className="route-action-btn">
-                  Save
-                </IonButton>
-                <IonButton
-                  size="small"
-                  color="success"
-                  disabled={!currentPosition}
-                  className="route-action-btn"
-                >
-                  From your location
-                </IonButton>
-              </div>
-            </IonCardContent>
-
-            <div className="route-map-container">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d27403.697792075374!2d120.58200860881004!3d15.48705054784102!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3396c63f4ab68e0d%3A0x13f9415d7a5bfd4b!2sTarlac%20City%2C%20Tarlac!5e0!3m2!1sen!2sph!4v1761910044713!5m2!1sen!2sph"
-                className="route-map-iframe"
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="Route Map 2"
-              ></iframe>
-            </div>
+        ) : !currentUser ? (
+          <div style={{ textAlign: 'center', padding: '32px' }}>
+            <p style={{ color: '#666' }}>Please log in to view saved routes.</p>
           </div>
-        </IonCard>
+        ) : filteredRoutes.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px' }}>
+            <p style={{ color: '#666' }}>
+              {searchQuery ? 'No saved routes found matching your search.' : 'No saved routes yet. Browse public routes to save your favorites!'}
+            </p>
+            <IonButton routerLink="/routes" style={{ marginTop: '16px' }}>
+              Browse Routes
+            </IonButton>
+          </div>
+        ) : (
+          filteredRoutes.map((route) => (
+            <IonCard key={route.route_id} className="route-card">
+              <div className="route-card-inner">
+                <IonCardHeader>
+                  <IonCardTitle className="route-card-title">{route.route_name}</IonCardTitle>
+                </IonCardHeader>
+
+                <IonCardContent>
+                  <div className="route-meta">
+                    <span>
+                      {route.distance_km.toFixed(2)} km : {Math.floor(route.duration_seconds / 60)}m {route.duration_seconds % 60}s
+                    </span>
+                    <span style={{ marginLeft: '8px', textTransform: 'capitalize' }}>
+                      • {route.route_type}
+                    </span>
+                  </div>
+                  {route.description && (
+                    <p className="route-location">{route.description}</p>
+                  )}
+
+                  <div className="route-buttons">
+                    <IonButton
+                      size="small"
+                      color="danger"
+                      className="route-action-btn"
+                      onClick={() => handleUnsaveRoute(route.route_id)}
+                    >
+                      Remove
+                    </IonButton>
+                    <IonButton
+                      size="small"
+                      color="success"
+                      className="route-action-btn"
+                      onClick={() => history.push(`/run-tracking`, { guidedRoute: route })}
+                    >
+                      Start Guided Run
+                    </IonButton>
+                  </div>
+                </IonCardContent>
+
+                {route.snapshot_url && (
+                  <div className="route-map-container">
+                    <img
+                      src={route.snapshot_url}
+                      alt={`${route.route_name} map`}
+                      className="route-map-iframe"
+                      style={{ objectFit: 'cover' }}
+                    />
+                  </div>
+                )}
+              </div>
+            </IonCard>
+          ))
+        )}
+
+        <IonToast
+          isOpen={showToast}
+          onDidDismiss={() => setShowToast(false)}
+          message={toastMessage}
+          duration={2000}
+          position="top"
+          color={toastColor}
+        />
       </IonContent>
     </IonPage>
   );

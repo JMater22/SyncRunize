@@ -44,6 +44,7 @@ import TenKBeginner from "../assets/10K Beginner.jpg";
 
 
 import "../components/UserProfile/UserProfile.css";
+import { DEFAULT_AVATAR } from "../constants/avatar";
 import { supabase } from "../supabaseClient";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
@@ -122,6 +123,22 @@ const Profile: React.FC = () => {
   const [isEditPostModalOpen, setIsEditPostModalOpen] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [postToDelete, setPostToDelete] = useState<number | null>(null);
+
+  // Likes modal state
+  const [isLikesModalOpen, setIsLikesModalOpen] = useState(false);
+  const [selectedPostLikers, setSelectedPostLikers] = useState<any[]>([]);
+  const [loadingLikers, setLoadingLikers] = useState(false);
+
+  // Comments modal state
+  const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
+  const [selectedPostComments, setSelectedPostComments] = useState<any[]>([]);
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+  const [loadingComments, setLoadingComments] = useState(false);
+
+  // Badge history modal state
+  const [isBadgeHistoryModalOpen, setIsBadgeHistoryModalOpen] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
+
   const location = useLocation();
 
   // Switch profile tab based on query param ?tab=badges|challenges|activities|posts
@@ -140,7 +157,7 @@ const Profile: React.FC = () => {
   const [profileData, setProfileData] = useState({
     Name: "",
     description: "",
-    profilePic: "https://ionicframework.com/docs/img/demos/avatar.svg"
+    profilePic: DEFAULT_AVATAR
   });
 
   // Full user data for settings
@@ -269,7 +286,7 @@ useEffect(() => {
         setProfileData({
           Name: "",
           description: "",
-          profilePic: "https://ionicframework.com/docs/img/demos/avatar.svg"
+          profilePic: DEFAULT_AVATAR
         });
         setCurrentUserId(null);
         setFollowersData([]);
@@ -290,7 +307,7 @@ useEffect(() => {
       setProfileData({
         Name: user.name || "Unknown User",
         description: user.description || "",
-        profilePic: user.profile_picture || "https://ionicframework.com/docs/img/demos/avatar.svg",
+        profilePic: user.profile_picture || DEFAULT_AVATAR,
       });
       console.log(user.description);
       // Fetch both counts at once (more efficient!)
@@ -317,7 +334,7 @@ useEffect(() => {
         id: follower.follower_id,
         name: follower.username,
         username: `@${follower.username.toLowerCase()}`,
-        avatar: follower.profile_picture,
+        avatar: follower.profile_picture || DEFAULT_AVATAR,
         isFollowing: follower.isFollowedBack
       }));
 
@@ -326,7 +343,7 @@ useEffect(() => {
         id: following.followed_id,
         name: following.username,
         username: `@${following.username.toLowerCase()}`,
-        avatar: following.profile_picture,
+        avatar: following.profile_picture || DEFAULT_AVATAR,
       }));
 
       // Save to state
@@ -359,23 +376,49 @@ useEffect(() => {
   const fetchEarnedBadges = async (userId: number, token: string) => {
     try {
       setLoadingBadges(true);
-      
+
       const { data: response } = await axios.get(
         `${import.meta.env.VITE_API_URL}/routes/badges/${userId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       // Filter only completed challenges with badges
-      const badges = response.data
-        .filter((challenge: any) => challenge.completed && challenge.badge_image_url)
-        .map((challenge: any) => ({
-          title: challenge.badge_name || "Badge",
-          description: challenge.badge_description || "Achievement unlocked",
-          tier: challenge.badge_tier || "Bronze",
-          earned: true,
-          date: new Date(challenge.updated_at).toLocaleDateString(),
-          image: challenge.badge_image_url
-        }));
+      const completedChallenges = response.data
+        .filter((challenge: any) => challenge.completed && challenge.badge_image_url);
+
+      // Group badges by badge_name to avoid duplicates
+      const badgeGroups = completedChallenges.reduce((acc: any, challenge: any) => {
+        const badgeName = challenge.badge_name || "Badge";
+
+        if (!acc[badgeName]) {
+          acc[badgeName] = {
+            title: badgeName,
+            description: challenge.badge_description || "Achievement unlocked",
+            tier: challenge.badge_tier || "Bronze",
+            earned: true,
+            image: challenge.badge_image_url,
+            challenges: []
+          };
+        }
+
+        // Add this challenge to the badge's history
+        acc[badgeName].challenges.push({
+          challenge_name: challenge.challenge_name || "Challenge",
+          completed_date: new Date(challenge.updated_at).toLocaleDateString(),
+          updated_at: challenge.updated_at
+        });
+
+        return acc;
+      }, {});
+
+      // Convert to array and sort challenges by date (most recent first)
+      const badges = Object.values(badgeGroups).map((badge: any) => ({
+        ...badge,
+        count: badge.challenges.length,
+        challenges: badge.challenges.sort((a: any, b: any) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        )
+      }));
 
       setEarnedBadges(badges);
       setLoadingBadges(false);
@@ -556,6 +599,7 @@ const handleSavePostEdit = async () => {
       `${import.meta.env.VITE_API_URL}/posts/${editingPost.post_id}`,
       {
         content: editingPost.content,
+        route_name: editingPost.route_name,
         visibility: editingPost.visibility
       },
       {
@@ -662,6 +706,58 @@ const openDeleteConfirmation = (postId: number) => {
   setPostToDelete(postId);
   setShowDeleteAlert(true);
 };
+
+// Handle viewing likes
+const handleViewLikes = async (postId: number) => {
+  try {
+    setLoadingLikers(true);
+    setIsLikesModalOpen(true);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_URL}/likes/${postId}/users`,
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      }
+    );
+
+    setSelectedPostLikers(Array.isArray(response.data) ? response.data : []);
+  } catch (error) {
+    console.error("Error fetching likers:", error);
+    setSelectedPostLikers([]);
+  } finally {
+    setLoadingLikers(false);
+  }
+};
+
+// Handle viewing comments
+const handleViewComments = async (postId: number) => {
+  try {
+    setLoadingComments(true);
+    setSelectedPostId(postId);
+    setIsCommentsModalOpen(true);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_URL}/comments/${postId}`,
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      }
+    );
+
+    setSelectedPostComments(Array.isArray(response.data) ? response.data : []);
+  } catch (error) {
+    console.error("Error fetching comments:", error);
+    setSelectedPostComments([]);
+  } finally {
+    setLoadingComments(false);
+  }
+};
+
 
 
     const handleFollowToggle = async (targetUserId: number) => {
@@ -813,7 +909,7 @@ const handleSaveProfile = async () => {
       setProfileData({
         Name: "",
         description: "",
-        profilePic: "https://ionicframework.com/docs/img/demos/avatar.svg"
+        profilePic: DEFAULT_AVATAR
       });
       setCurrentUserId(null);
       setUserRoutes([]);
@@ -1072,14 +1168,40 @@ const handleSaveProfile = async () => {
                   ) : (
                     <div className="badges-grid">
                       {earnedBadges.map((badge, i) => (
-                        <IonCard key={i} className={`badge-card-modern ${!badge.earned ? 'locked' : ''}`}>
+                        <IonCard
+                          key={i}
+                          className={`badge-card-modern ${!badge.earned ? 'locked' : ''}`}
+                          onClick={() => {
+                            setSelectedBadge(badge);
+                            setIsBadgeHistoryModalOpen(true);
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        >
                           <div className={`badge-glow ${badge.tier.toLowerCase()}`}></div>
                           <IonImg src={badge.image} alt={badge.title} className="badge-image" />
+
+                          {/* Count indicator - only show if earned 2 or more times */}
+                          {badge.count > 1 && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '10px',
+                              right: '10px',
+                              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                              color: 'white',
+                              borderRadius: '12px',
+                              padding: '4px 10px',
+                              fontSize: '13px',
+                              fontWeight: 'bold'
+                            }}>
+                              ×{badge.count}
+                            </div>
+                          )}
+
                           <IonCardContent>
                             <h4 className="badge-title">{badge.title}</h4>
                             <p className="badge-description">{badge.description}</p>
                             <div className={`badge-earned ${!badge.earned ? 'locked-text' : ''}`}>
-                              Earned {badge.date}
+                              {badge.count > 1 ? `Earned ${badge.count} times` : `Earned`}
                             </div>
                           </IonCardContent>
                         </IonCard>
@@ -1118,7 +1240,18 @@ const handleSaveProfile = async () => {
                               <IonCardContent>
                                 <h4 className="challenge-title">{challenge.challenge_name}</h4>
                                 <p className="challenge-target">{challenge.challenge_description}</p>
-                                <p className="challenge-duration">{challenge.challenge_duration_days} days</p>
+                                {challenge.days_remaining !== null && challenge.days_remaining !== undefined ? (
+                                  <p className="challenge-duration" style={{
+                                    color: challenge.days_remaining <= 3 ? '#eb445a' : 'inherit',
+                                    fontWeight: challenge.days_remaining <= 3 ? 600 : 'normal'
+                                  }}>
+                                    {challenge.days_remaining === 0 ? 'Last day!' :
+                                     challenge.days_remaining === 1 ? '1 day remaining' :
+                                     `${challenge.days_remaining} days remaining`}
+                                  </p>
+                                ) : (
+                                  <p className="challenge-duration">{challenge.challenge_duration_days} days</p>
+                                )}
                               </IonCardContent>
                             </IonCard>
                           ))
@@ -1215,26 +1348,38 @@ const handleSaveProfile = async () => {
 
                               {/* Stats (if route-based post) */}
                               {post.route_id && (
-                                <div className="activity-stats-row">
-                                  <div className="activity-stat">
-                                    <IonIcon icon={locationOutline} />
-                                    <strong>{post.distance_km?.toFixed(1)} km</strong>
-                                    <span>Distance</span>
-                                  </div>
-                                  <div className="activity-stat">
-                                    <IonIcon icon={timeOutline} />
-                                    <strong>{formatDuration(post.duration_seconds)}</strong>
-                                    <span>Time</span>
-                                  </div>
-                                  <div className="activity-stat">
-                                    <IonIcon icon={speedometerOutline} />
-                                    <strong>{post.average_pace || 'N/A'}</strong>
-                                    <span>Pace</span>
-                                  </div>
-                                  <div className="activity-stat">
-                                    <IonIcon icon={flameIcon} />
-                                    <strong>{post.estimated_calories || 'N/A'}</strong>
-                                    <span>Calories</span>
+                                <div style={{
+                                  backgroundColor: '#f5f5f5',
+                                  padding: '12px',
+                                  borderRadius: '8px',
+                                  marginBottom: '12px'
+                                }}>
+                                  {post.route_name && (
+                                    <h4 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600 }}>
+                                      {post.route_name}
+                                    </h4>
+                                  )}
+                                  <div className="activity-stats-row">
+                                    <div className="activity-stat">
+                                      <IonIcon icon={locationOutline} />
+                                      <strong>{post.distance_km?.toFixed(1)} km</strong>
+                                      <span>Distance</span>
+                                    </div>
+                                    <div className="activity-stat">
+                                      <IonIcon icon={timeOutline} />
+                                      <strong>{formatDuration(post.duration_seconds)}</strong>
+                                      <span>Time</span>
+                                    </div>
+                                    <div className="activity-stat">
+                                      <IonIcon icon={speedometerOutline} />
+                                      <strong>{post.average_pace || 'N/A'}</strong>
+                                      <span>Pace</span>
+                                    </div>
+                                    <div className="activity-stat">
+                                      <IonIcon icon={flameIcon} />
+                                      <strong>{post.estimated_calories || 'N/A'}</strong>
+                                      <span>Calories</span>
+                                    </div>
                                   </div>
                                 </div>
                               )}
@@ -1256,13 +1401,19 @@ const handleSaveProfile = async () => {
                                 fontSize: '14px',
                                 color: '#666'
                               }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <div
+                                  style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+                                  onClick={() => handleViewLikes(post.post_id)}
+                                >
                                   <IonIcon icon={heartOutline} />
-                                  <span>{post.likes_count || 0} Likes</span>
+                                  <span style={{ textDecoration: 'underline' }}>{post.likes_count || 0} Likes</span>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <div
+                                  style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+                                  onClick={() => handleViewComments(post.post_id)}
+                                >
                                   <IonIcon icon={chatbubbleEllipses} />
-                                  <span>{post.comments_count || 0} Comments</span>
+                                  <span style={{ textDecoration: 'underline' }}>{post.comments_count || 0} Comments</span>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
                                   <IonIcon icon={post.visibility === 'public' ? eyeOutline : lockClosedOutline} />
@@ -1564,6 +1715,19 @@ const handleSaveProfile = async () => {
             <div className="edit-form-container">
               {/* Form Fields */}
               <div className="edit-form-fields">
+                <IonItem className="edit-form-item">
+                  <IonLabel position="stacked">Title / Activity Name</IonLabel>
+                  <IonInput
+                    value={editingPost?.route_name || ''}
+                    onIonInput={(e) => setEditingPost({
+                      ...editingPost,
+                      route_name: e.detail.value!
+                    })}
+                    placeholder="Enter activity title..."
+                    className="edit-input"
+                  />
+                </IonItem>
+
                 <IonItem className="edit-form-item description-item">
                   <IonLabel position="stacked">Post Content</IonLabel>
                   <IonTextarea
@@ -1653,6 +1817,228 @@ const handleSaveProfile = async () => {
             }
           ]}
         />
+
+        {/* Likes Modal */}
+        <IonModal
+          isOpen={isLikesModalOpen}
+          onDidDismiss={() => {
+            setIsLikesModalOpen(false);
+            setSelectedPostLikers([]);
+          }}
+          className="followers-modal"
+        >
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Likes</IonTitle>
+              <IonButton
+                slot="end"
+                fill="clear"
+                onClick={() => {
+                  setIsLikesModalOpen(false);
+                  setSelectedPostLikers([]);
+                }}
+              >
+                <IonIcon icon={close} />
+              </IonButton>
+            </IonToolbar>
+          </IonHeader>
+
+          <IonContent className="followers-modal-content">
+            {loadingLikers ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+                <IonSpinner name="crescent" />
+              </div>
+            ) : selectedPostLikers.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+                No likes yet
+              </div>
+            ) : (
+              <div className="followers-list">
+                {selectedPostLikers.map((liker) => (
+                  <div key={liker.user_id} className="follower-item">
+                    <div className="follower-avatar-container">
+                      <IonImg
+                        src={liker.profile_picture || DEFAULT_AVATAR}
+                        alt={liker.name}
+                        className="follower-avatar"
+                      />
+                    </div>
+                    <div className="follower-info">
+                      <h4 className="follower-name">{liker.name}</h4>
+                      <p className="follower-username">@{liker.username}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </IonContent>
+        </IonModal>
+
+        {/* Comments Modal */}
+        <IonModal
+          isOpen={isCommentsModalOpen}
+          onDidDismiss={() => {
+            setIsCommentsModalOpen(false);
+            setSelectedPostComments([]);
+            setSelectedPostId(null);
+          }}
+          className="edit-profile-modal"
+        >
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Comments</IonTitle>
+              <IonButton
+                slot="end"
+                fill="clear"
+                onClick={() => {
+                  setIsCommentsModalOpen(false);
+                  setSelectedPostComments([]);
+                  setSelectedPostId(null);
+                }}
+              >
+                <IonIcon icon={close} />
+              </IonButton>
+            </IonToolbar>
+          </IonHeader>
+
+          <IonContent className="edit-modal-content">
+            <div className="edit-form-container">
+              {/* Comments List - Read Only */}
+              {loadingComments ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+                  <IonSpinner name="crescent" />
+                </div>
+              ) : selectedPostComments.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+                  No comments yet.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  {selectedPostComments.map((comment) => (
+                    <div
+                      key={comment.comment_id}
+                      style={{
+                        padding: '15px',
+                        backgroundColor: '#f5f5f5',
+                        borderRadius: '8px',
+                        position: 'relative'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                        <IonAvatar style={{ width: '40px', height: '40px', minWidth: '40px' }}>
+                          <IonImg src={comment.profile_picture || DEFAULT_AVATAR} />
+                        </IonAvatar>
+                        <div style={{ flex: 1 }}>
+                          <div>
+                            <strong style={{ fontSize: '14px' }}>{comment.name}</strong>
+                            <span style={{ color: '#666', fontSize: '12px', marginLeft: '8px' }}>
+                              @{comment.username}
+                            </span>
+                          </div>
+                          <p style={{ margin: '8px 0 0 0', fontSize: '14px' }}>{comment.content}</p>
+                          <span style={{ fontSize: '12px', color: '#999', marginTop: '4px', display: 'block' }}>
+                            {new Date(comment.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </IonContent>
+        </IonModal>
+
+        {/* Badge History Modal */}
+        <IonModal
+          isOpen={isBadgeHistoryModalOpen}
+          onDidDismiss={() => {
+            setIsBadgeHistoryModalOpen(false);
+            setSelectedBadge(null);
+          }}
+          className="edit-profile-modal"
+        >
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Badge History</IonTitle>
+              <IonButton
+                slot="end"
+                fill="clear"
+                onClick={() => {
+                  setIsBadgeHistoryModalOpen(false);
+                  setSelectedBadge(null);
+                }}
+              >
+                <IonIcon icon={close} />
+              </IonButton>
+            </IonToolbar>
+          </IonHeader>
+
+          <IonContent className="edit-modal-content">
+            <div className="edit-form-container">
+              {selectedBadge && (
+                <>
+                  {/* Badge Details */}
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    padding: '20px',
+                    borderBottom: '1px solid #e0e0e0',
+                    marginBottom: '20px'
+                  }}>
+                    <IonImg
+                      src={selectedBadge.image}
+                      alt={selectedBadge.title}
+                      style={{ width: '120px', height: '120px', marginBottom: '15px' }}
+                    />
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 'bold' }}>
+                      {selectedBadge.title}
+                    </h3>
+                    <p style={{ margin: '0', color: '#666', textAlign: 'center' }}>
+                      {selectedBadge.description}
+                    </p>
+                    <div style={{ marginTop: '10px', fontSize: '14px', color: '#999' }}>
+                      Earned {selectedBadge.count} {selectedBadge.count === 1 ? 'time' : 'times'}
+                    </div>
+                  </div>
+
+                  {/* Challenge History */}
+                  <div style={{ padding: '0 20px 20px 20px' }}>
+                    <h4 style={{ marginBottom: '15px', fontSize: '16px', fontWeight: 'bold' }}>
+                      Challenges Completed
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {selectedBadge.challenges.map((challenge: any, index: number) => (
+                        <div
+                          key={index}
+                          style={{
+                            padding: '15px',
+                            backgroundColor: '#f5f5f5',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '4px' }}>
+                              {challenge.challenge_name}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#666' }}>
+                              Completed: {challenge.completed_date}
+                            </div>
+                          </div>
+                          <IonIcon icon={checkmark} style={{ color: '#4CAF50', fontSize: '24px' }} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </IonContent>
+        </IonModal>
 
         {/* Settings Modal */}
         <Settings

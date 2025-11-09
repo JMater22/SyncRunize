@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   IonPage,
   IonHeader,
@@ -7,7 +7,6 @@ import {
   IonContent,
   IonItem,
   IonLabel,
-  IonInput,
   IonTextarea,
   IonButton,
   IonButtons,
@@ -15,17 +14,55 @@ import {
   IonImg,
   IonIcon,
   IonToast,
+  IonSelect,
+  IonSelectOption,
+  IonSpinner,
+  IonToggle,
 } from "@ionic/react";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { imageOutline, closeCircle } from "ionicons/icons";
+import { useHistory } from "react-router-dom";
+import { usePosts } from "../contexts/PostsContext";
+import { useUser } from "../contexts/UserContext";
+import { RoutesApi, Route } from "../services/routes";
+import { formatDistance, formatDuration } from "../lib/utils";
 import "../theme/Create-Post.css";
 
 const CreatePost: React.FC = () => {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const history = useHistory();
+  const { currentUser } = useUser();
+  const { createPost } = usePosts();
+
+  const [content, setContent] = useState("");
   const [image, setImage] = useState<string | null>(null);
+  const [selectedRouteId, setSelectedRouteId] = useState<number | undefined>(undefined);
+  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
+  const [completedRoutes, setCompletedRoutes] = useState<Route[]>([]);
+  const [loadingRoutes, setLoadingRoutes] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [toastColor, setToastColor] = useState<'success' | 'danger' | 'warning'>('success');
+
+  useEffect(() => {
+    fetchCompletedRoutes();
+  }, [currentUser]);
+
+  const fetchCompletedRoutes = async () => {
+    if (!currentUser) return;
+
+    try {
+      setLoadingRoutes(true);
+      const routes = await RoutesApi.getUserRoutes(currentUser.user_id, true);
+      // Filter only completed routes
+      const completed = routes.filter(r => r.route_status === 'completed');
+      setCompletedRoutes(completed);
+    } catch (error: any) {
+      console.error("Failed to fetch routes:", error);
+    } finally {
+      setLoadingRoutes(false);
+    }
+  };
 
   // Take or pick a photo
   const handleAddPhoto = async () => {
@@ -42,28 +79,49 @@ const CreatePost: React.FC = () => {
       }
     } catch (error) {
       console.error("Camera error:", error);
-      showToastMessage("Failed to select photo.");
+      showToastMessage("Failed to select photo.", 'danger');
     }
   };
 
   const handleRemovePhoto = () => setImage(null);
 
-  const handleCreatePost = () => {
-    if (!title.trim() || !description.trim()) {
-      return showToastMessage("Please fill in all fields before posting.");
+  const handleCreatePost = async () => {
+    // Validation: Must have either content or a route
+    if (!content.trim() && !selectedRouteId) {
+      return showToastMessage("Please add a caption or select a completed route.", 'warning');
     }
 
-    console.log("Post created:", { title, description, image });
-    showToastMessage("Post created successfully!");
-    setTitle("");
-    setDescription("");
-    setImage(null);
+    try {
+      setSubmitting(true);
+      await createPost(content.trim() || undefined, selectedRouteId, visibility);
+
+      showToastMessage("Post created successfully!", 'success');
+
+      // Reset form
+      setContent("");
+      setImage(null);
+      setSelectedRouteId(undefined);
+      setVisibility('public');
+
+      // Navigate back to community feed after a short delay
+      setTimeout(() => {
+        history.push('/community');
+      }, 1500);
+    } catch (error: any) {
+      console.error("Failed to create post:", error);
+      showToastMessage(error.message || "Failed to create post. Please try again.", 'danger');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const showToastMessage = (message: string) => {
+  const showToastMessage = (message: string, color: 'success' | 'danger' | 'warning' = 'success') => {
     setToastMessage(message);
+    setToastColor(color);
     setShowToast(true);
   };
+
+  const selectedRoute = completedRoutes.find(r => r.route_id === selectedRouteId);
 
   return (
     <IonPage className="create-post-page">
@@ -77,33 +135,62 @@ const CreatePost: React.FC = () => {
       </IonHeader>
 
       <IonContent className="ion-padding">
-        {/* Title Field */}
+        {/* Caption/Content Field */}
         <IonItem>
-          <IonLabel position="stacked">Title</IonLabel>
-          <IonInput
-            value={title}
-            onIonInput={(e) => setTitle(e.detail.value ?? "")}
-            placeholder="Enter post title"
+          <IonLabel position="stacked">Caption</IonLabel>
+          <IonTextarea
+            value={content}
+            onIonInput={(e) => setContent(e.detail.value ?? "")}
+            placeholder="Share your thoughts about this run..."
+            rows={4}
+            disabled={submitting}
           />
         </IonItem>
 
-        {/* Description Field */}
+        {/* Route Selection */}
         <IonItem>
-          <IonLabel position="stacked">Description</IonLabel>
-          <IonTextarea
-            value={description}
-            onIonInput={(e) => setDescription(e.detail.value ?? "")}
-            placeholder="Write something interesting..."
-            rows={6}
-          />
+          <IonLabel position="stacked">Attach Completed Route (Optional)</IonLabel>
+          <IonSelect
+            value={selectedRouteId}
+            placeholder="Select a route"
+            onIonChange={(e) => setSelectedRouteId(e.detail.value)}
+            disabled={loadingRoutes || submitting}
+          >
+            <IonSelectOption value={undefined}>None</IonSelectOption>
+            {completedRoutes.map((route) => (
+              <IonSelectOption key={route.route_id} value={route.route_id}>
+                {route.route_name} - {formatDistance(route.distance_km)} ({formatDuration(route.duration_seconds)})
+              </IonSelectOption>
+            ))}
+          </IonSelect>
         </IonItem>
+
+        {loadingRoutes && (
+          <div className="ion-text-center ion-padding">
+            <IonSpinner name="crescent" />
+            <p>Loading your routes...</p>
+          </div>
+        )}
+
+        {/* Selected Route Preview */}
+        {selectedRoute && (
+          <div style={{ margin: '16px 0', padding: '12px', backgroundColor: 'var(--ion-color-light)', borderRadius: '8px' }}>
+            <p style={{ margin: '4px 0', fontWeight: 'bold' }}>{selectedRoute.route_name}</p>
+            <p style={{ margin: '4px 0', fontSize: '14px' }}>
+              Distance: {formatDistance(selectedRoute.distance_km)} | Duration: {formatDuration(selectedRoute.duration_seconds)}
+            </p>
+            {selectedRoute.average_pace && (
+              <p style={{ margin: '4px 0', fontSize: '14px' }}>Pace: {selectedRoute.average_pace}</p>
+            )}
+          </div>
+        )}
 
         {/* Image Upload Section */}
-        <div className="image-upload-section">
+        <div className="image-upload-section" style={{ margin: '16px 0' }}>
           {!image ? (
-            <IonButton expand="block" fill="outline" onClick={handleAddPhoto}>
+            <IonButton expand="block" fill="outline" onClick={handleAddPhoto} disabled={submitting}>
               <IonIcon slot="start" icon={imageOutline} />
-              Add Image
+              Add Image (Optional)
             </IonButton>
           ) : (
             <div className="preview-container">
@@ -112,6 +199,7 @@ const CreatePost: React.FC = () => {
                 fill="clear"
                 className="remove-image-btn"
                 onClick={handleRemovePhoto}
+                disabled={submitting}
               >
                 <IonIcon icon={closeCircle} color="light" style={{ fontSize: "32px" }} />
               </IonButton>
@@ -119,9 +207,35 @@ const CreatePost: React.FC = () => {
           )}
         </div>
 
+        {/* Visibility Toggle */}
+        <IonItem>
+          <IonLabel>Make post private</IonLabel>
+          <IonToggle
+            checked={visibility === 'private'}
+            onIonChange={(e) => setVisibility(e.detail.checked ? 'private' : 'public')}
+            disabled={submitting}
+          />
+        </IonItem>
+        <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)', margin: '4px 16px 16px' }}>
+          {visibility === 'private'
+            ? 'Only you can see this post'
+            : 'Visible to all your followers'}
+        </p>
+
         {/* Create Post Button */}
-        <IonButton expand="block" onClick={handleCreatePost}>
-          Create Post
+        <IonButton
+          expand="block"
+          onClick={handleCreatePost}
+          disabled={submitting || (!content.trim() && !selectedRouteId)}
+        >
+          {submitting ? (
+            <>
+              <IonSpinner name="crescent" style={{ marginRight: '8px' }} />
+              Creating...
+            </>
+          ) : (
+            'Create Post'
+          )}
         </IonButton>
 
         {/* Toast Notification */}
@@ -129,6 +243,8 @@ const CreatePost: React.FC = () => {
           isOpen={showToast}
           message={toastMessage}
           duration={2000}
+          position="top"
+          color={toastColor}
           onDidDismiss={() => setShowToast(false)}
         />
       </IonContent>

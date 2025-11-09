@@ -88,7 +88,7 @@ interface UserSearchResult {
 }
 
 // Placeholder images
-import ProfilePic from "../assets/Profile Picture.png";
+import { DEFAULT_AVATAR } from "../constants/avatar";
 import Couch5K from "../assets/Couch to 5K.jpg";
 import SevenDayStarter from "../assets/The 7-Day Starter.jpg";
 import ThreeTimesAWeek from "../assets/Three Times a Week.jpg";
@@ -566,7 +566,7 @@ const Home: React.FC = () => {
     return (
       <CreatePostPage
         userName={currentUser?.name || 'User'}
-        userAvatar={currentUser?.profile_picture || ProfilePic}
+        userAvatar={currentUser?.profile_picture || DEFAULT_AVATAR}
         onClose={() => setShowCreatePostPage(false)}
         onSubmit={handlePostSubmit}
       />
@@ -582,18 +582,14 @@ const Home: React.FC = () => {
             <IonCard className="profile-card-enhanced">
               <div className="profile-card-header">
                 <IonAvatar className="profile-avatar-large">
-                  {currentUser?.profile_picture ? (
-                    <img src={currentUser.profile_picture} alt="Profile" />
-                  ) : (
-                    <IonIcon icon={person} style={{ fontSize: '64px', color: '#92C628' }} />
-                  )}
+                  <img src={currentUser?.profile_picture || DEFAULT_AVATAR} alt="Profile" />
                 </IonAvatar>
                 
               </div>
 
               <IonCardContent className="profile-card-content">
                 <h2 className="profile-name">{currentUser?.name || 'Loading...'}</h2>
-                <p className="profile-handle">@{currentUser?.username || 'username'}</p>
+                <p className="profile-handle">{currentUser?.username || 'username'}</p>
 
                 <div className="profile-stats-grid">
                   <div className="stat-item">
@@ -682,19 +678,15 @@ const Home: React.FC = () => {
                             style={{ width: '50px', height: '50px', marginRight: '12px', cursor: 'pointer' }}
                             onClick={() => handleViewProfile(user.user_id)}
                           >
-                            {user.profile_picture ? (
-                              <img src={user.profile_picture} alt={user.name} />
-                            ) : (
-                              <IonIcon icon={person} style={{ fontSize: '32px', color: '#92C628' }} />
-                            )}
-                          </IonAvatar>
+                          <img src={user.profile_picture || DEFAULT_AVATAR} alt={user.name} />
+                        </IonAvatar>
 
                           <div
                             style={{ flex: 1, cursor: 'pointer' }}
                             onClick={() => handleViewProfile(user.user_id)}
                           >
                             <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{user.name}</div>
-                            <div style={{ color: '#666', fontSize: '14px' }}>@{user.username}</div>
+                            <div style={{ color: '#666', fontSize: '14px' }}>{user.username}</div>
                             {user.location && (
                               <div style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>
                                 <IonIcon icon={locationOutline} style={{ fontSize: '12px', marginRight: '4px' }} />
@@ -742,7 +734,7 @@ const Home: React.FC = () => {
                         {post.author_avatar ? (
                           <img src={post.author_avatar} alt="Profile" />
                         ) : (
-                          <IonIcon icon={person} style={{ fontSize: '32px', color: '#92C628' }} />
+                          <img src={DEFAULT_AVATAR} alt="Profile" />
                         )}
                       </IonAvatar>
                       <div className="activity-user-info">
@@ -751,7 +743,7 @@ const Home: React.FC = () => {
                           style={{ cursor: 'pointer' }}
                           onClick={() => handleViewProfile(post.user_id)}
                         >
-                          {post.author_name} <span className="activity-handle">@{post.author_username}</span>
+                          {post.author_name} <span className="activity-handle">{post.author_username}</span>
                         </h3>
                         <div className="activity-meta">
                           <span className="activity-time">{formatRelativeTime(post.created_at)}</span> • {new Date(post.created_at).toLocaleDateString()}
@@ -846,11 +838,7 @@ const Home: React.FC = () => {
                                 style={{ cursor: 'pointer' }}
                                 onClick={() => handleViewProfile(comment.user_id)}
                               >
-                                {comment.profile_picture ? (
-                                  <img src={comment.profile_picture} alt={comment.username} />
-                                ) : (
-                                  <IonIcon icon={person} style={{ fontSize: '24px', color: '#92C628' }} />
-                                )}
+                              <img src={comment.profile_picture || DEFAULT_AVATAR} alt={comment.username} />
                               </IonAvatar>
                               <div className="comment-content">
                                 <div className="comment-header">
@@ -869,11 +857,7 @@ const Home: React.FC = () => {
                           ))}
                           <div className="add-comment">
                             <IonAvatar className="comment-avatar">
-                              {currentUser?.profile_picture ? (
-                                <img src={currentUser.profile_picture} alt="You" />
-                              ) : (
-                                <IonIcon icon={person} style={{ fontSize: '24px', color: '#92C628' }} />
-                              )}
+                            <img src={currentUser?.profile_picture || DEFAULT_AVATAR} alt="You" />
                             </IonAvatar>
                             <IonInput
                               placeholder="Add a comment..."

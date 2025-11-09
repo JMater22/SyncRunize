@@ -15,7 +15,11 @@ import {
   IonToast,
   IonBadge,
   IonRefresher,
-  IonRefresherContent
+  IonRefresherContent,
+  IonSegment,
+  IonSegmentButton,
+  IonSpinner,
+  IonBackButton
 } from "@ionic/react";
 import {
   arrowBack,
@@ -24,10 +28,13 @@ import {
   arrowDownOutline
 } from "ionicons/icons";
 import { RefresherEventDetail } from '@ionic/core';
+import { useParams } from "react-router-dom";
 import '../theme/leaderboards.css';
 import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
 import { usePushNotifications } from "../components/push-notification";
 import { PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
+import { GroupsApi, LeaderboardEntry } from "../services/groups";
+import { getAvatarUrl } from "../lib/utils";
 
 interface LeaderboardUser {
   rank: number;
@@ -39,24 +46,61 @@ interface LeaderboardUser {
 }
 
 const Leaderboard: React.FC = () => {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([
-    { rank: 1, name: "Raen Jun", weekly: "12.5 km this week", total: "103 km" },
-    { rank: 2, name: "Jon Meyu", weekly: "10.5 km this week", total: "92 km" },
-    { rank: 3, name: "Alma Tars", weekly: "7.5 km this week", total: "83 km" },
-    { rank: 4, name: "Ji Anne", weekly: "4.5 km this week", total: "75 km" },
-    { rank: 5, name: "Ian", weekly: "12.5 km this week", total: "73 km" },
-    { rank: 6, name: "Jon", weekly: "10.5 km this week", total: "62 km" },
-    { rank: 7, name: "Mary", weekly: "7.5 km this week", total: "53 km" },
-    { rank: 8, name: "Arielle", weekly: "4.5 km this week", total: "43 km" },
-    { rank: 9, name: "Ian", weekly: "12.5 km this week", total: "23 km" },
-    { rank: 10, name: "Jon", weekly: "7.5 km this week", total: "22 km" }
-  ]);
+  const { groupId } = useParams<{ groupId: string }>();
 
+  // Backend state
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [weekFilter, setWeekFilter] = useState<'current' | 'last'>('current');
+  const [groupName, setGroupName] = useState<string>('Group');
+
+  // Legacy state for backward compatibility
+  const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
+
+  // UI state
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-  const [toastColor, setToastColor] = useState<string>("primary");
+  const [toastColor, setToastColor] = useState<string | "success" | "danger" | "primary">("primary");
   const [updatesCount, setUpdatesCount] = useState(0);
   const [highlightedRank, setHighlightedRank] = useState<number | null>(null);
+
+  // Fetch leaderboard data on mount and when week filter changes
+  useEffect(() => {
+    if (groupId) {
+      fetchLeaderboard();
+      fetchGroupInfo();
+    }
+  }, [groupId, weekFilter]);
+
+  const fetchGroupInfo = async () => {
+    if (!groupId) return;
+
+    try {
+      const group = await GroupsApi.getGroup(parseInt(groupId));
+      setGroupName(group.name);
+    } catch (err: any) {
+      console.error('Failed to fetch group info:', err);
+    }
+  };
+
+  const fetchLeaderboard = async () => {
+    if (!groupId) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const data = await GroupsApi.getLeaderboard(parseInt(groupId), weekFilter);
+      setLeaderboardData(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      console.error('Failed to fetch leaderboard:', err);
+      setError(err.message || 'Failed to load leaderboard');
+      setLeaderboardData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Initialize push notifications
   usePushNotifications({
@@ -142,20 +186,19 @@ const Leaderboard: React.FC = () => {
     }
   });
 
-  const handleRefresh = (event: CustomEvent<RefresherEventDetail>) => {
+  const handleRefresh = async (event: CustomEvent<RefresherEventDetail>) => {
     console.log("Refreshing leaderboard...");
-    
-    // Simulate fetching updated leaderboard data
-    setTimeout(() => {
-      // Clear new flags
-      setLeaderboard(prev => prev.map(user => ({ ...user, isNew: false, previousRank: undefined })));
-      setUpdatesCount(0);
-      event.detail.complete();
-      
-      setToastMessage("Leaderboard updated!");
-      setToastColor("success");
-      setShowToast(true);
-    }, 1500);
+
+    await fetchLeaderboard();
+
+    // Clear new flags
+    setLeaderboard(prev => prev.map(user => ({ ...user, isNew: false, previousRank: undefined })));
+    setUpdatesCount(0);
+    event.detail.complete();
+
+    setToastMessage("Leaderboard updated!");
+    setToastColor("success");
+    setShowToast(true);
   };
 
   const getRankChangeIcon = (user: LeaderboardUser) => {
@@ -170,17 +213,19 @@ const Leaderboard: React.FC = () => {
     return null;
   };
 
+  // Separate top 3 from the rest
+  const top3 = leaderboardData.slice(0, 3);
+  const restOfLeaderboard = leaderboardData.slice(3);
+
   return (
     <IonPage>
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonButton routerLink="/HomeModule/homeM1/index.html">
-              <IonIcon icon={arrowBack} />
-            </IonButton>
+            <IonBackButton defaultHref={`/group-feed/${groupId}`} />
           </IonButtons>
           <IonTitle>
-            City Runners
+            {groupName}
             <div className="leaderboard-subtitle">
               Leaderboard
               {updatesCount > 0 && (
@@ -198,58 +243,149 @@ const Leaderboard: React.FC = () => {
           <IonRefresherContent></IonRefresherContent>
         </IonRefresher>
 
-        <h2 className="section-title">Distance</h2>
-        <IonList>
-          {leaderboard.map((user) => (
-            <IonItem 
-              routerLink="/profile" 
-              key={`${user.rank}-${user.name}`} 
-              lines="none"
-              style={{
-                backgroundColor: highlightedRank === user.rank 
-                  ? 'rgba(255, 193, 7, 0.2)' 
-                  : user.isNew 
-                    ? 'rgba(66, 140, 255, 0.1)' 
-                    : 'transparent',
-                transition: 'background-color 0.3s ease'
-              }}
-            >
-              <div className={`rank-circle rank-${user.rank}`}>
-                {user.rank}
-                {user.rank <= 3 && (
-                  <IonIcon 
-                    icon={trophyOutline} 
-                    style={{ 
-                      position: 'absolute', 
-                      top: '-5px', 
-                      right: '-5px', 
-                      fontSize: '12px',
-                      color: user.rank === 1 ? '#FFD700' : user.rank === 2 ? '#C0C0C0' : '#CD7F32'
-                    }} 
-                  />
-                )}
-              </div>
-              <IonAvatar slot="start">
-                <img src={ProfilePic} alt={user.name} />
-              </IonAvatar>
-              <IonLabel>
-                <h2>
-                  {user.name}
-                  {getRankChangeIcon(user)}
-                  {user.isNew && (
-                    <IonBadge color="primary" style={{ marginLeft: '8px', fontSize: '10px' }}>
-                      Updated
-                    </IonBadge>
-                  )}
+        {/* Week Filter Segment */}
+        <IonSegment value={weekFilter} onIonChange={(e) => setWeekFilter(e.detail.value as 'current' | 'last')}>
+          <IonSegmentButton value="current">
+            <IonLabel>This Week</IonLabel>
+          </IonSegmentButton>
+          <IonSegmentButton value="last">
+            <IonLabel>Last Week</IonLabel>
+          </IonSegmentButton>
+        </IonSegment>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '32px' }}>
+            <IonSpinner name="crescent" />
+            <p>Loading leaderboard...</p>
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '32px' }}>
+            <p style={{ color: 'var(--ion-color-danger)' }}>{error}</p>
+            <IonButton onClick={() => fetchLeaderboard()} size="small">
+              Retry
+            </IonButton>
+          </div>
+        ) : leaderboardData.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px' }}>
+            <p style={{ color: 'var(--ion-color-medium)' }}>
+              No leaderboard data available yet.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Top 3 Hero Display */}
+            {top3.length > 0 && (
+              <div style={{ padding: '16px', background: 'linear-gradient(180deg, rgba(255,215,0,0.1) 0%, transparent 100%)' }}>
+                <h2 className="section-title" style={{ textAlign: 'center', marginBottom: '16px' }}>
+                  🏆 Top Performers
                 </h2>
-                <p>{user.weekly}</p>
-              </IonLabel>
-              <div className="total-distance" slot="end">
-                {user.total}
+                <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', marginBottom: '16px' }}>
+                  {/* 2nd Place */}
+                  {top3[1] && (
+                    <div style={{ textAlign: 'center', flex: 1 }}>
+                      <div style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '50%',
+                        border: '3px solid #C0C0C0',
+                        margin: '0 auto 8px',
+                        overflow: 'hidden'
+                      }}>
+                        <img src={top3[1].avatar || getAvatarUrl(top3[1].name)} alt={top3[1].name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                      <IonBadge color="medium" style={{ marginBottom: '4px' }}>2nd</IonBadge>
+                      <p style={{ fontSize: '14px', fontWeight: 'bold', margin: '4px 0' }}>{top3[1].name}</p>
+                      <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)' }}>{top3[1].distance}</p>
+                    </div>
+                  )}
+
+                  {/* 1st Place */}
+                  {top3[0] && (
+                    <div style={{ textAlign: 'center', flex: 1 }}>
+                      <IonIcon icon={trophyOutline} style={{ fontSize: '24px', color: '#FFD700', marginBottom: '4px' }} />
+                      <div style={{
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '50%',
+                        border: '4px solid #FFD700',
+                        margin: '0 auto 8px',
+                        overflow: 'hidden'
+                      }}>
+                        <img src={top3[0].avatar || getAvatarUrl(top3[0].name)} alt={top3[0].name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                      <IonBadge color="warning" style={{ marginBottom: '4px' }}>1st</IonBadge>
+                      <p style={{ fontSize: '16px', fontWeight: 'bold', margin: '4px 0' }}>{top3[0].name}</p>
+                      <p style={{ fontSize: '14px', color: 'var(--ion-color-medium)' }}>{top3[0].distance}</p>
+                    </div>
+                  )}
+
+                  {/* 3rd Place */}
+                  {top3[2] && (
+                    <div style={{ textAlign: 'center', flex: 1 }}>
+                      <div style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '50%',
+                        border: '3px solid #CD7F32',
+                        margin: '0 auto 8px',
+                        overflow: 'hidden'
+                      }}>
+                        <img src={top3[2].avatar || getAvatarUrl(top3[2].name)} alt={top3[2].name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                      <IonBadge style={{ backgroundColor: '#CD7F32', marginBottom: '4px' }}>3rd</IonBadge>
+                      <p style={{ fontSize: '14px', fontWeight: 'bold', margin: '4px 0' }}>{top3[2].name}</p>
+                      <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)' }}>{top3[2].distance}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </IonItem>
-          ))}
-        </IonList>
+            )}
+
+            {/* Full Leaderboard List */}
+            <h2 className="section-title">Rankings</h2>
+            <IonList>
+              {leaderboardData.map((entry) => (
+                <IonItem
+                  key={`${entry.rank}-${entry.user_id}`}
+                  lines="none"
+                  style={{
+                    backgroundColor: highlightedRank === entry.rank
+                      ? 'rgba(255, 193, 7, 0.2)'
+                      : 'transparent',
+                    transition: 'background-color 0.3s ease'
+                  }}
+                >
+                  <div className={`rank-circle rank-${entry.rank}`}>
+                    {entry.rank}
+                    {entry.rank <= 3 && (
+                      <IonIcon
+                        icon={trophyOutline}
+                        style={{
+                          position: 'absolute',
+                          top: '-5px',
+                          right: '-5px',
+                          fontSize: '12px',
+                          color: entry.rank === 1 ? '#FFD700' : entry.rank === 2 ? '#C0C0C0' : '#CD7F32'
+                        }}
+                      />
+                    )}
+                  </div>
+                  <IonAvatar slot="start">
+                    <img src={entry.avatar || getAvatarUrl(entry.name)} alt={entry.name} />
+                  </IonAvatar>
+                  <IonLabel>
+                    <h2>{entry.name}</h2>
+                    <p>{entry.runs} runs • {entry.longest} longest</p>
+                    {entry.total_time && <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)' }}>Total time: {entry.total_time}</p>}
+                  </IonLabel>
+                  <div className="total-distance" slot="end">
+                    {entry.distance}
+                  </div>
+                </IonItem>
+              ))}
+            </IonList>
+          </>
+        )}
 
         <IonToast
           isOpen={showToast}

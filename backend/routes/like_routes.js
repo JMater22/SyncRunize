@@ -7,6 +7,9 @@ const router = express.Router();
 // Public: get like count
 router.get("/:postId", LikeController.getLikesCount);
 
+// Public: get list of users who liked
+router.get("/:postId/users", LikeController.getLikers);
+
 // Protected: like / unlike
 router.post("/:postId", authenticate, LikeController.likePost);
 router.delete("/:postId", authenticate, LikeController.unlikePost);

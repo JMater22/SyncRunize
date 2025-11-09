@@ -252,6 +252,10 @@ def safest_path_osm(G, origin_point, destination_point, alpha=0.5):
     except nx.NetworkXNoPath:
         return [], []
 
+SAFETY_SCORE_WEIGHT = 0.2  # how strongly we penalize risky segments when selecting a loop
+DISTANCE_WARNING_THRESHOLD = 0.15  # 15% deviation triggers UI warning
+
+
 def distance_based_route(G, origin_point, target_distance_km, alpha=0.5):
     """
     Generate a circular route of approximately target_distance_km from origin_point
@@ -260,191 +264,398 @@ def distance_based_route(G, origin_point, target_distance_km, alpha=0.5):
     """
     orig_node = ox.nearest_nodes(G, origin_point[1], origin_point[0])  # (lng, lat)
 
-    # Custom weight: same safety scoring as safest_path_osm
-    def weight(u, v, d):
-        length = d.get("length", 1.0)
-        base_risk = d.get("risk", 0.2)
+    # Use provided alpha to balance distance vs. safety in internal searches
+    alpha = max(0.0, min(1.0, alpha))
 
-        # Sidewalk preference
-        sidewalk = d.get("sidewalk", "no")
-        has_sidewalk = sidewalk in ["yes", "both", "left", "right", "separate"]
+    def build_weight(blocked_edges=None):
+        blocked = blocked_edges or set()
 
-        # Road type safety
-        highway_type = d.get("highway", "residential")
-        road_safety_penalty = 0
+        def weight(u, v, d):
+            length = d.get("length", 1.0)
+            base_risk = d.get("risk", 0.2)
 
-        if highway_type in ["footway", "pedestrian", "path", "cycleway"]:
+            # Sidewalk preference
+            sidewalk = d.get("sidewalk", "no")
+            has_sidewalk = sidewalk in ["yes", "both", "left", "right", "separate"]
+
+            # Road type safety
+            highway_type = d.get("highway", "residential")
             road_safety_penalty = 0
-        elif highway_type in ["residential", "living_street"]:
-            road_safety_penalty = 50 if not has_sidewalk else 10
-        elif highway_type in ["tertiary", "unclassified", "service"]:
-            road_safety_penalty = 100 if not has_sidewalk else 20
-        elif highway_type in ["secondary", "secondary_link"]:
-            road_safety_penalty = 200 if not has_sidewalk else 40
-        elif highway_type in ["primary", "primary_link", "trunk", "trunk_link"]:
-            road_safety_penalty = 500 if not has_sidewalk else 80
-        elif highway_type in ["motorway", "motorway_link"]:
-            road_safety_penalty = 10000
 
-        # Lighting
-        lit = d.get("lit", "no")
-        lighting_penalty = 0 if lit == "yes" else 30
+            if highway_type in ["footway", "pedestrian", "path", "cycleway"]:
+                road_safety_penalty = 0
+            elif highway_type in ["residential", "living_street"]:
+                road_safety_penalty = 50 if not has_sidewalk else 10
+            elif highway_type in ["tertiary", "unclassified", "service"]:
+                road_safety_penalty = 100 if not has_sidewalk else 20
+            elif highway_type in ["secondary", "secondary_link"]:
+                road_safety_penalty = 200 if not has_sidewalk else 40
+            elif highway_type in ["primary", "primary_link", "trunk", "trunk_link"]:
+                road_safety_penalty = 500 if not has_sidewalk else 80
+            elif highway_type in ["motorway", "motorway_link"]:
+                road_safety_penalty = 10000
 
-        # Lanes
-        lanes = int(d.get("lanes", 1))
-        lane_penalty = (lanes - 1) * 20
+            # Lighting
+            lit = d.get("lit", "no")
+            lighting_penalty = 0 if lit == "yes" else 30
 
-        # Speed limit
-        maxspeed = d.get("maxspeed", "30")
-        try:
-            speed_val = int(str(maxspeed).replace(" kph", "").replace(" mph", "").split()[0])
-            speed_penalty = max(0, (speed_val - 30) * 2)
-        except:
-            speed_penalty = 0
+            # Lanes
+            try:
+                lanes = int(str(d.get("lanes", 1)).split(";")[0])
+            except:
+                lanes = 1
+            lane_penalty = (lanes - 1) * 20
 
-        safety_score = base_risk + road_safety_penalty + lighting_penalty + lane_penalty + speed_penalty
+            # Speed limit
+            maxspeed = d.get("maxspeed", "30")
+            try:
+                speed_val = int(str(maxspeed).replace(" kph", "").replace(" mph", "").split()[0])
+                speed_penalty = max(0, (speed_val - 30) * 2)
+            except:
+                speed_penalty = 0
 
-        if has_sidewalk:
-            safety_score *= 0.5
+            safety_score = base_risk + road_safety_penalty + lighting_penalty + lane_penalty + speed_penalty
 
-        return (1 - alpha) * length + alpha * safety_score
+            if has_sidewalk:
+                safety_score *= 0.5
+
+            penalty = 0
+            if (u, v) in blocked or (v, u) in blocked:
+                penalty = 1e6  # Effectively discourage reusing outbound edges
+
+            # Combine distance with safety using alpha
+            return (1 - alpha) * length + alpha * safety_score + penalty
+
+        return weight
 
     # Get all nodes within a reasonable radius
     target_meters = target_distance_km * 1000
-    search_radius_meters = target_meters / 2  # Search in half the distance
+    min_forward = target_meters * 0.35
+    max_forward = target_meters * 0.65
 
-    # Get nearby nodes
-    nearby_nodes = []
-    for node in G.nodes():
-        node_lat = G.nodes[node]["y"]
-        node_lng = G.nodes[node]["x"]
+    candidate_nodes = []
+    try:
+        lengths_len, paths_len = nx.single_source_dijkstra(
+            G,
+            orig_node,
+            cutoff=max(max_forward * 1.5, min_forward + 500),
+            weight=lambda u, v, d: d.get("length", 1.0)
+        )
 
-        # Calculate distance from origin
-        R = 6371000  # Earth's radius in meters
-        lat1, lng1 = origin_point
-        lat2, lng2 = node_lat, node_lng
+        for node, dist in lengths_len.items():
+            if node == orig_node:
+                continue
+            if min_forward <= dist <= max_forward:
+                candidate_nodes.append((node, dist))
 
-        phi1, phi2 = math.radians(lat1), math.radians(lat2)
-        dphi = math.radians(lat2 - lat1)
-        dlambda = math.radians(lng2 - lng1)
-        a = math.sin(dphi/2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda/2)**2
-        distance = R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        if not candidate_nodes:
+            fallback_nodes = sorted(
+                [(node, dist) for node, dist in lengths_len.items() if node != orig_node],
+                key=lambda x: abs(x[1] - target_meters / 2)
+            )
+            candidate_nodes = fallback_nodes[:15]
+    except Exception as e:
+        print(f"Failed to compute candidate nodes: {e}")
+        candidate_nodes = []
 
-        if search_radius_meters * 0.3 < distance < search_radius_meters * 1.2:
-            nearby_nodes.append((node, distance))
-
-    if not nearby_nodes:
-        print("No nearby nodes found for distance-based routing")
+    if not candidate_nodes:
+        print("No candidate nodes found for distance-based routing")
         return []
 
-    # Sort by how close they are to half the target distance
-    nearby_nodes.sort(key=lambda x: abs(x[1] - search_radius_meters))
-
     # Try multiple turning points to find the best route
-    best_route = None
-    best_diff = float('inf')
+    best_route_info = None
+    best_score = float("inf")
+    best_any_info = None
+    best_any_score = float("inf")
+    candidate_routes = []
 
-    for turn_node, _ in nearby_nodes[:20]:  # Try top 20 candidates
+    def dedupe_coords(coord_list):
+        simplified = []
+        for coord in coord_list:
+            if not simplified or coord != simplified[-1]:
+                simplified.append(coord)
+        return simplified
+
+    def haversine(a, b):
+        R = 6371000
+        lat1, lng1 = math.radians(a[0]), math.radians(a[1])
+        lat2, lng2 = math.radians(b[0]), math.radians(b[1])
+        dlat = lat2 - lat1
+        dlng = lng2 - lng1
+        hav = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlng/2)**2
+        return R * 2 * math.atan2(math.sqrt(hav), math.sqrt(1 - hav))
+
+    def finalize_coords(coords):
+        if not coords:
+            return []
+        coords = dedupe_coords(coords)
+        if len(coords) < 2:
+            return coords
+        start = coords[0]
+        end = coords[-1]
+        distance = haversine(start, end)
+        if distance <= 25:
+            coords[-1] = start
+        else:
+            coords.append(start)
+        return coords
+
+    def coords_total_distance_km(coords):
+        if len(coords) < 2:
+            return 0.0
+        total = 0.0
+        for i in range(1, len(coords)):
+            total += haversine(coords[i - 1], coords[i])
+        return total / 1000.0
+
+    def evaluate_path(node_sequence):
+        total_distance = 0.0  # meters
+        total_risk = 0.0      # accumulated risk * km (used to get risk/km)
+
+        for i in range(len(node_sequence) - 1):
+            u, v = node_sequence[i], node_sequence[i + 1]
+            if not G.has_edge(u, v):
+                continue
+            edge_data = G[u][v]
+            if isinstance(edge_data, dict):
+                edge_info = edge_data if "length" in edge_data else list(edge_data.values())[0]
+            else:
+                edge_info = list(edge_data.values())[0]
+
+            length = edge_info.get("length", 0.0)
+            base_risk = edge_info.get("risk", 0.2)
+
+            # Recompute safety_score similar to build_weight for evaluation
+            sidewalk = edge_info.get("sidewalk", "no")
+            has_sidewalk = sidewalk in ["yes", "both", "left", "right", "separate"]
+
+            highway_type = edge_info.get("highway", "residential")
+            road_safety_penalty = 0
+            if highway_type in ["footway", "pedestrian", "path", "cycleway"]:
+                road_safety_penalty = 0
+            elif highway_type in ["residential", "living_street"]:
+                road_safety_penalty = 50 if not has_sidewalk else 10
+            elif highway_type in ["tertiary", "unclassified", "service"]:
+                road_safety_penalty = 100 if not has_sidewalk else 20
+            elif highway_type in ["secondary", "secondary_link"]:
+                road_safety_penalty = 200 if not has_sidewalk else 40
+            elif highway_type in ["primary", "primary_link", "trunk", "trunk_link"]:
+                road_safety_penalty = 500 if not has_sidewalk else 80
+            elif highway_type in ["motorway", "motorway_link"]:
+                road_safety_penalty = 10000
+
+            lit = edge_info.get("lit", "no")
+            lighting_penalty = 0 if lit == "yes" else 30
+
+            try:
+                lanes = int(str(edge_info.get("lanes", 1)).split(";")[0])
+            except:
+                lanes = 1
+            lane_penalty = (lanes - 1) * 20
+
+            maxspeed = edge_info.get("maxspeed", "30")
+            try:
+                speed_val = int(str(maxspeed).replace(" kph", "").replace(" mph", "").split()[0])
+                speed_penalty = max(0, (speed_val - 30) * 2)
+            except:
+                speed_penalty = 0
+
+            safety_score = base_risk + road_safety_penalty + lighting_penalty + lane_penalty + speed_penalty
+            if has_sidewalk:
+                safety_score *= 0.5
+
+            total_distance += length
+            total_risk += safety_score * (length / 1000)  # integrate safety over distance (risk per km basis)
+
+        distance_km = total_distance / 1000
+        # Average risk per km for this path
+        risk_per_km = (total_risk / distance_km) if distance_km > 0 else float("inf")
+        distance_diff = abs(distance_km - target_distance_km)
+        # Composite score used only for broad ranking (not final selection)
+        score = distance_diff
+
+        return distance_km, risk_per_km, distance_diff, score
+
+    def serialize_path(node_sequence):
+        coords = []
+        metadata = []
+        last_coord = None
+
+        for i, node in enumerate(node_sequence):
+            coord = (G.nodes[node]["y"], G.nodes[node]["x"])
+            if coord != last_coord:
+                coords.append(coord)
+                last_coord = coord
+
+            if i < len(node_sequence) - 1:
+                next_node = node_sequence[i + 1]
+                if not G.has_edge(node, next_node):
+                    continue
+                edge_data = G[node][next_node]
+                if isinstance(edge_data, dict):
+                    edge_info = edge_data if "length" in edge_data else list(edge_data.values())[0]
+                else:
+                    edge_info = list(edge_data.values())[0]
+
+                metadata.append({
+                    "highway": edge_info.get("highway", "unknown"),
+                    "sidewalk": edge_info.get("sidewalk", "no"),
+                    "lit": edge_info.get("lit", "no"),
+                    "lanes": edge_info.get("lanes", 1),
+                    "maxspeed": edge_info.get("maxspeed", "30"),
+                    "length": edge_info.get("length", 0)
+                })
+
+        return coords, metadata
+
+    def trim_path_to_target(graph, node_sequence, target_meters, weight_factory):
+        if len(node_sequence) < 2:
+            return None
+
+        cumulative = 0.0
+        trimmed_nodes = [node_sequence[0]]
+        turn_node = None
+
+        for i in range(len(node_sequence) - 1):
+            u, v = node_sequence[i], node_sequence[i + 1]
+            if not graph.has_edge(u, v):
+                continue
+            edge_data = graph[u][v]
+            if isinstance(edge_data, dict):
+                edge_info = edge_data if "length" in edge_data else list(edge_data.values())[0]
+            else:
+                edge_info = list(edge_data.values())[0]
+
+            length = edge_info.get("length", 0.0)
+            cumulative += length
+            trimmed_nodes.append(v)
+
+            if cumulative >= target_meters / 2:
+                turn_node = v
+                break
+
+        if not turn_node:
+            return None
+
+        blocked_edges = set((trimmed_nodes[i], trimmed_nodes[i + 1]) for i in range(len(trimmed_nodes) - 1))
+
+        try:
+            return_path = nx.shortest_path(graph, turn_node, trimmed_nodes[0], weight=weight_factory(blocked_edges))
+        except nx.NetworkXNoPath:
+            return None
+
+        return trimmed_nodes + return_path[1:]
+
+    for turn_node, _ in candidate_nodes[:25]:
         try:
             # Path from origin to turning point
-            path_out = nx.shortest_path(G, orig_node, turn_node, weight=weight)
-            # Path from turning point back to origin
-            path_back = nx.shortest_path(G, turn_node, orig_node, weight=weight)
+            path_out = nx.shortest_path(G, orig_node, turn_node, weight=build_weight())
+
+            blocked_edges = set()
+            for i in range(len(path_out) - 1):
+                blocked_edges.add((path_out[i], path_out[i + 1]))
+
+            # Path from turning point back to origin (discourage reusing outbound edges)
+            path_back = nx.shortest_path(G, turn_node, orig_node, weight=build_weight(blocked_edges))
 
             # Calculate total distance
-            total_distance = 0
             combined_path = path_out + path_back[1:]  # Avoid duplicate node
 
-            for i in range(len(combined_path) - 1):
-                u, v = combined_path[i], combined_path[i + 1]
-                if G.has_edge(u, v):
-                    edge_data = G[u][v]
-                    if isinstance(edge_data, dict):
-                        total_distance += edge_data.get('length', 0)
-                    else:
-                        # MultiDiGraph case
-                        total_distance += list(edge_data.values())[0].get('length', 0)
+            distance_km, risk_per_km, diff, score = evaluate_path(combined_path)
 
-            total_distance_km = total_distance / 1000
-            diff = abs(total_distance_km - target_distance_km)
+            route_info = {
+                "path": combined_path,
+                "distance_km": distance_km,
+                "risk_per_km": risk_per_km,
+                "distance_diff": diff,
+                "score": score
+            }
+            candidate_routes.append(route_info)
 
-            # Keep track of the best route (closest to target distance)
-            if diff < best_diff and diff < target_distance_km * 0.3:  # Within 30% of target
-                best_diff = diff
-                best_route = combined_path
+            if score < best_any_score:
+                best_any_score = score
+                best_any_info = route_info
 
-                # If we found a very close match, use it
-                if diff < target_distance_km * 0.1:  # Within 10%
-                    break
+            if score < best_score and diff <= target_distance_km * 0.1:
+                # Immediate best hit (within 10% tolerance)
+                best_score = score
+                best_route_info = route_info
+                # Do not break; continue gathering candidates so we can re-rank by safety later
 
         except nx.NetworkXNoPath:
             continue
 
-    if best_route:
-        # Extract coordinates and metadata
-        coords = []
-        route_metadata = []
+    # Select up to 5 candidates that meet distance tolerance, then pick least risky
+    if candidate_routes:
+        tolerance_steps = [0.10, 0.15, 0.25, 0.35, 0.5]
+        eligible: list = []
+        for tol in tolerance_steps:
+            eligible = [c for c in candidate_routes if c["distance_diff"] <= target_distance_km * tol]
+            # Prefer those closest to requested distance first
+            eligible.sort(key=lambda c: (c["distance_diff"]))
+            if eligible:
+                break
 
-        for i, node in enumerate(best_route):
-            coords.append((G.nodes[node]["y"], G.nodes[node]["x"]))
+        if eligible:
+            top5 = eligible[:5]
+            # Choose the path with the lowest risk per km among these candidates
+            top5.sort(key=lambda c: (c["risk_per_km"], c["distance_diff"]))
+            best_route_info = top5[0]
+        elif best_any_info:
+            # Fallback if no eligible within tolerance bands
+            best_route_info = best_any_info
 
-            if i < len(best_route) - 1:
-                next_node = best_route[i + 1]
-                if G.has_edge(node, next_node):
-                    edge_data = G[node][next_node]
-                    if isinstance(edge_data, dict):
-                        edge_info = edge_data
-                    else:
-                        edge_info = list(edge_data.values())[0]
+    if best_route_info:
+        if best_route_info["distance_diff"] > target_distance_km * 0.3:
+            trimmed = trim_path_to_target(G, best_route_info["path"], target_meters, build_weight)
+            if trimmed:
+                coords, route_metadata = serialize_path(trimmed)
+                coords = finalize_coords(coords)
+                final_distance = coords_total_distance_km(coords)
+                warning = {
+                    "distance_warning": abs(final_distance - target_distance_km) > target_distance_km * DISTANCE_WARNING_THRESHOLD,
+                    "requested_distance_km": target_distance_km,
+                    "generated_distance_km": final_distance
+                }
+                return coords, route_metadata, warning
 
-                    route_metadata.append({
-                        "highway": edge_info.get("highway", "unknown"),
-                        "sidewalk": edge_info.get("sidewalk", "no"),
-                        "lit": edge_info.get("lit", "no"),
-                        "lanes": edge_info.get("lanes", 1),
-                        "maxspeed": edge_info.get("maxspeed", "30"),
-                        "length": edge_info.get("length", 0)
-                    })
+        coords, route_metadata = serialize_path(best_route_info["path"])
+        coords = finalize_coords(coords)
+        final_distance = coords_total_distance_km(coords)
+        warning = {
+            "distance_warning": abs(final_distance - target_distance_km) > target_distance_km * DISTANCE_WARNING_THRESHOLD,
+            "requested_distance_km": target_distance_km,
+            "generated_distance_km": final_distance
+        }
+        return coords, route_metadata, warning
 
-        return coords, route_metadata
+    if best_any_info:
+        trimmed = trim_path_to_target(G, best_any_info["path"], target_meters, build_weight)
+        if trimmed:
+            coords, route_metadata = serialize_path(trimmed)
+            coords = finalize_coords(coords)
+            final_distance = coords_total_distance_km(coords)
+            warning = {
+                "distance_warning": True,
+                "requested_distance_km": target_distance_km,
+                "generated_distance_km": final_distance
+            }
+            return coords, route_metadata, warning
+        coords, route_metadata = serialize_path(best_any_info["path"])
+        coords = finalize_coords(coords)
+        final_distance = coords_total_distance_km(coords)
+        warning = {
+            "distance_warning": True,
+            "requested_distance_km": target_distance_km,
+            "generated_distance_km": final_distance
+        }
+        return coords, route_metadata, warning
 
-    # Fallback: just make a simple out-and-back route
-    print("Using fallback: out-and-back route")
-    try:
-        half_target = target_meters / 2
-        fallback_node = nearby_nodes[0][0] if nearby_nodes else orig_node
-
-        path_out = nx.shortest_path(G, orig_node, fallback_node, weight=weight)
-        path_back = nx.shortest_path(G, fallback_node, orig_node, weight=weight)
-        combined = path_out + path_back[1:]
-
-        coords = []
-        route_metadata = []
-
-        for i, node in enumerate(combined):
-            coords.append((G.nodes[node]["y"], G.nodes[node]["x"]))
-
-            if i < len(combined) - 1:
-                next_node = combined[i + 1]
-                if G.has_edge(node, next_node):
-                    edge_data = G[node][next_node]
-                    if isinstance(edge_data, dict):
-                        edge_info = edge_data
-                    else:
-                        edge_info = list(edge_data.values())[0]
-
-                    route_metadata.append({
-                        "highway": edge_info.get("highway", "unknown"),
-                        "sidewalk": edge_info.get("sidewalk", "no"),
-                        "lit": edge_info.get("lit", "no"),
-                        "lanes": edge_info.get("lanes", 1),
-                        "maxspeed": edge_info.get("maxspeed", "30"),
-                        "length": edge_info.get("length", 0)
-                    })
-
-        return coords, route_metadata
-    except:
-        return [], []
+    return [], [], {
+        "distance_warning": True,
+        "requested_distance_km": target_distance_km,
+        "generated_distance_km": 0
+    }
 
 ### === Safety Warnings Generator === ###
 def generate_safety_warnings(route_metadata):
@@ -748,7 +959,7 @@ def get_route_distance(input: RouteDistanceInput):
     Generate a circular route of specified distance from a starting point
     Returns to the start with the safest path and safety warnings
     """
-    coords, metadata = distance_based_route(
+    coords, metadata, distance_info = distance_based_route(
         road_graph,
         (input.start.lat, input.start.lng),
         input.target_distance_km,
@@ -764,7 +975,8 @@ def get_route_distance(input: RouteDistanceInput):
     return {
         "coordinates": coords,
         "metadata": metadata,
-        "safety": safety_analysis
+        "safety": safety_analysis,
+        "distance_info": distance_info
     }
 
 @app.post("/sbert")

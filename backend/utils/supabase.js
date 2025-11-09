@@ -24,3 +24,4 @@ export const supabase = createClient(supabaseUrl, serviceRoleKey || supabaseAnon
     persistSession: false
   }
 });
+  

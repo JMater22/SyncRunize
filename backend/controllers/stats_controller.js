@@ -90,3 +90,27 @@ export const getCurrentStats = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch current stats" });
   }
 };
+
+/**
+ * Get personal records for a user
+ * Route: GET /stats/:userId/records
+ */
+export const getPersonalRecords = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId || isNaN(userId)) {
+      return res.status(400).json({ error: "Invalid or missing user ID" });
+    }
+
+    const records = await StatsModel.getPersonalRecords(parseInt(userId));
+
+    res.json({
+      user_id: parseInt(userId),
+      records,
+    });
+  } catch (err) {
+    console.error("Personal records retrieval failed:", err);
+    res.status(500).json({ error: "Failed to fetch personal records" });
+  }
+};

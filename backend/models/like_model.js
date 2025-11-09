@@ -74,3 +74,30 @@ export const toggleLike = async (postId, userId) => {
     throw err;
   }
 };
+
+// Get list of users who liked a post
+export const getLikers = async (postId) => {
+  const { data, error } = await supabase
+    .from("likes")
+    .select(`
+      user_id,
+      users:user_id (
+        user_id,
+        name,
+        username,
+        profile_picture
+      )
+    `)
+    .eq("post_id", postId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  // Format the response
+  return data.map(like => ({
+    user_id: like.users.user_id,
+    name: like.users.name,
+    username: like.users.username,
+    profile_picture: like.users.profile_picture
+  }));
+};

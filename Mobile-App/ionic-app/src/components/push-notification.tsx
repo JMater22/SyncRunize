@@ -7,6 +7,8 @@ import {
 } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
 
+let hasLoggedWebWarning = false;
+
 interface PushNotificationHookProps {
   onTokenReceived?: (token: string) => void;
   onNotificationReceived?: (notification: PushNotificationSchema) => void;
@@ -20,8 +22,11 @@ export const usePushNotifications = ({
 }: PushNotificationHookProps = {}) => {
   useEffect(() => {
     const platform = Capacitor.getPlatform();
-    if (platform === 'android') {
-      console.log('[Push] Push notifications are only available on native platforms.');
+    if (platform === 'web') {
+      if (!hasLoggedWebWarning) {
+        console.log('[Push] Push notifications are only available on native platforms (Android/iOS).');
+        hasLoggedWebWarning = true;
+      }
       return;
     }
 
