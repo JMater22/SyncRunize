@@ -1,13 +1,16 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { IonPage, IonContent, IonIcon, IonAlert, IonToast } from '@ionic/react';
-import { arrowBack, pauseOutline, playOutline, stopOutline, mapOutline } from 'ionicons/icons';
+import { IonPage, IonContent, IonIcon, IonAlert, IonToast, IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton } from '@ionic/react';
+import { arrowBack, pauseOutline, playOutline, stopOutline, mapOutline, warningOutline, checkmarkCircle, banOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
-import { GoogleMap, LoadScript, Polyline, MarkerF } from '@react-google-maps/api';
+import { GoogleMap, LoadScript, Polyline, MarkerF, CircleF } from '@react-google-maps/api';
 import { useHideTabBar } from '../hooks/useHideTabBar';
 import { useRunTracker } from '../hooks/useRunTracker';
 import ActivitySummarySheet from '../components/ActivitySummarySheet';
 import '../theme/Run-Main.css';
-import { formatPace } from '../lib/utils';
+import { formatPace, formatRelativeTime } from '../lib/utils';
+import { HazardsApi, HazardReport } from '../services/hazards';
+import { supabase } from '../lib/supabaseClient';
+import { haversineDistanceMeters } from '../services/haversine';
 
 const googleMapDefaultCenter = { lat: 15.4755, lng: 120.5963 };
 const mapContainerStyle = { width: '100%', height: '100%' };
@@ -19,6 +22,10 @@ const mapOptions: google.maps.MapOptions = {
   zoom: 15,
 };
 
+const HAZARD_RADIUS_KM = 0.8;
+const HAZARD_RADIUS_METERS = HAZARD_RADIUS_KM * 1000;
+const HAZARD_REFETCH_MS = 45_000;
+
 const RunTrackerPage: React.FC = () => {
   useHideTabBar();
   const history = useHistory();
@@ -28,13 +35,44 @@ const RunTrackerPage: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapOnlyView, setMapOnlyView] = useState(false);
+  const [hazards, setHazards] = useState<HazardReport[]>([]);
+  const [hazardLoading, setHazardLoading] = useState(false);
+  const [selectedHazard, setSelectedHazard] = useState<HazardReport | null>(null);
+  const [hazardActionLoading, setHazardActionLoading] = useState(false);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const latestLocationRef = useRef<google.maps.LatLngLiteral | null>(null);
+  const lastHazardFetchRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
+  const lastRealtimeRefreshRef = useRef<number>(0);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
 
   const pathCoords = useMemo(
     () => session.samples.map((sample) => ({ lat: sample.lat, lng: sample.lng })),
     [session.samples]
   );
+  const latestCoord = pathCoords.length ? pathCoords[pathCoords.length - 1] : null;
+
+  const loadHazards = useCallback(async (center: google.maps.LatLngLiteral, options: { force?: boolean } = {}) => {
+    if (!center) return;
+    const now = Date.now();
+    if (!options.force && lastHazardFetchRef.current) {
+      const { lat, lng, time } = lastHazardFetchRef.current;
+      const movedMeters = haversineDistanceMeters({ lat, lng }, center);
+      if (movedMeters < HAZARD_RADIUS_METERS * 0.3 && now - time < HAZARD_REFETCH_MS) {
+        return;
+      }
+    }
+
+    try {
+      setHazardLoading(true);
+      const fetched = await HazardsApi.getHazardsNear(center.lat, center.lng, HAZARD_RADIUS_KM);
+      setHazards(fetched);
+      lastHazardFetchRef.current = { lat: center.lat, lng: center.lng, time: now };
+    } catch (err) {
+      console.error('Failed to load hazards:', err);
+    } finally {
+      setHazardLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!apiKey) {
@@ -43,6 +81,35 @@ const RunTrackerPage: React.FC = () => {
       setMapError(null);
     }
   }, [apiKey]);
+
+  useEffect(() => {
+    if (!pathCoords.length) return;
+    const latest = pathCoords[pathCoords.length - 1];
+    latestLocationRef.current = latest;
+  }, [pathCoords]);
+
+  useEffect(() => {
+    if (!latestCoord) return;
+    loadHazards(latestCoord);
+  }, [latestCoord, loadHazards]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('hazards-run-tracking')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hazard_reports' }, () => {
+        const latest = latestLocationRef.current;
+        if (!latest) return;
+        const now = Date.now();
+        if (now - lastRealtimeRefreshRef.current < 5000) return;
+        lastRealtimeRefreshRef.current = now;
+        loadHazards(latest, { force: true });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadHazards]);
 
   const handleMapLoad = useCallback((map: google.maps.Map) => {
     mapInstanceRef.current = map;

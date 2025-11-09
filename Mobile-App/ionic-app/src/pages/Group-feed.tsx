@@ -37,7 +37,8 @@ import {
   peopleOutline,
   personAddOutline,
   trophyOutline,
-  documentTextOutline
+  documentTextOutline,
+  searchOutline
 } from "ionicons/icons";
 import { useHistory, useParams } from "react-router-dom";
 import ChallengePic from '../components/assets/istockphoto-143920084-612x612.jpg';
@@ -45,6 +46,7 @@ import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-
 import { usePushNotifications } from "../components/push-notification";
 import { PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
 import { GroupsApi, Group, GroupMember, GroupPost } from "../services/groups";
+import { UsersApi } from "../services/users";
 import { useUser } from "../contexts/UserContext";
 import { getAvatarUrl } from "../lib/utils";
 import "../theme/Group-feed.css";
@@ -101,6 +103,18 @@ const GroupFeed: React.FC = () => {
   // Leave Group state
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [showLeaveAlert, setShowLeaveAlert] = useState(false);
+
+  // Leaderboard state
+  const [weekFilter, setWeekFilter] = useState<'current' | 'last'>('current');
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [lastWeekLeaders, setLastWeekLeaders] = useState<{distance: any[], time: any[]}>({distance: [], time: []});
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+
+  // Invite Members state
+  const [inviteSearchQuery, setInviteSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [invitingUsers, setInvitingUsers] = useState<{[userId: number]: boolean}>({});
 
   // Fetch group data from backend
   useEffect(() => {
@@ -190,6 +204,103 @@ const GroupFeed: React.FC = () => {
       setShowToast(true);
     } finally {
       setLoadingMembers(false);
+    }
+  };
+
+  const fetchLeaderboard = async (week: 'current' | 'last' = weekFilter) => {
+    if (!groupId) return;
+
+    try {
+      setLoadingLeaderboard(true);
+
+      // Fetch weekly leaderboard
+      const leaderboardData = await GroupsApi.getLeaderboard(parseInt(groupId), week);
+      setLeaderboard(Array.isArray(leaderboardData) ? leaderboardData : []);
+
+      // Fetch last week's leaders for podium display (if the API supports it)
+      if (week === 'last') {
+        try {
+          const leadersData = await GroupsApi.getLastWeekLeaders(parseInt(groupId));
+          // Assume leadersData is an array, we'll extract top 3 for distance and time
+          const topDistance = Array.isArray(leadersData) ? leadersData.slice(0, 3) : [];
+          const topTime = Array.isArray(leadersData) ? leadersData.slice(0, 3) : [];
+          setLastWeekLeaders({distance: topDistance, time: topTime});
+        } catch (err) {
+          console.log('Last week leaders not available');
+          setLastWeekLeaders({distance: [], time: []});
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch leaderboard:', err);
+      setLeaderboard([]);
+    } finally {
+      setLoadingLeaderboard(false);
+    }
+  };
+
+  // Fetch leaderboard when tab changes to leaderboard
+  useEffect(() => {
+    if (activeTab === 'leaderboard' && groupId) {
+      fetchLeaderboard(weekFilter);
+    }
+  }, [activeTab, weekFilter, groupId]);
+
+  // Debounced user search for inviting members
+  useEffect(() => {
+    const debounceTimer = setTimeout(async () => {
+      if (inviteSearchQuery.trim().length > 0) {
+        setIsSearching(true);
+        try {
+          const results = await UsersApi.searchUsers(inviteSearchQuery);
+
+          // Filter out current user and existing members
+          const memberIds = members.map(m => m.user_id);
+          const filtered = Array.isArray(results)
+            ? results.filter((u: any) =>
+                u.user_id !== currentUser?.user_id &&
+                !memberIds.includes(u.user_id)
+              )
+            : [];
+
+          setSearchResults(filtered);
+        } catch (err) {
+          console.error('Search error:', err);
+          setSearchResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    }, 500);
+
+    return () => clearTimeout(debounceTimer);
+  }, [inviteSearchQuery, currentUser, members]);
+
+  const handleInviteUser = async (userId: number) => {
+    if (!groupId) return;
+
+    try {
+      setInvitingUsers(prev => ({ ...prev, [userId]: true }));
+
+      await GroupsApi.inviteToGroup(parseInt(groupId), userId);
+
+      setToastMessage('User invited successfully!');
+      setToastColor('success');
+      setShowToast(true);
+
+      // Refresh members list
+      fetchMembers();
+
+      // Remove user from search results
+      setSearchResults(prev => prev.filter(u => u.user_id !== userId));
+    } catch (err: any) {
+      console.error('Failed to invite user:', err);
+      setToastMessage(err.message || 'Failed to invite user');
+      setToastColor('danger');
+      setShowToast(true);
+    } finally {
+      setInvitingUsers(prev => ({ ...prev, [userId]: false }));
     }
   };
 
@@ -656,12 +767,164 @@ const GroupFeed: React.FC = () => {
 
             {/* Leaderboard Tab */}
             {activeTab === 'leaderboard' && (
-              <div style={{ textAlign: 'center', padding: '32px' }}>
-                <IonIcon icon={trophyOutline} style={{ fontSize: '64px', color: 'var(--ion-color-medium)' }} />
-                <h2>Leaderboard</h2>
-                <p style={{ color: 'var(--ion-color-medium)' }}>
-                  Leaderboard functionality coming soon!
-                </p>
+              <div className="leaderboard-section">
+                {/* Week Toggle */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+                  <IonButton
+                    expand="block"
+                    fill={weekFilter === 'current' ? 'solid' : 'outline'}
+                    color="success"
+                    onClick={() => setWeekFilter('current')}
+                    style={{ flex: 1 }}
+                  >
+                    This Week
+                  </IonButton>
+                  <IonButton
+                    expand="block"
+                    fill={weekFilter === 'last' ? 'solid' : 'outline'}
+                    color="success"
+                    onClick={() => setWeekFilter('last')}
+                    style={{ flex: 1 }}
+                  >
+                    Last Week
+                  </IonButton>
+                </div>
+
+                {loadingLeaderboard ? (
+                  <div style={{ textAlign: 'center', padding: '32px' }}>
+                    <IonSpinner name="crescent" color="success" />
+                    <p style={{ color: '#999999', marginTop: '16px' }}>Loading leaderboard...</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Last Week's Top 3 Leaders - Only show for "Last Week" */}
+                    {weekFilter === 'last' && lastWeekLeaders.distance.length > 0 && (
+                      <>
+                        <IonCard className="leaderboard-card">
+                          <IonCardHeader style={{ background: 'linear-gradient(135deg, #84cc16 0%, #65a30d 100%)', padding: '16px' }}>
+                            <h3 style={{ margin: 0, color: '#000000', fontWeight: '700', fontSize: '16px' }}>
+                              🏆 Last Week's Distance Leaders
+                            </h3>
+                          </IonCardHeader>
+                          <IonCardContent>
+                            <div style={{ display: 'flex', justifyContent: 'space-around', padding: '16px 0' }}>
+                              {lastWeekLeaders.distance.slice(0, 3).map((leader: any, idx: number) => (
+                                <div key={idx} style={{ textAlign: 'center', flex: 1 }}>
+                                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>
+                                    {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
+                                  </div>
+                                  <IonAvatar style={{ width: '60px', height: '60px', margin: '0 auto 8px' }}>
+                                    <img src={leader.avatar || ProfilePic} alt={leader.name} />
+                                  </IonAvatar>
+                                  <p style={{ fontWeight: '600', color: '#ffffff', fontSize: '14px', margin: '4px 0' }}>
+                                    {leader.name}
+                                  </p>
+                                  <p style={{ color: '#84cc16', fontSize: '16px', fontWeight: '700', margin: '4px 0' }}>
+                                    {leader.value}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </IonCardContent>
+                        </IonCard>
+
+                        {lastWeekLeaders.time.length > 0 && (
+                          <IonCard className="leaderboard-card">
+                            <IonCardHeader style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', padding: '16px' }}>
+                              <h3 style={{ margin: 0, color: '#000000', fontWeight: '700', fontSize: '16px' }}>
+                                ⏱️ Last Week's Time Leaders
+                              </h3>
+                            </IonCardHeader>
+                            <IonCardContent>
+                              <div style={{ display: 'flex', justifyContent: 'space-around', padding: '16px 0' }}>
+                                {lastWeekLeaders.time.slice(0, 3).map((leader: any, idx: number) => (
+                                  <div key={idx} style={{ textAlign: 'center', flex: 1 }}>
+                                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>
+                                      {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
+                                    </div>
+                                    <IonAvatar style={{ width: '60px', height: '60px', margin: '0 auto 8px' }}>
+                                      <img src={leader.avatar || ProfilePic} alt={leader.name} />
+                                    </IonAvatar>
+                                    <p style={{ fontWeight: '600', color: '#ffffff', fontSize: '14px', margin: '4px 0' }}>
+                                      {leader.name}
+                                    </p>
+                                    <p style={{ color: '#f59e0b', fontSize: '16px', fontWeight: '700', margin: '4px 0' }}>
+                                      {leader.value}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </IonCardContent>
+                          </IonCard>
+                        )}
+                      </>
+                    )}
+
+                    {/* Full Leaderboard Table */}
+                    {leaderboard.length > 0 ? (
+                      <IonCard className="leaderboard-card">
+                        <IonCardHeader style={{ background: '#1a1a1a', padding: '16px' }}>
+                          <h3 style={{ margin: 0, color: '#84cc16', fontWeight: '700', fontSize: '18px' }}>
+                            {weekFilter === 'current' ? 'This Week' : 'Last Week'} Rankings
+                          </h3>
+                        </IonCardHeader>
+                        <IonCardContent style={{ padding: 0 }}>
+                          <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                              <thead>
+                                <tr style={{ background: '#0a0a0a', borderBottom: '2px solid #2a2a2a' }}>
+                                  <th style={{ padding: '12px 8px', textAlign: 'center', color: '#999999', fontSize: '12px', fontWeight: '700' }}>RANK</th>
+                                  <th style={{ padding: '12px 8px', textAlign: 'left', color: '#999999', fontSize: '12px', fontWeight: '700' }}>ATHLETE</th>
+                                  <th style={{ padding: '12px 8px', textAlign: 'right', color: '#999999', fontSize: '12px', fontWeight: '700' }}>DISTANCE</th>
+                                  <th style={{ padding: '12px 8px', textAlign: 'center', color: '#999999', fontSize: '12px', fontWeight: '700' }}>RUNS</th>
+                                  <th style={{ padding: '12px 8px', textAlign: 'right', color: '#999999', fontSize: '12px', fontWeight: '700' }}>LONGEST</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {leaderboard.map((entry: any, index: number) => (
+                                  <tr key={entry.user_id || index} style={{ borderBottom: '1px solid #2a2a2a' }}>
+                                    <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                                      <span style={{ fontWeight: '700', color: index < 3 ? '#84cc16' : '#ffffff', fontSize: '16px' }}>
+                                        {entry.rank || index + 1}
+                                      </span>
+                                    </td>
+                                    <td style={{ padding: '12px 8px' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <IonAvatar style={{ width: '36px', height: '36px', flexShrink: 0 }}>
+                                          <img src={entry.avatar || ProfilePic} alt={entry.name} />
+                                        </IonAvatar>
+                                        <span style={{ color: '#ffffff', fontWeight: '600', fontSize: '14px' }}>
+                                          {entry.name || 'Unknown'}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '12px 8px', textAlign: 'right', color: '#84cc16', fontWeight: '600', fontSize: '14px' }}>
+                                      {entry.distance || '0 km'}
+                                    </td>
+                                    <td style={{ padding: '12px 8px', textAlign: 'center', color: '#ffffff', fontSize: '14px' }}>
+                                      {entry.runs || 0}
+                                    </td>
+                                    <td style={{ padding: '12px 8px', textAlign: 'right', color: '#ffffff', fontSize: '14px' }}>
+                                      {entry.longest || '0 km'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </IonCardContent>
+                      </IonCard>
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: '48px 16px' }}>
+                        <IonIcon icon={trophyOutline} style={{ fontSize: '64px', color: '#666666', marginBottom: '16px' }} />
+                        <h3 style={{ color: '#ffffff', margin: '0 0 8px 0' }}>No Data Yet</h3>
+                        <p style={{ color: '#999999', margin: 0 }}>
+                          Leaderboard will appear once members start logging runs.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
 
@@ -815,25 +1078,116 @@ const GroupFeed: React.FC = () => {
         </IonModal>
 
         {/* Invite Members Modal (placeholder for future implementation) */}
-        <IonModal isOpen={showInviteModal} onDidDismiss={() => setShowInviteModal(false)}>
+        <IonModal isOpen={showInviteModal} onDidDismiss={() => {
+          setShowInviteModal(false);
+          setInviteSearchQuery("");
+          setSearchResults([]);
+        }}>
           <IonHeader>
             <IonToolbar>
               <IonTitle>Invite Members</IonTitle>
               <IonButtons slot="end">
-                <IonButton onClick={() => setShowInviteModal(false)}>Close</IonButton>
+                <IonButton onClick={() => {
+                  setShowInviteModal(false);
+                  setInviteSearchQuery("");
+                  setSearchResults([]);
+                }} color="success">
+                  Done
+                </IonButton>
               </IonButtons>
             </IonToolbar>
           </IonHeader>
-          <IonContent className="ion-padding">
-            <div style={{ textAlign: 'center', padding: '32px' }}>
-              <IonIcon icon={personAddOutline} style={{ fontSize: '64px', color: 'var(--ion-color-medium)' }} />
-              <h2>Invite Members to {group?.name}</h2>
-              <p style={{ color: 'var(--ion-color-medium)' }}>
-                Member invitation functionality coming soon! You'll be able to search for users and send group invitations.
-              </p>
-              <IonButton onClick={() => setShowInviteModal(false)} style={{ marginTop: '16px' }}>
-                Got it
-              </IonButton>
+          <IonContent>
+            <div style={{ padding: '16px' }}>
+              {/* Search Bar */}
+              <IonSearchbar
+                value={inviteSearchQuery}
+                onIonInput={(e) => setInviteSearchQuery(e.detail.value || '')}
+                placeholder="Search users by name or username..."
+                debounce={0}
+                style={{
+                  '--background': '#1a1a1a',
+                  '--color': '#ffffff',
+                  '--placeholder-color': '#999999',
+                  '--icon-color': '#84cc16',
+                  '--border-radius': '12px',
+                  padding: '8px 0'
+                }}
+              />
+
+              {/* Search Results */}
+              <div style={{ marginTop: '16px' }}>
+                {isSearching ? (
+                  <div style={{ textAlign: 'center', padding: '32px' }}>
+                    <IonSpinner name="crescent" color="success" />
+                    <p style={{ color: '#999999', marginTop: '12px' }}>Searching...</p>
+                  </div>
+                ) : inviteSearchQuery.trim().length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '48px 16px' }}>
+                    <IonIcon icon={searchOutline} style={{ fontSize: '64px', color: '#666666', marginBottom: '16px' }} />
+                    <h3 style={{ color: '#ffffff', margin: '0 0 8px 0' }}>Search for Users</h3>
+                    <p style={{ color: '#999999', margin: 0, fontSize: '14px' }}>
+                      Enter a name or username to find users to invite to this group.
+                    </p>
+                  </div>
+                ) : searchResults.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '48px 16px' }}>
+                    <IonIcon icon={personAddOutline} style={{ fontSize: '64px', color: '#666666', marginBottom: '16px' }} />
+                    <h3 style={{ color: '#ffffff', margin: '0 0 8px 0' }}>No Users Found</h3>
+                    <p style={{ color: '#999999', margin: 0, fontSize: '14px' }}>
+                      Try a different search term.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p style={{ color: '#999999', fontSize: '13px', padding: '0 4px 12px 4px', margin: 0 }}>
+                      {searchResults.length} user{searchResults.length !== 1 ? 's' : ''} found
+                    </p>
+                    {searchResults.map((user: any) => (
+                      <IonCard key={user.user_id} className="member-card" style={{ marginBottom: '12px' }}>
+                        <IonItem lines="none">
+                          <IonAvatar slot="start" style={{ width: '48px', height: '48px' }}>
+                            <img src={user.profile_picture || ProfilePic} alt={user.name} />
+                          </IonAvatar>
+                          <IonLabel>
+                            <h2 style={{ color: '#ffffff', fontWeight: '600', fontSize: '15px', margin: '0 0 4px 0' }}>
+                              {user.name}
+                            </h2>
+                            <p style={{ color: '#999999', fontSize: '13px', margin: '0 0 2px 0' }}>
+                              @{user.username || 'user'}
+                            </p>
+                            {user.location && (
+                              <p style={{ color: '#666666', fontSize: '12px', margin: '2px 0 0 0' }}>
+                                📍 {user.location}
+                              </p>
+                            )}
+                          </IonLabel>
+                          <IonButton
+                            slot="end"
+                            color="success"
+                            size="small"
+                            onClick={() => handleInviteUser(user.user_id)}
+                            disabled={invitingUsers[user.user_id]}
+                            style={{ '--border-radius': '8px', textTransform: 'none' }}
+                          >
+                            {invitingUsers[user.user_id] ? (
+                              <>
+                                <IonSpinner name="crescent" style={{ width: '16px', height: '16px', marginRight: '6px' }} />
+                                Inviting...
+                              </>
+                            ) : (
+                              <>
+                                <IonIcon icon={personAddOutline} slot="start" />
+                                Invite
+                              </>
+                            )}
+                          </IonButton>
+                        </IonItem>
+                      </IonCard>
+                    ))}
+                  </>
+                )}
+              </div>
             </div>
           </IonContent>
         </IonModal>

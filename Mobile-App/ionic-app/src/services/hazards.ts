@@ -12,6 +12,7 @@ export interface HazardReport {
   severity_weight: number;
   trust_score: number;
   status: string;
+  distance_km?: number;
   users?: {
     username: string;
     profile_picture?: string | null;
@@ -53,14 +54,19 @@ export const HazardsApi = {
 
   // Get hazards near a point
   getHazardsNear: async (lat: number, lng: number, radiusKm: number = 5): Promise<HazardReport[]> => {
-    const { data } = await api.get('/hazards/near', { params: { lat, lng, radius_km: radiusKm } });
-    return data;
+    const { data } = await api.get('/hazards/nearby', { params: { lat, lng, radius: radiusKm } });
+    return data?.hazards ?? [];
   },
 
   // Report a hazard
   reportHazard: async (hazardData: CreateHazardData): Promise<HazardReport> => {
     const { data } = await api.post('/hazards', hazardData);
     return data;
+  },
+
+  updateHazardStatus: async (hazardId: number, status: 'active' | 'resolved' | 'hidden'): Promise<HazardReport> => {
+    const { data } = await api.put(`/hazards/${hazardId}`, { status });
+    return data?.hazard ?? data;
   },
 
   // Get safety analysis for a route (if backend provides this)

@@ -22,6 +22,9 @@ import {
   IonToast,
   IonActionSheet,
   IonSpinner,
+  IonRadioGroup,
+  IonRadio,
+  IonText,
 } from "@ionic/react";
 import {
   trophy,
@@ -30,6 +33,8 @@ import {
   camera,
   images,
   close,
+  lockClosedOutline,
+  globeOutline,
 } from "ionicons/icons";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import CommunityChallengesTab from "../components/CommunityChallengesTab";
@@ -61,7 +66,9 @@ const Community: React.FC = () => {
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
   const [groupPhoto, setGroupPhoto] = useState<string | null>(null);
+  const [groupPrivacy, setGroupPrivacy] = useState<boolean>(false); // false = public, true = private
   const [showPhotoActionSheet, setShowPhotoActionSheet] = useState(false);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
 
   // Toast notification state
   const [showToast, setShowToast] = useState(false);
@@ -200,51 +207,63 @@ const Community: React.FC = () => {
 
   const handleCreateGroup = async () => {
     if (!currentUser) {
-      setToastMessage('Please log in to create a group');
-      setToastColor('danger');
-      setShowToast(true);
+      triggerToast('Please log in to create a group', 'danger');
       return;
     }
 
     if (!groupName.trim()) {
-      setToastMessage("Please enter a group name");
-      setToastColor('warning');
-      setShowToast(true);
+      triggerToast("Please enter a group name", 'warning');
+      return;
+    }
+
+    if (groupName.trim().length > 100) {
+      triggerToast("Group name must be 100 characters or less", 'warning');
+      return;
+    }
+
+    if (groupDescription.trim().length > 500) {
+      triggerToast("Description must be 500 characters or less", 'warning');
       return;
     }
 
     if (!groupPhoto) {
-      setToastMessage("Please add a group photo");
-      setToastColor('warning');
-      setShowToast(true);
+      triggerToast("Please add a group photo", 'warning');
       return;
     }
 
     try {
-      await GroupsApi.createGroup(currentUser.user_id, {
+      setIsCreatingGroup(true);
+
+      const newGroup = await GroupsApi.createGroup(currentUser.user_id, {
         name: groupName.trim(),
         description: groupDescription.trim(),
         group_picture: groupPhoto,
-        privacy: false, // Public by default
+        privacy: groupPrivacy,
       });
 
-      setToastMessage("Group created successfully!");
-      setToastColor('success');
-      setShowToast(true);
+      triggerToast("Group created successfully!", 'success');
 
       // Reset form and close modal
       setGroupName("");
       setGroupDescription("");
       setGroupPhoto(null);
+      setGroupPrivacy(false);
       setIsCreateGroupModalOpen(false);
 
       // Refresh groups list
       fetchGroups();
+
+      // Navigate to the new group feed after a short delay
+      setTimeout(() => {
+        if (newGroup?.group_id) {
+          history.push(`/group-feed/${newGroup.group_id}`);
+        }
+      }, 500);
     } catch (error: any) {
       console.error('Failed to create group:', error);
-      setToastMessage(error.message || 'Failed to create group');
-      setToastColor('danger');
-      setShowToast(true);
+      triggerToast(error.message || 'Failed to create group', 'danger');
+    } finally {
+      setIsCreatingGroup(false);
     }
   };
 
@@ -486,31 +505,72 @@ const Community: React.FC = () => {
           </IonHeader>
           <IonContent className="modal-content">
             <div className="create-form">
+              {/* Group Name */}
               <IonItem>
-                <IonLabel position="stacked">Group Name</IonLabel>
+                <IonLabel position="stacked">Group Name <span style={{ color: '#ef4444' }}>*</span></IonLabel>
                 <IonInput
                   value={groupName}
                   onIonInput={e => setGroupName(e.detail.value!)}
                   placeholder="Enter group name"
+                  maxlength={100}
+                  counter={true}
                 />
               </IonItem>
+              <IonText color="medium" style={{ fontSize: '12px', padding: '0 16px', display: 'block', marginTop: '4px' }}>
+                {groupName.length}/100 characters
+              </IonText>
 
-              <IonItem>
+              {/* Description */}
+              <IonItem style={{ marginTop: '16px' }}>
                 <IonLabel position="stacked">Description</IonLabel>
                 <IonTextarea
                   value={groupDescription}
                   onIonInput={e => setGroupDescription(e.detail.value!)}
                   placeholder="Describe your group"
                   rows={4}
+                  maxlength={500}
+                  counter={true}
                 />
               </IonItem>
+              <IonText color="medium" style={{ fontSize: '12px', padding: '0 16px', display: 'block', marginTop: '4px' }}>
+                {groupDescription.length}/500 characters
+              </IonText>
+
+              {/* Privacy Settings */}
+              <div style={{ margin: "24px 16px 16px 16px" }}>
+                <IonLabel style={{ fontSize: '16px', fontWeight: '600', color: '#ffffff', marginBottom: '12px', display: 'block' }}>
+                  Privacy <span style={{ color: '#ef4444' }}>*</span>
+                </IonLabel>
+                <IonRadioGroup value={groupPrivacy ? 'private' : 'public'} onIonChange={e => setGroupPrivacy(e.detail.value === 'private')}>
+                  <IonItem lines="none">
+                    <IonIcon icon={globeOutline} slot="start" color="success" />
+                    <IonLabel>
+                      <h3 style={{ color: '#ffffff', fontWeight: '600' }}>Public</h3>
+                      <p style={{ color: '#999999', fontSize: '13px' }}>Anyone can find and join</p>
+                    </IonLabel>
+                    <IonRadio slot="end" value="public" />
+                  </IonItem>
+                  <IonItem lines="none">
+                    <IonIcon icon={lockClosedOutline} slot="start" color="warning" />
+                    <IonLabel>
+                      <h3 style={{ color: '#ffffff', fontWeight: '600' }}>Private</h3>
+                      <p style={{ color: '#999999', fontSize: '13px' }}>Invite only - requires approval</p>
+                    </IonLabel>
+                    <IonRadio slot="end" value="private" />
+                  </IonItem>
+                </IonRadioGroup>
+              </div>
 
               {/* Group Photo Upload Section */}
-              <div style={{ margin: "16px 0" }}>
+              <div style={{ margin: "24px 16px 16px 16px" }}>
+                <IonLabel style={{ fontSize: '16px', fontWeight: '600', color: '#ffffff', marginBottom: '12px', display: 'block' }}>
+                  Group Photo <span style={{ color: '#ef4444' }}>*</span>
+                </IonLabel>
                 {!groupPhoto ? (
                   <IonButton
                     expand="block"
                     fill="outline"
+                    color="success"
                     onClick={handleAddGroupPhoto}
                   >
                     <IonIcon slot="start" icon={camera} />
@@ -525,23 +585,39 @@ const Community: React.FC = () => {
                         width: "100%",
                         height: "200px",
                         objectFit: "cover",
-                        borderRadius: "8px"
+                        borderRadius: "12px",
+                        border: "2px solid #2a2a2a"
                       }}
                     />
                     <IonButton
-                      fill="clear"
+                      fill="solid"
                       color="danger"
-                      style={{ position: "absolute", top: "8px", right: "8px" }}
+                      size="small"
+                      style={{ position: "absolute", top: "12px", right: "12px" }}
                       onClick={handleRemoveGroupPhoto}
                     >
-                      <IonIcon icon={close} />
+                      <IonIcon icon={close} slot="icon-only" />
                     </IonButton>
                   </div>
                 )}
               </div>
 
-              <IonButton expand="block" onClick={handleCreateGroup}>
-                Create Group
+              {/* Create Button */}
+              <IonButton
+                expand="block"
+                onClick={handleCreateGroup}
+                disabled={isCreatingGroup}
+                color="success"
+                style={{ margin: '24px 16px 16px 16px' }}
+              >
+                {isCreatingGroup ? (
+                  <>
+                    <IonSpinner name="crescent" style={{ marginRight: '8px' }} />
+                    Creating...
+                  </>
+                ) : (
+                  'Create Group'
+                )}
               </IonButton>
             </div>
           </IonContent>
