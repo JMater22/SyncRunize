@@ -194,8 +194,8 @@ export default function ViewPosts() {
           post.post_id === postId
             ? {
                 ...post,
-                is_liked: response.isLiked,
-                likes_count: response.isLiked
+                is_liked: response.liked,
+                likes_count: response.liked
                   ? post.likes_count + 1
                   : Math.max(0, post.likes_count - 1)
               }
@@ -212,7 +212,7 @@ export default function ViewPosts() {
     if (!selectedPostId || !newComment.trim()) return;
 
     try {
-      await CommentsApi.addComment(selectedPostId, newComment.trim());
+      await CommentsApi.addComment(selectedPostId, { content: newComment.trim() });
       setNewComment("");
 
       // Refresh comments

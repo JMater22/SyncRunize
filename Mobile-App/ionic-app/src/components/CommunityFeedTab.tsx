@@ -298,11 +298,11 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
                   }}
                 >
                   <IonAvatar style={{ width: '36px', height: '36px', marginRight: '12px', flexShrink: 0 }}>
-                    <img src={getAvatarUrl(comment.author_avatar)} alt={comment.author_name} />
+                    <img src={getAvatarUrl(comment.profile_picture)} alt={comment.name} />
                   </IonAvatar>
                   <div style={{ flex: 1 }}>
                     <div style={{ marginBottom: '4px' }}>
-                      <strong style={{ fontSize: '14px' }}>{comment.author_name}</strong>
+                      <strong style={{ fontSize: '14px' }}>{comment.name}</strong>
                       <span style={{ fontSize: '12px', color: 'var(--ion-color-medium)', marginLeft: '8px' }}>
                         {formatRelativeTime(comment.created_at)}
                       </span>

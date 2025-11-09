@@ -24,7 +24,9 @@ import {
   IonList,
   IonLabel,
   IonSpinner,
-  IonSearchbar
+  IonSearchbar,
+  IonSegment,
+  IonSegmentButton
 } from "@ionic/react";
 import {
   heartOutline,
@@ -34,7 +36,8 @@ import {
   exitOutline,
   peopleOutline,
   personAddOutline,
-  trophyOutline
+  trophyOutline,
+  documentTextOutline
 } from "ionicons/icons";
 import { useHistory, useParams } from "react-router-dom";
 import ChallengePic from '../components/assets/istockphoto-143920084-612x612.jpg';
@@ -44,6 +47,7 @@ import { PushNotificationSchema, ActionPerformed } from '@capacitor/push-notific
 import { GroupsApi, Group, GroupMember, GroupPost } from "../services/groups";
 import { useUser } from "../contexts/UserContext";
 import { getAvatarUrl } from "../lib/utils";
+import "../theme/Group-feed.css";
 
 interface Post {
   id: number;
@@ -67,6 +71,7 @@ const GroupFeed: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // UI state
+  const [activeTab, setActiveTab] = useState<'posts' | 'leaderboard' | 'members'>('posts');
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [memberSearchQuery, setMemberSearchQuery] = useState("");
@@ -99,13 +104,30 @@ const GroupFeed: React.FC = () => {
 
   // Fetch group data from backend
   useEffect(() => {
+    if (!currentUser) {
+      setError('Please log in to view group details.');
+      setLoading(false);
+      return;
+    }
+
     if (groupId && currentUser) {
       fetchGroupData();
     }
   }, [groupId, currentUser]);
 
+  // Fetch members when Members tab is activated
+  useEffect(() => {
+    if (activeTab === 'members' && groupId && members.length === 0) {
+      fetchMembers();
+    }
+  }, [activeTab]);
+
   const fetchGroupData = async () => {
-    if (!groupId) return;
+    if (!groupId) {
+      setError('Group ID is missing. Please select a group from the Community page.');
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -140,7 +162,7 @@ const GroupFeed: React.FC = () => {
 
       // Check if current user is a member and their role
       if (currentUser) {
-        const userMember = membersData.find(m => m.user_id === currentUser.id);
+        const userMember = membersData.find(m => m.user_id === currentUser.user_id);
         setIsUserJoined(!!userMember);
         setIsUserAdmin(userMember?.role === 'admin');
       }
@@ -244,7 +266,7 @@ const GroupFeed: React.FC = () => {
   });
 
   const handleLike = async (postId: number) => {
-    if (!currentUser || !groupId) {
+    if (!currentUser) {
       setToastMessage('Please log in to like posts');
       setToastColor('danger');
       setShowToast(true);
@@ -262,7 +284,15 @@ const GroupFeed: React.FC = () => {
     }));
 
     try {
-      await GroupsApi.likeGroupPost(parseInt(groupId), postId);
+      const response = await GroupsApi.toggleLikeGroupPost(postId);
+      // Update with actual count from server
+      setLikes(prev => ({
+        ...prev,
+        [postId]: {
+          count: response.likes,
+          isLiked: response.liked
+        }
+      }));
     } catch (error: any) {
       console.error('Failed to like post:', error);
       // Revert optimistic update on error
@@ -290,7 +320,7 @@ const GroupFeed: React.FC = () => {
   };
 
   const handleAddComment = async () => {
-    if (!newComment.trim() || selectedPostId === null || !groupId || !currentUser) {
+    if (!newComment.trim() || selectedPostId === null || !currentUser) {
       return;
     }
 
@@ -312,7 +342,7 @@ const GroupFeed: React.FC = () => {
     setNewComment("");
 
     try {
-      await GroupsApi.commentOnGroupPost(parseInt(groupId), selectedPostId, commentText);
+      await GroupsApi.commentOnGroupPost(selectedPostId, commentText);
 
       // Update comment count in the post
       setGroupPosts(prev => prev.map(post =>
@@ -341,7 +371,7 @@ const GroupFeed: React.FC = () => {
     if (!groupId || !currentUser) return;
 
     try {
-      await GroupsApi.leaveGroup(parseInt(groupId), currentUser.id);
+      await GroupsApi.leaveGroup(parseInt(groupId), currentUser.user_id);
       setToastMessage('Left group successfully');
       setToastColor('success');
       setShowToast(true);
@@ -423,7 +453,7 @@ const GroupFeed: React.FC = () => {
   });
 
   return (
-    <IonPage>
+    <IonPage className="group-feed-page">
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
@@ -447,14 +477,14 @@ const GroupFeed: React.FC = () => {
 
       <IonContent fullscreen className="ion-padding">
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '32px' }}>
+          <div className="loading-container">
             <IonSpinner name="crescent" />
             <p>Loading group...</p>
           </div>
         ) : error ? (
-          <div style={{ textAlign: 'center', padding: '32px' }}>
-            <p style={{ color: 'var(--ion-color-danger)' }}>{error}</p>
-            <IonButton onClick={() => fetchGroupData()} size="small">
+          <div className="error-container">
+            <p>{error}</p>
+            <IonButton onClick={() => fetchGroupData()} size="small" color="success">
               Retry
             </IonButton>
           </div>
@@ -462,15 +492,15 @@ const GroupFeed: React.FC = () => {
           <div className="feed-tab">
             {/* Group Info Card */}
             {group && (
-              <IonCard style={{ marginBottom: '16px' }}>
+              <IonCard className="group-info-card">
                 <IonCardContent>
-                  <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 'bold' }}>
+                  <h2>
                     {group.name}
                   </h2>
-                  <p style={{ margin: '0 0 8px 0', color: 'var(--ion-color-medium)', fontSize: '14px' }}>
+                  <p>
                     {group.description}
                   </p>
-                  <div style={{ display: 'flex', gap: '16px', fontSize: '14px', color: 'var(--ion-color-medium)' }}>
+                  <div className="group-meta">
                     <span>{group.member_count || members.length} members</span>
                     {group.location && <span>📍 {group.location}</span>}
                     <span>{group.privacy ? '🔒 Private' : '🌐 Public'}</span>
@@ -479,126 +509,212 @@ const GroupFeed: React.FC = () => {
               </IonCard>
             )}
 
-            {/* Post Creation Input - Only shown if user has joined */}
-            {isUserJoined && (
-              <IonCard className="post-input-card" routerLink="/create-post">
-                <IonItem lines="none">
-                  <IonAvatar slot="start">
-                    <IonImg src={currentUser?.profile_picture || ProfilePic} />
-                  </IonAvatar>
-                  <input
-                    type="text"
-                    placeholder="What's on your mind?"
-                    className="post-input"
-                    style={{border: 'none', outline: 'none', width: '100%', padding: '10px'}}
-                    readOnly
-                  />
-                </IonItem>
-              </IonCard>
-            )}
+            {/* Tab Navigation */}
+            <IonSegment
+              value={activeTab}
+              onIonChange={(e) => setActiveTab(e.detail.value as 'posts' | 'leaderboard' | 'members')}
+            >
+              <IonSegmentButton value="posts">
+                <IonIcon icon={documentTextOutline} />
+                <IonLabel>Posts</IonLabel>
+              </IonSegmentButton>
+              <IonSegmentButton value="leaderboard">
+                <IonIcon icon={trophyOutline} />
+                <IonLabel>Leaderboard</IonLabel>
+              </IonSegmentButton>
+              <IonSegmentButton value="members">
+                <IonIcon icon={peopleOutline} />
+                <IonLabel>Members</IonLabel>
+              </IonSegmentButton>
+            </IonSegment>
 
-            {/* Feed Posts from Backend */}
-            <div className="feed-posts">
-              {groupPosts.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '32px' }}>
-                  <p style={{ color: 'var(--ion-color-medium)' }}>
-                    No posts yet. {isUserJoined && 'Be the first to post!'}
-                  </p>
+            {/* Posts Tab */}
+            {activeTab === 'posts' && (
+              <>
+                {/* Post Creation Input - Only shown if user has joined */}
+                {isUserJoined && (
+                  <IonCard className="post-input-card" routerLink="/create-post">
+                    <IonItem lines="none">
+                      <IonAvatar slot="start">
+                        <IonImg src={currentUser?.profile_picture || ProfilePic} />
+                      </IonAvatar>
+                      <input
+                        type="text"
+                        placeholder="What's on your mind?"
+                        className="post-input"
+                        style={{border: 'none', outline: 'none', width: '100%', padding: '10px'}}
+                        readOnly
+                      />
+                    </IonItem>
+                  </IonCard>
+                )}
+
+                {/* Feed Posts from Backend */}
+                <div className="feed-posts">
+                  {groupPosts.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '32px' }}>
+                      <p style={{ color: 'var(--ion-color-medium)' }}>
+                        No posts yet. {isUserJoined && 'Be the first to post!'}
+                      </p>
+                    </div>
+                  ) : (
+                    groupPosts.map((post) => (
+                      <IonCard key={post.post_id} className="post-card">
+                        <IonCardHeader>
+                          <div className="post-header" style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                            <IonAvatar>
+                              <IonImg src={post.author_avatar || getAvatarUrl(post.author_username)} />
+                            </IonAvatar>
+                            <div className="user-info">
+                              <div style={{fontWeight: 'bold'}}>{post.author_name}</div>
+                              <div style={{fontSize: '0.85rem', color: '#666'}}>
+                                {new Date(post.created_at).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </div>
+                        </IonCardHeader>
+                        <IonCardContent>
+                          {post.title && <h3 style={{ marginTop: 0 }}>{post.title}</h3>}
+                          <p className="post-text">{post.content}</p>
+                          {post.images && post.images.length > 0 && (
+                            <IonImg
+                              src={post.images[0]}
+                              className="post-image"
+                              style={{borderRadius: '8px', marginTop: '10px'}}
+                            />
+                          )}
+                          <div className="post-actions" style={{display: 'flex', gap: '20px', marginTop: '15px', padding: '10px 0', borderTop: '1px solid #eee'}}>
+                            <div
+                              className="action-item"
+                              onClick={() => handleLike(post.post_id)}
+                              style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
+                            >
+                              <IonIcon
+                                icon={likes[post.post_id]?.isLiked ? heart : heartOutline}
+                                color={likes[post.post_id]?.isLiked ? "danger" : "medium"}
+                              />
+                              <span>{likes[post.post_id]?.count || 0}</span>
+                            </div>
+                            <div
+                              className="action-item"
+                              onClick={() => openComments(post.post_id)}
+                              style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
+                            >
+                              <IonIcon icon={chatbubbleOutline} color="medium" />
+                              <span>{post.comments_count || 0}</span>
+                            </div>
+                          </div>
+                        </IonCardContent>
+                      </IonCard>
+                    ))
+                  )}
                 </div>
-              ) : (
-                groupPosts.map((post) => (
-                  <IonCard key={post.post_id} className="post-card">
+
+                {/* Legacy posts from push notifications */}
+                {posts.map((post) => (
+                  <IonCard key={post.id} className="post-card">
                     <IonCardHeader>
                       <div className="post-header" style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
                         <IonAvatar>
-                          <IonImg src={post.author_avatar || getAvatarUrl(post.author_username)} />
+                          <IonImg src={ProfilePic} />
                         </IonAvatar>
                         <div className="user-info">
-                          <div style={{fontWeight: 'bold'}}>{post.author_name}</div>
-                          <div style={{fontSize: '0.85rem', color: '#666'}}>
-                            {new Date(post.created_at).toLocaleDateString()}
-                          </div>
+                          <div style={{fontWeight: 'bold'}}>{post.user}</div>
+                          <div style={{fontSize: '0.85rem', color: '#666'}}>{post.time}</div>
                         </div>
                       </div>
                     </IonCardHeader>
                     <IonCardContent>
-                      {post.title && <h3 style={{ marginTop: 0 }}>{post.title}</h3>}
-                      <p className="post-text">{post.content}</p>
-                      {post.images && post.images.length > 0 && (
-                        <IonImg
-                          src={post.images[0]}
-                          className="post-image"
-                          style={{borderRadius: '8px', marginTop: '10px'}}
-                        />
-                      )}
+                      <p className="post-text">{post.text}</p>
+                      <IonImg src={post.image} className="post-image" style={{borderRadius: '8px', marginTop: '10px'}} />
                       <div className="post-actions" style={{display: 'flex', gap: '20px', marginTop: '15px', padding: '10px 0', borderTop: '1px solid #eee'}}>
                         <div
                           className="action-item"
-                          onClick={() => handleLike(post.post_id)}
+                          onClick={() => handleLike(post.id)}
                           style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
                         >
                           <IonIcon
-                            icon={likes[post.post_id]?.isLiked ? heart : heartOutline}
-                            color={likes[post.post_id]?.isLiked ? "danger" : "medium"}
+                            icon={likes[post.id]?.isLiked ? heart : heartOutline}
+                            color={likes[post.id]?.isLiked ? "danger" : "medium"}
                           />
-                          <span>{likes[post.post_id]?.count || 0}</span>
+                          <span>{likes[post.id]?.count || 0}</span>
                         </div>
                         <div
                           className="action-item"
-                          onClick={() => openComments(post.post_id)}
+                          onClick={() => openComments(post.id)}
                           style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
                         >
                           <IonIcon icon={chatbubbleOutline} color="medium" />
-                          <span>{post.comments_count || 0}</span>
+                          <span>{comments[post.id]?.length || 0}</span>
                         </div>
                       </div>
                     </IonCardContent>
                   </IonCard>
-                ))
-              )}
-            </div>
+                ))}
+              </>
+            )}
 
-            {/* Legacy posts from push notifications */}
-            {posts.map((post) => (
-              <IonCard key={post.id} className="post-card">
-                <IonCardHeader>
-                  <div className="post-header" style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                    <IonAvatar>
-                      <IonImg src={ProfilePic} />
-                    </IonAvatar>
-                    <div className="user-info">
-                      <div style={{fontWeight: 'bold'}}>{post.user}</div>
-                      <div style={{fontSize: '0.85rem', color: '#666'}}>{post.time}</div>
-                    </div>
+            {/* Leaderboard Tab */}
+            {activeTab === 'leaderboard' && (
+              <div style={{ textAlign: 'center', padding: '32px' }}>
+                <IonIcon icon={trophyOutline} style={{ fontSize: '64px', color: 'var(--ion-color-medium)' }} />
+                <h2>Leaderboard</h2>
+                <p style={{ color: 'var(--ion-color-medium)' }}>
+                  Leaderboard functionality coming soon!
+                </p>
+              </div>
+            )}
+
+            {/* Members Tab */}
+            {activeTab === 'members' && (
+              <div>
+                <IonSearchbar
+                  value={memberSearchQuery}
+                  onIonInput={(e) => setMemberSearchQuery(e.detail.value || '')}
+                  placeholder="Search members..."
+                  style={{ padding: '8px 0' }}
+                />
+
+                {loadingMembers ? (
+                  <div style={{ textAlign: 'center', padding: '32px' }}>
+                    <IonSpinner name="crescent" />
+                    <p>Loading members...</p>
                   </div>
-                </IonCardHeader>
-                <IonCardContent>
-                  <p className="post-text">{post.text}</p>
-                  <IonImg src={post.image} className="post-image" style={{borderRadius: '8px', marginTop: '10px'}} />
-                  <div className="post-actions" style={{display: 'flex', gap: '20px', marginTop: '15px', padding: '10px 0', borderTop: '1px solid #eee'}}>
-                    <div 
-                      className="action-item" 
-                      onClick={() => handleLike(post.id)}
-                      style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
-                    >
-                      <IonIcon 
-                        icon={likes[post.id]?.isLiked ? heart : heartOutline} 
-                        color={likes[post.id]?.isLiked ? "danger" : "medium"} 
-                      /> 
-                      <span>{likes[post.id]?.count || 0}</span>
-                    </div>
-                    <div 
-                      className="action-item" 
-                      onClick={() => openComments(post.id)}
-                      style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer'}}
-                    >
-                      <IonIcon icon={chatbubbleOutline} color="medium" /> 
-                      <span>{comments[post.id]?.length || 0}</span>
-                    </div>
+                ) : filteredMembers.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '32px' }}>
+                    <p style={{ color: 'var(--ion-color-medium)' }}>
+                      {memberSearchQuery ? 'No members found' : 'No members yet'}
+                    </p>
                   </div>
-                </IonCardContent>
-              </IonCard>
-            ))}
+                ) : (
+                  <IonList>
+                    {filteredMembers.map((member) => (
+                      <IonItem key={member.user_id}>
+                        <IonAvatar slot="start">
+                          <IonImg src={member.users?.profile_picture || getAvatarUrl(member.users?.username || '')} />
+                        </IonAvatar>
+                        <IonLabel>
+                          <h2>{member.users?.name || 'Unknown User'}</h2>
+                          <p>@{member.users?.username || 'username'}</p>
+                          {member.users?.location && (
+                            <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)' }}>
+                              📍 {member.users.location}
+                            </p>
+                          )}
+                        </IonLabel>
+                        <IonBadge
+                          slot="end"
+                          color={member.role === 'admin' ? 'primary' : 'medium'}
+                          style={{ textTransform: 'capitalize' }}
+                        >
+                          {member.role}
+                        </IonBadge>
+                      </IonItem>
+                    ))}
+                  </IonList>
+                )}
+              </div>
+            )}
           </div>
         )}
 

@@ -82,9 +82,33 @@ export const GroupsApi = {
   },
 
   // Create group
-  createGroup: async (groupData: CreateGroupData): Promise<Group> => {
-    const { data } = await api.post('/groups', groupData);
+  createGroup: async (userId: number, groupData: CreateGroupData): Promise<Group> => {
+    // Backend expects userId in the path
+    const { data } = await api.post(`/groups/create/${userId}`, groupData);
     return data;
+  },
+
+  // Get user's joined groups
+  getUserJoinedGroups: async (userId: number): Promise<Group[]> => {
+    const { data } = await api.get(`/group-members/${userId}/joined-groups`);
+    return data;
+  },
+
+  // Check user membership and role
+  checkMembership: async (groupId: number, userId: number): Promise<{ isMember: boolean; role: 'admin' | 'member' | null }> => {
+    const { data } = await api.get(`/group-members/${groupId}/check/${userId}`);
+    return data;
+  },
+
+  // Update group
+  updateGroup: async (groupId: number, updates: Partial<CreateGroupData>): Promise<Group> => {
+    const { data } = await api.put(`/groups/${groupId}`, updates);
+    return data;
+  },
+
+  // Delete group (admin only)
+  deleteGroup: async (groupId: number): Promise<void> => {
+    await api.delete(`/groups/${groupId}`);
   },
 
   // Get group members
@@ -111,31 +135,68 @@ export const GroupsApi = {
   // Get group leaderboard
   getLeaderboard: async (groupId: number, week?: 'current' | 'last'): Promise<LeaderboardEntry[]> => {
     const params = week ? { week } : {};
-    const { data } = await api.get(`/groups/${groupId}/leaderboard`, { params });
+    const { data } = await api.get(`/groups/${groupId}/leaderboard/weekly`, { params });
+    return data;
+  },
+
+  // Get last week's top 3 leaders
+  getLastWeekLeaders: async (groupId: number): Promise<LeaderboardEntry[]> => {
+    const { data } = await api.get(`/groups/${groupId}/leaderboard/last-week/leaders`);
     return data;
   },
 
   // Get group posts
-  getGroupPosts: async (groupId: number): Promise<GroupPost[]> => {
-    const { data } = await api.get(`/groups/${groupId}/posts`);
+  getGroupPosts: async (groupId: number, limit?: number, offset?: number): Promise<GroupPost[]> => {
+    const params: any = {};
+    if (limit) params.limit = limit;
+    if (offset) params.offset = offset;
+    const { data } = await api.get(`/group-posts/${groupId}`, { params });
     return data;
   },
 
   // Create group post
   createGroupPost: async (groupId: number, postData: CreateGroupPostData): Promise<GroupPost> => {
-    const { data } = await api.post(`/groups/${groupId}/posts`, postData);
+    const { data } = await api.post(`/group-posts/${groupId}`, postData);
     return data;
   },
 
-  // Like group post
-  likeGroupPost: async (groupId: number, postId: number): Promise<any> => {
-    const { data } = await api.post(`/groups/${groupId}/posts/${postId}/like`);
+  // Update group post
+  updateGroupPost: async (groupId: number, postId: number, updates: Partial<CreateGroupPostData>): Promise<GroupPost> => {
+    const { data } = await api.put(`/group-posts/${groupId}/posts/${postId}`, updates);
+    return data;
+  },
+
+  // Delete group post
+  deleteGroupPost: async (groupId: number, postId: number): Promise<void> => {
+    await api.delete(`/group-posts/${groupId}/posts/${postId}`);
+  },
+
+  // Toggle like on group post
+  toggleLikeGroupPost: async (postId: number): Promise<{ liked: boolean; likes: number }> => {
+    const { data } = await api.post(`/group-likes/${postId}/toggle`);
+    return data;
+  },
+
+  // Get group post comments
+  getGroupPostComments: async (postId: number): Promise<any[]> => {
+    const { data } = await api.get(`/group-comments/${postId}/comments`);
     return data;
   },
 
   // Comment on group post
-  commentOnGroupPost: async (groupId: number, postId: number, content: string): Promise<any> => {
-    const { data } = await api.post(`/groups/${groupId}/posts/${postId}/comments`, { content });
+  commentOnGroupPost: async (postId: number, content: string): Promise<any> => {
+    const { data } = await api.post(`/group-comments/${postId}/comments`, { content });
     return data;
+  },
+
+  // Update comment
+  updateGroupPostComment: async (postId: number, commentId: number, content: string): Promise<any> => {
+    const { data } = await api.put(`/group-comments/${postId}/comments/${commentId}`, { content });
+    return data;
+  },
+
+  // Delete comment
+  deleteGroupPostComment: async (postId: number, commentId: number): Promise<void> => {
+    await api.delete(`/group-comments/${postId}/comments/${commentId}`);
   },
 };

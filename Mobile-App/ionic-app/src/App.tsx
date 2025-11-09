@@ -50,6 +50,7 @@ import Badges from "./pages/Badges";
 import CreatePost from "./pages/Create-Post";
 import ForgotPassword from "./pages/forgot-password";
 import ResetPassword from "./pages/reset-password";
+import PrePostPage from "./pages/PrePostPage";
 
 import HomeIcon from "./components/assets/icons/home.svg";
 import RouteIcon from "./components/assets/icons/conversion_path.svg";
@@ -72,6 +73,8 @@ import "@ionic/react/css/palettes/dark.system.css";
 /* Theme Variables */
 import "./theme/variables.css";
 import "./theme/global.css";
+import { RunTrackerProvider } from "./state/runTrackerContext";
+import { RunTrackerController } from "./hooks/useRunTracker";
 
 setupIonicReact();
 
@@ -114,7 +117,9 @@ const App: React.FC = () => {
       <PostsProvider>
         <NotificationProvider>
           <ChallengesProvider>
-            <IonReactRouter>
+            <RunTrackerProvider>
+              <RunTrackerController />
+              <IonReactRouter>
               <IonTabs>
                 <IonRouterOutlet>
                   <Route exact path="/home" component={Home} />
@@ -151,6 +156,7 @@ const App: React.FC = () => {
                   <Route exact path="/activities" component={ViewActivity} />
                   <Route exact path="/badges" component={Badges} />
                   <Route exact path="/create-post" component={CreatePost} />
+                  <Route exact path="/run-pre-post" component={PrePostPage} />
 
                   <Route exact path="/">
                     <Redirect to="/home" />
@@ -186,6 +192,7 @@ const App: React.FC = () => {
                 </IonTabBar>
               </IonTabs>
             </IonReactRouter>
+            </RunTrackerProvider>
           </ChallengesProvider>
         </NotificationProvider>
       </PostsProvider>

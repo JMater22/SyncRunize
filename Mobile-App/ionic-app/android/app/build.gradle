@@ -1,10 +1,10 @@
-apply plugin: 'com.android.application'
+    apply plugin: 'com.android.application'
 
 android {
     namespace "com.app.syncrunize"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.app.syncrunize"
+            applicationId "com.app.syncrunize"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

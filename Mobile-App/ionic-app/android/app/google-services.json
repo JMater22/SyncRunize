@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "699049850141",
+    "project_id": "syncrunizeapp-17964",
+    "storage_bucket": "syncrunizeapp-17964.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:699049850141:android:49a56ac954a2e7aee4ddf4",
+        "android_client_info": {
+          "package_name": "com.app.syncrunize"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyARbWYL2siDTeovfYVqMrMmkM4_buITr3I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

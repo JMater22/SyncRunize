@@ -49,6 +49,17 @@
   opacity: 0.9;
 }
 
+.map-error-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  padding: 24px;
+  font-size: 14px;
+}
+
 /* Location indicator visuals removed per updated UX */
 
 /* GPS Button */
@@ -98,6 +109,31 @@
   padding: 16px 20px 32px;
   z-index: 10;
   backdrop-filter: blur(10px);
+}
+
+.stats-panel.hidden {
+  display: none;
+}
+
+.view-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 12;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.view-toggle:focus-visible {
+  outline: 2px solid #92C628;
 }
 
 /* GPS Status Bar */
@@ -195,7 +231,7 @@
 .tracking-status-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .tracking-status-actions {
@@ -205,30 +241,31 @@
 
 .status-label {
   text-transform: uppercase;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
-  letter-spacing: 0.08em;
-  margin-bottom: 4px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.78);
+  letter-spacing: 0.12em;
+  margin-bottom: 2px;
 }
 
 .status-value {
-  font-size: 20px;
+  font-size: 24px;
   margin: 0;
+  color: #f1f7e3;
 }
 
 .status-subtext {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .ghost-button {
   border: 1px solid rgba(255, 255, 255, 0.4);
   background: transparent;
   border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 13px;
-  color: #ffffff;
+  padding: 8px 18px;
+  font-size: 14px;
+  color: #f8ffe8;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -254,21 +291,24 @@
 .stat-card {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 14px;
-  padding: 12px;
+  padding: 14px;
   text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(4px);
 }
 
 .card-label {
-  font-size: 11px;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .card-value {
   display: block;
   margin-top: 6px;
-  font-size: 18px;
+  font-size: 22px;
+  color: #f3ffe3;
 }
 
 .action-row {
@@ -277,28 +317,66 @@
   gap: 12px;
 }
 
-.start-btn {
-  flex: 1;
+.primary-action-btn,
+.secondary-action-btn {
   border: none;
-  border-radius: 14px;
-  padding: 12px 0;
+  border-radius: 16px;
+  padding: 14px 18px;
   font-size: 16px;
   font-weight: 600;
-  color: #000;
-  background: linear-gradient(135deg, #92c628, #6cb400);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex: 1;
   cursor: pointer;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
-.start-btn.disabled {
+.primary-action-btn {
+  color: #050505;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+}
+
+.primary-action-btn.variant-start,
+.primary-action-btn.variant-resume {
+  background: linear-gradient(135deg, #b4ff65, #8acb2d);
+  color: #0c1504;
+}
+
+.primary-action-btn.variant-pause {
+  background: linear-gradient(135deg, #ffda7a, #f7b733);
+  color: #2d1400;
+}
+
+.primary-action-btn:active {
+  transform: scale(0.98);
+}
+
+.primary-action-btn:hover {
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.45);
+}
+
+.secondary-action-btn {
+  flex: 0.7;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.secondary-action-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.finish-btn {
+  color: #ffd7d7;
+  border-color: rgba(255, 100, 100, 0.25);
+}
+
+.primary-action-btn:disabled,
+.secondary-action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
-  background: rgba(146, 198, 40, 0.35);
-}
-
-.start-btn:not(.disabled):hover {
-  transform: translateY(-1px);
 }
 
 .mini-note {
@@ -328,7 +406,8 @@
     flex-direction: column;
   }
 
-  .start-btn,
+  .primary-action-btn,
+  .secondary-action-btn,
   .ghost-button.ghost-secondary {
     width: 100%;
   }
@@ -338,4 +417,63 @@
   .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* Activity summary modal */
+.activity-summary-modal .summary-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.activity-summary-modal .summary-stats strong {
+  font-size: 18px;
+}
+
+.activity-summary-modal .summary-stats .label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 4px;
+}
+
+.activity-summary-modal .visibility-group ion-item {
+  --background: transparent;
+}
+
+.summary-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.summary-actions ion-button {
+  flex: 1;
+}
+
+/* Pre-post */
+.static-map-wrapper {
+  margin: 16px 0;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.static-map-wrapper img {
+  width: 100%;
+  display: block;
+}
+
+.pre-post-actions {
+  margin-top: 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pre-post-actions ion-button {
+  flex: 1;
 }

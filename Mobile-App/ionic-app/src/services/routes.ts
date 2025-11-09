@@ -30,19 +30,6 @@ export interface GenerateRouteData {
   route_type?: 'run' | 'walk' | 'cycle';
 }
 
-export interface SaveRouteData {
-  route_name: string;
-  distance_km: number;
-  duration_seconds: number;
-  average_pace: string;
-  estimated_calories: number;
-  route_type?: 'run' | 'walk' | 'cycle';
-  chosen_path: Array<{ lat: number; lng: number }>;
-  description?: string;
-  visibility?: 'public' | 'private';
-  snapshot_url?: string;
-}
-
 export interface UpdateRouteData {
   route_name?: string;
   description?: string;
@@ -76,12 +63,6 @@ export const RoutesApi = {
   // Generate route with AI
   generateRoute: async (routeData: GenerateRouteData): Promise<any> => {
     const { data } = await api.post('/routes/generate', routeData);
-    return data;
-  },
-
-  // Save route
-  saveRoute: async (routeData: SaveRouteData): Promise<Route> => {
-    const { data } = await api.post('/routes/save', routeData);
     return data;
   },
 

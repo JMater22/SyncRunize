@@ -32,18 +32,18 @@ import {
 } from 'ionicons/icons';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
-import { usePosts } from '../contexts/PostsContext';
-import { RoutesApi } from '../services/routes';
+import { createRoute } from '../services/api';
 import "../theme/Activity-Summary.css";
 import ChallengePic from '../components/assets/istockphoto-143920084-612x612.jpg';
 import Map from '../components/assets/map.png';
 import Challenge1 from '../components/assets/challenge1.jpg';
 import { useHideTabBar } from "../hooks/useHideTabBar";
+import { formatPace, paceStringToMinutes } from '../lib/utils';
 
 interface RunData {
   distance_km: number;
   duration_seconds: number;
-  average_pace: string;
+  average_pace: string | number;
   estimated_calories: number;
   chosen_path: Array<{ lat: number; lng: number }>;
   route_type?: 'run' | 'walk' | 'cycle';
@@ -56,7 +56,6 @@ const Activity: React.FC = () => {
   const history = useHistory();
   const location = useLocation<{ runData?: RunData }>();
   const { currentUser } = useUser();
-  const { createPost } = usePosts();
 
   // Get run data from navigation state or use defaults
   const runData = location.state?.runData || {
@@ -95,45 +94,55 @@ const Activity: React.FC = () => {
     try {
       setSaving(true);
 
-      // Save route to backend
-      const savedRoute = await RoutesApi.saveRoute({
+      if (!runData.chosen_path?.length) {
+        throw new Error('No GPS path detected for this run.');
+      }
+
+      const first = runData.chosen_path[0];
+      const last = runData.chosen_path[runData.chosen_path.length - 1] ?? first;
+      if (!first || !last) {
+        throw new Error('Unable to determine route start/end.');
+      }
+
+      const avePace = paceStringToMinutes(
+        runData.average_pace,
+        runData.distance_km,
+        runData.duration_seconds
+      );
+
+      const savedRoute = await createRoute({
         route_name: activityTitle.trim(),
-        distance_km: runData.distance_km,
+        visibility,
         duration_seconds: runData.duration_seconds,
-        average_pace: runData.average_pace,
+        average_pace: avePace,
+        distance_km: runData.distance_km,
         estimated_calories: runData.estimated_calories,
-        route_type: runData.route_type || 'run',
-        chosen_path: runData.chosen_path,
-        description: activityDescription.trim() || undefined,
-        visibility: visibility,
-        // snapshot_url will be added in future enhancement
+        chosen_path: runData.chosen_path.map((point) => ({ lat: point.lat, lng: point.lng })),
+        start_lat: first.lat,
+        start_lng: first.lng,
+        end_lat: last.lat,
+        end_lng: last.lng,
+        snapshot_url: undefined,
       });
 
       console.log('Activity saved successfully:', savedRoute);
-
-      // Share to feed if enabled
-      if (shareToFeed && visibility === 'public') {
-        try {
-          await createPost(
-            activityDescription.trim() || `Just completed a ${runData.route_type || 'run'}!`,
-            savedRoute.route_id,
-            'public'
-          );
-          console.log('Activity shared to feed');
-        } catch (error: any) {
-          console.error('Failed to share to feed:', error);
-          // Don't fail the save if sharing fails
-        }
-      }
 
       setToastMessage('Activity saved successfully!');
       setToastColor('success');
       setShowToast(true);
 
-      // Navigate to profile or feed after short delay
-      setTimeout(() => {
-        history.push(shareToFeed ? '/community' : '/profile');
-      }, 1500);
+      if (shareToFeed && visibility === 'public') {
+        history.push('/run-pre-post', {
+          routeId: savedRoute.route_id,
+          routeName: savedRoute.route_name ?? activityTitle.trim(),
+          snapshotUrl: savedRoute.snapshot_url ?? null,
+          route: savedRoute,
+        });
+      } else {
+        setTimeout(() => {
+          history.push('/profile');
+        }, 1500);
+      }
     } catch (error: any) {
       console.error('Failed to save activity:', error);
       setToastMessage(error.message || 'Failed to save activity');
@@ -232,7 +241,13 @@ const Activity: React.FC = () => {
               <IonCol size="6">
                 <div style={{ textAlign: 'center' }}>
                   <h3 style={{ margin: '0', fontSize: '20px', fontWeight: 'bold' }}>
-                    {runData.average_pace}
+                    {formatPace(
+                      paceStringToMinutes(
+                        runData.average_pace,
+                        runData.distance_km,
+                        runData.duration_seconds
+                      )
+                    )}
                   </h3>
                   <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: 'var(--ion-color-medium)' }}>Avg Pace (/km)</p>
                 </div>
