@@ -165,7 +165,26 @@ export default function Notifications() {
     }
 
     // For other notifications, show actor's profile picture
-    return notification.actor?.profile_picture || DEFAULT_AVATAR;
+    const profilePicture = notification.actor?.profile_picture;
+
+    // Return DEFAULT_AVATAR if no profile picture
+    if (!profilePicture) {
+      return DEFAULT_AVATAR;
+    }
+
+    // If it's already a full URL (starts with http:// or https://), use it directly
+    if (profilePicture.startsWith('http://') || profilePicture.startsWith('https://')) {
+      return profilePicture;
+    }
+
+    // If it's a Supabase storage path, construct the full URL
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hooceemtoyucadhxuevx.supabase.co';
+
+    // Remove leading slash if present
+    const cleanPath = profilePicture.startsWith('/') ? profilePicture.slice(1) : profilePicture;
+
+    // Construct full Supabase storage URL
+    return `${supabaseUrl}/storage/v1/object/public/${cleanPath}`;
   };
 
   return (
@@ -215,6 +234,10 @@ export default function Notifications() {
                   <img
                     src={getNotificationAvatar(notification)}
                     alt={notification.type === 'challenge_progress' || notification.type === 'badge_earned' ? 'Badge' : (notification.actor?.username || 'User')}
+                    onError={(e) => {
+                      // Fallback to default avatar if image fails to load
+                      (e.target as HTMLImageElement).src = DEFAULT_AVATAR;
+                    }}
                   />
                 </IonAvatar>
                 <IonLabel className="ion-text-wrap">

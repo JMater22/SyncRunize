@@ -115,15 +115,58 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         async (payload) => {
           console.log('Notification updated:', payload);
 
-          // Update notification in state
-          const updatedNotification = payload.new as Notification;
-          setNotifications(prev =>
-            prev.map(n =>
-              n.notification_id === updatedNotification.notification_id
-                ? updatedNotification
-                : n
-            )
-          );
+          // Refetch full notification with actor details from Supabase
+          try {
+            const { data: updatedNotification, error } = await supabase
+              .from('notifications')
+              .select(`
+                *,
+                actor:users!notifications_actor_id_fkey (
+                  user_id,
+                  name,
+                  username,
+                  profile_picture
+                )
+              `)
+              .eq('notification_id', payload.new.notification_id)
+              .single();
+
+            if (error) {
+              console.error('Error fetching updated notification:', error);
+              // Fallback: preserve existing actor data
+              const payloadNotif = payload.new as Notification;
+              setNotifications(prev =>
+                prev.map(n =>
+                  n.notification_id === payloadNotif.notification_id
+                    ? { ...payloadNotif, actor: n.actor }
+                    : n
+                )
+              );
+              return;
+            }
+
+            if (updatedNotification) {
+              // Update with full notification including actor details
+              setNotifications(prev =>
+                prev.map(n =>
+                  n.notification_id === updatedNotification.notification_id
+                    ? updatedNotification
+                    : n
+                )
+              );
+            }
+          } catch (err) {
+            console.error('Failed to refetch notification:', err);
+            // Fallback: preserve existing actor data
+            const payloadNotif = payload.new as Notification;
+            setNotifications(prev =>
+              prev.map(n =>
+                n.notification_id === payloadNotif.notification_id
+                  ? { ...payloadNotif, actor: n.actor }
+                  : n
+              )
+            );
+          }
         }
       )
       .subscribe();
