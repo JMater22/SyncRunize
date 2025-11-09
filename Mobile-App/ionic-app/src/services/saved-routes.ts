@@ -7,9 +7,9 @@ export interface SaveRouteToLibraryData {
 
 export const SavedRoutesApi = {
   // Get user's saved routes
-  getSavedRoutes: async (userId: number): Promise<Route[]> => {
-    const { data } = await api.get(`/saved-routes/user/${userId}`);
-    return data;
+  getSavedRoutes: async (): Promise<Route[]> => {
+    const { data } = await api.get('/saved-routes/my-saved');
+    return Array.isArray(data) ? data : data?.routes || [];
   },
 
   // Save a public route to library
@@ -20,6 +20,6 @@ export const SavedRoutesApi = {
 
   // Remove route from library
   unsaveRoute: async (routeId: number): Promise<void> => {
-    await api.delete(`/saved-routes/${routeId}`);
+    await api.delete('/saved-routes/unsave', { data: { route_id: routeId } });
   },
 };

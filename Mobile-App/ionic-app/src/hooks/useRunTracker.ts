@@ -5,8 +5,49 @@ import { startSampler, type SamplerHandle } from '../services/geo';
 import type { GpsSample } from '../state/runTrackerContext';
 import { createRoute, withRetry, type CreateRouteRequest, type CreateRouteResponse } from '../services/api';
 import { normalizeRoutePath } from '../lib/routeGuides';
+import { HazardsApi, type HazardReport } from '../services/hazards';
+import AlertsApi from '../services/alerts';
+import { speakText } from '../services/tts';
+import { TrafficApi, type TrafficIncident } from '../services/traffic';
 
 const STORAGE_KEY = 'syncrunize-run-tracker-v1';
+const HAZARD_POLL_INTERVAL_MS = 45_000;
+const TRAFFIC_POLL_INTERVAL_MS = 60_000;
+const ALERT_COOLDOWN_MS = 15 * 60_000;
+const HAZARD_ALERT_RADIUS_KM = 0.35;
+const TRAFFIC_ALERT_RADIUS_KM = 1.2;
+const TRAFFIC_LOOKBACK_HOURS = 3;
+const MAX_ALERTS_PER_POLL = 2;
+
+type AlertCache = Map<string, number>;
+
+const buildAlertCacheKey = (
+  id?: number | null,
+  lat?: number,
+  lng?: number,
+): string => {
+  if (typeof id === 'number') {
+    return `id:${id}`;
+  }
+  if (typeof lat === 'number' && typeof lng === 'number') {
+    return `${lat.toFixed(4)}:${lng.toFixed(4)}`;
+  }
+  return `anon:${Date.now()}`;
+};
+
+const pruneExpiredEntries = (cache: AlertCache, now: number) => {
+  cache.forEach((timestamp, key) => {
+    if (now - timestamp > ALERT_COOLDOWN_MS) {
+      cache.delete(key);
+    }
+  });
+};
+
+const extractAlertSummary = (payload: any): string | null =>
+  payload?.summary ??
+  payload?.notification?.message ??
+  payload?.message ??
+  null;
 
 interface UseRunTrackerOptions {
   attachController?: boolean;
@@ -40,6 +81,16 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
   const [isAppActive, setIsAppActive] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hazardAlertState = useRef<{ lastPoll: number; pending: boolean; cache: AlertCache }>({
+    lastPoll: 0,
+    pending: false,
+    cache: new Map(),
+  });
+  const trafficAlertState = useRef<{ lastPoll: number; pending: boolean; cache: AlertCache }>({
+    lastPoll: 0,
+    pending: false,
+    cache: new Map(),
+  });
 
   const persistSession = useCallback((data?: RunSession) => {
     if (typeof window === 'undefined') return;
@@ -75,6 +126,93 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     if (!samples.length) return;
     dispatch({ type: 'ADD_SAMPLES', samples });
   }, [dispatch]);
+
+  const handleHazardAlerts = useCallback(async (hazards: HazardReport[]) => {
+    if (!hazards?.length) return;
+    const now = Date.now();
+    const state = hazardAlertState.current;
+    pruneExpiredEntries(state.cache, now);
+
+    const candidates = hazards
+      .filter((hazard) => {
+        if (typeof hazard.distance_km === 'number') {
+          return hazard.distance_km <= HAZARD_ALERT_RADIUS_KM;
+        }
+        return true;
+      })
+      .map((hazard) => ({
+        hazard,
+        key: buildAlertCacheKey(hazard.report_id, hazard.lat, hazard.lng),
+      }))
+      .filter(({ key }) => {
+        const last = state.cache.get(key);
+        return !last || now - last > ALERT_COOLDOWN_MS;
+      })
+      .slice(0, MAX_ALERTS_PER_POLL);
+
+    for (const { hazard, key } of candidates) {
+      state.cache.set(key, now);
+      try {
+        const resp = await AlertsApi.sendHazardAlert(
+          hazard,
+          typeof hazard.distance_km === 'number' ? hazard.distance_km * 1000 : undefined,
+        );
+        const summary = extractAlertSummary(resp);
+        if (summary) {
+          await speakText(summary);
+        }
+      } catch (err) {
+        console.warn('[RunTracker] Failed to dispatch hazard alert', err);
+      }
+    }
+  }, []);
+
+  const handleTrafficAlerts = useCallback(async (incidents: TrafficIncident[]) => {
+    if (!incidents?.length) return;
+    const now = Date.now();
+    const state = trafficAlertState.current;
+    pruneExpiredEntries(state.cache, now);
+
+    const candidates = incidents
+      .filter((incident) => {
+        if (typeof incident.distance_km === 'number') {
+          return incident.distance_km <= TRAFFIC_ALERT_RADIUS_KM;
+        }
+        return true;
+      })
+      .map((incident) => ({
+        incident,
+        key: buildAlertCacheKey(incident.incident_id, incident.lat, incident.lng),
+      }))
+      .filter(({ key }) => {
+        const last = state.cache.get(key);
+        return !last || now - last > ALERT_COOLDOWN_MS;
+      })
+      .slice(0, MAX_ALERTS_PER_POLL);
+
+    for (const { incident, key } of candidates) {
+      state.cache.set(key, now);
+      try {
+        const resp = await AlertsApi.sendTrafficAlert({
+          traffic: {
+            lat: incident.lat,
+            lng: incident.lng,
+            condition: incident.incident_type,
+            description: incident.description ?? null,
+            severity: incident.severity_weight ?? null,
+            report_id: incident.incident_id ?? null,
+          },
+          distance_m: typeof incident.distance_km === 'number' ? incident.distance_km * 1000 : undefined,
+        });
+        const summary = extractAlertSummary(resp);
+        if (summary) {
+          await speakText(summary);
+        }
+      } catch (err) {
+        console.warn('[RunTracker] Failed to dispatch traffic alert', err);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (!isController) return;
@@ -191,6 +329,65 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
       clearTimer();
     };
   }, [isController, stopSampler, clearTimer]);
+
+  useEffect(() => {
+    if (!isController) return;
+    if (session.status !== 'RUNNING') return;
+    const lastSample = session.samples[session.samples.length - 1];
+    if (!lastSample) return;
+
+    const state = hazardAlertState.current;
+    const now = Date.now();
+    if (state.pending || now - state.lastPoll < HAZARD_POLL_INTERVAL_MS) {
+      return;
+    }
+
+    state.pending = true;
+    state.lastPoll = now;
+
+    HazardsApi.getHazardsNear(
+      lastSample.lat,
+      lastSample.lng,
+      HAZARD_ALERT_RADIUS_KM + 0.2,
+    )
+      .then((hazards) => handleHazardAlerts(hazards))
+      .catch((err) => {
+        console.warn('[RunTracker] Hazard polling failed', err);
+      })
+      .finally(() => {
+        state.pending = false;
+      });
+  }, [session.samples, session.status, isController, handleHazardAlerts]);
+
+  useEffect(() => {
+    if (!isController) return;
+    if (session.status !== 'RUNNING') return;
+    const lastSample = session.samples[session.samples.length - 1];
+    if (!lastSample) return;
+
+    const state = trafficAlertState.current;
+    const now = Date.now();
+    if (state.pending || now - state.lastPoll < TRAFFIC_POLL_INTERVAL_MS) {
+      return;
+    }
+
+    state.pending = true;
+    state.lastPoll = now;
+
+    TrafficApi.getIncidentsNear(
+      lastSample.lat,
+      lastSample.lng,
+      TRAFFIC_ALERT_RADIUS_KM + 0.3,
+      TRAFFIC_LOOKBACK_HOURS,
+    )
+      .then((incidents) => handleTrafficAlerts(incidents))
+      .catch((err) => {
+        console.warn('[RunTracker] Traffic polling failed', err);
+      })
+      .finally(() => {
+        state.pending = false;
+      });
+  }, [session.samples, session.status, isController, handleTrafficAlerts]);
 
   const startRun = useCallback(() => {
     setError(null);

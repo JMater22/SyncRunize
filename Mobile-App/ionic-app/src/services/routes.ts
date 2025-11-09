@@ -48,10 +48,19 @@ export const RoutesApi = {
     return data;
   },
 
-  // Get public routes
+  // Get public routes (fallbacks if auth-only endpoint fails)
   getPublicRoutes: async (): Promise<Route[]> => {
-    const { data } = await api.get('/unsaved/public');
-    return data.routes || data;
+    const fetchRoutes = async (url: string) => {
+      const { data } = await api.get(url);
+      return data.routes || data;
+    };
+
+    try {
+      return await fetchRoutes('/routes/public');
+    } catch (err: any) {
+      console.warn('[RoutesApi] /routes/public failed, falling back to /unsaved/public', err?.response?.status);
+      return await fetchRoutes('/unsaved/public');
+    }
   },
 
   // Get single route

@@ -58,10 +58,9 @@ const SavedRoutes: React.FC = () => {
 
   const fetchSavedRoutes = async () => {
     if (!currentUser) return;
-
     try {
       setLoading(true);
-      const routes = await SavedRoutesApi.getSavedRoutes(currentUser.user_id);
+      const routes = await SavedRoutesApi.getSavedRoutes();
       setSavedRoutes(Array.isArray(routes) ? routes : []);
       setFilteredRoutes(Array.isArray(routes) ? routes : []);
     } catch (err: any) {
@@ -156,9 +155,14 @@ const SavedRoutes: React.FC = () => {
             </IonButton>
           </div>
         ) : (
-          filteredRoutes.map((route) => (
-            <IonCard key={route.route_id} className="route-card">
-              <div className="route-card-inner">
+          filteredRoutes.map((route) => {
+            const distanceKm = Number(route.distance_km ?? 0);
+            const durationSeconds = Number(route.duration_seconds ?? 0);
+            const durationLabel = durationSeconds ? `${Math.floor(durationSeconds / 60)}m ${durationSeconds % 60}s` : 'N/A';
+
+            return (
+              <IonCard key={route.route_id} className="route-card">
+                <div className="route-card-inner">
                 <IonCardHeader>
                   <IonCardTitle className="route-card-title">{route.route_name}</IonCardTitle>
                 </IonCardHeader>
@@ -166,10 +170,10 @@ const SavedRoutes: React.FC = () => {
                 <IonCardContent>
                   <div className="route-meta">
                     <span>
-                      {route.distance_km.toFixed(2)} km : {Math.floor(route.duration_seconds / 60)}m {route.duration_seconds % 60}s
+                      {distanceKm.toFixed(2)} km / {durationLabel}
                     </span>
                     <span style={{ marginLeft: '8px', textTransform: 'capitalize' }}>
-                      • {route.route_type}
+                      â€¢ {route.route_type}
                     </span>
                   </div>
                   {route.description && (
@@ -213,8 +217,9 @@ const SavedRoutes: React.FC = () => {
                   </div>
                 )}
               </div>
-            </IonCard>
-          ))
+              </IonCard>
+            );
+          })
         )}
 
         <IonToast

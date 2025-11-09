@@ -1,0 +1,102 @@
+/* Notification Page Dark Theme */
+
+.notification-content {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.notification-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 16px;
+}
+
+.notification-loading p {
+  color: #999999;
+  font-size: 14px;
+}
+
+.notification-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.notification-empty p {
+  color: #999999;
+  font-size: 16px;
+}
+
+/* Notification Items */
+.notification-item {
+  --background: #000000;
+  --color: #ffffff;
+  --border-color: #2a2a2a;
+  border-bottom: 1px solid #2a2a2a;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+
+.notification-item.unread {
+  --background: rgba(132, 204, 22, 0.05);
+  border-left: 3px solid #84cc16;
+}
+
+.notification-item.read {
+  --background: #000000;
+  opacity: 0.8;
+}
+
+.notification-item ion-avatar {
+  width: 48px;
+  height: 48px;
+  margin-right: 12px;
+}
+
+.notification-item ion-avatar img {
+  object-fit: cover;
+}
+
+.notification-message {
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 4px 0;
+}
+
+.notification-message strong {
+  color: #84cc16;
+  font-weight: 600;
+}
+
+.notification-time {
+  color: #999999;
+  font-size: 12px;
+}
+
+/* Unread Indicator */
+.unread-indicator {
+  width: 10px;
+  height: 10px;
+  background-color: #84cc16;
+  border-radius: 50%;
+  margin-left: 8px;
+}
+
+/* Clear All Button */
+.dark-header ion-toolbar ion-button {
+  --color: #84cc16;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: none;
+}
+
+/* Refresher */
+ion-refresher {
+  z-index: 1;
+}

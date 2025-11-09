@@ -1,25 +1,20 @@
-.dark-content {
-  --background: #000000;
-  color: #ffffff;
-}
-
-.password-security-content {
+.security-content {
   --background: #000000;
   --color: #ffffff;
 }
 
-.password-security-content ion-card {
+.security-content ion-card {
   --background: #0a0a0a;
   --color: #ffffff;
   border: 1px solid #2a2a2a;
   margin: 16px;
 }
 
-.password-security-content ion-card-header {
+.security-content ion-card-header {
   padding: 16px;
 }
 
-.password-security-content ion-card-title {
+.security-content ion-card-title {
   color: #ffffff;
   font-size: 18px;
   font-weight: 700;
@@ -27,16 +22,16 @@
   align-items: center;
 }
 
-.password-security-content ion-card-title ion-icon {
+.security-content ion-card-title ion-icon {
   color: #84cc16;
   font-size: 20px;
 }
 
-.password-security-content ion-card-content {
+.security-content ion-card-content {
   padding: 0 16px 16px 16px;
 }
 
-.security-input-item {
+.security-input {
   --background: #1a1a1a;
   --color: #ffffff;
   --border-color: #2a2a2a;
@@ -49,23 +44,18 @@
   border: 1px solid #2a2a2a;
 }
 
-.security-input-item ion-label {
+.security-input ion-label {
   color: #999999;
   font-size: 14px;
   font-weight: 500;
   margin-bottom: 4px;
 }
 
-.security-input-item ion-input {
+.security-input ion-input {
   --color: #ffffff;
   --placeholder-color: #666666;
   font-size: 15px;
   margin-top: 8px;
-}
-
-.security-input-item ion-button {
-  --color: #84cc16;
-  margin: 0;
 }
 
 .security-tip {
@@ -80,67 +70,36 @@
   line-height: 1.6;
 }
 
-.password-security-content ion-button {
+.security-content ion-button {
   --border-radius: 8px;
   font-weight: 600;
   text-transform: none;
   height: 44px;
 }
 
-.password-security-content ion-button[color="success"] {
+.security-content ion-button[color="success"] {
   --background: #84cc16;
   --background-hover: #9ae622;
   --background-activated: #75b514;
   --color: #000000;
 }
 
-.password-security-content ion-button[color="medium"] {
-  --background: #2a2a2a;
-  --background-hover: #333333;
-  --background-activated: #1a1a1a;
-  --color: #ffffff;
-}
-
-.password-security-content ion-button[disabled] {
+.security-content ion-button[disabled] {
   --background: #333333;
   --color: #666666;
 }
 
-.password-security-content ion-list {
+.security-content ion-list {
   background: transparent;
   padding: 0;
 }
 
-.password-security-content ion-text[color="warning"] {
+.security-content ion-text[color="warning"] {
   --ion-color-warning: #ffc107;
 }
 
-.password-security-content ion-text[color="medium"] {
+.security-content ion-text[color="medium"] {
   --ion-color-medium: #999999;
-}
-
-.profile-input {
-  --background: transparent;
-  --border-color: transparent;
-  margin-bottom: 15px;
-}
-
-.profile-icon {
-  color: #84cc16; /* green */
-  font-size: 20px;
-}
-
-.cancel-button {
-  --background: #2a2a2a;
-  --color: #ffffff;
-  border-radius: 8px;
-}
-
-.save-button {
-  --background: #84cc16;
-  --color: #000000;
-  border-radius: 8px;
-  font-weight: bold;
 }
 
 /* Dark header styling */

@@ -29,7 +29,8 @@ export const NotificationsApi = {
   // Get all notifications for user
   getAllNotifications: async (userId: number): Promise<Notification[]> => {
     const { data } = await api.get(`/notifications/all/${userId}`);
-    return data;
+    // Backend returns { success: true, data: notifications }
+    return data.data || [];
   },
 
   // Mark notification as read

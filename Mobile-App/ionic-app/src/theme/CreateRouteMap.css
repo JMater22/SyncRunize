@@ -1015,7 +1015,161 @@
     --height: 90vh;
   }
 
-  .hazard-stats {
-    grid-template-columns: 1fr;
+.hazard-stats {
+  grid-template-columns: 1fr;
+}
+}
+
+/* Dark theme overrides */
+.route-builder-content {
+  --background: #050505;
+  background: #050505;
+  color: #f5f5f5;
+}
+
+.route-builder-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 100vh;
+  padding-bottom: 32px;
+}
+
+.map-container {
+  order: 0;
+  width: calc(100% - 32px);
+  margin: 0 auto;
+  min-height: 55vh;
+  border-radius: 28px;
+  overflow: hidden;
+  background: #030303;
+  box-shadow: 0 25px 55px rgba(0, 0, 0, 0.45);
+}
+
+.sidebar {
+  order: 1;
+  width: 100%;
+  border-radius: 32px 32px 18px 18px;
+  background: #111;
+  padding-bottom: 48px;
+  color: #f5f5f5;
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.sidebar-header .main-title {
+  color: #fdfdfd;
+}
+
+.sidebar-header .subtitle {
+  color: #a7a7a7;
+}
+
+.section-card {
+  background: #181818;
+  border: 1px solid #272727;
+  color: #f5f5f5;
+  border-radius: 20px;
+}
+
+.section-title {
+  color: #7f8c8d;
+}
+
+.location-input {
+  border-color: #272727;
+  background: #0d0d0d;
+}
+
+.location-input-native {
+  color: #f5f5f5;
+}
+
+.location-input-native::placeholder {
+  color: #6d6d6d;
+}
+
+.pin-mode-indicator {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.point-set-text {
+  color: #92c628 !important;
+  font-weight: 500;
+}
+
+.suggestion-item {
+  background: #121212;
+  border-color: #1f1f1f;
+}
+
+.suggestion-item:hover {
+  background: #1e1e1e;
+}
+
+.round-button,
+.control-button {
+  background: rgba(0, 0, 0, 0.7);
+  color: #f5f5f5;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.map-tabs {
+  background: rgba(0, 0, 0, 0.7);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55);
+}
+
+.map-tab {
+  color: #c9c9c9;
+}
+
+.map-tab.active {
+  background: #92c628;
+  color: #050505;
+}
+
+.route-info-card {
+  background: #151515;
+  border: 1px solid #242424;
+}
+
+.route-stats .stat-value {
+  color: #fdfdfd;
+}
+
+.distance-warning-banner {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #2a2a2a;
+  color: #eaeaea;
+}
+
+.safety-warnings-card {
+  background: #151515;
+  border: 1px solid #282828;
+}
+
+.action-button-group ion-button {
+  --border-radius: 14px;
+}
+
+.action-button-group ion-button.cancel-button {
+  --background: transparent;
+  --color: #f5f5f5;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@media (min-width: 1024px) {
+  .route-builder-container {
+    flex-direction: column;
+  }
+
+  .map-container {
+    width: calc(100% - 80px);
+    min-height: 65vh;
+  }
+
+  .sidebar {
+    width: calc(100% - 40px);
+    margin: 0 auto;
+    border-radius: 28px;
   }
 }

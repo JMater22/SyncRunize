@@ -585,7 +585,7 @@ const CreateRouteMap = () => {
       } else if (routeMode === 'distance' && pathPoints.length > 0) {
         // Default to last path point
         chosenEnd = pathPoints[pathPoints.length - 1];
-        // If the route is a loop (end ~ start), pick the farthest point from the start as visual endpoint
+        // If the route is a loop (end approx start), pick the farthest point from the start as visual endpoint
         if (startPoint) {
           const toRad = (deg: number) => deg * Math.PI / 180;
           const haversineKm = (a: LatLng, b: LatLng) => {
@@ -596,7 +596,7 @@ const CreateRouteMap = () => {
             return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
           };
           const distToStart = haversineKm(startPoint, chosenEnd);
-          if (distToStart < 0.05) { // ~50 meters threshold
+          if (distToStart < 0.05) { // approx 50 meters threshold
             let best = chosenEnd;
             let bestDist = distToStart;
             for (const p of pathPoints) {
@@ -1064,8 +1064,8 @@ const CreateRouteMap = () => {
                   </div>
                   <div className="distance-info">
                     {distanceUnit === 'km'
-                      ? `~ ${(targetDistance * 0.621371).toFixed(2)} miles`
-                      : `~ ${(targetDistance * 1.60934).toFixed(2)} km`
+                      ? `approx. ${(targetDistance * 0.621371).toFixed(2)} miles`
+                      : `approx. ${(targetDistance * 1.60934).toFixed(2)} km`
                     }
                   </div>
                 </div>

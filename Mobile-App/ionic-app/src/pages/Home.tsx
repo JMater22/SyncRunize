@@ -30,8 +30,6 @@ import {
 
   IonSelectOption,
 
-  IonSearchbar,
-  SearchbarCustomEvent,
   IonImg,
   IonSpinner,
   IonToast,
@@ -41,15 +39,11 @@ import {
 
   notifications,
 
-  search,
-
   trophy,
 
   calendarOutline,
 
   analyticsOutline,
-
-  close,
 
 } from "ionicons/icons";
 
@@ -72,6 +66,7 @@ import { formatDistance, formatPace, formatCalories, formatDuration, formatDurat
 import { useChallenges } from "../contexts/ChallengesContext";
 import { useHistory } from "react-router-dom";
 import { RoutesApi, Route } from "../services/routes";
+import { useNotifications } from "../contexts/NotificationContext";
 
 
 // Import Google Fonts
@@ -502,11 +497,8 @@ const UserGreeting: React.FC<{ name?: string | null }> = ({ name }) => {
 
 
 export default function Dashboard() {
-  const [showSearchbar, setShowSearchbar] = useState(false);
-  const [searchText, setSearchText] = useState("");
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-  const [notificationCount, setNotificationCount] = useState(0);
   const [userProfile, setUserProfile] = useState<{ name: string; userId: number } | null>(null);
   const [userProfileError, setUserProfileError] = useState<string | null>(null);
   const [userProfileLoading, setUserProfileLoading] = useState(true);
@@ -516,6 +508,7 @@ export default function Dashboard() {
   const [recentActivities, setRecentActivities] = useState<Route[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const { challenges } = useChallenges();
+  const { unreadCount } = useNotifications();
   const history = useHistory();
   const suggestedChallenge = useMemo(
     () => challenges.find((challenge) => !challenge.joined && !challenge.completed),
@@ -585,69 +578,24 @@ export default function Dashboard() {
   // Initialize push notifications
   usePushNotifications({
     onNotificationReceived: (notification) => {
-
       // Handle notification received while app is in foreground
-
       console.log('Notification received on Home:', notification);
-
       setToastMessage(notification.title || 'New notification');
-
       setShowToast(true);
-
-      setNotificationCount(prev => prev + 1);
-
     },
-
     onNotificationActionPerformed: (notification) => {
-
       // Handle notification tap
-
       console.log('Notification tapped on Home:', notification);
 
-      setNotificationCount(prev => prev + 1);
-
-      
-
       // You can add navigation logic here based on notification type
-
-      // For example, navigate to specific challenge, activity, or leaderboard
-
       const data = notification.notification.data;
-
       if (data?.type === 'challenge') {
-
-        // Navigate to challenge page if needed
-
         console.log('Navigate to challenge:', data?.challengeId);
-
       } else if (data?.type === 'activity') {
-
-        // Navigate to activity page
-
         console.log('Navigate to activity:', data?.activityId);
-
       }
-
     }
-
   });
-
-
-
-  const toggleSearchbar = () => {
-
-    setShowSearchbar(!showSearchbar);
-
-    if (showSearchbar) setSearchText("");
-
-  };
-
-
-
-  const handleNotificationClick = () => {
-    // Reset notification count when user opens notifications
-    setNotificationCount(0);
-  };
 
   const handleRecordsRetry = () => {
     fetchPersonalRecords();
@@ -669,107 +617,57 @@ export default function Dashboard() {
 
         <IonToolbar className="dashboard-toolbar">
 
-          {!showSearchbar ? (
+          <IonTitle slot="start" className="dashboard-title">SyncRunize</IonTitle>
 
-            <>
+          <IonButtons slot="end">
 
-              <IonTitle slot="start" className="dashboard-title">SyncRunize</IonTitle>
+            <IonButton
 
-              <IonButtons slot="end">
+              routerLink="/notification"
 
-                <IonButton 
+              style={{ position: 'relative' }}
 
-                  routerLink="/notification"
+            >
 
-                  onClick={handleNotificationClick}
+              <IonIcon className="notification-icon" icon={notifications} />
 
-                  style={{ position: 'relative' }}
+              {unreadCount > 0 && (
+
+                <IonBadge
+
+                  color="danger"
+
+                  style={{
+
+                    position: 'absolute',
+
+                    top: '8px',
+
+                    right: '8px',
+
+                    fontSize: '10px',
+
+                    minWidth: '16px',
+
+                    height: '16px',
+
+                    borderRadius: '8px',
+
+                    padding: '0 4px'
+
+                  }}
 
                 >
 
-                  <IonIcon className="header-icon" icon={notifications} />
+                  {unreadCount > 99 ? '99+' : unreadCount}
 
-                  {notificationCount > 0 && (
+                </IonBadge>
 
-                    <IonBadge 
+              )}
 
-                      color="danger" 
+            </IonButton>
 
-                      style={{
-
-                        position: 'absolute',
-
-                        top: '8px',
-
-                        right: '8px',
-
-                        fontSize: '10px',
-
-                        minWidth: '16px',
-
-                        height: '16px',
-
-                        borderRadius: '8px',
-
-                        padding: '0 4px'
-
-                      }}
-
-                    >
-
-                      {notificationCount > 9 ? '9+' : notificationCount}
-
-                    </IonBadge>
-
-                  )}
-
-                </IonButton>
-
-                <IonButton onClick={toggleSearchbar}>
-
-                  <IonIcon className="header-icon" icon={search} />
-
-                </IonButton>
-
-              </IonButtons>
-
-            </>
-
-          ) : (
-
-            <>
-
-              <IonSearchbar
-
-                value={searchText}
-
-                onIonInput={(e: SearchbarCustomEvent) =>
-
-                  setSearchText(e.detail.value!)
-
-                }
-
-                placeholder="Search athletes"
-
-                animated={true}
-
-                showCancelButton="never"
-
-              />
-
-              <IonButtons slot="end">
-
-                <IonButton onClick={toggleSearchbar}>
-
-                  <IonIcon className="header-icon" icon={close} />
-
-                </IonButton>
-
-              </IonButtons>
-
-            </>
-
-          )}
+          </IonButtons>
 
         </IonToolbar>
 
@@ -911,106 +809,7 @@ export default function Dashboard() {
           </IonCard>
         )}
 
-        {/* Leaderboard */}
-
-        <div className="section-header">
-
-          <IonIcon icon={analyticsOutline} className="section-icon" />
-
-          <span>Leaderboard</span>
-
-        </div>
-
-
-
-        <IonCard className="leaderboard-card">
-
-          <IonCardContent>
-
-            <div className="leaderboard-header">
-
-              <span>Rank</span>
-
-              <span>Distance</span>
-
-            </div>
-
-            <IonList className="leaderboard-list">
-
-              {[
-
-                { rank: 1, name: "John Doe", runs: 4, distance: "543 km" },
-
-                { rank: 2, name: "Jane Smith", runs: 6, distance: "502 km" },
-
-                { rank: 3, name: "Alex Tan", runs: 3, distance: "499 km" },
-
-                { rank: 4, name: "Amelia", runs: 5, distance: "241 km" },
-
-              ].map((leader, index) => (
-
-                <IonItem
-
-                  key={index}
-
-                  routerLink="/profile"
-
-                  className="leaderboard-item"
-
-                >
-
-                  <span className="rank">{leader.rank}</span>
-
-                  <IonAvatar className="leaderboard-avatar">
-
-                    <img src={ProfilePic} alt="Avatar" />
-
-                  </IonAvatar>
-
-                  <IonLabel className="leader-name">
-
-                    <h3>{leader.name}</h3>
-
-                    <p>{leader.runs} Runs this week </p>
-
-                  </IonLabel>
-
-                  <span
-
-                    className={`leader-distance ${
-
-                      index < 4 ? "green-text" : ""
-
-                    }`}
-
-                  >
-
-                    {leader.distance}
-
-                  </span>
-
-                </IonItem>
-
-              ))}
-
-            </IonList>
-
-            <IonButton
-
-              className="view-more"
-
-              routerLink="/leaderboards"
-
-            >
-
-              View Full Leaderboard
-
-            </IonButton>
-
-          </IonCardContent>
-
-        </IonCard>
-
+        
 
 
         {/* Toast for notifications */}

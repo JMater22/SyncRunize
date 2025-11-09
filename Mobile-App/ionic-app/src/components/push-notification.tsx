@@ -6,8 +6,16 @@ import {
   PushNotificationSchema,
 } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
+import { DevicesApi, type DevicePlatform } from '../services/devices';
 
 let hasLoggedWebWarning = false;
+
+const normalizePlatform = (platform: string): DevicePlatform => {
+  if (platform === 'ios' || platform === 'android' || platform === 'web') {
+    return platform;
+  }
+  return 'unknown';
+};
 
 interface PushNotificationHookProps {
   onTokenReceived?: (token: string) => void;
@@ -49,8 +57,16 @@ export const usePushNotifications = ({
         // ✅ Listeners
         const tokenListener = await PushNotifications.addListener(
           'registration',
-          (token: Token) => {
+          async (token: Token) => {
             console.log('[Push] Registration success. Token:', token.value);
+            try {
+              await DevicesApi.register({
+                token: token.value,
+                platform: normalizePlatform(platform),
+              });
+            } catch (err) {
+              console.warn('[Push] Failed to register device token', err);
+            }
             onTokenReceived?.(token.value);
           }
         );

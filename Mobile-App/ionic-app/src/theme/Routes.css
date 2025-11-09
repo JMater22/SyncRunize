@@ -18,102 +18,102 @@
   color: #b0b0b0;
 }
 
-.route-card {
+.routes-feed-card {
   margin: 12px 16px;
   border-radius: 18px;
   overflow: hidden;
   box-shadow: 0 14px 35px rgba(0, 0, 0, 0.1);
 }
 
-.route-card-media {
+.routes-feed-card-media {
   width: 100%;
   height: 180px;
   overflow: hidden;
 }
 
-.route-card-media img {
+.routes-feed-card-media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.route-card-meta {
+.routes-feed-card-meta {
   margin: 6px 0 0;
   font-size: 13px;
   color: #6d6d6d;
 }
 
-.route-card-description {
+.routes-feed-card-description {
   color: #4a4a4a;
   font-size: 14px;
   margin-bottom: 12px;
 }
 
-.route-card-actions {
+.routes-feed-card-actions {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-.route-detail-modal {
+.routes-feed-detail-modal {
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.route-detail-image {
+.routes-feed-detail-image {
   width: 100%;
   height: 260px;
   overflow: hidden;
 }
 
-.route-detail-image img {
+.routes-feed-detail-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.route-detail-body {
+.routes-feed-detail-body {
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
 
-.route-detail-stats {
+.routes-feed-detail-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
-.route-detail-stats ion-label {
+.routes-feed-detail-stats ion-label {
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #6d6d6d;
 }
 
-.route-detail-stats strong {
+.routes-feed-detail-stats strong {
   display: block;
   margin-top: 4px;
   font-size: 16px;
   color: #111;
 }
 
-.route-detail-description {
+.routes-feed-detail-description {
   color: #444;
   font-size: 15px;
   line-height: 1.5;
 }
 
 @media (min-width: 768px) {
-  .route-card {
+  .routes-feed-card {
     margin: 16px auto;
     max-width: 540px;
   }
 
-  .route-detail-body {
+  .routes-feed-detail-body {
     max-width: 640px;
     margin: 0 auto;
   }

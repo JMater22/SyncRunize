@@ -19,9 +19,10 @@
   --ion-color-base: #ffffff;
   --background: #1a1a1a;
   --color: #ffffff;
-  --padding-top: 8px;
+  --padding-top: max(8px, env(safe-area-inset-top));
   --padding-bottom: 8px;
   --min-height: 56px;
+  padding-top: env(safe-area-inset-top);
 } 
 
 
@@ -32,9 +33,15 @@
 
 }
 
-.header-icon { 
+.header-icon {
   color: #ffffff;
   font-size: 1.2rem;
+}
+
+.notification-icon {
+  color: #ffffff;
+  font-size: 1.2rem;
+  /* No animation for notification bell */
 }
 
 .header-avatar {

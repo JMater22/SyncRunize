@@ -27,6 +27,8 @@
   import userRouteRoutes from "./routes/user_route_routes.js";
   import unsavedRoutes from "./routes/route_routes.js";
   import savedRouteRoutes from "./routes/saved_route_routes.js";
+  import alertRoutes from "./routes/alert_routes.js";
+  import deviceRoutes from "./routes/device_routes.js";
 
 
   import path from "path";
@@ -72,6 +74,8 @@
   app.use("/api/stats", statsRoutes);
   app.use("/api/routes", userRouteRoutes);
   app.use("/api/saved-routes", savedRouteRoutes);
+  app.use("/api/alerts", alertRoutes);
+  app.use("/api/devices", deviceRoutes);
   app.use("/api", emailRoutes);
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 

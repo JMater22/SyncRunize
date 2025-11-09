@@ -165,19 +165,19 @@ const RoutesPage: React.FC = () => {
           </div>
         ) : (
           filteredRoutes.map((route) => (
-            <IonCard key={route.route_id} className="route-card" onClick={() => openDetails(route)}>
+            <IonCard key={route.route_id} className="routes-feed-card" onClick={() => openDetails(route)}>
               {route.snapshot_url && (
-                <div className="route-card-media">
+                <div className="routes-feed-card-media">
                   <img src={route.snapshot_url} alt={`${route.route_name} map`} />
                 </div>
               )}
               <IonCardHeader>
                 <IonCardTitle>{route.route_name}</IonCardTitle>
-                <p className="route-card-meta">{renderRouteMeta(route)}</p>
+                <p className="routes-feed-card-meta">{renderRouteMeta(route)}</p>
               </IonCardHeader>
               <IonCardContent>
-                {route.description && <p className="route-card-description">{route.description}</p>}
-                <div className="route-card-actions">
+                {route.description && <p className="routes-feed-card-description">{route.description}</p>}
+                <div className="routes-feed-card-actions">
                   <IonButton
                     size="small"
                     color="success"
@@ -214,7 +214,7 @@ const RoutesPage: React.FC = () => {
 
         <IonModal isOpen={showDetails && !!selectedRoute} onDidDismiss={closeDetails}>
           {selectedRoute && (
-            <div className="route-detail-modal">
+            <div className="routes-feed-detail-modal">
               <IonHeader>
                 <IonToolbar>
                   <IonTitle>{selectedRoute.route_name}</IonTitle>
@@ -225,12 +225,12 @@ const RoutesPage: React.FC = () => {
               </IonHeader>
               <IonContent>
                 {selectedRoute.snapshot_url && (
-                  <div className="route-detail-image">
+                  <div className="routes-feed-detail-image">
                     <img src={selectedRoute.snapshot_url} alt={`${selectedRoute.route_name} snapshot`} />
                   </div>
                 )}
-                <div className="route-detail-body">
-                  <div className="route-detail-stats">
+                <div className="routes-feed-detail-body">
+                  <div className="routes-feed-detail-stats">
                     <div>
                       <IonLabel>Distance</IonLabel>
                       <strong>{selectedRoute.distance_km.toFixed(2)} km</strong>
@@ -249,9 +249,9 @@ const RoutesPage: React.FC = () => {
                     </div>
                   </div>
                   {selectedRoute.description && (
-                    <p className="route-detail-description">{selectedRoute.description}</p>
+                    <p className="routes-feed-detail-description">{selectedRoute.description}</p>
                   )}
-                  <div className="route-card-actions">
+                  <div className="routes-feed-card-actions">
                     <IonButton
                       expand="block"
                       color="success"
