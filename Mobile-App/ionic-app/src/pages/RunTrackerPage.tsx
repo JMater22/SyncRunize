@@ -1,16 +1,17 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IonPage, IonContent, IonIcon, IonAlert, IonToast, IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton } from '@ionic/react';
-import { arrowBack, pauseOutline, playOutline, stopOutline, mapOutline, warningOutline, checkmarkCircle, banOutline } from 'ionicons/icons';
-import { useHistory } from 'react-router-dom';
+import { arrowBack, pauseOutline, playOutline, stopOutline, mapOutline, warningOutline, checkmarkCircle, banOutline, navigateOutline } from 'ionicons/icons';
+import { useHistory, useLocation } from 'react-router-dom';
 import { GoogleMap, LoadScript, Polyline, MarkerF, CircleF } from '@react-google-maps/api';
 import { useHideTabBar } from '../hooks/useHideTabBar';
 import { useRunTracker } from '../hooks/useRunTracker';
 import ActivitySummarySheet from '../components/ActivitySummarySheet';
 import '../theme/Run-Main.css';
-import { formatPace, formatRelativeTime } from '../lib/utils';
+import { formatPace, formatRelativeTime, formatDurationShort } from '../lib/utils';
 import { HazardsApi, HazardReport } from '../services/hazards';
 import { supabase } from '../lib/supabaseClient';
 import { haversineDistanceMeters } from '../services/haversine';
+import { GuidedRoutePayload } from '../lib/routeGuides';
 
 const googleMapDefaultCenter = { lat: 15.4755, lng: 120.5963 };
 const mapContainerStyle = { width: '100%', height: '100%' };
@@ -25,10 +26,13 @@ const mapOptions: google.maps.MapOptions = {
 const HAZARD_RADIUS_KM = 0.8;
 const HAZARD_RADIUS_METERS = HAZARD_RADIUS_KM * 1000;
 const HAZARD_REFETCH_MS = 45_000;
+const guidedStartIconUrl = 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png';
+const guidedEndIconUrl = 'https://maps.google.com/mapfiles/ms/icons/green-dot.png';
 
 const RunTrackerPage: React.FC = () => {
   useHideTabBar();
   const history = useHistory();
+  const location = useLocation<{ guidedRoute?: GuidedRoutePayload }>();
   const { session, startRun, pauseRun, resumeRun, finishRun, discardRun, recordRun, isRecording, error } = useRunTracker();
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -39,17 +43,12 @@ const RunTrackerPage: React.FC = () => {
   const [hazardLoading, setHazardLoading] = useState(false);
   const [selectedHazard, setSelectedHazard] = useState<HazardReport | null>(null);
   const [hazardActionLoading, setHazardActionLoading] = useState(false);
+  const [guidedRoute, setGuidedRoute] = useState<GuidedRoutePayload | null>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const latestLocationRef = useRef<google.maps.LatLngLiteral | null>(null);
   const lastHazardFetchRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
   const lastRealtimeRefreshRef = useRef<number>(0);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
-  const hazardSummaryText = hazardLoading
-    ? 'Checking nearby hazards...'
-    : hazards.length
-      ? `${hazards.length} hazard${hazards.length > 1 ? 's' : ''} nearby`
-      : 'No hazards nearby';
-
   const computeHazardDistanceKm = useCallback((hazard?: HazardReport | null) => {
     if (!hazard) return null;
     if (typeof hazard.distance_km === 'number') return hazard.distance_km;
@@ -65,11 +64,40 @@ const RunTrackerPage: React.FC = () => {
     return 'https://maps.google.com/mapfiles/ms/icons/yellow-dot.png';
   }, []);
 
+  const clearGuidedRoute = useCallback(() => {
+    setGuidedRoute(null);
+  }, []);
+
   const pathCoords = useMemo(
     () => session.samples.map((sample) => ({ lat: sample.lat, lng: sample.lng })),
     [session.samples]
   );
   const latestCoord = pathCoords.length ? pathCoords[pathCoords.length - 1] : null;
+  const guidedPath = guidedRoute?.path ?? [];
+  const guidedStart = guidedPath.length ? guidedPath[0] : null;
+  const guidedEnd = guidedPath.length ? guidedPath[guidedPath.length - 1] : null;
+  const guidedMetaText = useMemo(() => {
+    if (!guidedRoute) return '';
+    const parts: string[] = [];
+    if (typeof guidedRoute.distanceKm === 'number') {
+      parts.push(`${guidedRoute.distanceKm.toFixed(2)} km`);
+    }
+    if (guidedRoute.durationSeconds) {
+      parts.push(formatDurationShort(guidedRoute.durationSeconds));
+    }
+    if (guidedRoute.averagePace) {
+      parts.push(formatPace(guidedRoute.averagePace));
+    }
+    return parts.join(' \u2022 ');
+  }, [guidedRoute]);
+  const mapCenter = pathCoords[pathCoords.length - 1] ?? guidedStart ?? googleMapDefaultCenter;
+  const hasGuide = Boolean(guidedRoute);
+  const hazardSummaryText = hazardLoading
+    ? 'Checking nearby hazards...'
+    : hazards.length
+      ? `${hazards.length} hazard${hazards.length > 1 ? 's' : ''} nearby`
+      : 'No hazards nearby';
+
 
   const loadHazards = useCallback(async (center: google.maps.LatLngLiteral, options: { force?: boolean } = {}) => {
     if (!center) return;
@@ -109,6 +137,14 @@ const RunTrackerPage: React.FC = () => {
   }, [pathCoords]);
 
   useEffect(() => {
+    if (location.state?.guidedRoute) {
+      setGuidedRoute(location.state.guidedRoute);
+      setToastMessage(`Guided route ready: ${location.state.guidedRoute.routeName}`);
+      history.replace('/run-tracking');
+    }
+  }, [location.state, history]);
+
+  useEffect(() => {
     if (!latestCoord) return;
     loadHazards(latestCoord);
   }, [latestCoord, loadHazards]);
@@ -143,10 +179,12 @@ const RunTrackerPage: React.FC = () => {
 
   useEffect(() => {
     if (!mapInstanceRef.current) return;
-    if (!pathCoords.length) return;
-    const latest = pathCoords[pathCoords.length - 1];
-    mapInstanceRef.current.panTo(latest);
-  }, [pathCoords]);
+    if (pathCoords.length) {
+      mapInstanceRef.current.panTo(pathCoords[pathCoords.length - 1]);
+    } else if (guidedStart) {
+      mapInstanceRef.current.panTo(guidedStart);
+    }
+  }, [pathCoords, guidedStart]);
 
   const status = session.status;
   const isIdle = status === 'IDLE';
@@ -256,6 +294,12 @@ const RunTrackerPage: React.FC = () => {
           <button className="custom-back-button-icon" onClick={() => history.push('/routes')}>
             <IonIcon icon={arrowBack} className="back-icon" />
           </button>
+          {guidedRoute && (
+            <div className="guided-map-chip">
+              <IonIcon icon={navigateOutline} />
+              <span>{guidedRoute.routeName}</span>
+            </div>
+          )}
 
           {(!apiKey || mapError) && (
             <div className="map-iframe map-error-placeholder">
@@ -272,11 +316,30 @@ const RunTrackerPage: React.FC = () => {
               <GoogleMap
                 mapContainerStyle={mapContainerStyle}
                 mapContainerClassName="map-iframe"
-                center={pathCoords[pathCoords.length - 1] ?? googleMapDefaultCenter}
+                center={mapCenter}
                 options={mapOptions}
                 onLoad={handleMapLoad}
                 onUnmount={handleMapUnmount}
               >
+                {guidedPath.length > 0 && (
+                  <>
+                    <Polyline
+                      path={guidedPath}
+                      options={{
+                        strokeColor: '#2196F3',
+                        strokeOpacity: 0.65,
+                        strokeWeight: 4,
+                        zIndex: 2,
+                      }}
+                    />
+                    {guidedStart && (
+                      <MarkerF position={guidedStart} icon={guidedStartIconUrl} />
+                    )}
+                    {guidedEnd && !pathCoords.length && (
+                      <MarkerF position={guidedEnd} icon={guidedEndIconUrl} />
+                    )}
+                  </>
+                )}
                 {pathCoords.length > 0 && (
                   <>
                     <Polyline
@@ -327,21 +390,37 @@ const RunTrackerPage: React.FC = () => {
 
           <div className={`stats-panel ${mapOnlyView ? 'hidden' : ''}`}>
             <div className="tracking-overlay">
+              {guidedRoute && (
+                <div className="guided-route-banner">
+                  <div>
+                    <span className="guided-route-label">Guided route</span>
+                    <h4>{guidedRoute.routeName}</h4>
+                    {guidedMetaText && <p>{guidedMetaText}</p>}
+                  </div>
+                  <button className="ghost-button" onClick={clearGuidedRoute}>
+                    Clear
+                  </button>
+                </div>
+              )}
               <div className="tracking-status">
                 <div>
                   <span className="status-label">Status</span>
                   <h3 className="status-value">{status}</h3>
                   <p className="status-subtext">
-                    GPS {pathCoords.length > 0 ? 'locked' : 'searching'} • {session.samples.length} pts
+                    GPS {pathCoords.length > 0 ? 'locked' : 'searching'} â€¢ {session.samples.length} pts
                   </p>
                 </div>
                 <button
                   className="ghost-button"
                   onClick={() => {
-                    const target = pathCoords[pathCoords.length - 1] ?? googleMapDefaultCenter;
+                    const target =
+                      pathCoords[pathCoords.length - 1] ??
+                      guidedPath[guidedPath.length - 1] ??
+                      guidedStart ??
+                      googleMapDefaultCenter;
                     mapInstanceRef.current?.panTo(target);
                   }}
-                  disabled={!pathCoords.length || !mapLoaded}
+                  disabled={(!pathCoords.length && !guidedPath.length) || !mapLoaded}
                 >
                   Recenter
                 </button>
@@ -437,7 +516,7 @@ const RunTrackerPage: React.FC = () => {
                     <h3>{selectedHazard.title}</h3>
                     <p className="hazard-meta">
                       {selectedHazard.incident_type}
-                      {' · '}
+                      {' Â· '}
                       Reported {formatRelativeTime(selectedHazard.reported_at)} by {selectedHazard.users?.username ?? 'runner'}
                     </p>
                     {selectedHazardDistance && (

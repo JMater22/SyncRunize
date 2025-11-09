@@ -15,11 +15,14 @@ import {
   IonCardTitle,
   IonSpinner,
   IonToast,
+  IonIcon,
 } from "@ionic/react";
 import { SavedRoutesApi } from "../services/saved-routes";
-import { Route } from "../services/routes";
+import { Route, RoutesApi } from "../services/routes";
 import { useUser } from "../contexts/UserContext";
 import { useHistory } from "react-router-dom";
+import { buildGuidedRoutePayload, normalizeRoutePath } from "../lib/routeGuides";
+import { navigateOutline } from "ionicons/icons";
 import "../theme/saved-routes.css";
 
 const SavedRoutes: React.FC = () => {
@@ -32,6 +35,7 @@ const SavedRoutes: React.FC = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastColor, setToastColor] = useState<'success' | 'danger'>('success');
+  const [usingRouteId, setUsingRouteId] = useState<number | null>(null);
 
   useEffect(() => {
     if (currentUser) {
@@ -82,6 +86,33 @@ const SavedRoutes: React.FC = () => {
       setToastMessage(err.message || 'Failed to remove route');
       setToastColor('danger');
       setShowToast(true);
+    }
+  };
+
+  const handleUseRoute = async (route: Route) => {
+    try {
+      setUsingRouteId(route.route_id);
+      let targetRoute = route;
+      let path = normalizeRoutePath(route.chosen_path, []);
+
+      if (!path.length) {
+        targetRoute = await RoutesApi.getRoute(route.route_id);
+        path = normalizeRoutePath(targetRoute.chosen_path, []);
+      }
+
+      if (!path.length) {
+        throw new Error('This route does not have a saved path.');
+      }
+
+      const payload = buildGuidedRoutePayload(targetRoute, path);
+      history.push('/run-tracking', { guidedRoute: payload });
+    } catch (err: any) {
+      console.error('Failed to load guided route:', err);
+      setToastMessage(err?.message || 'Unable to load this route');
+      setToastColor('danger');
+      setShowToast(true);
+    } finally {
+      setUsingRouteId(null);
     }
   };
 
@@ -158,9 +189,15 @@ const SavedRoutes: React.FC = () => {
                       size="small"
                       color="success"
                       className="route-action-btn"
-                      onClick={() => history.push(`/run-tracking`, { guidedRoute: route })}
+                      onClick={() => handleUseRoute(route)}
+                      disabled={usingRouteId === route.route_id}
                     >
-                      Start Guided Run
+                      {usingRouteId === route.route_id ? (
+                        <IonSpinner slot="start" name="crescent" />
+                      ) : (
+                        <IonIcon slot="start" icon={navigateOutline} />
+                      )}
+                      Use this route
                     </IonButton>
                   </div>
                 </IonCardContent>

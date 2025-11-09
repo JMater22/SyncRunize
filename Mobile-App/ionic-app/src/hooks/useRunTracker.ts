@@ -4,6 +4,7 @@ import { RunTrackerContext, type RunSession } from '../state/runTrackerContext';
 import { startSampler, type SamplerHandle } from '../services/geo';
 import type { GpsSample } from '../state/runTrackerContext';
 import { createRoute, withRetry, type CreateRouteRequest, type CreateRouteResponse } from '../services/api';
+import { normalizeRoutePath } from '../lib/routeGuides';
 
 const STORAGE_KEY = 'syncrunize-run-tracker-v1';
 
@@ -303,24 +304,4 @@ const buildRoutePayload = (session: RunSession, meta: RecordMeta): CreateRouteRe
     end_lat: last.lat,
     end_lng: last.lng,
   };
-};
-
-const normalizeRoutePath = (
-  routePath: CreateRouteResponse['chosen_path'],
-  fallback: Array<{ lat: number; lng: number; t?: number }>,
-) => {
-  if (Array.isArray(routePath)) {
-    return routePath.map((point) => ({ lat: Number(point.lat), lng: Number(point.lng) }));
-  }
-  if (typeof routePath === 'string') {
-    try {
-      const parsed = JSON.parse(routePath);
-      if (Array.isArray(parsed)) {
-        return parsed.map((point: any) => ({ lat: Number(point.lat), lng: Number(point.lng) }));
-      }
-    } catch (err) {
-      console.warn('Failed to parse route path', err);
-    }
-  }
-  return fallback.map((point) => ({ lat: point.lat, lng: point.lng }));
 };

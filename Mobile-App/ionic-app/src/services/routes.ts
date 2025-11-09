@@ -10,7 +10,7 @@ export interface Route {
   estimated_calories: number;
   route_type: 'run' | 'walk' | 'cycle';
   route_status: 'generated' | 'completed' | 'saved';
-  chosen_path: Array<{ lat: number; lng: number }>;
+  chosen_path: Array<{ lat: number; lng: number }> | string | null;
   map_image_url?: string;
   snapshot_url?: string;
   description?: string;
