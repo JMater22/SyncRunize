@@ -255,7 +255,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
             .from('notifications')
             .select(`
               *,
-              actor:actor_id (
+              actor:users!actor_id (
                 user_id,
                 name,
                 username,
@@ -293,7 +293,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
             .from('notifications')
             .select(`
               *,
-              actor:users!notifications_actor_id_fkey (
+              actor:users!actor_id (
                 user_id,
                 name,
                 username,

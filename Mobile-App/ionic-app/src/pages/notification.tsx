@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   IonPage,
   IonHeader,
@@ -25,7 +26,7 @@ import { useNotifications } from "../contexts/NotificationContext";
 import { DEFAULT_AVATAR } from "../constants/avatar";
 
 export default function Notifications() {
-  const { notifications, unreadCount, loading, markAsRead, clearAll, fetchNotifications } = useNotifications();
+  const { notifications, loading, markAsRead, clearAll, fetchNotifications } = useNotifications();
   const history = useHistory();
 
   const formatTimeAgo = (timestamp: string) => {
@@ -103,10 +104,20 @@ export default function Notifications() {
   };
 
   const renderNotificationMessage = (notification: any) => {
+    // Debug logging
+    console.log('💬 [renderNotificationMessage] Notification:', {
+      type: notification.type,
+      actor: notification.actor,
+      actor_id: notification.actor_id,
+      message: notification.message
+    });
+
     // Prefer username, then name; fall back to actor_id
     const actorName = notification.actor?.username
       || notification.actor?.name
       || (notification.actor_id ? `User ${notification.actor_id}` : 'Someone');
+
+    console.log('💬 [renderNotificationMessage] Resolved actorName:', actorName);
 
     switch (notification.type) {
       case 'follow':
@@ -167,7 +178,7 @@ export default function Notifications() {
     // For other notifications, show actor's profile picture
     const profilePicture = notification.actor?.profile_picture;
 
-    // Return DEFAULT_AVATAR if no profile picture
+    // If no profile picture, use default avatar
     if (!profilePicture) {
       return DEFAULT_AVATAR;
     }
@@ -184,7 +195,8 @@ export default function Notifications() {
     const cleanPath = profilePicture.startsWith('/') ? profilePicture.slice(1) : profilePicture;
 
     // Construct full Supabase storage URL
-    return `${supabaseUrl}/storage/v1/object/public/${cleanPath}`;
+    const fullUrl = `${supabaseUrl}/storage/v1/object/public/${cleanPath}`;
+    return fullUrl;
   };
 
   return (

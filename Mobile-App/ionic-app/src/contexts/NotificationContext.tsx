@@ -31,6 +31,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       setLoading(true);
       setError(null);
       const data = await NotificationsApi.getAllNotifications(currentUser.user_id);
+      console.log('📥 [NotificationContext] Fetched notifications:', data);
+      console.log('📥 [NotificationContext] First notification actor:', data[0]?.actor);
       // Ensure data is always an array
       setNotifications(Array.isArray(data) ? data : []);
     } catch (err: any) {
@@ -96,12 +98,33 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         async (payload) => {
           console.log('New notification received:', payload);
 
-          // Add new notification to state
-          const newNotification = payload.new as Notification;
+          // Fetch full notification with actor details
+          const { data: newNotification, error } = await supabase
+            .from('notifications')
+            .select(`
+              *,
+              actor:users!actor_id (
+                user_id,
+                name,
+                username,
+                profile_picture
+              )
+            `)
+            .eq('notification_id', payload.new.notification_id)
+            .single();
 
-          // Fetch full notification with actor details if needed
-          // For now, just add it
-          setNotifications(prev => [newNotification, ...prev]);
+          if (error) {
+            console.error('Error fetching new notification with actor:', error);
+            // Fallback: add without actor details
+            const payloadNotif = payload.new as Notification;
+            setNotifications(prev => [payloadNotif, ...prev]);
+            return;
+          }
+
+          if (newNotification) {
+            console.log('Adding new notification with actor:', newNotification);
+            setNotifications(prev => [newNotification, ...prev]);
+          }
         }
       )
       .on(
@@ -121,7 +144,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
               .from('notifications')
               .select(`
                 *,
-                actor:users!notifications_actor_id_fkey (
+                actor:users!actor_id (
                   user_id,
                   name,
                   username,
