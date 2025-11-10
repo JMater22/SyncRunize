@@ -26,7 +26,6 @@ const extractHazardPayload = (hazard: HazardReport): HazardAlertPayload['hazard'
   lng: hazard.lng,
   severity_weight: hazard.severity_weight ?? null,
   trust_score: hazard.trust_score ?? null,
-  agreement_score: (hazard as any).agreement_score ?? null,
 });
 
 export const AlertsApi = {
