@@ -174,6 +174,26 @@ const CreateRouteMap = () => {
   // Services
   const geocoder = useRef<google.maps.Geocoder | null>(null);
 
+  /**
+   * BLACK MAP PREVENTION STRATEGY
+   *
+   * This page implements multiple layers of defense against Google Maps black screen issues:
+   *
+   * 1. Map Load Refresh (below): Triggers map resize at 100ms, 300ms, 500ms, and 800ms after map loads
+   * 2. Window Resize Listener: Responds to browser/app resize and orientation changes
+   * 3. View Toggle Refresh: Triggers resize when switching between map/selection view
+   * 4. Tiles Loaded Listener: Confirms map tiles are fully rendered
+   * 5. LoadScript Error Handling: Provides clear error messages if API fails to load
+   * 6. Loading Element: Shows "Loading map..." message during API load
+   * 7. Map Refresh Key: Allows full map remount when needed
+   *
+   * Additional tips for users:
+   * - Clear browser cache with Ctrl+Shift+R (hard refresh)
+   * - Clear Ionic cache: rm -rf node_modules .ionic www && npm install
+   * - Ensure stable internet connection for Google Maps API
+   * - Check API key is valid and has Maps JavaScript API enabled
+   */
+
   // Initialize Google Maps services when map loads
   useEffect(() => {
     if (map && window.google) {
@@ -184,24 +204,53 @@ const CreateRouteMap = () => {
       setTrafficLayer(traffic);
 
       // Auto-refresh map to fix darkness issue - multiple refreshes for reliability
-      const timer1 = setTimeout(() => {
-        google.maps.event.trigger(map, 'resize');
-        if (startPoint) {
-          map.panTo(startPoint);
+      const refreshMap = () => {
+        if (map && window.google) {
+          google.maps.event.trigger(map, 'resize');
+          if (startPoint) {
+            map.panTo(startPoint);
+          }
         }
-      }, 100);
+      };
 
-      // Additional refresh to ensure map is fully rendered
-      const timer2 = setTimeout(() => {
-        google.maps.event.trigger(map, 'resize');
-      }, 500);
+      // More aggressive refresh strategy with multiple intervals
+      const timer1 = setTimeout(refreshMap, 100);
+      const timer2 = setTimeout(refreshMap, 300);
+      const timer3 = setTimeout(refreshMap, 500);
+      const timer4 = setTimeout(refreshMap, 800);
+
+      // Listen for tiles loaded to confirm map rendered
+      const tilesLoadedListener = map.addListener('tilesloaded', () => {
+        console.log('[CreateRoute] Map tiles fully loaded');
+        google.maps.event.removeListener(tilesLoadedListener);
+      });
 
       return () => {
         clearTimeout(timer1);
         clearTimeout(timer2);
+        clearTimeout(timer3);
+        clearTimeout(timer4);
       };
     }
   }, [map, startPoint]);
+
+  // Add window resize listener to handle orientation changes and app resizing
+  useEffect(() => {
+    const handleResize = () => {
+      if (map && window.google) {
+        google.maps.event.trigger(map, 'resize');
+        console.log('[CreateRoute] Map refreshed on window resize');
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, [map]);
 
   // Load user unit preference (km/mi) and map to component units (km/miles)
   useEffect(() => {
@@ -900,7 +949,20 @@ const CreateRouteMap = () => {
           {/* View Toggle Button */}
           <button
             className="create-route-view-toggle"
-            onClick={() => setViewMode(viewMode === 'map' ? 'selection' : 'map')}
+            onClick={() => {
+              const newMode = viewMode === 'map' ? 'selection' : 'map';
+              setViewMode(newMode);
+
+              // Refresh map when switching to map view to prevent black screen
+              if (newMode === 'map') {
+                setTimeout(() => {
+                  if (map && window.google) {
+                    google.maps.event.trigger(map, 'resize');
+                    console.log('[CreateRoute] Map refreshed on view toggle');
+                  }
+                }, 100);
+              }
+            }}
           >
             <IonIcon icon={viewMode === 'map' ? listOutline : mapOutline} />
             {viewMode === 'map' ? 'Show inputs' : 'Show map'}
@@ -1382,6 +1444,14 @@ const CreateRouteMap = () => {
             <LoadScript
               googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
               libraries={libraries}
+              loadingElement={<div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading map...</div>}
+              onLoad={() => console.log('[CreateRoute] Google Maps API loaded successfully')}
+              onError={(error) => {
+                console.error('[CreateRoute] LoadScript error:', error);
+                setToastMessage('Failed to load Google Maps. Please check your connection.');
+                setShowToast(true);
+              }}
+              preventGoogleFontsLoading={false}
             >
               <GoogleMap
                 key={`map-${mapRefreshKey}`}

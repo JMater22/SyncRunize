@@ -184,15 +184,64 @@ const RunTrackerPage: React.FC = () => {
     }
   }, [apiKey]);
 
+  /**
+   * BLACK MAP PREVENTION STRATEGY
+   *
+   * This page implements multiple layers of defense against Google Maps black screen issues:
+   *
+   * 1. Component Mount Refresh (below): Triggers map resize at 100ms, 300ms, and 500ms after mount
+   * 2. Map Load Callback (handleMapLoad): Triggers resize at 100ms, 300ms, 500ms, and 800ms after map loads
+   * 3. Window Resize Listener: Responds to browser/app resize and orientation changes
+   * 4. Toggle Button Refresh: Triggers resize when switching between map/stats view
+   * 5. Tiles Loaded Listener: Confirms map tiles are fully rendered
+   * 6. LoadScript Error Handling: Provides clear error messages if API fails to load
+   * 7. Loading Element: Shows "Loading map..." message during API load
+   *
+   * Additional tips for users:
+   * - Clear browser cache with Ctrl+Shift+R (hard refresh)
+   * - Clear Ionic cache: rm -rf node_modules .ionic www && npm install
+   * - Ensure stable internet connection for Google Maps API
+   * - Check API key is valid and has Maps JavaScript API enabled
+   */
+
   // Fix black screen issue when navigating to this page
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const refreshMap = () => {
       if (mapInstanceRef.current && window.google) {
         google.maps.event.trigger(mapInstanceRef.current, 'resize');
         logDebug('Map refreshed on component mount');
       }
-    }, 300);
-    return () => clearTimeout(timer);
+    };
+
+    // Multiple refresh attempts at different intervals for reliability
+    const timer1 = setTimeout(refreshMap, 100);
+    const timer2 = setTimeout(refreshMap, 300);
+    const timer3 = setTimeout(refreshMap, 500);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
+  }, [logDebug]);
+
+  // Add window resize listener to handle orientation changes and app resizing
+  useEffect(() => {
+    const handleResize = () => {
+      if (mapInstanceRef.current && window.google) {
+        google.maps.event.trigger(mapInstanceRef.current, 'resize');
+        logDebug('Map refreshed on window resize');
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    // Also listen for orientation changes on mobile
+    window.addEventListener('orientationchange', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
   }, [logDebug]);
 
   useEffect(() => {
@@ -252,14 +301,31 @@ const RunTrackerPage: React.FC = () => {
     mapInstanceRef.current = map;
     setMapLoaded(true);
 
-    // Force a resize after a short delay to ensure proper rendering
-    setTimeout(() => {
-      if (mapInstanceRef.current) {
-        google.maps.event.trigger(mapInstanceRef.current, 'resize');
-        logDebug('Triggered map resize');
-      }
-    }, 300);
-  }, [logDebug]);
+    // Force multiple resizes at different intervals to ensure proper rendering
+    // This is more aggressive to prevent black screens
+    const refreshIntervals = [100, 300, 500, 800];
+    refreshIntervals.forEach(delay => {
+      setTimeout(() => {
+        if (mapInstanceRef.current && window.google) {
+          google.maps.event.trigger(mapInstanceRef.current, 'resize');
+          logDebug(`Triggered map resize at ${delay}ms`);
+
+          // Also ensure the map is centered correctly
+          if (pathCoords.length) {
+            mapInstanceRef.current.panTo(pathCoords[pathCoords.length - 1]);
+          } else if (guidedStart) {
+            mapInstanceRef.current.panTo(guidedStart);
+          }
+        }
+      }, delay);
+    });
+
+    // Listen for tiles loaded event to confirm map is fully rendered
+    const tilesLoadedListener = map.addListener('tilesloaded', () => {
+      logDebug('Map tiles fully loaded');
+      google.maps.event.removeListener(tilesLoadedListener);
+    });
+  }, [logDebug, pathCoords, guidedStart]);
 
   const handleMapUnmount = useCallback(() => {
     logDebug('Google map unmounted');
@@ -414,11 +480,17 @@ const RunTrackerPage: React.FC = () => {
             <LoadScript
               googleMapsApiKey={apiKey}
               libraries={mapLibraries}
-              onLoad={() => console.log('[RunTracking] LoadScript onLoad called')}
+              loadingElement={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading map...</div>}
+              onLoad={() => {
+                console.log('[RunTracking] LoadScript onLoad called');
+                logDebug('Google Maps API loaded successfully');
+              }}
               onError={(error) => {
                 console.error('[RunTracking] LoadScript error:', error);
-                setMapError('Unable to load Google Maps.');
+                setMapError('Unable to load Google Maps. Please check your connection and try again.');
+                logDebug('LoadScript error:', error);
               }}
+              preventGoogleFontsLoading={false}
             >
               <GoogleMap
                 key={`map-${mapRefreshKey}`}
