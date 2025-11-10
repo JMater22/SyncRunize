@@ -67,7 +67,6 @@ import { useChallenges } from "../contexts/ChallengesContext";
 import { useHistory } from "react-router-dom";
 import { RoutesApi, Route } from "../services/routes";
 import { useNotifications } from "../contexts/NotificationContext";
-import PageRefresher from "../components/PageRefresher";
 
 
 // Import Google Fonts
@@ -618,24 +617,6 @@ export default function Dashboard() {
     history.push("/community", { focusChallengeId: suggestedChallenge.challenge_id });
   };
 
-  const refreshHomePage = useCallback(async () => {
-    let profileUserId = userProfile?.userId;
-    try {
-      const latestProfile = await fetchUserProfile();
-      profileUserId = latestProfile?.user_id ?? profileUserId;
-    } catch (_) {
-      // keep existing profile data on failure
-    }
-
-    if (profileUserId) {
-      await Promise.all([
-        fetchPersonalRecords(profileUserId),
-        fetchRecentActivities(profileUserId),
-      ]);
-    }
-  }, [fetchUserProfile, fetchPersonalRecords, fetchRecentActivities, userProfile?.userId]);
-
-
   return (
 
     <IonPage>
@@ -706,7 +687,6 @@ export default function Dashboard() {
 
       {/* ===== Scrollable Content ===== */}
       <IonContent fullscreen className="dark-content">
-        <PageRefresher onRefresh={refreshHomePage} />
         <UserGreeting name={userProfile?.name} />
         {/* Personal Records */}
 
