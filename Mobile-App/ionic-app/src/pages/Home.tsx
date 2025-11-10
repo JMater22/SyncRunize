@@ -67,6 +67,7 @@ import { useChallenges } from "../contexts/ChallengesContext";
 import { useHistory } from "react-router-dom";
 import { RoutesApi, Route } from "../services/routes";
 import { useNotifications } from "../contexts/NotificationContext";
+import PageRefresher from "../components/PageRefresher";
 
 
 // Import Google Fonts
@@ -481,10 +482,22 @@ const UserGreeting: React.FC<{ name?: string | null }> = ({ name }) => {
   if (!name) return null;
 
   return (
-    <div style={{ padding: '12px 16px' }}>
-      <IonTitle style={{ fontSize: '16px' }}>Welcome {name}!</IonTitle>
+    <div style={{
+      padding: '16px 20px 12px 20px',
+      background: '#000000'
+    }}>
+      <h2 style={{
+        fontSize: '1.4rem',
+        fontWeight: '700',
+        color: '#ffffff',
+        margin: '0',
+        fontFamily: 'Poppins, sans-serif',
+        letterSpacing: '0.01em'
+      }}>
+        Welcome, <span style={{ color: '#92C628' }}>{name}</span>!
+      </h2>
     </div>
-  );  
+  );
 };
 
 
@@ -515,37 +528,35 @@ export default function Dashboard() {
     [challenges]
   );
 
-  useEffect(() => {
-    let isMounted = true;
-
-    (async () => {
-      try {
-        const me = await UsersApi.me();
-        if (!isMounted) return;
-
-        setUserProfile({
-          name: me.name || me.username || `User ${me.user_id}`,
-          userId: me.user_id,
-        });
-      } catch (err: any) {
-        if (!isMounted) return;
-        setUserProfileError(err?.message || 'Failed to load profile');
-      } finally {
-        if (isMounted) setUserProfileLoading(false);
-      }
-    })();
-
-    return () => {
-      isMounted = false;
-    };
+  const fetchUserProfile = useCallback(async () => {
+    setUserProfileLoading(true);
+    setUserProfileError(null);
+    try {
+      const me = await UsersApi.me();
+      setUserProfile({
+        name: me.name || me.username || `User ${me.user_id}`,
+        userId: me.user_id,
+      });
+      return me;
+    } catch (err: any) {
+      setUserProfileError(err?.message || 'Failed to load profile');
+      throw err;
+    } finally {
+      setUserProfileLoading(false);
+    }
   }, []);
 
-  const fetchPersonalRecords = useCallback(async () => {
-    if (!userProfile?.userId) return;
+  useEffect(() => {
+    fetchUserProfile().catch(() => undefined);
+  }, [fetchUserProfile]);
+
+  const fetchPersonalRecords = useCallback(async (targetUserId?: number) => {
+    const userId = targetUserId ?? userProfile?.userId;
+    if (!userId) return;
     setRecordsLoading(true);
     setRecordsError(null);
     try {
-      const data = await StatsApi.getPersonalRecords(userProfile.userId);
+      const data = await StatsApi.getPersonalRecords(userId);
       setPersonalRecords(mapRecordsToDisplay(data.records));
     } catch (err: any) {
       setRecordsError(err?.message || 'Failed to load personal records');
@@ -555,11 +566,12 @@ export default function Dashboard() {
     }
   }, [userProfile?.userId]);
 
-  const fetchRecentActivities = useCallback(async () => {
-    if (!userProfile?.userId) return;
+  const fetchRecentActivities = useCallback(async (targetUserId?: number) => {
+    const userId = targetUserId ?? userProfile?.userId;
+    if (!userId) return;
     setActivitiesLoading(true);
     try {
-      const routes = await RoutesApi.getUserRoutes(userProfile.userId, true);
+      const routes = await RoutesApi.getUserRoutes(userId, true);
       setRecentActivities(routes.slice(0, 2)); // Get only the first 2 activities
     } catch (err: any) {
       console.error('Failed to load recent activities:', err);
@@ -605,6 +617,23 @@ export default function Dashboard() {
     if (!suggestedChallenge) return;
     history.push("/community", { focusChallengeId: suggestedChallenge.challenge_id });
   };
+
+  const refreshHomePage = useCallback(async () => {
+    let profileUserId = userProfile?.userId;
+    try {
+      const latestProfile = await fetchUserProfile();
+      profileUserId = latestProfile?.user_id ?? profileUserId;
+    } catch (_) {
+      // keep existing profile data on failure
+    }
+
+    if (profileUserId) {
+      await Promise.all([
+        fetchPersonalRecords(profileUserId),
+        fetchRecentActivities(profileUserId),
+      ]);
+    }
+  }, [fetchUserProfile, fetchPersonalRecords, fetchRecentActivities, userProfile?.userId]);
 
 
   return (
@@ -677,6 +706,7 @@ export default function Dashboard() {
 
       {/* ===== Scrollable Content ===== */}
       <IonContent fullscreen className="dark-content">
+        <PageRefresher onRefresh={refreshHomePage} />
         <UserGreeting name={userProfile?.name} />
         {/* Personal Records */}
 

@@ -6,171 +6,237 @@
 /* Dashboard Dark Theme Styles */
 
 .dashboard-page {
-  --ion-background-color: #1a1a1a;
+  --ion-background-color: #000000;
   --ion-text-color: #ffffff;
 }
 
 .dashboard-header {
-  --ion-background-color: #2d2d2d;
+  --ion-background-color: #000000;
 }
 
 .dashboard-toolbar {
-  --ion-background-color: #f8f8f8;
+  --ion-background-color: #000000;
   --ion-color-base: #ffffff;
-  --background: #1a1a1a;
+  --background: #000000;
   --color: #ffffff;
   --padding-top: max(8px, env(safe-area-inset-top));
   --padding-bottom: 8px;
   --min-height: 56px;
   padding-top: env(safe-area-inset-top);
-} 
+}
 
 
 .dashboard-title {
   color: #ffffff;
-  font-weight: 600;
-  font-size: 1.2rem;
-
+  font-weight: 700;
+  font-size: 1.3rem;
+  font-family: 'Poppins', sans-serif;
+  letter-spacing: 0.02em;
 }
 
 .header-icon {
   color: #ffffff;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
 }
 
 .notification-icon {
   color: #ffffff;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   /* No animation for notification bell */
 }
 
 .header-avatar {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
 }
 
 .dashboard-content {
-  --ion-background-color: #1a1a1a;
-  padding: 16px;
+  --ion-background-color: #000000;
+  padding: 0;
 }
 
 /* Section Headers */
 .section-header {
   display: flex;
-  padding-left: 15px;
+  align-items: center;
+  padding: 20px 20px 12px 20px;
   color: #ffffff;
-  font-weight: 600;
-  font-size: 1.1rem;
-  text-align: center;
-  justify-content: center;
+  font-weight: 700;
+  font-size: 1.3rem;
+  letter-spacing: 0.02em;
+  font-family: 'Poppins', sans-serif;
 }
 
 .section-icon {
-  color: #7ed321;
-  margin-right: 8px;
-  font-size: 1.2rem;
+  color: #92C628;
+  margin-right: 12px;
+  font-size: 1.5rem;
 }
 
 .section-title {
   color: #ffffff;
-  font-size: 1.4rem;
-  font-weight: 600;
-  margin: 15px 0 5px 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 20px 0 8px 0;
+  font-family: 'Poppins', sans-serif;
 }
 
 .section-subtitle {
-  color: #999999;
-  font-size: 0.9rem;
-  margin-bottom: 15px;
+  color: #b3b3b3;
+  font-size: 1rem;
+  margin-bottom: 16px;
+  line-height: 1.5;
 }
 
 /* Cards */
 
 ion-card-header{
-  --background: #1e1e1e;
-  margin: 10px 
+  --background: #1a1a1a;
+  padding: 16px;
+  border-bottom: 1px solid rgba(146, 198, 40, 0.1);
 }
+
 ion-card {
-  --background: #1e1e1e;
+  --background: #1a1a1a;
   --ion-color-base: #ffffff;
-  border-radius: 12px;
-  margin: 15px;
+  border-radius: 16px;
+  margin: 12px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 ion-card-header+.card-content-md {
   padding-top: 0;
-  background: #1e1e1e;
-  margin: 0px 10px 10px 10px;
+  background: #1a1a1a;
+  margin: 0;
+}
+
+.records-card {
+  background: #1a1a1a;
+  border: 1px solid rgba(146, 198, 40, 0.1);
 }
 
 .records-card .stats-container {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
-  padding: 15px;
-  background: #1e1e1e;
+  gap: 14px;
+  padding: 18px 16px;
+  background: #1a1a1a;
 }
 
 .stat {
-  background: #363636;
-  border-radius: 12px; 
-  border-style: solid;
-  border-width: 1px;
-  border-color: rgba(255, 255, 255, 0.1);
-  padding: 20px;
+  background: linear-gradient(135deg, rgba(146, 198, 40, 0.15) 0%, rgba(146, 198, 40, 0.08) 100%);
+  border-radius: 14px;
+  border: 1.5px solid rgba(146, 198, 40, 0.3);
+  padding: 12px 10px 12px 16px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   margin: 0;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(146, 198, 40, 0.1);
+  min-height: 90px;
 }
 
-.stat-label {
-  color: #999999;
-  font-size: 0.85rem;
-  margin-bottom: 8px;
+.stat::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #92C628 0%, rgba(146, 198, 40, 0.4) 100%);
+  box-shadow: 0 0 8px rgba(146, 198, 40, 0.4);
+}
+
+.stat:active {
+  transform: scale(0.98);
+  border-color: rgba(146, 198, 40, 0.6);
+  background: linear-gradient(135deg, rgba(146, 198, 40, 0.2) 0%, rgba(146, 198, 40, 0.12) 100%);
+  box-shadow: 0 4px 12px rgba(146, 198, 40, 0.2);
+}
+
+.records-card .stat-label,
+.stat .stat-label {
+  color: #ffffff !important;
+  font-size: 0.65rem;
+  margin-bottom: 6px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  opacity: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  line-height: 1.2;
 }
 
-.stat-value {
-  font-size: 2rem;
-  font-weight: bold;
-  color: #ffffff;
+.records-card .stat-value,
+.stat .stat-value {
+  font-size: 1.75rem !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
   line-height: 1;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  font-family: 'Poppins', sans-serif !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 15px rgba(146, 198, 40, 0.25) !important;
+  letter-spacing: -0.02em;
 }
 
 .stat-change {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .stat-change.positive {
   color: #92C628;
+  background: rgba(146, 198, 40, 0.15);
 }
 
 .stat-change.negative {
-  color: #ff4444;
+  color: #ff5252;
+  background: rgba(255, 82, 82, 0.15);
 }
 
 .stat-change::before {
   content: '↑';
   margin-right: 4px;
-  font-size: 0.9rem;
+  font-size: 1rem;
+  font-weight: 900;
 }
 
 .stat-change.negative::before {
   content: '↓';
 }
 
+/* Chart Card */
+.chart-card {
+  background: #1a1a1a;
+}
+
+/* Distance Header */
+.distance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid rgba(146, 198, 40, 0.1);
+}
+
 /* Line Chart Styles */
 .line-chart-container {
   width: 100%;
-  height: 200px;
+  height: 220px;
   margin: 20px 0 16px;
   position: relative;
+  padding: 0 8px;
 }
 
 .line-chart-svg {
@@ -180,28 +246,34 @@ ion-card-header+.card-content-md {
 
 h3.distance-subtitle{
   color: #ffffff;
-  font-size: 14px;
-  font-weight: 550; 
-  margin-top: 10px;
-  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  letter-spacing: 0.01em;
 }
 
 .period-select{
   color: #ffffff;
-  font-size: 14px;
-  margin-top: 10px;
-  font-weight: 550; 
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  --padding-start: 12px;
+  --padding-end: 12px;
 }
 
 ion-select.period-select {
   --border-style: solid;
-  --border-width: 0;
-  --border-color: solid;
-  --highlight-color-focused: solid;
-  --highlight-color-valid: solid;
-  --highlight-color-invalid: solid;
-  --ripple-color: solid;
-  border: none !important;
+  --border-width: 1px;
+  --border-color: rgba(146, 198, 40, 0.3);
+  --border-radius: 8px;
+  --highlight-color-focused: #92C628;
+  --highlight-color-valid: #92C628;
+  --highlight-color-invalid: #ff5252;
+  --ripple-color: #92C628;
+  background: rgba(146, 198, 40, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
 }
 
 /* Scrollable Month Labels */
@@ -213,7 +285,7 @@ ion-select.period-select {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 136, 0, 0.3);
+  scrollbar-color: rgba(146, 198, 40, 0.3) rgba(255, 255, 255, 0.05);
 }
 
 .chart-month-labels-scroll::-webkit-scrollbar {
@@ -226,33 +298,34 @@ ion-select.period-select {
 }
 
 .chart-month-labels-scroll::-webkit-scrollbar-thumb {
-  background: rgba(45, 211, 111, 0.3);
+  background: rgba(146, 198, 40, 0.4);
   border-radius: 2px;
 }
 
 .chart-month-labels-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(45, 211, 111, 0.5);
+  background: rgba(146, 198, 40, 0.6);
 }
 
 .month-label-graph {
-  font-size: 12px;
-  color: #888;
+  font-size: 0.85rem;
+  color: #b3b3b3;
   font-weight: 600;
-  min-width: 40px;
+  min-width: 50px;
   text-align: center;
   flex-shrink: 0;
+  font-family: 'Inter', sans-serif;
 }
 
 /* Scrollable Distance Values */
 .chart-values-scroll {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   margin-top: 16px;
   overflow-x: auto;
-  padding: 8px 8px 12px;
+  padding: 8px 16px 16px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: rgba(45, 211, 111, 0.3) rgba(255, 255, 255, 0.05);
+  scrollbar-color: rgba(146, 198, 40, 0.3) rgba(255, 255, 255, 0.05);
 }
 
 .chart-values-scroll::-webkit-scrollbar {
@@ -265,44 +338,46 @@ ion-select.period-select {
 }
 
 .chart-values-scroll::-webkit-scrollbar-thumb {
-  background: rgba(45, 211, 111, 0.3);
+  background: rgba(146, 198, 40, 0.4);
   border-radius: 2px;
 }
 
 .chart-values-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(45, 211, 111, 0.5);
+  background: rgba(146, 198, 40, 0.6);
 }
 
 .value-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 16px;
-  background: rgba(221, 221, 221, 0.05);
+  padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(146, 198, 40, 0.08) 0%, rgba(146, 198, 40, 0.03) 100%);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  min-width: 70px;
+  border: 1px solid rgba(146, 198, 40, 0.2);
+  min-width: 80px;
   flex-shrink: 0;
   transition: all 0.2s;
 }
 
-.value-item:hover {
-  background: rgba(45, 211, 111, 0.1);
-  border-color: rgba(45, 211, 111, 0.3);
+.value-item:active {
+  background: rgba(146, 198, 40, 0.15);
+  border-color: rgba(146, 198, 40, 0.4);
   transform: translateY(-2px);
 }
 
 .value-month {
-  font-size: 14px;
-  color: #ffffff;
-  margin-bottom: 4px;
+  font-size: 0.85rem;
+  color: #e0e0e0;
+  margin-bottom: 6px;
   font-weight: 600;
+  font-family: 'Inter', sans-serif;
 }
 
 .value-distance {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 1.1rem;
+  font-weight: 800;
   color: #92C628;
+  font-family: 'Poppins', sans-serif;
 }
 
 /* Optional: Add smooth scroll behavior */
@@ -313,44 +388,49 @@ ion-select.period-select {
 
 /* Activity Styles */
 .activity-card {
-  background: #1e1e1e;
-  border-radius: 12px;
+  background: #1a1a1a;
+  border-radius: 16px;
   overflow: hidden;
 }
 
 .activity-card-item {
-  background: #1e1e1e;
-  border-radius: 12px;
-  margin: 15px;
+  background: #1a1a1a;
+  border-radius: 16px;
+  margin: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .activity-card-content {
-  padding: 16px;
+  padding: 20px;
 }
 
 .activity-header-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  align-items: flex-start;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(146, 198, 40, 0.15);
 }
 
 .activity-name {
   color: #ffffff;
   font-weight: 700;
   font-family: 'Poppins', sans-serif;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   margin: 0;
   letter-spacing: 0.01em;
+  flex: 1;
+  padding-right: 12px;
 }
 
 .activity-date {
   color: #92C628;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
   font-family: 'Inter', sans-serif;
+  white-space: nowrap;
 }
 
 .activity-stats-grid {
@@ -360,40 +440,74 @@ ion-select.period-select {
 }
 
 .activity-stat-box {
-  background: #363636;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 16px;
+  background: linear-gradient(135deg, rgba(146, 198, 40, 0.08) 0%, rgba(146, 198, 40, 0.03) 100%);
+  border-radius: 14px;
+  border: 1px solid rgba(146, 198, 40, 0.2);
+  padding: 14px 12px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.activity-stat-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(146, 198, 40, 0.6) 0%, rgba(146, 198, 40, 0.2) 100%);
+}
+
+.activity-stat-box:active {
+  transform: scale(0.97);
+  border-color: rgba(146, 198, 40, 0.4);
+  background: linear-gradient(135deg, rgba(146, 198, 40, 0.12) 0%, rgba(146, 198, 40, 0.05) 100%);
 }
 
 .activity-stat-box .stat-label {
-  color: #999999;
-  font-size: 0.75rem;
-  margin-bottom: 8px;
+  color: #ffffff;
+  font-size: 0.7rem;
+  margin-bottom: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.9px;
+  font-weight: 800;
   font-family: 'Inter', sans-serif;
+  opacity: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .activity-stat-box .stat-value {
-  font-size: 1.5rem;
-  font-weight: bold;
+  font-size: 1.6rem;
+  font-weight: 800;
   color: #ffffff;
   line-height: 1;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Poppins', sans-serif;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
+
 /* Challenge Styles */
 .challenge-card {
   overflow: hidden;
 }
 
+.current-challenge-card {
+  background: #1a1a1a;
+  border-radius: 16px;
+  margin: 12px 16px;
+  overflow: hidden;
+  border: 1px solid rgba(146, 198, 40, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
 .challenge-image-container {
   width: 100%;
-  height: 150px;
+  height: 180px;
   overflow: hidden;
+  position: relative;
 }
 
 .challenge-image {
@@ -402,34 +516,62 @@ ion-select.period-select {
   object-fit: cover;
 }
 
+.challenge-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(146, 198, 40, 0.95);
+  color: #000000;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.challenge-content {
+  padding: 20px;
+}
+
 h3.challenge-title {
   color: #ffffff;
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+  font-family: 'Poppins', sans-serif;
+  line-height: 1.3;
 }
 
 .challenge-description {
-  color: #cccccc;
-  margin: 10px 0;
-  line-height: 1.4;
-  font-size: 10px;
+  color: #d0d0d0;
+  margin: 12px 0;
+  line-height: 1.6;
+  font-size: 0.95rem;
+  font-family: 'Inter', sans-serif;
 }
 
 .challenge-details{
-  font-size: 11px;
+  font-size: 0.9rem;
+  color: #b3b3b3;
+  line-height: 1.6;
+  margin-top: 12px;
+  font-family: 'Inter', sans-serif;
 }
 
 .challenge-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 15px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(146, 198, 40, 0.1);
 }
 
 .challenge-date {
-  color: #999999;
-  font-size: 0.85rem;
+  color: #b3b3b3;
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
 }
 
 .join-button {
@@ -441,16 +583,19 @@ h3.challenge-title {
 /* Leaderboard Styles */
 .leaderboard-card {
   padding: 0;
-  background: #2a2a2a; /* Match your app background */
+  background: #1a1a1a;
 }
 
 .leaderboard-header {
   display: flex;
   justify-content: space-between;
-  padding: 15px 15px 10px 15px;
-  color: #999999;
-  font-size: 0.9rem;
-  font-weight: 600;
+  padding: 18px 20px 12px 20px;
+  color: #b3b3b3;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .leaderboard-list {
@@ -459,15 +604,15 @@ h3.challenge-title {
 }
 
 .leaderboard-item {
-  --ion-background-color: #2a2a2a;
-  --ion-item-background: #2a2a2a;
-  --background: #2a2a2a;
+  --ion-background-color: #1a1a1a;
+  --ion-item-background: #1a1a1a;
+  --background: #1a1a1a;
   --border-color: transparent;
   --inner-border-width: 0;
   --border-width: 0;
   display: flex;
   align-items: center;
-  padding: 12px 15px;
+  padding: 14px 20px;
   border: none !important;
 }
 
@@ -476,17 +621,19 @@ h3.challenge-title {
 }
 
 .rank {
-  width: 30px;
+  width: 35px;
   color: #ffffff;
-  font-weight: 600;
-  font-size: 1.1rem;
-  margin-right: 15px;
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin-right: 16px;
+  font-family: 'Poppins', sans-serif;
 }
 
 .leaderboard-avatar {
-  width: 40px;
-  height: 40px;
-  margin-right: 15px;
+  width: 44px;
+  height: 44px;
+  margin-right: 16px;
+  border: 2px solid rgba(146, 198, 40, 0.3);
 }
 
 .leader-name {
@@ -496,24 +643,27 @@ h3.challenge-title {
 .leader-name h3 {
   color: #ffffff;
   margin: 0 0 4px 0;
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 600;
+  font-family: 'Inter', sans-serif;
 }
 
 .leader-name p {
-  color: #999999;
+  color: #b3b3b3;
   margin: 0;
   font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
 }
 
 .leader-distance {
   color: #ffffff;
-  font-weight: 600;
-  font-size: 0.95rem;
+  font-weight: 700;
+  font-size: 1rem;
+  font-family: 'Poppins', sans-serif;
 }
 
 .green-text {
-  color: #7ed321 !important;
+  color: #92C628 !important;
 }
 
 .view-more,
@@ -522,23 +672,28 @@ ion-button.view-more {
   --background-activated: #7db320;
   --background-hover: #7db320;
   --color: #000000;
-  --border-radius: 8px;
+  --border-radius: 12px;
   text-align: center;
-  margin-left: 15px ;
-  padding: 15px;
+  margin: 16px 16px 8px 16px;
+  padding: 16px;
   color: #000000;
-  font-weight: 700;
+  font-weight: 800;
   font-family: 'Inter', sans-serif;
   cursor: pointer;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  width: calc(100% - 30px);
+  width: calc(100% - 32px);
   max-width: 400px;
+  font-size: 0.95rem;
 }
 
 /* Global overrides for dark theme */
 ion-content {
-  --ion-background-color: #1a1a1a;
+  --ion-background-color: #000000;
+}
+
+.dark-content {
+  --background: #000000;
 }
 
 ion-card-header {
@@ -547,4 +702,60 @@ ion-card-header {
 
 ion-card-content {
   padding-top: 0;
+}
+
+/* Loading and Error States */
+.ion-text-center {
+  padding: 32px 20px;
+}
+
+.ion-text-center p {
+  color: #d0d0d0;
+  font-size: 1rem;
+  line-height: 1.6;
+  font-family: 'Inter', sans-serif;
+  margin: 12px 0 0 0;
+}
+
+.ion-text-center ion-spinner {
+  color: #92C628;
+  transform: scale(1.2);
+  margin-bottom: 8px;
+}
+
+/* Empty State Enhancements */
+.records-card .ion-text-center,
+.activity-card .ion-text-center,
+.chart-card .ion-text-center {
+  padding: 40px 24px;
+}
+
+/* Improve tap feedback on mobile */
+@media (hover: none) {
+  .stat:active,
+  .activity-stat-box:active,
+  .value-item:active,
+  .current-challenge-card:active {
+    opacity: 0.9;
+  }
+}
+
+/* Additional polish for better visual hierarchy */
+ion-card-content {
+  --ion-padding: 0;
+}
+
+/* Ensure text is always readable */
+.stat-value,
+.activity-stat-box .stat-value {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth scrolling for better UX */
+ion-content {
+  --offset-bottom: auto!important;
+  --overflow: hidden;
+  overflow: auto;
+  scroll-behavior: smooth;
 }

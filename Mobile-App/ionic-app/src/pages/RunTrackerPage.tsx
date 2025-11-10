@@ -48,13 +48,30 @@ const RunTrackerPage: React.FC = () => {
   const latestLocationRef = useRef<google.maps.LatLngLiteral | null>(null);
   const lastHazardFetchRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
   const lastRealtimeRefreshRef = useRef<number>(0);
+  const sessionRef = useRef(session);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+  const logDebug = useCallback((...args: unknown[]) => {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log('[RunTracking]', ...args);
+    }
+  }, []);
+  const toNumber = (value: number | string | null | undefined) => {
+    const parsed = typeof value === 'string' ? Number.parseFloat(value) : value;
+    return Number.isFinite(parsed) ? (parsed as number) : null;
+  };
+
   const computeHazardDistanceKm = useCallback((hazard?: HazardReport | null) => {
     if (!hazard) return null;
-    if (typeof hazard.distance_km === 'number') return hazard.distance_km;
+    if (typeof hazard.distance_km === 'number' && Number.isFinite(hazard.distance_km)) {
+      return hazard.distance_km;
+    }
     const latest = latestLocationRef.current;
     if (!latest) return null;
-    return haversineDistanceMeters(latest, { lat: hazard.lat, lng: hazard.lng }) / 1000;
+    const lat = toNumber(hazard.lat);
+    const lng = toNumber(hazard.lng);
+    if (lat == null || lng == null) return null;
+    return haversineDistanceMeters(latest, { lat, lng }) / 1000;
   }, []);
 
   const getHazardIconUrl = useCallback((hazard: HazardReport) => {
@@ -90,7 +107,13 @@ const RunTrackerPage: React.FC = () => {
     }
     return parts.join(' \u2022 ');
   }, [guidedRoute]);
-  const mapCenter = pathCoords[pathCoords.length - 1] ?? guidedStart ?? googleMapDefaultCenter;
+  const shouldShowLivePath = pathCoords.length > 0 && session.status !== 'IDLE';
+  const mapCenter = useMemo(() => {
+    if (shouldShowLivePath) {
+      return pathCoords[pathCoords.length - 1];
+    }
+    return guidedStart ?? googleMapDefaultCenter;
+  }, [shouldShowLivePath, pathCoords, guidedStart]);
   const hasGuide = Boolean(guidedRoute);
   const hazardSummaryText = hazardLoading
     ? 'Checking nearby hazards...'
@@ -101,11 +124,13 @@ const RunTrackerPage: React.FC = () => {
 
   const loadHazards = useCallback(async (center: google.maps.LatLngLiteral, options: { force?: boolean } = {}) => {
     if (!center) return;
+    logDebug('loadHazards: request', { center, options });
     const now = Date.now();
     if (!options.force && lastHazardFetchRef.current) {
       const { lat, lng, time } = lastHazardFetchRef.current;
       const movedMeters = haversineDistanceMeters({ lat, lng }, center);
       if (movedMeters < HAZARD_RADIUS_METERS * 0.3 && now - time < HAZARD_REFETCH_MS) {
+        logDebug('loadHazards: throttled', { movedMeters, elapsed: now - time });
         return;
       }
     }
@@ -113,14 +138,34 @@ const RunTrackerPage: React.FC = () => {
     try {
       setHazardLoading(true);
       const fetched = await HazardsApi.getHazardsNear(center.lat, center.lng, HAZARD_RADIUS_KM);
-      setHazards(fetched);
+      logDebug('loadHazards: fetched hazards', fetched?.length ?? 0);
+      const sanitized = fetched
+        .map((hazard) => {
+          const lat = toNumber(hazard.lat);
+          const lng = toNumber(hazard.lng);
+          if (lat == null || lng == null) {
+            logDebug('loadHazards: dropping hazard with invalid coordinates', hazard);
+            return null;
+          }
+          return {
+            ...hazard,
+            lat,
+            lng,
+            distance_km: typeof hazard.distance_km === 'string'
+              ? Number.parseFloat(hazard.distance_km)
+              : hazard.distance_km,
+          } as HazardReport;
+        })
+        .filter((item): item is HazardReport => item !== null);
+      logDebug('loadHazards: sanitized hazards', sanitized.length);
+      setHazards(sanitized);
       lastHazardFetchRef.current = { lat: center.lat, lng: center.lng, time: now };
     } catch (err) {
       console.error('Failed to load hazards:', err);
     } finally {
       setHazardLoading(false);
     }
-  }, []);
+  }, [logDebug]);
 
   useEffect(() => {
     if (!apiKey) {
@@ -137,12 +182,24 @@ const RunTrackerPage: React.FC = () => {
   }, [pathCoords]);
 
   useEffect(() => {
-    if (location.state?.guidedRoute) {
-      setGuidedRoute(location.state.guidedRoute);
-      setToastMessage(`Guided route ready: ${location.state.guidedRoute.routeName}`);
-      history.replace('/run-tracking');
+    sessionRef.current = session;
+  }, [session]);
+
+  useEffect(() => {
+    const incomingRoute = location.state?.guidedRoute;
+    if (!incomingRoute) return;
+
+    const currentSession = sessionRef.current;
+    const hasPath = currentSession.samples.length > 0 || currentSession.status !== 'IDLE';
+    if (hasPath) {
+      discardRun();
     }
-  }, [location.state, history]);
+
+    setGuidedRoute(incomingRoute);
+    logDebug('Guided route injected', incomingRoute.routeName);
+    setToastMessage(`Guided route ready: ${incomingRoute.routeName}`);
+    history.replace('/run-tracking');
+  }, [location.state, history, discardRun, logDebug]);
 
   useEffect(() => {
     if (!latestCoord) return;
@@ -168,14 +225,16 @@ const RunTrackerPage: React.FC = () => {
   }, [loadHazards]);
 
   const handleMapLoad = useCallback((map: google.maps.Map) => {
+    logDebug('Google map loaded');
     mapInstanceRef.current = map;
     setMapLoaded(true);
-  }, []);
+  }, [logDebug]);
 
   const handleMapUnmount = useCallback(() => {
+    logDebug('Google map unmounted');
     mapInstanceRef.current = null;
     setMapLoaded(false);
-  }, []);
+  }, [logDebug]);
 
   useEffect(() => {
     if (!mapInstanceRef.current) return;
@@ -191,6 +250,9 @@ const RunTrackerPage: React.FC = () => {
   const isRunning = status === 'RUNNING';
   const isPaused = status === 'PAUSED';
   const isFinished = status === 'FINISHED';
+  const displayedElapsed = isIdle ? '00:00' : formatDuration(session.elapsedMs);
+  const displayedDistanceKm = isIdle ? 0 : session.movingDistanceMeters / 1000;
+  const displayedCalories = isIdle ? 0 : session.caloriesKcal;
 
   const primaryAction = useMemo(() => {
     if (isIdle || isFinished) {
@@ -220,6 +282,7 @@ const RunTrackerPage: React.FC = () => {
   const handleRecord = async (meta: { name: string; visibility: 'public' | 'private' }) => {
     try {
       const recorded = await recordRun(meta);
+      clearGuidedRoute();
       history.push('/run-pre-post', {
         routeId: recorded.routeId,
         routeName: recorded.routeName,
@@ -237,6 +300,11 @@ const RunTrackerPage: React.FC = () => {
       console.error(err);
     }
   };
+
+  const handleDiscardRun = useCallback(() => {
+    clearGuidedRoute();
+    discardRun();
+  }, [clearGuidedRoute, discardRun]);
 
   const updateHazardStatus = useCallback(async (status: 'active' | 'resolved') => {
     if (!selectedHazard) return;
@@ -259,7 +327,7 @@ const RunTrackerPage: React.FC = () => {
     }
   }, [selectedHazard, loadHazards]);
 
-  const paceLabel = session.avgPaceMinPerKm > 0 ? formatPace(session.avgPaceMinPerKm) : '--';
+  const paceLabel = !isIdle && session.avgPaceMinPerKm > 0 ? formatPace(session.avgPaceMinPerKm) : '--';
   const selectedHazardDistance = computeHazardDistanceKm(selectedHazard);
 
   const handleReportHazard = () => {
@@ -340,7 +408,7 @@ const RunTrackerPage: React.FC = () => {
                     )}
                   </>
                 )}
-                {pathCoords.length > 0 && (
+                {shouldShowLivePath && (
                   <>
                     <Polyline
                       path={pathCoords}
@@ -356,7 +424,7 @@ const RunTrackerPage: React.FC = () => {
                     />
                   </>
                 )}
-                {latestCoord && (
+                {shouldShowLivePath && latestCoord && (
                   <CircleF
                     center={latestCoord}
                     radius={HAZARD_RADIUS_METERS}
@@ -369,14 +437,19 @@ const RunTrackerPage: React.FC = () => {
                     }}
                   />
                 )}
-                {hazards.map((hazard) => (
-                  <MarkerF
-                    key={`hazard-${hazard.report_id}`}
-                    position={{ lat: hazard.lat, lng: hazard.lng }}
-                    icon={getHazardIconUrl(hazard)}
-                    onClick={() => setSelectedHazard(hazard)}
-                  />
-                ))}
+                {hazards.map((hazard) => {
+                  if (!Number.isFinite(hazard.lat) || !Number.isFinite(hazard.lng)) {
+                    return null;
+                  }
+                  return (
+                    <MarkerF
+                      key={`hazard-${hazard.report_id}`}
+                      position={{ lat: hazard.lat, lng: hazard.lng }}
+                      icon={getHazardIconUrl(hazard)}
+                      onClick={() => setSelectedHazard(hazard)}
+                    />
+                  );
+                })}
               </GoogleMap>
             </LoadScript>
           )}
@@ -453,11 +526,11 @@ const RunTrackerPage: React.FC = () => {
               <div className="stats-grid">
                 <div className="stat-card">
                   <span className="card-label">Elapsed</span>
-                  <strong className="card-value">{formatDuration(session.elapsedMs)}</strong>
+                  <strong className="card-value">{displayedElapsed}</strong>
                 </div>
                 <div className="stat-card">
                   <span className="card-label">Distance</span>
-                  <strong className="card-value">{(session.movingDistanceMeters / 1000).toFixed(2)} km</strong>
+                  <strong className="card-value">{displayedDistanceKm.toFixed(2)} km</strong>
                 </div>
                 <div className="stat-card">
                   <span className="card-label">Avg Pace</span>
@@ -465,7 +538,7 @@ const RunTrackerPage: React.FC = () => {
                 </div>
                 <div className="stat-card">
                   <span className="card-label">Calories</span>
-                  <strong className="card-value">{session.caloriesKcal.toFixed(0)}</strong>
+                  <strong className="card-value">{displayedCalories.toFixed(0)}</strong>
                 </div>
               </div>
 
@@ -494,7 +567,7 @@ const RunTrackerPage: React.FC = () => {
           isRecording={isRecording}
           error={error}
           onRecord={handleRecord}
-          onDiscard={discardRun}
+          onDiscard={handleDiscardRun}
           onDismiss={() => undefined}
         />
 
