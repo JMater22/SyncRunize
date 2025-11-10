@@ -34,21 +34,27 @@ export interface UpdatePostData {
 }
 
 export const PostsApi = {
-  // Get personal feed (posts from followed users)
-  getFeed: async (): Promise<Post[]> => {
-    const { data } = await api.get('/posts/feed');
+  // Get personal feed (posts from followed users) with pagination
+  getFeed: async (limit: number = 20, offset: number = 0): Promise<Post[]> => {
+    const { data } = await api.get('/posts/feed', {
+      params: { limit, offset }
+    });
     return data;
   },
 
-  // Get user's own posts
-  getMyPosts: async (): Promise<Post[]> => {
-    const { data } = await api.get('/posts/my');
+  // Get user's own posts with pagination
+  getMyPosts: async (limit: number = 20, offset: number = 0): Promise<Post[]> => {
+    const { data } = await api.get('/posts/my', {
+      params: { limit, offset }
+    });
     return data;
   },
 
-  // Get posts by user ID (only public posts if not following)
-  getUserPosts: async (userId: number): Promise<Post[]> => {
-    const { data } = await api.get(`/posts/user/${userId}`);
+  // Get posts by user ID (only public posts if not following) with pagination
+  getUserPosts: async (userId: number, limit: number = 20, offset: number = 0): Promise<Post[]> => {
+    const { data } = await api.get(`/posts/user/${userId}`, {
+      params: { limit, offset }
+    });
     return data;
   },
 

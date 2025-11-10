@@ -252,9 +252,12 @@
   margin: 0;
 }
 
-/* Feed Tab */
-.feed-tab {
-  padding: 16px;
+/* Feed Tab Container */
+.feed-tab-container {
+  background: #000000;
+  color: #ffffff;
+  min-height: 100%;
+  padding: 0;
 }
 
 .post-input-card {
@@ -286,6 +289,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  padding: 0 16px 16px 16px;
 }
 
 .post-card {
@@ -444,7 +448,7 @@
   border-radius: 16px;
   overflow: hidden;
   position: relative;
-  height: 140px;
+  height: 180px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   border: 1px solid #2a2a2a;
   transition: all 0.3s ease;
@@ -510,9 +514,25 @@
 }
 
 /* Modal Styles */
+.community-page ion-modal {
+  --background: #000000;
+}
+
+.community-page ion-modal ion-header ion-toolbar {
+  --background: #000000;
+  --color: #ffffff;
+  --border-color: #2a2a2a;
+}
+
+.community-page ion-modal ion-title {
+  color: #ffffff;
+  font-weight: 700;
+}
+
 .modal-content {
   --background: #000000;
   --color: #ffffff;
+  background: #000000;
 }
 
 .modal-content ion-toolbar {

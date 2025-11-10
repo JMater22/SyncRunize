@@ -1,9 +1,9 @@
 import { supabase } from "../utils/supabase.js";
 
-// ✅ Get comments by group post (with debug logging)
-export const getComments = async (groupPostId) => {
-  console.log("📥 Getting comments for post:", groupPostId);
-  
+// ✅ Get comments by group post with pagination (with debug logging)
+export const getComments = async (groupPostId, limit = 20, offset = 0) => {
+  console.log("📥 Getting comments for post:", groupPostId, "limit:", limit, "offset:", offset);
+
   const { data, error } = await supabase
     .from("group_comments")
     .select(`
@@ -20,7 +20,8 @@ export const getComments = async (groupPostId) => {
       )
     `)
     .eq("group_post_id", groupPostId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .range(offset, offset + limit - 1);
 
   if (error) {
     console.error("❌ Supabase error:", error);

@@ -13,6 +13,7 @@ export interface CreateRouteRequest {
   end_lat: number;
   end_lng: number;
   snapshot_url?: string | null;
+  weight_kg?:number;
 }
 
 export interface CreateRouteResponse {

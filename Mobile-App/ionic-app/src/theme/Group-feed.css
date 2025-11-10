@@ -9,6 +9,8 @@
 .group-feed-page ion-content {
   --background: #000000;
   --color: #ffffff;
+  background: #000000;
+  color: #ffffff;
 }
 
 /* Header */

@@ -431,8 +431,8 @@ ion-card p {
   gap: 16px;
 }
 
-.stat-item {
-  background: #2a2a2a;
+.performance-stats-card .stat-item {
+  background: #2a2a2a !important;
   border-radius: 12px;
   padding: 16px;
   text-align: center;
@@ -440,24 +440,24 @@ ion-card p {
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
-.stat-item:active {
+.performance-stats-card .stat-item:active {
   transform: scale(0.98);
   border-color: rgba(146, 198, 40, 0.4);
 }
 
-.stat-label {
+.performance-stats-card .stat-label {
   font-size: 12px;
   font-weight: 600;
-  color: #888;
+  color: #888 !important;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
 }
 
-.stat-value {
+.performance-stats-card .stat-value {
   font-size: 20px;
   font-weight: 700;
-  color: #92C628;
+  color: #ffffff !important;
   line-height: 1.2;
 }
 

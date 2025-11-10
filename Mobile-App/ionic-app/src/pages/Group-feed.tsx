@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   IonPage,
   IonHeader,
@@ -28,7 +28,9 @@ import {
   IonSegment,
   IonSegmentButton,
   IonInput,
-  IonText
+  IonText,
+  IonInfiniteScroll,
+  IonInfiniteScrollContent
 } from "@ionic/react";
 import {
   heartOutline,
@@ -43,7 +45,8 @@ import {
   searchOutline,
   camera,
   close,
-  images as imagesIcon
+  images as imagesIcon,
+  trashOutline
 } from "ionicons/icons";
 import { useHistory, useParams } from "react-router-dom";
 import ChallengePic from '../components/assets/istockphoto-143920084-612x612.jpg';
@@ -78,6 +81,11 @@ const GroupFeed: React.FC = () => {
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Pagination state for posts
+  const [postsOffset, setPostsOffset] = useState(0);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
+  const POSTS_PER_PAGE = 10;
+
   // UI state
   const [activeTab, setActiveTab] = useState<'posts' | 'leaderboard' | 'members'>('posts');
   const [showMembersModal, setShowMembersModal] = useState(false);
@@ -106,9 +114,10 @@ const GroupFeed: React.FC = () => {
   const [toastColor, setToastColor] = useState<"success" | "danger" | "primary">("primary");
   const [newPostsCount, setNewPostsCount] = useState(0);
 
-  // Leave Group state
+  // Leave/Disband Group state
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [showLeaveAlert, setShowLeaveAlert] = useState(false);
+  const [showDisbandAlert, setShowDisbandAlert] = useState(false);
 
   // Leaderboard state
   const [weekFilter, setWeekFilter] = useState<'current' | 'last'>('current');
@@ -160,13 +169,20 @@ const GroupFeed: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch group details
-      const groupData = await GroupsApi.getGroup(parseInt(groupId));
+      // ⚡ PARALLEL API CALLS - Fetch all data simultaneously
+      const [groupData, postsData, membersData] = await Promise.all([
+        GroupsApi.getGroup(parseInt(groupId)),
+        GroupsApi.getGroupPosts(parseInt(groupId), POSTS_PER_PAGE, 0),
+        GroupsApi.getGroupMembers(parseInt(groupId))
+      ]);
+
+      // Set group data
       setGroup(groupData);
 
-      // Fetch group posts
-      const postsData = await GroupsApi.getGroupPosts(parseInt(groupId));
+      // Set posts with pagination
       setGroupPosts(Array.isArray(postsData) ? postsData : []);
+      setPostsOffset(POSTS_PER_PAGE);
+      setHasMorePosts(postsData.length === POSTS_PER_PAGE);
 
       // Initialize likes and comments for posts
       const initialLikes: {[key: number]: {count: number, isLiked: boolean}} = {};
@@ -183,8 +199,7 @@ const GroupFeed: React.FC = () => {
       setLikes(initialLikes);
       setComments(initialComments);
 
-      // Fetch group members to check user role
-      const membersData = await GroupsApi.getGroupMembers(parseInt(groupId));
+      // Set members data
       setMembers(Array.isArray(membersData) ? membersData : []);
 
       // Check if current user is a member and their role
@@ -200,6 +215,41 @@ const GroupFeed: React.FC = () => {
       setMembers([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMorePosts = async (event: any) => {
+    if (!groupId || !hasMorePosts) {
+      event.target.complete();
+      return;
+    }
+
+    try {
+      console.log('[GroupFeed] Loading more posts...');
+      const morePosts = await GroupsApi.getGroupPosts(parseInt(groupId), POSTS_PER_PAGE, postsOffset);
+
+      setGroupPosts(prev => [...prev, ...(Array.isArray(morePosts) ? morePosts : [])]);
+      setPostsOffset(prev => prev + POSTS_PER_PAGE);
+      setHasMorePosts(morePosts.length === POSTS_PER_PAGE);
+
+      // Initialize likes/comments for new posts
+      morePosts.forEach(post => {
+        setLikes(prev => ({
+          ...prev,
+          [post.post_id]: {
+            count: post.likes_count || 0,
+            isLiked: post.is_liked || false
+          }
+        }));
+        setComments(prev => ({
+          ...prev,
+          [post.post_id]: []
+        }));
+      });
+    } catch (err: any) {
+      console.error('[GroupFeed] Failed to load more posts:', err);
+    } finally {
+      event.target.complete();
     }
   };
 
@@ -561,11 +611,32 @@ const GroupFeed: React.FC = () => {
 
       // Redirect back to community after a short delay
       setTimeout(() => {
-        history.push("/HomeModule/homeM1");
+        history.push("/community");
       }, 1000);
     } catch (error: any) {
       console.error('Failed to leave group:', error);
       setToastMessage(error.message || 'Failed to leave group');
+      setToastColor('danger');
+      setShowToast(true);
+    }
+  };
+
+  const handleDisbandGroup = async () => {
+    if (!groupId) return;
+
+    try {
+      await GroupsApi.deleteGroup(parseInt(groupId));
+      setToastMessage('Group disbanded successfully');
+      setToastColor('success');
+      setShowToast(true);
+
+      // Redirect back to community after a short delay
+      setTimeout(() => {
+        history.push("/community");
+      }, 1000);
+    } catch (error: any) {
+      console.error('Failed to disband group:', error);
+      setToastMessage(error.message || 'Failed to disband group');
       setToastColor('danger');
       setShowToast(true);
     }
@@ -606,7 +677,17 @@ const GroupFeed: React.FC = () => {
     }
 
     // Leave Group button (only for members)
-    if (isUserJoined) {
+    // Disband for admins, Leave for regular members
+    if (isUserAdmin) {
+      buttons.push({
+        text: 'Disband Group',
+        role: 'destructive',
+        icon: trashOutline,
+        handler: () => {
+          setShowDisbandAlert(true);
+        }
+      });
+    } else if (isUserJoined) {
       buttons.push({
         text: 'Leave Group',
         role: 'destructive',
@@ -625,21 +706,23 @@ const GroupFeed: React.FC = () => {
     return buttons;
   };
 
-  // Filter members based on search query
-  const filteredMembers = members.filter(member => {
-    const searchLower = memberSearchQuery.toLowerCase();
-    return (
-      member.users?.name.toLowerCase().includes(searchLower) ||
-      member.users?.username.toLowerCase().includes(searchLower)
-    );
-  });
+  // Filter members based on search query (memoized for performance)
+  const filteredMembers = useMemo(() => {
+    return members.filter(member => {
+      const searchLower = memberSearchQuery.toLowerCase();
+      return (
+        member.users?.name.toLowerCase().includes(searchLower) ||
+        member.users?.username.toLowerCase().includes(searchLower)
+      );
+    });
+  }, [members, memberSearchQuery]);
 
   return (
     <IonPage className="group-feed-page">
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/HomeModule/homeM1" />
+            <IonBackButton defaultHref="/community" />
           </IonButtons>
           <IonTitle>
             {group?.name || 'Group Feed'}
@@ -785,6 +868,7 @@ const GroupFeed: React.FC = () => {
                               src={post.images[0]}
                               alt="Post content"
                               className="post-image"
+                              loading="lazy"
                               style={{
                                 borderRadius: '12px',
                                 marginBottom: '12px',
@@ -840,6 +924,18 @@ const GroupFeed: React.FC = () => {
                       </IonCard>
                     ))
                   )}
+
+                  {/* Infinite Scroll for Posts */}
+                  <IonInfiniteScroll
+                    onIonInfinite={loadMorePosts}
+                    threshold="100px"
+                    disabled={!hasMorePosts}
+                  >
+                    <IonInfiniteScrollContent
+                      loadingSpinner="bubbles"
+                      loadingText="Loading more posts..."
+                    ></IonInfiniteScrollContent>
+                  </IonInfiniteScroll>
                 </div>
 
                 {/* Legacy posts from push notifications */}
@@ -1484,7 +1580,7 @@ const GroupFeed: React.FC = () => {
         />
 
         {/* Leave Group Confirmation Alert */}
-        <IonAlert 
+        <IonAlert
           isOpen={showLeaveAlert}
           onDidDismiss={() => setShowLeaveAlert(false)}
           header="Leave Group"
@@ -1498,6 +1594,25 @@ const GroupFeed: React.FC = () => {
               text: 'Leave',
               role: 'destructive',
               handler: handleLeaveGroup
+            }
+          ]}
+        />
+
+        {/* Disband Group Confirmation Alert */}
+        <IonAlert
+          isOpen={showDisbandAlert}
+          onDidDismiss={() => setShowDisbandAlert(false)}
+          header="Disband Group"
+          message="Are you sure you want to disband this group? This action cannot be undone. All posts, members, and data will be permanently deleted."
+          buttons={[
+            {
+              text: 'Cancel',
+              role: 'cancel'
+            },
+            {
+              text: 'Disband',
+              role: 'destructive',
+              handler: handleDisbandGroup
             }
           ]}
         />

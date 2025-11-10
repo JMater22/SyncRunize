@@ -2,17 +2,21 @@ import * as GroupModel from "../models/group_model.js";
 import * as GroupMemberModel from "../models/group_member_model.js";
 import { supabase } from "../utils/supabase.js";
 
-// GET all groups
+// GET all groups with pagination
 export const getAllGroups = async (req, res) => {
   try {
     const userId = req.user?.user_id || null;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
+
     let groups;
     if (!userId) {
       const { data, error } = await supabase
         .from('groups')
         .select('*')
         .eq('privacy', false)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
       if (error) throw error;
       groups = data;
     } else {
@@ -21,7 +25,8 @@ export const getAllGroups = async (req, res) => {
         .from('groups')
         .select('*')
         .or(`privacy.eq.false,created_by.eq.${userId}`)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
       if (error) throw error;
       // Show: public OR created_by me OR where I'm a member
       groups = (data || []).filter(g => g.privacy === false || g.created_by === userId || joinedIds.includes(g.group_id));

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useMemo, useState, type ReactNode } from 'react';
 import { haversineDistanceMeters } from '../services/haversine';
-import { caloriesFromPace, derivePace } from '../services/met';
+import { caloriesFromPace, DEFAULT_WEIGHT_KG, derivePace, MIN_DISTANCE_FOR_PACE_METERS } from '../services/met';
 
 export type GpsSample = {
   lat: number;
@@ -13,6 +13,9 @@ export type GpsSample = {
 export type PauseInterval = { start: number; end?: number };
 
 export type RunState = 'IDLE' | 'RUNNING' | 'PAUSED' | 'FINISHED';
+
+const MIN_SAMPLE_DELTA_METERS = 5;
+const MAX_SAMPLE_ACCURACY_METERS = 25;
 
 export type RunSession = {
   id: string;
@@ -31,6 +34,7 @@ export type RunSession = {
   name?: string;
   recordedRouteId?: number | null;
   weightKg?: number;
+  userWeightKg?: number;
 };
 
 export type Action =
@@ -40,7 +44,8 @@ export type Action =
   | { type: 'FINISH'; at: number }
   | { type: 'TICK'; deltaMs: number }
   | { type: 'ADD_SAMPLES'; samples: GpsSample[] }
-  | { type: 'SET_META'; name?: string; visibility?: 'public' | 'private' };
+  | { type: 'SET_META'; name?: string; visibility?: 'public' | 'private' }
+  | { type: 'SET_WEIGHT'; weightKg?: number };
 
 type RunTrackerContextValue = {
   session: RunSession;
@@ -66,6 +71,7 @@ function createEmptySession(): RunSession {
     visibility: 'private',
     routeGuideId: null,
     recordedRouteId: null,
+    userWeightKg: DEFAULT_WEIGHT_KG,
   };
 }
 
@@ -151,6 +157,11 @@ const runTrackerReducer = (state: RunSession, action: Action): RunSession => {
         name: action.name ?? state.name,
         visibility: action.visibility ?? state.visibility,
       };
+    case 'SET_WEIGHT':
+      return {
+        ...state,
+        userWeightKg: action.weightKg && action.weightKg > 0 ? action.weightKg : DEFAULT_WEIGHT_KG,
+      };
     default:
       return state;
   }
@@ -164,8 +175,17 @@ const applySamples = (state: RunSession, samples: GpsSample[]): RunSession => {
   let previous = nextSamples[nextSamples.length - 1];
 
   samples.forEach((sample) => {
+    if (!isFinite(sample.lat) || !isFinite(sample.lng)) {
+      return;
+    }
+    if (sample.accuracy && sample.accuracy > MAX_SAMPLE_ACCURACY_METERS) {
+      return;
+    }
     if (previous) {
       const delta = haversineDistanceMeters(previous, sample);
+      if (!isFinite(delta) || delta < MIN_SAMPLE_DELTA_METERS) {
+        return;
+      }
       breadcrumb += delta;
       if (state.status === 'RUNNING') {
         moving += delta;
@@ -184,8 +204,10 @@ const applySamples = (state: RunSession, samples: GpsSample[]): RunSession => {
 };
 
 const recalc = (session: RunSession): RunSession => {
-  const pace = derivePace(session.movingDistanceMeters, session.elapsedMs);
-  const calories = caloriesFromPace(session.elapsedMs, pace, session.weightKg ?? 70);
+  const canCompute = session.movingDistanceMeters >= MIN_DISTANCE_FOR_PACE_METERS && session.elapsedMs > 0;
+  const pace = canCompute ? derivePace(session.movingDistanceMeters, session.elapsedMs) : 0;
+  const weight = session.userWeightKg ?? session.weightKg ?? DEFAULT_WEIGHT_KG;
+  const calories = canCompute && pace > 0 ? caloriesFromPace(session.elapsedMs, pace, weight) : 0;
   return {
     ...session,
     avgPaceMinPerKm: Number(isFinite(pace) ? pace.toFixed(2) : 0),
@@ -213,6 +235,7 @@ const normalizeSession = (session: RunSession): RunSession => {
     movingDistanceMeters: session.movingDistanceMeters ?? 0,
     elapsedMs: session.elapsedMs ?? 0,
     status: session.status ?? 'IDLE',
+    userWeightKg: session.userWeightKg ?? DEFAULT_WEIGHT_KG,
   });
 };
 

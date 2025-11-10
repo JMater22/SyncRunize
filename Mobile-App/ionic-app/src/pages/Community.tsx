@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import {
   IonPage,
@@ -25,6 +25,8 @@ import {
   IonRadioGroup,
   IonRadio,
   IonText,
+  IonInfiniteScroll,
+  IonInfiniteScrollContent,
 } from "@ionic/react";
 import {
   trophy,
@@ -40,16 +42,15 @@ import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import CommunityChallengesTab from "../components/CommunityChallengesTab";
 import CommunityFeedTab from "../components/CommunityFeedTab";
 import GroupCard from "../components/group-card";
+import GroupCardSkeleton from "../components/skeletons/GroupCardSkeleton";
 import { usePushNotifications } from "../components/push-notification";
 import { useUser } from "../contexts/UserContext";
-import { usePosts } from "../contexts/PostsContext";
 import { GroupsApi, Group } from "../services/groups";
 import "../theme/Community.css";
 
 const Community: React.FC = () => {
   const [tab, setTab] = useState<"challenges" | "feed" | "groups">("feed");
   const { currentUser } = useUser();
-  const { fetchFeed } = usePosts();
   const location = useLocation<{ focusChallengeId?: number }>();
   const history = useHistory();
   const [focusedChallengeId, setFocusedChallengeId] = useState<number | undefined>(undefined);
@@ -60,6 +61,10 @@ const Community: React.FC = () => {
   const [groupsError, setGroupsError] = useState<string | null>(null);
   const [groupSearchQuery, setGroupSearchQuery] = useState("");
   const [groupFilter, setGroupFilter] = useState<"all" | "joined" | "not-joined">("all");
+  // Pagination state for groups
+  const [groupsOffset, setGroupsOffset] = useState(0);
+  const [hasMoreGroups, setHasMoreGroups] = useState(true);
+  const GROUPS_PER_PAGE = 20;
 
   // Create Group Modal state
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
@@ -103,7 +108,7 @@ const Community: React.FC = () => {
     }
   }, [tab]);
 
-  const fetchGroups = async () => {
+  const fetchGroups = async (isRefresh: boolean = false) => {
     if (!currentUser) {
       console.log('[Community] No current user, skipping fetchGroups');
       return;
@@ -113,36 +118,73 @@ const Community: React.FC = () => {
       setLoadingGroups(true);
       setGroupsError(null);
 
-      console.log('[Community] Fetching all groups...');
-      // Fetch all groups (includes privacy filtering on backend)
-      const allGroups = await GroupsApi.getAllGroups();
-      console.log('[Community] All groups fetched:', allGroups);
-      setGroups(Array.isArray(allGroups) ? allGroups : []);
+      if (isRefresh) {
+        setGroupsOffset(0);
+        setHasMoreGroups(true);
+      }
+
+      console.log('[Community] Fetching groups with pagination...');
+      // Fetch groups with pagination (includes privacy filtering on backend)
+      const allGroups = await GroupsApi.getAllGroups(GROUPS_PER_PAGE, isRefresh ? 0 : groupsOffset);
+      console.log('[Community] Groups fetched:', allGroups);
+
+      if (isRefresh) {
+        setGroups(Array.isArray(allGroups) ? allGroups : []);
+      } else {
+        setGroups(prev => [...prev, ...(Array.isArray(allGroups) ? allGroups : [])]);
+      }
+
+      setGroupsOffset(isRefresh ? GROUPS_PER_PAGE : groupsOffset + GROUPS_PER_PAGE);
+      setHasMoreGroups(allGroups.length === GROUPS_PER_PAGE);
 
       console.log('[Community] Fetching user joined groups for user:', currentUser.user_id);
-      // Fetch user's joined groups
-      const joinedGroups: any = await GroupsApi.getUserJoinedGroups(currentUser.user_id);
-      console.log('[Community] Joined groups fetched:', joinedGroups);
+      // Fetch user's joined groups (only on initial load/refresh)
+      if (isRefresh || groupsOffset === 0) {
+        const joinedGroups: any = await GroupsApi.getUserJoinedGroups(currentUser.user_id);
+        console.log('[Community] Joined groups fetched:', joinedGroups);
 
-      // Handle both possible response formats: array of numbers OR array of Group objects
-      let joinedGroupIds: number[] = [];
-      if (Array.isArray(joinedGroups)) {
-        if (joinedGroups.length > 0 && typeof joinedGroups[0] === 'number') {
-          // API returned array of IDs directly
-          joinedGroupIds = joinedGroups as number[];
-        } else {
-          // API returned array of Group objects
-          joinedGroupIds = joinedGroups.map((g: any) => g.group_id);
+        // Handle both possible response formats: array of numbers OR array of Group objects
+        let joinedGroupIds: number[] = [];
+        if (Array.isArray(joinedGroups)) {
+          if (joinedGroups.length > 0 && typeof joinedGroups[0] === 'number') {
+            // API returned array of IDs directly
+            joinedGroupIds = joinedGroups as number[];
+          } else {
+            // API returned array of Group objects
+            joinedGroupIds = joinedGroups.map((g: any) => g.group_id);
+          }
         }
+        console.log('[Community] Joined group IDs:', joinedGroupIds);
+        setUserGroups(joinedGroupIds);
       }
-      console.log('[Community] Joined group IDs:', joinedGroupIds);
-      setUserGroups(joinedGroupIds);
     } catch (err: any) {
       console.error('[Community] Failed to fetch groups:', err);
       setGroupsError(err.message || 'Failed to fetch groups');
-      setGroups([]);
+      if (isRefresh) {
+        setGroups([]);
+      }
     } finally {
       setLoadingGroups(false);
+    }
+  };
+
+  const loadMoreGroups = async (event: any) => {
+    try {
+      if (!hasMoreGroups || !currentUser) {
+        event.target.complete();
+        return;
+      }
+
+      console.log('[Community] Loading more groups...');
+      const moreGroups = await GroupsApi.getAllGroups(GROUPS_PER_PAGE, groupsOffset);
+      setGroups(prev => [...prev, ...(Array.isArray(moreGroups) ? moreGroups : [])]);
+      setGroupsOffset(prev => prev + GROUPS_PER_PAGE);
+      setHasMoreGroups(moreGroups.length === GROUPS_PER_PAGE);
+    } catch (err: any) {
+      console.error('[Community] Failed to load more groups:', err);
+      triggerToast('Failed to load more groups', 'danger');
+    } finally {
+      event.target.complete();
     }
   };
 
@@ -160,7 +202,7 @@ const Community: React.FC = () => {
       const data = notification.notification.data;
       if (data?.type === 'comment' || data?.type === 'like') {
         setTab('feed');
-        fetchFeed(); // Refresh feed
+        // Feed will auto-refresh via useIonViewDidEnter in CommunityFeedTab
       } else if (data?.type === 'challenge') {
         setTab('challenges');
       } else if (data?.type === 'group') {
@@ -172,16 +214,16 @@ const Community: React.FC = () => {
   const selectGroupPhoto = async (source: CameraSource) => {
     try {
       const photo = await Camera.getPhoto({
-        resultType: CameraResultType.Uri,
+        resultType: CameraResultType.DataUrl,  // Changed from Uri to DataUrl for base64 encoding
         source: source,
-        quality: 90,
+        quality: 60,  // Reduced from 90 to 60 for smaller file size
         allowEditing: true,
-        width: 600,
-        height: 600,
+        width: 400,  // Reduced from 600 to 400
+        height: 400,  // Reduced from 600 to 400
       });
 
-      if (photo.webPath) {
-        setGroupPhoto(photo.webPath);
+      if (photo.dataUrl) {
+        setGroupPhoto(photo.dataUrl);  // Store base64 encoded image
         setToastMessage("Group photo added!");
         setToastColor('success');
         setShowToast(true);
@@ -261,7 +303,13 @@ const Community: React.FC = () => {
       }, 500);
     } catch (error: any) {
       console.error('Failed to create group:', error);
-      triggerToast(error.message || 'Failed to create group', 'danger');
+
+      // Check if it's a payload too large error (413)
+      if (error.response?.status === 413) {
+        triggerToast('Image file is too large. Please choose a smaller photo or take a new one.', 'danger');
+      } else {
+        triggerToast(error.response?.data?.error || error.message || 'Failed to create group', 'danger');
+      }
     } finally {
       setIsCreatingGroup(false);
     }
@@ -293,6 +341,46 @@ const Community: React.FC = () => {
       triggerToast(error.message || 'Failed to join group', 'danger');
     }
   };
+
+  // Memoize filtered groups to avoid recomputing on every render
+  const { filteredGroups, joinedFiltered, notJoinedFiltered } = useMemo(() => {
+    console.log('[Community Render] groups:', groups);
+    console.log('[Community Render] userGroups:', userGroups);
+    console.log('[Community Render] groupFilter:', groupFilter);
+
+    // Apply filter logic
+    let filtered = groups;
+
+    // Filter by membership status
+    if (groupFilter === 'joined') {
+      filtered = filtered.filter(g => userGroups.includes(g.group_id));
+    } else if (groupFilter === 'not-joined') {
+      filtered = filtered.filter(g => !userGroups.includes(g.group_id));
+    }
+
+    // Filter by search query
+    if (groupSearchQuery.trim()) {
+      const query = groupSearchQuery.toLowerCase();
+      filtered = filtered.filter(g =>
+        g.name.toLowerCase().includes(query) ||
+        g.description?.toLowerCase().includes(query)
+      );
+    }
+
+    // Separate joined and not joined for display
+    const joined = filtered.filter(g => userGroups.includes(g.group_id));
+    const notJoined = filtered.filter(g => !userGroups.includes(g.group_id));
+
+    console.log('[Community Render] filteredGroups:', filtered);
+    console.log('[Community Render] joinedFiltered:', joined);
+    console.log('[Community Render] notJoinedFiltered:', notJoined);
+
+    return {
+      filteredGroups: filtered,
+      joinedFiltered: joined,
+      notJoinedFiltered: notJoined
+    };
+  }, [groups, userGroups, groupFilter, groupSearchQuery]);
 
   return (
     <IonPage className="community-page">
@@ -381,10 +469,13 @@ const Community: React.FC = () => {
               </IonItem>
             </div>
 
-            {loadingGroups ? (
-              <div className="ion-text-center ion-padding">
-                <IonSpinner name="crescent" />
-                <p>Loading groups...</p>
+            {loadingGroups && groups.length === 0 ? (
+              // Show skeleton loaders on initial load
+              <div className="groups-section">
+                <h2 className="section-title">Loading Groups...</h2>
+                <div className="group-list">
+                  {[1, 2, 3, 4].map(i => <GroupCardSkeleton key={i} />)}
+                </div>
               </div>
             ) : groupsError ? (
               <div className="ion-text-center ion-padding">
@@ -394,97 +485,73 @@ const Community: React.FC = () => {
                 </IonButton>
               </div>
             ) : (
-              <div className="groups-section">
-                {(() => {
-                  console.log('[Community Render] groups:', groups);
-                  console.log('[Community Render] userGroups:', userGroups);
-                  console.log('[Community Render] groupFilter:', groupFilter);
-
-                  // Apply filter logic
-                  let filteredGroups = groups;
-
-                  // Filter by membership status
-                  if (groupFilter === 'joined') {
-                    filteredGroups = filteredGroups.filter(g => userGroups.includes(g.group_id));
-                  } else if (groupFilter === 'not-joined') {
-                    filteredGroups = filteredGroups.filter(g => !userGroups.includes(g.group_id));
-                  }
-                  // 'all' shows both joined and public non-joined groups (private groups already filtered by backend)
-
-                  // Filter by search query
-                  if (groupSearchQuery.trim()) {
-                    filteredGroups = filteredGroups.filter(g =>
-                      g.name.toLowerCase().includes(groupSearchQuery.toLowerCase()) ||
-                      g.description?.toLowerCase().includes(groupSearchQuery.toLowerCase())
-                    );
-                  }
-
-                  console.log('[Community Render] filteredGroups:', filteredGroups);
-
-                  // Separate joined and not joined for display
-                  const joinedFiltered = filteredGroups.filter(g => userGroups.includes(g.group_id));
-                  const notJoinedFiltered = filteredGroups.filter(g => !userGroups.includes(g.group_id));
-
-                  console.log('[Community Render] joinedFiltered:', joinedFiltered);
-                  console.log('[Community Render] notJoinedFiltered:', notJoinedFiltered);
-
-                  return (
+              <>
+                <div className="groups-section">
+                  {/* Show joined groups if filter allows */}
+                  {(groupFilter === 'all' || groupFilter === 'joined') && joinedFiltered.length > 0 && (
                     <>
-                      {/* Show joined groups if filter allows */}
-                      {(groupFilter === 'all' || groupFilter === 'joined') && joinedFiltered.length > 0 && (
-                        <>
-                          <h2 className="section-title">Your Groups</h2>
-                          <div className="group-list">
-                            {joinedFiltered.map((group) => (
-                              <GroupCard
-                                key={group.group_id}
-                                name={group.name}
-                                imageSrc={group.group_picture}
-                                isJoined={true}
-                                routerLink={`/group-feed/${group.group_id}`}
-                              />
-                            ))}
-                          </div>
-                        </>
-                      )}
-
-                      {/* Show not joined groups if filter allows */}
-                      {(groupFilter === 'all' || groupFilter === 'not-joined') && notJoinedFiltered.length > 0 && (
-                        <>
-                          <h2 className="section-title">
-                            {groupFilter === 'not-joined' ? 'Available Groups' : 'Discover Groups'}
-                          </h2>
-                          <div className="group-list">
-                            {notJoinedFiltered.map((group) => (
-                              <GroupCard
-                                key={group.group_id}
-                                name={group.name}
-                                imageSrc={group.group_picture}
-                                showJoinButton={!group.privacy} // Show join button only for public groups
-                                isJoined={false}
-                                onJoin={() => handleJoinGroup(group.group_id)}
-                              />
-                            ))}
-                          </div>
-                        </>
-                      )}
-
-                      {/* No results message */}
-                      {filteredGroups.length === 0 && (
-                        <div className="ion-text-center ion-padding">
-                          <p style={{ color: 'var(--ion-color-medium)' }}>
-                            {groupSearchQuery
-                              ? 'No groups found matching your search.'
-                              : groupFilter === 'joined'
-                              ? 'You have not joined any groups yet.'
-                              : 'No groups available.'}
-                          </p>
-                        </div>
-                      )}
+                      <h2 className="section-title">Your Groups</h2>
+                      <div className="group-list">
+                        {joinedFiltered.map((group) => (
+                          <GroupCard
+                            key={group.group_id}
+                            name={group.name}
+                            imageSrc={group.group_picture}
+                            isJoined={true}
+                            routerLink={`/group-feed/${group.group_id}`}
+                          />
+                        ))}
+                      </div>
                     </>
-                  );
-                })()}
-              </div>
+                  )}
+
+                  {/* Show not joined groups if filter allows */}
+                  {(groupFilter === 'all' || groupFilter === 'not-joined') && notJoinedFiltered.length > 0 && (
+                    <>
+                      <h2 className="section-title">
+                        {groupFilter === 'not-joined' ? 'Available Groups' : 'Discover Groups'}
+                      </h2>
+                      <div className="group-list">
+                        {notJoinedFiltered.map((group) => (
+                          <GroupCard
+                            key={group.group_id}
+                            name={group.name}
+                            imageSrc={group.group_picture}
+                            showJoinButton={!group.privacy}
+                            isJoined={false}
+                            onJoin={() => handleJoinGroup(group.group_id)}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {/* No results message */}
+                  {filteredGroups.length === 0 && (
+                    <div className="ion-text-center ion-padding">
+                      <p style={{ color: 'var(--ion-color-medium)' }}>
+                        {groupSearchQuery
+                          ? 'No groups found matching your search.'
+                          : groupFilter === 'joined'
+                          ? 'You have not joined any groups yet.'
+                          : 'No groups available.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Infinite Scroll */}
+                <IonInfiniteScroll
+                  onIonInfinite={loadMoreGroups}
+                  threshold="100px"
+                  disabled={!hasMoreGroups || !!groupSearchQuery}
+                >
+                  <IonInfiniteScrollContent
+                    loadingSpinner="bubbles"
+                    loadingText="Loading more groups..."
+                  ></IonInfiniteScrollContent>
+                </IonInfiniteScroll>
+              </>
             )}
           </div>
         )}

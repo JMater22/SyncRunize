@@ -46,7 +46,8 @@
   const __dirname = path.dirname(__filename);
 
   app.use(cors());
-  app.use(bodyParser.json());
+  app.use(bodyParser.json({ limit: '5mb' }));
+  app.use(bodyParser.urlencoded({ limit: '5mb', extended: true }));
   app.use("/uploads", express.static(path.join(__dirname, "uploads")));
   // ---------------- Routes ----------------
   app.use("/api/users", userRoutes);

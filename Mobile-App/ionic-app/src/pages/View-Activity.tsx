@@ -65,7 +65,7 @@ const ViewActivity: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref={isViewingOtherUser ? "/other-profile" : "/HomeModule/homeM1"} />
+            <IonBackButton defaultHref={isViewingOtherUser ? "/other-profile" : "/home"} />
           </IonButtons>
           <IonTitle>{isViewingOtherUser && userName ? `${userName}'s Activities` : "Activities"}</IonTitle>
         </IonToolbar>

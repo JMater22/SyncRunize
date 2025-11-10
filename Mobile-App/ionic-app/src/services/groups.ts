@@ -69,9 +69,11 @@ export interface CreateGroupPostData {
 }
 
 export const GroupsApi = {
-  // Get all groups
-  getAllGroups: async (): Promise<Group[]> => {
-    const { data } = await api.get('/groups');
+  // Get all groups with pagination
+  getAllGroups: async (limit: number = 20, offset: number = 0): Promise<Group[]> => {
+    const { data } = await api.get('/groups', {
+      params: { limit, offset }
+    });
     return data;
   },
 

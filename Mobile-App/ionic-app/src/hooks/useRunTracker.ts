@@ -9,6 +9,8 @@ import { HazardsApi, type HazardReport } from '../services/hazards';
 import AlertsApi from '../services/alerts';
 import { speakText } from '../services/tts';
 import { TrafficApi, type TrafficIncident } from '../services/traffic';
+import { useUser } from '../contexts/UserContext';
+import { DEFAULT_WEIGHT_KG } from '../services/met';
 
 const STORAGE_KEY = 'syncrunize-run-tracker-v1';
 const HAZARD_POLL_INTERVAL_MS = 45_000;
@@ -72,6 +74,7 @@ export interface RecordedRouteSummary {
 
 export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
   const { session, dispatch, hydrateSession, resetSession } = useContext(RunTrackerContext);
+  const { currentUser } = useUser();
   const isController = options.attachController ?? false;
 
   const samplerRef = useRef<SamplerHandle | null>(null);
@@ -91,6 +94,14 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     pending: false,
     cache: new Map(),
   });
+
+  useEffect(() => {
+    const parsedWeight = Number(currentUser?.weight_kg);
+    dispatch({
+      type: 'SET_WEIGHT',
+      weightKg: Number.isFinite(parsedWeight) && parsedWeight > 0 ? parsedWeight : DEFAULT_WEIGHT_KG,
+    });
+  }, [currentUser?.weight_kg, dispatch]);
 
   const persistSession = useCallback((data?: RunSession) => {
     if (typeof window === 'undefined') return;
@@ -500,5 +511,6 @@ const buildRoutePayload = (session: RunSession, meta: RecordMeta): CreateRouteRe
     start_lng: first.lng,
     end_lat: last.lat,
     end_lng: last.lng,
+    weight_kg: session.userWeightKg ?? DEFAULT_WEIGHT_KG,
   };
 };
