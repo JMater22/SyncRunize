@@ -129,7 +129,7 @@ const RoutesPage: React.FC = () => {
   };
 
   return (
-    <IonPage>
+    <IonPage className="routes-page">
       <IonHeader className="route-header">
         <IonToolbar className="route-toolbar">
           <IonTitle>Routes</IonTitle>

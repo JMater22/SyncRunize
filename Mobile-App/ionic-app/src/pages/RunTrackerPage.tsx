@@ -14,7 +14,7 @@ import { haversineDistanceMeters } from '../services/haversine';
 import { GuidedRoutePayload } from '../lib/routeGuides';
 
 const googleMapDefaultCenter = { lat: 15.4755, lng: 120.5963 };
-const mapContainerStyle = { width: '100%', height: '100%' };
+const mapContainerStyle = { width: '100%', height: '100vh', minHeight: '100vh' };
 const mapLibraries: ('marker')[] = ['marker'];
 const mapOptions: google.maps.MapOptions = {
   disableDefaultUI: true,
@@ -44,6 +44,7 @@ const RunTrackerPage: React.FC = () => {
   const [selectedHazard, setSelectedHazard] = useState<HazardReport | null>(null);
   const [hazardActionLoading, setHazardActionLoading] = useState(false);
   const [guidedRoute, setGuidedRoute] = useState<GuidedRoutePayload | null>(null);
+  const [mapRefreshKey, setMapRefreshKey] = useState(0);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const latestLocationRef = useRef<google.maps.LatLngLiteral | null>(null);
   const lastHazardFetchRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
@@ -83,6 +84,14 @@ const RunTrackerPage: React.FC = () => {
 
   const clearGuidedRoute = useCallback(() => {
     setGuidedRoute(null);
+    // Force complete re-render by changing key
+    setMapRefreshKey(prev => prev + 1);
+    // Force map refresh when clearing guided route
+    setTimeout(() => {
+      if (mapInstanceRef.current) {
+        google.maps.event.trigger(mapInstanceRef.current, 'resize');
+      }
+    }, 100);
   }, []);
 
   const pathCoords = useMemo(
@@ -175,6 +184,17 @@ const RunTrackerPage: React.FC = () => {
     }
   }, [apiKey]);
 
+  // Fix black screen issue when navigating to this page
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (mapInstanceRef.current && window.google) {
+        google.maps.event.trigger(mapInstanceRef.current, 'resize');
+        logDebug('Map refreshed on component mount');
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [logDebug]);
+
   useEffect(() => {
     if (!pathCoords.length) return;
     const latest = pathCoords[pathCoords.length - 1];
@@ -226,8 +246,19 @@ const RunTrackerPage: React.FC = () => {
 
   const handleMapLoad = useCallback((map: google.maps.Map) => {
     logDebug('Google map loaded');
+    logDebug('Map center:', map.getCenter()?.toJSON());
+    logDebug('Map zoom:', map.getZoom());
+    logDebug('Map div:', map.getDiv());
     mapInstanceRef.current = map;
     setMapLoaded(true);
+
+    // Force a resize after a short delay to ensure proper rendering
+    setTimeout(() => {
+      if (mapInstanceRef.current) {
+        google.maps.event.trigger(mapInstanceRef.current, 'resize');
+        logDebug('Triggered map resize');
+      }
+    }, 300);
   }, [logDebug]);
 
   const handleMapUnmount = useCallback(() => {
@@ -355,6 +386,10 @@ const RunTrackerPage: React.FC = () => {
     } as google.maps.Symbol;
   }, [mapLoaded]);
 
+  console.log('[RunTracking] Render - apiKey:', !!apiKey, 'mapError:', mapError, 'mapLoaded:', mapLoaded);
+  console.log('[RunTracking] mapCenter:', mapCenter, 'pathCoords.length:', pathCoords.length);
+  console.log('[RunTracking] guidedRoute:', guidedRoute?.routeName, 'guidedPath.length:', guidedPath.length);
+
   return (
     <IonPage>
       <IonContent fullscreen className="run-map-content">
@@ -379,9 +414,14 @@ const RunTrackerPage: React.FC = () => {
             <LoadScript
               googleMapsApiKey={apiKey}
               libraries={mapLibraries}
-              onError={() => setMapError('Unable to load Google Maps.')}
+              onLoad={() => console.log('[RunTracking] LoadScript onLoad called')}
+              onError={(error) => {
+                console.error('[RunTracking] LoadScript error:', error);
+                setMapError('Unable to load Google Maps.');
+              }}
             >
               <GoogleMap
+                key={`map-${mapRefreshKey}`}
                 mapContainerStyle={mapContainerStyle}
                 mapContainerClassName="map-iframe"
                 center={mapCenter}
@@ -389,9 +429,10 @@ const RunTrackerPage: React.FC = () => {
                 onLoad={handleMapLoad}
                 onUnmount={handleMapUnmount}
               >
-                {guidedPath.length > 0 && (
+                {guidedPath.length > 0 && guidedRoute && (
                   <>
                     <Polyline
+                      key={`guided-${guidedRoute.routeId || 'route'}`}
                       path={guidedPath}
                       options={{
                         strokeColor: '#2196F3',
@@ -401,10 +442,18 @@ const RunTrackerPage: React.FC = () => {
                       }}
                     />
                     {guidedStart && (
-                      <MarkerF position={guidedStart} icon={guidedStartIconUrl} />
+                      <MarkerF
+                        key={`guided-start-${guidedRoute.routeId || 'start'}`}
+                        position={guidedStart}
+                        icon={guidedStartIconUrl}
+                      />
                     )}
                     {guidedEnd && !pathCoords.length && (
-                      <MarkerF position={guidedEnd} icon={guidedEndIconUrl} />
+                      <MarkerF
+                        key={`guided-end-${guidedRoute.routeId || 'end'}`}
+                        position={guidedEnd}
+                        icon={guidedEndIconUrl}
+                      />
                     )}
                   </>
                 )}
@@ -456,7 +505,15 @@ const RunTrackerPage: React.FC = () => {
 
           <button
             className="view-toggle"
-            onClick={() => setMapOnlyView((prev) => !prev)}
+            onClick={() => {
+              setMapOnlyView((prev) => !prev);
+              // Refresh map after toggle to prevent black screen
+              setTimeout(() => {
+                if (mapInstanceRef.current && window.google) {
+                  google.maps.event.trigger(mapInstanceRef.current, 'resize');
+                }
+              }, 100);
+            }}
           >
             <IonIcon icon={mapOutline} /> {mapOnlyView ? 'Show stats' : 'Map only'}
           </button>

@@ -2,6 +2,35 @@
   --background: #f5f5f5;
 }
 
+/* Header styling for create route */
+.route-builder-topbar {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.route-builder-topbar ion-toolbar {
+  --background: rgba(0, 0, 0, 0.9);
+  --color: #ffffff;
+  --min-height: 48px;
+  --padding-top: 4px;
+  --padding-bottom: 4px;
+  backdrop-filter: blur(10px);
+}
+
+.route-builder-topbar ion-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f1f7e3;
+  padding: 0;
+}
+
+.route-builder-topbar ion-button {
+  --color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  text-transform: none;
+  --padding-start: 8px;
+  --padding-end: 8px;
+}
+
 .route-builder-container {
   display: flex;
   height: 100vh;
@@ -230,8 +259,10 @@
   --background: #92C628;
   --background-hover: #45a049;
   --background-activated: #3d8b40;
-  --border-radius: 6px;
-  margin-top: 24px;
+  --border-radius: 8px;
+  margin-top: 14px;
+  height: 42px;
+  font-size: 14px;
   height: 44px;
   font-weight: 600;
 }
@@ -534,41 +565,86 @@
 
 /* Autocomplete Suggestions Dropdown */
 .suggestions-dropdown {
-  position: absolute;
-  top: 100%;
+  position: fixed;
+  top: auto;
+  bottom: 0;
   left: 0;
   right: 0;
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  max-height: 280px;
+  background: rgba(0, 0, 0, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(16px);
+  max-height: 65vh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   z-index: 1000;
-  margin-top: 4px;
+  padding: 0;
+  animation: slideUp 0.2s ease-out;
+}
+
+.suggestions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: sticky;
+  top: 0;
+  background: rgba(0, 0, 0, 0.97);
+  backdrop-filter: blur(16px);
+  z-index: 10;
+}
+
+.suggestions-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #f1f7e3;
+}
+
+.suggestions-close {
+  --color: rgba(255, 255, 255, 0.7);
+  --padding-start: 8px;
+  --padding-end: 8px;
+  margin: 0;
+}
+
+.suggestions-close ion-icon {
+  font-size: 24px;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 .suggestion-item {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px;
+  padding: 12px 16px;
   cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   transition: background 0.2s;
+  color: #f5f5f5;
 }
 
 .suggestion-item:last-child {
   border-bottom: none;
 }
 
-.suggestion-item:hover {
-  background: #f8f8f8;
+.suggestion-item:hover,
+.suggestion-item:active {
+  background: rgba(146, 198, 40, 0.15);
 }
 
 .suggestion-icon {
   color: #92C628;
-  font-size: 20px;
+  font-size: 18px;
   margin-top: 2px;
   flex-shrink: 0;
 }
@@ -580,14 +656,14 @@
 
 .suggestion-main {
   font-size: 14px;
-  font-weight: 500;
-  color: #2c2c2c;
-  margin-bottom: 2px;
+  font-weight: 600;
+  color: #f5f5f5;
+  margin-bottom: 3px;
 }
 
 .suggestion-secondary {
   font-size: 12px;
-  color: #666666;
+  color: rgba(255, 255, 255, 0.6);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -597,39 +673,39 @@
 .mode-selector {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .mode-option {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px;
-  border: 2px solid #e0e0e0;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .mode-option:hover {
   border-color: #92C628;
-  background: #f8fff0;
+  background: rgba(146, 198, 40, 0.1);
 }
 
 .mode-option.active {
-  border-color: #92C628;
-  background: #f0f9e6;
+  border-color: #b4ff65;
+  background: rgba(180, 255, 101, 0.12);
 }
 
 .mode-icon {
-  font-size: 28px;
-  color: #666666;
+  font-size: 22px;
+  color: rgba(255, 255, 255, 0.6);
   flex-shrink: 0;
 }
 
 .mode-option.active .mode-icon {
-  color: #92C628;
+  color: #b4ff65;
 }
 
 .mode-content {
@@ -637,15 +713,15 @@
 }
 
 .mode-title {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
-  color: #2c2c2c;
+  color: #f5f5f5;
   margin-bottom: 2px;
 }
 
 .mode-desc {
-  font-size: 12px;
-  color: #666666;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 /* Distance Configuration */
@@ -1020,141 +1096,576 @@
 }
 }
 
-/* Dark theme overrides */
+/* Dark theme overrides - Aligned with Run-Main.css theme */
 .route-builder-content {
-  --background: #050505;
-  background: #050505;
+  --background: #000;
+  background: #000 !important;
   color: #f5f5f5;
+  --padding-top: 0;
+  --padding-bottom: 0;
+}
+
+.route-builder-content::part(scroll) {
+  overflow-y: auto !important;
 }
 
 .route-builder-container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
   min-height: 100vh;
-  padding-bottom: 32px;
+  padding-bottom: 0;
+  background: transparent;
+  position: relative;
+}
+
+.create-route-page.route-builder-container {
+  background: transparent;
 }
 
 .map-container {
-  order: 0;
-  width: calc(100% - 32px);
-  margin: 0 auto;
-  min-height: 55vh;
-  border-radius: 28px;
-  overflow: hidden;
-  background: #030303;
-  box-shadow: 0 25px 55px rgba(0, 0, 0, 0.45);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  z-index: 1;
 }
 
-.sidebar {
-  order: 1;
+.create-route-sidebar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   width: 100%;
-  border-radius: 32px 32px 18px 18px;
-  background: #111;
-  padding-bottom: 48px;
+  max-height: 88vh;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 16px 16px 0 0;
+  background: rgba(0, 0, 0, 0.95);
+  padding: 12px 16px 120px;
   color: #f5f5f5;
-  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: none;
+  z-index: 10;
+  display: none;
+  transition: transform 0.3s ease;
 }
 
-.sidebar-header .main-title {
-  color: #fdfdfd;
+.create-route-sidebar.visible {
+  display: block;
 }
 
-.sidebar-header .subtitle {
-  color: #a7a7a7;
+.create-route-view-toggle {
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
 }
 
-.section-card {
-  background: #181818;
-  border: 1px solid #272727;
+.create-route-view-toggle:hover {
+  background: rgba(0, 0, 0, 0.85);
+  transform: scale(1.05);
+}
+
+.create-route-view-toggle ion-icon {
+  font-size: 20px;
+}
+
+.create-route-sidebar-header {
+  margin-bottom: 12px;
+}
+
+.create-route-sidebar-header .create-route-main-title {
+  color: #f1f7e3;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.create-route-sidebar-header .create-route-subtitle {
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.4;
+  font-size: 13px;
+}
+
+.create-route-section-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: #f5f5f5;
-  border-radius: 20px;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  backdrop-filter: blur(4px);
 }
 
-.section-title {
-  color: #7f8c8d;
+.create-route-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-.location-input {
-  border-color: #272727;
-  background: #0d0d0d;
+.create-route-section-title {
+  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  font-weight: 600;
 }
 
-.location-input-native {
-  color: #f5f5f5;
+.create-route-step-number {
+  background: linear-gradient(135deg, #b4ff65, #8acb2d);
+  color: #0c1504;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
-.location-input-native::placeholder {
-  color: #6d6d6d;
+.create-route-location-input {
+  --background: rgba(255, 255, 255, 0.08);
+  --color: #f5f5f5;
+  --placeholder-color: rgba(255, 255, 255, 0.5);
+  --placeholder-opacity: 1;
+  --padding-start: 10px;
+  --padding-end: 10px;
+  --padding-top: 8px;
+  --padding-bottom: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  font-size: 13px;
+  min-height: 38px;
+  width: 100%;
+}
+
+.create-route-location-input:focus-within {
+  border-color: #92c628;
+  --background: rgba(255, 255, 255, 0.12);
+}
+
+.create-route-input-with-suggestions {
+  position: relative;
+  width: 100%;
+}
+
+.create-route-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.create-route-pin-icon-button {
+  --color: rgba(255, 255, 255, 0.7);
+}
+
+.create-route-pin-icon-button ion-icon.create-route-pin-active {
+  color: #b4ff65;
+  filter: drop-shadow(0 0 6px rgba(180, 255, 101, 0.5));
 }
 
 .pin-mode-indicator {
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f8ffe8;
 }
 
-.point-set-text {
-  color: #92c628 !important;
+.create-route-point-set-text {
+  color: #b4ff65 !important;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.create-route-suggestions-dropdown {
+  background: rgba(18, 18, 18, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.create-route-suggestion-item {
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f5f5f5;
+}
+
+.create-route-suggestion-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.create-route-suggestion-icon {
+  color: #92c628;
+}
+
+.create-route-suggestion-main {
+  color: #f5f5f5;
   font-weight: 500;
 }
 
-.suggestion-item {
-  background: #121212;
-  border-color: #1f1f1f;
+.create-route-suggestion-secondary {
+  color: rgba(255, 255, 255, 0.6);
 }
 
-.suggestion-item:hover {
-  background: #1e1e1e;
+.create-route-mode-selector .create-route-mode-option {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
 }
 
-.round-button,
-.control-button {
-  background: rgba(0, 0, 0, 0.7);
+.create-route-mode-selector .create-route-mode-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(146, 198, 40, 0.5);
+}
+
+.create-route-mode-selector .create-route-mode-option.active {
+  background: rgba(146, 198, 40, 0.15);
+  border-color: #92c628;
+}
+
+.create-route-mode-icon {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.create-route-mode-selector .create-route-mode-option.active .create-route-mode-icon {
+  color: #b4ff65;
+}
+
+.create-route-mode-title {
   color: #f5f5f5;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.create-route-mode-desc {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.create-route-distance-input {
+  --background: rgba(255, 255, 255, 0.08);
+  --color: #f5f5f5;
+  --placeholder-color: rgba(255, 255, 255, 0.5);
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  font-weight: 600;
+  min-height: 44px;
+  font-size: 16px;
+}
+
+.create-route-unit-toggle {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+}
+
+.create-route-unit-toggle .unit-btn {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.create-route-unit-toggle .unit-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f5f5;
+}
+
+.create-route-unit-toggle .unit-btn.active {
+  background: linear-gradient(135deg, #b4ff65, #8acb2d);
+  color: #0c1504;
+  font-weight: 700;
+}
+
+.distance-info {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
 }
 
 .map-tabs {
-  background: rgba(0, 0, 0, 0.7);
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.75);
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .map-tab {
-  color: #c9c9c9;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.map-tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f5f5;
 }
 
 .map-tab.active {
-  background: #92c628;
-  color: #050505;
+  background: linear-gradient(135deg, #b4ff65, #8acb2d);
+  color: #0c1504;
+  font-weight: 600;
 }
 
 .route-info-card {
-  background: #151515;
-  border: 1px solid #242424;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  margin: 0;
+}
+
+.route-info-card h3 {
+  color: #f1f7e3;
+  font-size: 18px;
+}
+
+.route-stats .stat-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.route-stats .stat-label {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .route-stats .stat-value {
-  color: #fdfdfd;
+  color: #f3ffe3;
+  font-weight: 600;
 }
 
-.distance-warning-banner {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid #2a2a2a;
-  color: #eaeaea;
+.distance-warning-banner.success {
+  background: rgba(146, 198, 40, 0.15);
+  border-color: rgba(146, 198, 40, 0.4);
+  color: #e8ffb3;
+}
+
+.distance-warning-banner.warning {
+  background: rgba(255, 152, 0, 0.15);
+  border-color: rgba(255, 152, 0, 0.4);
+  color: #ffd699;
 }
 
 .safety-warnings-card {
-  background: #151515;
-  border: 1px solid #282828;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  backdrop-filter: blur(4px);
 }
 
-.action-button-group ion-button {
-  --border-radius: 14px;
+.safety-warnings-title {
+  color: #f1f7e3;
+}
+
+.warning-item {
+  background: rgba(255, 255, 255, 0.05);
+  border-left-width: 3px;
+}
+
+.warning-item.severity-critical {
+  background: rgba(211, 47, 47, 0.15);
+  border-color: #ff5252;
+}
+
+.warning-item.severity-high {
+  background: rgba(245, 124, 0, 0.15);
+  border-color: #ff9800;
+}
+
+.warning-item.severity-medium {
+  background: rgba(251, 192, 45, 0.15);
+  border-color: #ffeb3b;
+}
+
+.warning-item.severity-info {
+  background: rgba(102, 187, 106, 0.15);
+  border-color: #4caf50;
+}
+
+.warning-message {
+  color: #f5f5f5;
+}
+
+.warning-advice {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.action-button-group .next-button,
+.action-button-group .save-button {
+  --background: linear-gradient(135deg, #b4ff65, #8acb2d);
+  --background-hover: linear-gradient(135deg, #a3f054, #7aba2c);
+  --background-activated: linear-gradient(135deg, #92e043, #6aa82b);
+  --color: #0c1504;
+  --border-radius: 10px;
+  height: 44px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: none;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 .action-button-group ion-button.cancel-button {
   --background: transparent;
-  --color: #f5f5f5;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  --color: rgba(255, 255, 255, 0.9);
+  --border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  height: 42px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.action-button-group ion-button.cancel-button:hover {
+  --background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 100, 100, 0.4);
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+  /* Make content scrollable on mobile */
+  .route-builder-container {
+    overflow-y: auto;
+    height: auto;
+  }
+
+  /* Map is always fullscreen */
+  .map-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  /* Ensure sidebar is below map and fully visible */
+  .create-route-sidebar {
+    order: 1;
+    padding: 16px 20px 80px; /* Extra padding at bottom for tab bar */
+    overflow: visible;
+  }
+
+  .create-route-sidebar-header {
+    margin-bottom: 20px;
+  }
+
+  .create-route-main-title {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+
+  .create-route-subtitle {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .create-route-section-card {
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+
+  .create-route-section-header {
+    margin-bottom: 12px;
+  }
+
+  .create-route-location-input,
+  .create-route-distance-input {
+    font-size: 16px; /* Prevent zoom on iOS */
+    min-height: 48px; /* Better touch target */
+  }
+
+  .create-route-input-wrapper {
+    flex-wrap: nowrap;
+  }
+
+  .create-route-pin-icon-button {
+    flex-shrink: 0;
+    min-width: 44px;
+    height: 44px;
+  }
+
+  .create-route-distance-config {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .create-route-distance-input-wrapper {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .create-route-distance-input-wrapper .create-route-distance-input {
+    flex: 1;
+  }
+
+  .create-route-unit-toggle {
+    flex-shrink: 0;
+    display: flex;
+  }
+
+  /* Make generate button more prominent */
+  .next-button {
+    height: 52px;
+    font-size: 16px;
+    margin-top: 20px;
+    margin-bottom: 16px;
+  }
+
+  /* Mode selector - make more compact */
+  .create-route-mode-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .create-route-mode-option {
+    padding: 12px;
+  }
+
+  .create-route-mode-icon {
+    font-size: 24px;
+  }
+
+  .create-route-mode-title {
+    font-size: 15px;
+  }
+
+  .create-route-mode-desc {
+    font-size: 12px;
+  }
 }
 
 @media (min-width: 1024px) {

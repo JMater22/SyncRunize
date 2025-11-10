@@ -23,7 +23,9 @@ import {
   saveOutline,
   pinOutline,
   locationOutline,
-  informationCircleOutline
+  informationCircleOutline,
+  mapOutline,
+  listOutline
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { GoogleMap, LoadScript, Polyline } from '@react-google-maps/api';
@@ -153,6 +155,12 @@ const CreateRouteMap = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
 
+  // View toggle state - map or selection panel
+  const [viewMode, setViewMode] = useState<'map' | 'selection'>('map');
+
+  // Map refresh key for forcing complete map remount
+  const [mapRefreshKey, setMapRefreshKey] = useState(0);
+
   // Search input states
   const [startSearchQuery, setStartSearchQuery] = useState('');
   const [endSearchQuery, setEndSearchQuery] = useState('');
@@ -174,8 +182,26 @@ const CreateRouteMap = () => {
       // Initialize traffic layer
       const traffic = new google.maps.TrafficLayer();
       setTrafficLayer(traffic);
+
+      // Auto-refresh map to fix darkness issue - multiple refreshes for reliability
+      const timer1 = setTimeout(() => {
+        google.maps.event.trigger(map, 'resize');
+        if (startPoint) {
+          map.panTo(startPoint);
+        }
+      }, 100);
+
+      // Additional refresh to ensure map is fully rendered
+      const timer2 = setTimeout(() => {
+        google.maps.event.trigger(map, 'resize');
+      }, 500);
+
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
     }
-  }, [map]);
+  }, [map, startPoint]);
 
   // Load user unit preference (km/mi) and map to component units (km/miles)
   useEffect(() => {
@@ -278,7 +304,7 @@ const CreateRouteMap = () => {
 
   // Fetch autocomplete suggestions using new AutocompleteSuggestion API
   const fetchSuggestions = useCallback(async (query: string, type: 'start' | 'end') => {
-    if (!query || query.length < 2 || !window.google) {
+    if (!query || query.length < 1 || !window.google) {
       if (type === 'start') {
         setStartSuggestions([]);
         setShowStartSuggestions(false);
@@ -867,47 +893,51 @@ const CreateRouteMap = () => {
             </IonButton>
           </IonButtons>
           <IonTitle>Create Route</IonTitle>
-          <IonButtons slot="end">
-            <IonButton fill="clear" onClick={() => history.push('/saved-routes')}>
-              Saved
-            </IonButton>
-          </IonButtons>
         </IonToolbar>
       </IonHeader>
       <IonContent className="route-builder-content">
         <div className="route-builder-container">
-          {/* Left Sidebar */}
-          <div className="sidebar">
-            <div className="sidebar-header">
-              <h1 className="main-title">Create a New Route</h1>
-              <p className="subtitle">
+          {/* View Toggle Button */}
+          <button
+            className="create-route-view-toggle"
+            onClick={() => setViewMode(viewMode === 'map' ? 'selection' : 'map')}
+          >
+            <IonIcon icon={viewMode === 'map' ? listOutline : mapOutline} />
+            {viewMode === 'map' ? 'Show inputs' : 'Show map'}
+          </button>
+
+          {/* Selection Panel (Sidebar) */}
+          <div className={`create-route-sidebar ${viewMode === 'selection' ? 'visible' : ''}`}>
+            <div className="create-route-sidebar-header">
+              <h1 className="create-route-main-title">Create a New Route</h1>
+              <p className="create-route-subtitle">
                 Create a safe running route by searching or pinning locations.
                 The app will find the safest path for you.
               </p>
             </div>
 
             {/* Route Name */}
-            <div className="section-card">
-              <div className="section-header">
-                <div className="step-number">1</div>
-                <div className="section-title-wrapper">
-                  <span className="section-title">ROUTE NAME</span>
+            <div className="create-route-section-card">
+              <div className="create-route-section-header">
+                <div className="create-route-step-number">1</div>
+                <div className="create-route-section-title-wrapper">
+                  <span className="create-route-section-title">ROUTE NAME</span>
                 </div>
               </div>
               <IonInput
                 value={routeName}
                 onIonChange={(e) => setRouteName(e.detail.value!)}
                 placeholder="Enter route name (optional)"
-                className="location-input"
+                className="create-route-location-input"
               />
             </div>
 
             {/* Starting Point Section */}
-            <div className="section-card">
-              <div className="section-header">
-                <div className="step-number">2</div>
-                <div className="section-title-wrapper">
-                  <span className="section-title">STARTING POINT</span>
+            <div className="create-route-section-card">
+              <div className="create-route-section-header">
+                <div className="create-route-step-number">2</div>
+                <div className="create-route-section-title-wrapper">
+                  <span className="create-route-section-title">STARTING POINT</span>
                 </div>
               </div>
 
@@ -921,13 +951,19 @@ const CreateRouteMap = () => {
                       fetchSuggestions(value, 'start');
                     }}
                     placeholder="Type to search location..."
-                    className="location-input"
+                    className="create-route-location-input"
                     disabled={pinMode === 'start'}
                   />
                   <IonButton
                     fill="clear"
                     className="pin-icon-button"
-                    onClick={() => setPinMode(pinMode === 'start' ? null : 'start')}
+                    onClick={() => {
+                      const newPinMode = pinMode === 'start' ? null : 'start';
+                      setPinMode(newPinMode);
+                      if (newPinMode === 'start') {
+                        setViewMode('map');
+                      }
+                    }}
                   >
                     <IonIcon
                       icon={pinOutline}
@@ -939,6 +975,17 @@ const CreateRouteMap = () => {
                 {/* Autocomplete Suggestions */}
                 {showStartSuggestions && startSuggestions.length > 0 && (
                   <div className="suggestions-dropdown">
+                    <div className="suggestions-header">
+                      <span className="suggestions-title">Select Location</span>
+                      <IonButton
+                        fill="clear"
+                        size="small"
+                        onClick={() => setShowStartSuggestions(false)}
+                        className="suggestions-close"
+                      >
+                        <IonIcon icon={closeCircleOutline} />
+                      </IonButton>
+                    </div>
                     {startSuggestions.map((suggestion, index) => {
                       const placePrediction = suggestion.placePrediction;
                       if (!placePrediction) return null;
@@ -980,11 +1027,11 @@ const CreateRouteMap = () => {
             </div>
 
             {/* Route Mode Selection */}
-            <div className="section-card">
-              <div className="section-header">
-                <div className="step-number">3</div>
-                <div className="section-title-wrapper">
-                  <span className="section-title">ROUTE TYPE</span>
+            <div className="create-route-section-card">
+              <div className="create-route-section-header">
+                <div className="create-route-step-number">3</div>
+                <div className="create-route-section-title-wrapper">
+                  <span className="create-route-section-title">ROUTE TYPE</span>
                 </div>
               </div>
 
@@ -1024,11 +1071,11 @@ const CreateRouteMap = () => {
 
             {/* Distance-based Configuration */}
             {routeMode === 'distance' && (
-              <div className="section-card">
-                <div className="section-header">
-                  <div className="step-number">4</div>
-                  <div className="section-title-wrapper">
-                    <span className="section-title">TARGET DISTANCE</span>
+              <div className="create-route-section-card">
+                <div className="create-route-section-header">
+                  <div className="create-route-step-number">4</div>
+                  <div className="create-route-section-title-wrapper">
+                    <span className="create-route-section-title">TARGET DISTANCE</span>
                     <span style={{ marginLeft: 8, display: 'inline-flex', alignItems: 'center', color: '#6b7280', fontSize: 12 }}>
                       <IonIcon icon={informationCircleOutline} style={{ marginRight: 4, fontSize: 14 }} />
                       Distance is approximate - safety prioritized
@@ -1074,11 +1121,11 @@ const CreateRouteMap = () => {
 
             {/* Endpoint-based Configuration */}
             {routeMode === 'endpoint' && (
-              <div className="section-card">
-                <div className="section-header">
-                  <div className="step-number">4</div>
-                  <div className="section-title-wrapper">
-                    <span className="section-title">DESTINATION</span>
+              <div className="create-route-section-card">
+                <div className="create-route-section-header">
+                  <div className="create-route-step-number">4</div>
+                  <div className="create-route-section-title-wrapper">
+                    <span className="create-route-section-title">DESTINATION</span>
                   </div>
                 </div>
 
@@ -1092,13 +1139,19 @@ const CreateRouteMap = () => {
                         fetchSuggestions(value, 'end');
                       }}
                       placeholder="Type to search destination..."
-                      className="location-input"
+                      className="create-route-location-input"
                       disabled={pinMode === 'end'}
                     />
                     <IonButton
                       fill="clear"
                       className="pin-icon-button"
-                      onClick={() => setPinMode(pinMode === 'end' ? null : 'end')}
+                      onClick={() => {
+                        const newPinMode = pinMode === 'end' ? null : 'end';
+                        setPinMode(newPinMode);
+                        if (newPinMode === 'end') {
+                          setViewMode('map');
+                        }
+                      }}
                     >
                       <IonIcon
                         icon={pinOutline}
@@ -1110,6 +1163,17 @@ const CreateRouteMap = () => {
                   {/* Autocomplete Suggestions */}
                   {showEndSuggestions && endSuggestions.length > 0 && (
                     <div className="suggestions-dropdown">
+                      <div className="suggestions-header">
+                        <span className="suggestions-title">Select Destination</span>
+                        <IonButton
+                          fill="clear"
+                          size="small"
+                          onClick={() => setShowEndSuggestions(false)}
+                          className="suggestions-close"
+                        >
+                          <IonIcon icon={closeCircleOutline} />
+                        </IonButton>
+                      </div>
                       {endSuggestions.map((suggestion, index) => {
                         const placePrediction = suggestion.placePrediction;
                         if (!placePrediction) return null;
@@ -1320,6 +1384,7 @@ const CreateRouteMap = () => {
               libraries={libraries}
             >
               <GoogleMap
+                key={`map-${mapRefreshKey}`}
                 mapContainerStyle={mapContainerStyle}
                 center={startPoint || defaultCenter}
                 zoom={13}
