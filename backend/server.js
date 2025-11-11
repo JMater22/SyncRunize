@@ -79,7 +79,10 @@
   app.use("/api/devices", deviceRoutes);
   app.use("/api", emailRoutes);
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
+  
+  app.get("/api/health", (_req, res) => {
+    res.json({ ok: true, timestamp: new Date().toISOString() });
+  });
   
   // -----------------------------------------
 console.log('🔍 MAP_SNAPSHOT_PROVIDER:', process.env.MAP_SNAPSHOT_PROVIDER);

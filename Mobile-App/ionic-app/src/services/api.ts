@@ -37,7 +37,7 @@ export interface CreatePostRequest {
 }
 
 export const createRoute = async (payload: CreateRouteRequest): Promise<CreateRouteResponse> => {
-  const { data } = await api.post('/routes/complete', payload);
+  const { data } = await api.post('/routes', payload);
   if (data?.route) return data.route;
   return data;
 };

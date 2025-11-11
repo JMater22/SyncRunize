@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useMemo, useState, type ReactNode } from 'react';
 import { haversineDistanceMeters } from '../services/haversine';
-import { caloriesFromPace, DEFAULT_WEIGHT_KG, derivePace, MIN_DISTANCE_FOR_PACE_METERS } from '../services/met';
+import { caloriesFromDistance, DEFAULT_WEIGHT_KG, derivePace, MIN_DISTANCE_FOR_PACE_METERS } from '../services/met';
 
 export type GpsSample = {
   lat: number;
@@ -14,8 +14,9 @@ export type PauseInterval = { start: number; end?: number };
 
 export type RunState = 'IDLE' | 'RUNNING' | 'PAUSED' | 'FINISHED';
 
-const MIN_SAMPLE_DELTA_METERS = 5;
-const MAX_SAMPLE_ACCURACY_METERS = 25;
+const MIN_SAMPLE_DELTA_METERS = 3; // filter GPS jitter below ~3m
+const MAX_SAMPLE_ACCURACY_METERS = 25; // ignore low-accuracy samples
+const MIN_SPEED_MPS_FOR_MOVEMENT = 0.45; // ≈ 26 min/km
 
 export type RunSession = {
   id: string;
@@ -178,19 +179,29 @@ const applySamples = (state: RunSession, samples: GpsSample[]): RunSession => {
     if (!isFinite(sample.lat) || !isFinite(sample.lng)) {
       return;
     }
-    if (sample.accuracy && sample.accuracy > MAX_SAMPLE_ACCURACY_METERS) {
+    const accuracy = sample.accuracy ?? null;
+    if (accuracy && accuracy > MAX_SAMPLE_ACCURACY_METERS) {
       return;
     }
+
+    let delta = 0;
+    let shouldAccumulate = false;
+
     if (previous) {
-      const delta = haversineDistanceMeters(previous, sample);
-      if (!isFinite(delta) || delta < MIN_SAMPLE_DELTA_METERS) {
-        return;
+      const computedDelta = haversineDistanceMeters(previous, sample);
+      if (isFinite(computedDelta) && computedDelta >= MIN_SAMPLE_DELTA_METERS) {
+        delta = computedDelta;
+        shouldAccumulate = true;
       }
+    }
+
+    if (shouldAccumulate) {
       breadcrumb += delta;
       if (state.status === 'RUNNING') {
         moving += delta;
       }
     }
+
     nextSamples.push(sample);
     previous = sample;
   });
@@ -204,10 +215,18 @@ const applySamples = (state: RunSession, samples: GpsSample[]): RunSession => {
 };
 
 const recalc = (session: RunSession): RunSession => {
-  const canCompute = session.movingDistanceMeters >= MIN_DISTANCE_FOR_PACE_METERS && session.elapsedMs > 0;
-  const pace = canCompute ? derivePace(session.movingDistanceMeters, session.elapsedMs) : 0;
+  // Calculate moving time (elapsed time minus paused time)
+  let pausedMs = 0;
+  session.pauses.forEach((pause) => {
+    const end = pause.end ?? Date.now();
+    pausedMs += (end - pause.start);
+  });
+  const movingMs = session.elapsedMs - pausedMs;
+
+  const canCompute = session.movingDistanceMeters >= MIN_DISTANCE_FOR_PACE_METERS && movingMs > 0;
+  const pace = canCompute ? derivePace(session.movingDistanceMeters, movingMs) : 0;
   const weight = session.userWeightKg ?? session.weightKg ?? DEFAULT_WEIGHT_KG;
-  const calories = canCompute && pace > 0 ? caloriesFromPace(session.elapsedMs, pace, weight) : 0;
+  const calories = canCompute ? caloriesFromDistance(session.movingDistanceMeters, weight) : 0;
   return {
     ...session,
     avgPaceMinPerKm: Number(isFinite(pace) ? pace.toFixed(2) : 0),

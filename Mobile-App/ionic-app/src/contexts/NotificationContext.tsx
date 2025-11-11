@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import { NotificationsApi, Notification } from '../services/notifications';
 import { supabase } from '../lib/supabaseClient';
 import { useUser } from './UserContext';
@@ -24,7 +24,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   // Safely calculate unread count - ensure notifications is always an array
   const unreadCount = Array.isArray(notifications) ? notifications.filter(n => !n.is_read).length : 0;
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!currentUser) return;
 
     try {
@@ -42,9 +42,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]);
 
-  const markAsRead = async (notificationId: number) => {
+  const markAsRead = useCallback(async (notificationId: number) => {
     try {
       await NotificationsApi.markAsRead(notificationId);
 
@@ -58,9 +58,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       console.error('Failed to mark notification as read:', err);
       throw err;
     }
-  };
+  }, []);
 
-  const clearAll = async () => {
+  const clearAll = useCallback(async () => {
     if (!currentUser) return;
 
     try {
@@ -70,7 +70,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       console.error('Failed to clear notifications:', err);
       throw err;
     }
-  };
+  }, [currentUser]);
 
   // Fetch notifications when user changes
   useEffect(() => {
@@ -199,18 +199,21 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     };
   }, [currentUser]);
 
+  const value = useMemo(
+    () => ({
+      notifications,
+      unreadCount,
+      loading,
+      error,
+      fetchNotifications,
+      markAsRead,
+      clearAll,
+    }),
+    [notifications, unreadCount, loading, error, fetchNotifications, markAsRead, clearAll]
+  );
+
   return (
-    <NotificationContext.Provider
-      value={{
-        notifications,
-        unreadCount,
-        loading,
-        error,
-        fetchNotifications,
-        markAsRead,
-        clearAll,
-      }}
-    >
+    <NotificationContext.Provider value={value}>
       {children}
     </NotificationContext.Provider>
   );

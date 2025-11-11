@@ -31,6 +31,18 @@ export const caloriesFromPace = (
   return +(met * safeWeight * hours).toFixed(1);
 };
 
+// Distance-based calorie estimate for running: ~1.036 kcal per kg per km
+export const caloriesFromDistance = (
+  distanceMeters: number,
+  weightKg: number = DEFAULT_WEIGHT_KG,
+): number => {
+  if (!isFinite(distanceMeters) || distanceMeters <= 0) return 0;
+  const km = distanceMeters / 1000;
+  const safeWeight = Number.isFinite(weightKg) && weightKg > 0 ? weightKg : DEFAULT_WEIGHT_KG;
+  const KCAL_PER_KG_PER_KM = 1.036;
+  return +(safeWeight * km * KCAL_PER_KG_PER_KM).toFixed(1);
+};
+
 export const derivePace = (distanceMeters: number, elapsedMs: number): number => {
   if (!isFinite(distanceMeters) || distanceMeters < MIN_DISTANCE_FOR_PACE_METERS) return 0;
   if (!isFinite(elapsedMs) || elapsedMs <= 0) return 0;

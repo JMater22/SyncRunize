@@ -37,6 +37,8 @@ interface HazardReportModalProps {
     hazard_type: string;
     description?: string;
     severity: 'low' | 'medium' | 'high';
+    lat: number;
+    lng: number;
   }) => Promise<void>;
 }
 
@@ -87,6 +89,8 @@ const HazardReportModal: React.FC<HazardReportModalProps> = ({
         hazard_type: selectedType,
         description: description.trim() || undefined,
         severity,
+        lat: currentPosition.latitude,
+        lng: currentPosition.longitude,
       });
 
       setToastMessage('Hazard reported successfully!');

@@ -30,11 +30,31 @@ const Login: React.FC = () => {
     setSubmitting(true);
     setError(null);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
       if (error) {
         setError(error.message);
         return;
       }
+
+      // Verify session was created
+      if (!data.session) {
+        setError("Failed to establish session. Please try again.");
+        return;
+      }
+
+      // Wait for session to be persisted to localStorage
+      // This ensures onAuthStateChange listeners have fired
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // Verify the session is actually stored before navigating
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError("Session initialization failed. Please try again.");
+        return;
+      }
+
+      // Now it's safe to navigate
       history.replace("/home");
     } catch (err: any) {
       setError(err?.message || "Login failed");

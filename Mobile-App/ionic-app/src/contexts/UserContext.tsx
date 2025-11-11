@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { UsersApi, MeResponse } from '../services/users';
 import { supabase } from '../lib/supabaseClient';
 
@@ -22,8 +22,23 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setLoading(true);
       setError(null);
 
-      // Check if user is authenticated
-      const { data: { session } } = await supabase.auth.getSession();
+      // Retry logic for session initialization
+      let session = null;
+      let retries = 3;
+
+      while (retries > 0 && !session) {
+        const { data: { session: s } } = await supabase.auth.getSession();
+        session = s;
+
+        if (!session && retries > 1) {
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, 200));
+          retries--;
+        } else {
+          break;
+        }
+      }
+
       if (!session) {
         setCurrentUser(null);
         return;
@@ -73,8 +88,13 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
+  const value = useMemo(
+    () => ({ currentUser, loading, error, refreshUser, updateUser }),
+    [currentUser, loading, error, refreshUser, updateUser]
+  );
+
   return (
-    <UserContext.Provider value={{ currentUser, loading, error, refreshUser, updateUser }}>
+    <UserContext.Provider value={value}>
       {children}
     </UserContext.Provider>
   );

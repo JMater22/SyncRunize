@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback, ReactNode } from 'react';
 import { PostsApi, Post } from '../services/posts';
 import { LikesApi } from '../services/likes';
 import { CommentsApi, Comment } from '../services/comments';
@@ -23,7 +23,7 @@ export const PostsProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchFeed = async () => {
+  const fetchFeed = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -35,9 +35,9 @@ export const PostsProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchMyPosts = async () => {
+  const fetchMyPosts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -49,9 +49,9 @@ export const PostsProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const createPost = async (content?: string, routeId?: number, visibility: 'public' | 'private' = 'public') => {
+  const createPost = useCallback(async (content?: string, routeId?: number, visibility: 'public' | 'private' = 'public') => {
     try {
       const newPost = await PostsApi.createPost({ content, route_id: routeId, visibility });
       setPosts(prev => [newPost, ...prev]);
@@ -59,9 +59,9 @@ export const PostsProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       console.error('Failed to create post:', err);
       throw err;
     }
-  };
+  }, []);
 
-  const deletePost = async (postId: number) => {
+  const deletePost = useCallback(async (postId: number) => {
     try {
       await PostsApi.deletePost(postId);
       setPosts(prev => prev.filter(post => post.post_id !== postId));
@@ -69,9 +69,9 @@ export const PostsProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       console.error('Failed to delete post:', err);
       throw err;
     }
-  };
+  }, []);
 
-  const toggleLike = async (postId: number) => {
+  const toggleLike = useCallback(async (postId: number) => {
     // Optimistic update
     setPosts(prev =>
       prev.map(post =>
@@ -113,9 +113,9 @@ export const PostsProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       );
       throw err;
     }
-  };
+  }, []);
 
-  const addComment = async (postId: number, content: string) => {
+  const addComment = useCallback(async (postId: number, content: string) => {
     try {
       await CommentsApi.addComment(postId, { content });
 
@@ -131,27 +131,30 @@ export const PostsProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       console.error('Failed to add comment:', err);
       throw err;
     }
-  };
+  }, []);
 
-  const refreshPosts = async () => {
+  const refreshPosts = useCallback(async () => {
     await fetchFeed();
-  };
+  }, [fetchFeed]);
+
+  const value = useMemo(
+    () => ({
+      posts,
+      loading,
+      error,
+      fetchFeed,
+      fetchMyPosts,
+      createPost,
+      deletePost,
+      toggleLike,
+      addComment,
+      refreshPosts,
+    }),
+    [posts, loading, error, fetchFeed, fetchMyPosts, createPost, deletePost, toggleLike, addComment, refreshPosts]
+  );
 
   return (
-    <PostsContext.Provider
-      value={{
-        posts,
-        loading,
-        error,
-        fetchFeed,
-        fetchMyPosts,
-        createPost,
-        deletePost,
-        toggleLike,
-        addComment,
-        refreshPosts,
-      }}
-    >
+    <PostsContext.Provider value={value}>
       {children}
     </PostsContext.Provider>
   );

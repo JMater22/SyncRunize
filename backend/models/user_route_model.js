@@ -5,25 +5,13 @@ import { haversineDistance } from "../utils/geo_utils.js";
 
 
 /**
- * Estimate calories burned based on average pace and duration
+ * Estimate running calories using distance-based heuristic (~1.036 kcal per kg per km)
  */
-export const estimateCalories = (paceMinPerKm, durationSec, weightKg) => {
-  const durationHrs = durationSec / 3600;
-
-  let MET;
-  if (paceMinPerKm >= 8) {
-    MET = 7.0;
-  } else if (paceMinPerKm >= 7) {
-    MET = 8.3;
-  } else if (paceMinPerKm >= 6) {
-    MET = 9.8;
-  } else if (paceMinPerKm >= 5) {
-    MET = 11.5;
-  } else {
-    MET = 13.5;
-  }
-
-  return +(MET * weightKg * durationHrs).toFixed(2);
+export const estimateCalories = (distanceKm, weightKg) => {
+  const safeDistance = Number.isFinite(distanceKm) && distanceKm > 0 ? distanceKm : 0;
+  const safeWeight = Number.isFinite(weightKg) && weightKg > 0 ? weightKg : 70;
+  const KCAL_PER_KG_PER_KM = 1.036;
+  return +(safeWeight * safeDistance * KCAL_PER_KG_PER_KM).toFixed(1);
 };
 
 /**
@@ -46,20 +34,6 @@ export const createRoute = async (data) => {
     route_status = "generated" // ✅ NEW: default to 'generated' for route creation
   } = data;
 
-  // Compute distance
-  let distanceKm = 0;
-  for (let i = 1; i < chosen_path.length; i++) {
-    const prev = chosen_path[i - 1];
-    const curr = chosen_path[i];
-    distanceKm += haversineDistance(prev.lat, prev.lng, curr.lat, curr.lng);
-  }
-
-  const estimated_calories = estimateCalories(
-    average_pace,
-    duration_seconds,
-    weight_kg
-  );
-
   // Parse path
   let pathArray;
   try {
@@ -67,6 +41,24 @@ export const createRoute = async (data) => {
   } catch {
     pathArray = chosen_path;
   }
+
+  // Compute distance from parsed path
+  let distanceKm = 0;
+  if (Array.isArray(pathArray)) {
+    for (let i = 1; i < pathArray.length; i++) {
+      const prev = pathArray[i - 1];
+      const curr = pathArray[i];
+      if (prev && curr && Number.isFinite(prev.lat) && Number.isFinite(prev.lng) && Number.isFinite(curr.lat) && Number.isFinite(curr.lng)) {
+        distanceKm += haversineDistance(prev.lat, prev.lng, curr.lat, curr.lng);
+      }
+    }
+  }
+
+  // Server-side average pace (min/km) and calories
+  const avgPaceMinPerKm = distanceKm > 0 && duration_seconds > 0
+    ? (duration_seconds / 60) / distanceKm
+    : 0;
+  const estimated_calories = estimateCalories(distanceKm, weight_kg);
 
   // Generate snapshot
   let snapshot_url = null;
@@ -91,7 +83,7 @@ export const createRoute = async (data) => {
       chosen_path: JSON.stringify(pathArray),
       distance_km: distanceKm,
       duration_seconds,
-      average_pace,
+      average_pace: avgPaceMinPerKm > 0 ? +avgPaceMinPerKm.toFixed(2) : 0,
       risk_score,
       estimated_calories,
       route_name,
@@ -104,6 +96,13 @@ export const createRoute = async (data) => {
     .single();
 
   if (error) throw error;
+  console.log('[Routes] Inserted route', {
+    route_id: result?.route_id,
+    user_id,
+    route_status,
+    distance_km: result?.distance_km,
+    average_pace: result?.average_pace,
+  });
   return result;
 };
 

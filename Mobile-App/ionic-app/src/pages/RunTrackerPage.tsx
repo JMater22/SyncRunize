@@ -393,8 +393,9 @@ const RunTrackerPage: React.FC = () => {
           estimated_calories: recorded.estimatedCalories,
         },
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setToastMessage(err?.message || 'Failed to save run. Please try again.');
     }
   };
 

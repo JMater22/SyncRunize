@@ -117,67 +117,76 @@ export const completeRun = async (req, res) => {
     // (Keep your existing challenge update logic as is)
     const userChallenges = await UserChallengeModel.getUserChallenges(userId);
     const activeChallenges = userChallenges.filter((uc) => !uc.completed);
-    const updates = [];
+    // Process all challenges in parallel
+    const updates = await Promise.all(
+      activeChallenges.map(async (uc) => {
+        try {
+          const challenge = await ChallengeModel.getChallengeById(uc.challenge_id);
+          if (!challenge) return null;
 
-    for (const uc of activeChallenges) {
-      const challenge = await ChallengeModel.getChallengeById(uc.challenge_id);
-      if (!challenge) continue;
+          const updatedProgress = await UserChallengeModel.updateProgress(uc.user_challenge_id, {
+            add_distance: newRoute.distance_km,
+            add_runs: 1,
+          });
 
-      const updatedProgress = await UserChallengeModel.updateProgress(uc.user_challenge_id, {
-        add_distance: newRoute.distance_km,
-        add_runs: 1,
-      });
+          const recomputed = computeProgressPercent(updatedProgress, challenge);
 
-      const recomputed = computeProgressPercent(updatedProgress, challenge);
+          let awardedBadge = null;
+          if (recomputed.completed && !updatedProgress.completed) {
+            awardedBadge = await awardBadgeIfQualified(updatedProgress, challenge);
+          }
 
-      let awardedBadge = null;
-      if (recomputed.completed && !updatedProgress.completed) {
-        awardedBadge = await awardBadgeIfQualified(updatedProgress, challenge);
-      }
+          const final = await UserChallengeModel.setProgress(uc.user_challenge_id, {
+            total_distance_km: updatedProgress.total_distance_km,
+            total_runs: updatedProgress.total_runs,
+            progress_percent: recomputed.percent,
+            completed: recomputed.completed,
+            awarded_badge_id: awardedBadge
+              ? awardedBadge.badge_id
+              : updatedProgress.awarded_badge_id,
+          });
 
-      const final = await UserChallengeModel.setProgress(uc.user_challenge_id, {
-        total_distance_km: updatedProgress.total_distance_km,
-        total_runs: updatedProgress.total_runs,
-        progress_percent: recomputed.percent,
-        completed: recomputed.completed,
-        awarded_badge_id: awardedBadge
-          ? awardedBadge.badge_id
-          : updatedProgress.awarded_badge_id,
-      });
+          // Notify on completion and badge earned
+          try {
+            if (recomputed.completed && !updatedProgress.completed) {
+              await NotificationService.notifyChallengeComplete(
+                userId,
+                uc.challenge_id,
+                challenge.name,
+                awardedBadge?.image_url || null
+              );
+            }
+            if (awardedBadge) {
+              await NotificationService.notifyBadgeEarned(
+                userId,
+                awardedBadge.name,
+                awardedBadge.image_url || null
+              );
+            }
+          } catch (e) {
+            console.error('[Notif.error] challenge notifications failed:', e?.message || e);
+          }
 
-      // Notify on completion and badge earned
-      try {
-        if (recomputed.completed && !updatedProgress.completed) {
-          await NotificationService.notifyChallengeComplete(
-            userId,
-            uc.challenge_id,
-            challenge.name,
-            awardedBadge?.image_url || null
-          );
+          return {
+            challenge_id: uc.challenge_id,
+            progress_percent: final.progress_percent,
+            completed: final.completed,
+            awarded_badge: awardedBadge || null,
+          };
+        } catch (error) {
+          console.error(`[Challenge.error] Failed to update challenge ${uc.challenge_id}:`, error);
+          return null;
         }
-        if (awardedBadge) {
-          await NotificationService.notifyBadgeEarned(
-            userId,
-            awardedBadge.name,
-            awardedBadge.image_url || null
-          );
-        }
-      } catch (e) {
-        console.error('[Notif.error] challenge notifications failed:', e?.message || e);
-      }
+      })
+    );
 
-      updates.push({
-        challenge_id: uc.challenge_id,
-        progress_percent: final.progress_percent,
-        completed: final.completed,
-        awarded_badge: awardedBadge || null,
-      });
-    }
+    // Filter out null results from failed challenge updates
+    const successfulUpdates = updates.filter(update => update !== null);
 
     res.status(201).json({
       message: "✅ Run completed successfully and challenges updated.",
       route: newRoute,
-      challenges_updated: updates,
+      challenges_updated: successfulUpdates,
     });
   } catch (err) {
     console.error("❌ Run completion failed:", err);
