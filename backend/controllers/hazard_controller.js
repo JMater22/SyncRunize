@@ -3,32 +3,47 @@ import * as Hazard from "../models/hazard_model.js";
 import { computeAgreement, computeTrust } from "../services/hazard_service.js";
 import { summarizeHazard, summarizeNearbyHazards } from "../services/ai_service.js";
 import fs from "fs";
-import path from "path";
 import { safeDeleteFile } from "../utils/file_utils.js";
+import { supabase } from "../utils/supabase.js";
+
+const sanitizeFileName = (fileName) => fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+const uploadHazardImageToSupabase = async (file) => {
+  if (!file) return null;
+  const buffer = await fs.promises.readFile(file.path);
+  const storageFileName = `${Date.now()}-${sanitizeFileName(file.originalname)}`;
+  const storagePath = `hazardImage/${storageFileName}`;
+  try {
+    const { error } = await supabase.storage.from("asset").upload(storagePath, buffer, {
+      contentType: file.mimetype,
+      upsert: true,
+    });
+    if (error) throw error;
+    const { data } = supabase.storage.from("asset").getPublicUrl(storagePath);
+    return data?.publicUrl || null;
+  } finally {
+    safeDeleteFile(`/uploads/hazards/${file.filename}`);
+  }
+};
 
 // Create hazard with scoring + AI summary
-// Create hazard with scoring + AI summary (safe version)
 export const createHazard = async (req, res) => {
-  let imagePath = null; // Track uploaded file path for cleanup
-
   try {
-    const userId = req.user.user_id; // ✅ Integer from users table
+    const userId = req.user.user_id; // �o. Integer from users table
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
-
-    // ✅ Handle optional image upload
-    if (req.file) {
-      imagePath = `/uploads/hazards/${req.file.filename}`;
-    }
 
     const hazardData = {
       ...req.body,
       user_id: userId,
-      image_url: imagePath,
       lat: parseFloat(req.body.lat),
       lng: parseFloat(req.body.lng),
     };
     if (isNaN(hazardData.lat) || isNaN(hazardData.lng)) {
       return res.status(400).json({ error: "Invalid latitude or longitude." });
+    }
+
+    if (req.file) {
+      hazardData.image_url = await uploadHazardImageToSupabase(req.file);
     }
 
     // Step 1: Insert into DB
@@ -62,15 +77,9 @@ export const createHazard = async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Failed to create hazard:", err);
-
-    // 🧹 Cleanup: delete uploaded image if DB insert failed
-    if (imagePath) {
-      safeDeleteFile(`/uploads/hazards/${req.file.filename}`);
-    }
-
     res.status(500).json({ error: "Failed to create hazard" });
   }
-};
+  };
 
 
 // Get hazards near location
@@ -195,13 +204,9 @@ export const updateHazard = async (req, res) => {
     });
   } catch (err) {
       console.error("Error updating hazard:", err);
-        // 🧹 Cleanup orphaned uploaded file if DB update failed
-        if (req.file) {
-          safeDeleteFile(`/uploads/hazards/${req.file.filename}`);
-        }
-        return res.status(500).json({ error: "Failed to update hazard." });
-    }
-};
+    return res.status(500).json({ error: "Failed to update hazard." });
+  }
+    };
 
 // DELETE /api/hazards/:id
 export const deleteHazard = async (req, res) => {

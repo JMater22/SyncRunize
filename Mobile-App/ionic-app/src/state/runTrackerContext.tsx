@@ -14,9 +14,6 @@ export type PauseInterval = { start: number; end?: number };
 
 export type RunState = 'IDLE' | 'RUNNING' | 'PAUSED' | 'FINISHED';
 
-const MIN_SAMPLE_DELTA_METERS = 3; // filter GPS jitter below ~3m
-const MAX_SAMPLE_ACCURACY_METERS = 25; // ignore low-accuracy samples
-const MIN_SPEED_MPS_FOR_MOVEMENT = 0.45; // ≈ 26 min/km
 const INSTANT_PACE_WINDOW_MS = 10000; // 10 seconds
 const INSTANT_PACE_ALPHA = 0.35;
 
@@ -183,26 +180,13 @@ const applySamples = (state: RunSession, samples: GpsSample[]): RunSession => {
     if (!isFinite(sample.lat) || !isFinite(sample.lng)) {
       return;
     }
-    const accuracy = sample.accuracy ?? null;
-    if (accuracy && accuracy > MAX_SAMPLE_ACCURACY_METERS) {
-      return;
-    }
-
-    let delta = 0;
-    let shouldAccumulate = false;
-
     if (previous) {
-      const computedDelta = haversineDistanceMeters(previous, sample);
-      if (isFinite(computedDelta) && computedDelta >= MIN_SAMPLE_DELTA_METERS) {
-        delta = computedDelta;
-        shouldAccumulate = true;
-      }
-    }
-
-    if (shouldAccumulate) {
-      breadcrumb += delta;
-      if (state.status === 'RUNNING') {
-        moving += delta;
+      const delta = haversineDistanceMeters(previous, sample);
+      if (isFinite(delta) && delta > 0) {
+        breadcrumb += delta;
+        if (state.status === 'RUNNING') {
+          moving += delta;
+        }
       }
     }
 

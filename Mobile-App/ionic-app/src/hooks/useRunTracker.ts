@@ -11,6 +11,7 @@ import { speakText } from '../services/tts';
 import { TrafficApi, type TrafficIncident } from '../services/traffic';
 import { useUser } from '../contexts/UserContext';
 import { DEFAULT_WEIGHT_KG } from '../services/met';
+import { mapboxSmoothSample } from '../lib/gpsSmoothing';
 
 const STORAGE_KEY = 'syncrunize-run-tracker-v1';
 const HAZARD_POLL_INTERVAL_MS = 45_000;
@@ -81,6 +82,7 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPersistedSamples = useRef(0);
   const hydratedRef = useRef(false);
+  const smoothingStateRef = useRef<{ last: GpsSample | null }>({ last: null });
   const [isAppActive, setIsAppActive] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -135,7 +137,12 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
 
   const handleSamples = useCallback((samples: GpsSample[]) => {
     if (!samples.length) return;
-    dispatch({ type: 'ADD_SAMPLES', samples });
+    const smoothed = samples.map((sample) => {
+      const nextSample = mapboxSmoothSample(smoothingStateRef.current.last, sample);
+      smoothingStateRef.current.last = nextSample;
+      return nextSample;
+    });
+    dispatch({ type: 'ADD_SAMPLES', samples: smoothed });
   }, [dispatch]);
 
   const handleHazardAlerts = useCallback(async (hazards: HazardReport[]) => {
@@ -402,6 +409,7 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
 
   const startRun = useCallback(() => {
     setError(null);
+    smoothingStateRef.current.last = null;
     dispatch({ type: 'START' });
   }, [dispatch]);
 
@@ -427,6 +435,7 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     resetSession();
     clearStorage();
     lastPersistedSamples.current = 0;
+    smoothingStateRef.current.last = null;
   }, [resetSession, stopSampler, clearTimer, clearStorage]);
 
   const recordRun = useCallback(async (
@@ -468,6 +477,12 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
       setIsRecording(false);
     }
   }, [session, dispatch, clearStorage, resetSession]);
+
+  useEffect(() => {
+    if (session.status === 'IDLE') {
+      smoothingStateRef.current.last = null;
+    }
+  }, [session.status]);
 
   return useMemo(() => ({
     session,

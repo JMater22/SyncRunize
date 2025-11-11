@@ -45,7 +45,7 @@ const PrePostPage: React.FC = () => {
   const [loadingRoute, setLoadingRoute] = useState(false);
   const [posting, setPosting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+  const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
 
   useEffect(() => {
     if (!routeId) {
@@ -81,12 +81,10 @@ const PrePostPage: React.FC = () => {
 
   const staticMapUrl = useMemo(() => {
     if (snapshotUrl) return snapshotUrl;
-    if (!path.length || !apiKey) return null;
-    const sample = samplePath(path, 80)
-      .map((point) => `${point.lat.toFixed(5)},${point.lng.toFixed(5)}`)
-      .join('|');
-    return `https://maps.googleapis.com/maps/api/staticmap?size=600x320&scale=2&path=weight:4|color:0x92c628ff|${sample}&key=${apiKey}`;
-  }, [path, snapshotUrl, apiKey]);
+    if (!path.length || !mapboxToken) return null;
+    const sampled = samplePath(path, 80);
+    return buildMapboxStaticSnapshot(sampled, mapboxToken);
+  }, [path, snapshotUrl, mapboxToken]);
 
   const handlePost = async () => {
     if (!routeId) return;
@@ -208,6 +206,44 @@ const extractPath = (route?: Route) => {
     }
   }
   return [];
+};
+
+const mapboxStaticStyle = import.meta.env.VITE_MAPBOX_STYLE ?? 'mapbox/streets-v12';
+
+const buildMapboxStaticSnapshot = (points: Array<{ lat: number; lng: number }>, token: string, width = 600, height = 320) => {
+  if (!points.length) return null;
+  const coordinates = points.map((point) => [point.lng, point.lat]);
+  const geojson = {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: {
+          stroke: '#92c628',
+          'stroke-width': 4,
+          'stroke-opacity': 0.85,
+        },
+        geometry: {
+          type: 'LineString',
+          coordinates,
+        },
+      },
+    ],
+  };
+
+  const encodedPath = encodeURIComponent(JSON.stringify(geojson));
+  const overlays = [`geojson(${encodedPath})`];
+
+  const start = points[0];
+  const end = points[points.length - 1];
+  if (start) {
+    overlays.push(`pin-s-a+1e88e5(${start.lng},${start.lat})`);
+  }
+  if (end) {
+    overlays.push(`pin-s-b+43a047(${end.lng},${end.lat})`);
+  }
+
+  return `https://api.mapbox.com/styles/v1/${mapboxStaticStyle}/static/${overlays.join(',')}/auto/${width}x${height}@2x?access_token=${token}`;
 };
 
 export default PrePostPage;

@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { IonPage, IonContent, IonIcon, IonAlert, IonToast, IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton } from '@ionic/react';
 import { arrowBack, pauseOutline, playOutline, stopOutline, mapOutline, warningOutline, checkmarkCircle, banOutline, navigateOutline } from 'ionicons/icons';
 import { useHistory, useLocation } from 'react-router-dom';
-import { GoogleMap, LoadScript, Polyline, MarkerF, CircleF } from '@react-google-maps/api';
 import { useHideTabBar } from '../hooks/useHideTabBar';
 import { useRunTracker } from '../hooks/useRunTracker';
 import ActivitySummarySheet from '../components/ActivitySummarySheet';
@@ -12,22 +11,13 @@ import { HazardsApi, HazardReport } from '../services/hazards';
 import { supabase } from '../lib/supabaseClient';
 import { haversineDistanceMeters } from '../services/haversine';
 import { GuidedRoutePayload } from '../lib/routeGuides';
+import RunTrackerMap, { type LatLngLiteral, type RunTrackerMapHandle } from '../components/RunTrackerMap';
 
-const googleMapDefaultCenter = { lat: 15.4755, lng: 120.5963 };
-const mapContainerStyle = { width: '100%', height: '100vh', minHeight: '100vh' };
-const mapLibraries: ('marker')[] = ['marker'];
-const mapOptions: google.maps.MapOptions = {
-  disableDefaultUI: true,
-  mapTypeId: 'roadmap',
-  gestureHandling: 'greedy',
-  zoom: 15,
-};
+const mapboxDefaultCenter: LatLngLiteral = { lat: 15.4755, lng: 120.5963 };
 
 const HAZARD_RADIUS_KM = 0.8;
 const HAZARD_RADIUS_METERS = HAZARD_RADIUS_KM * 1000;
 const HAZARD_REFETCH_MS = 45_000;
-const guidedStartIconUrl = 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png';
-const guidedEndIconUrl = 'https://maps.google.com/mapfiles/ms/icons/green-dot.png';
 
 const RunTrackerPage: React.FC = () => {
   useHideTabBar();
@@ -44,13 +34,12 @@ const RunTrackerPage: React.FC = () => {
   const [selectedHazard, setSelectedHazard] = useState<HazardReport | null>(null);
   const [hazardActionLoading, setHazardActionLoading] = useState(false);
   const [guidedRoute, setGuidedRoute] = useState<GuidedRoutePayload | null>(null);
-  const [mapRefreshKey, setMapRefreshKey] = useState(0);
-  const mapInstanceRef = useRef<google.maps.Map | null>(null);
-  const latestLocationRef = useRef<google.maps.LatLngLiteral | null>(null);
+  const mapHandleRef = useRef<RunTrackerMapHandle | null>(null);
+  const latestLocationRef = useRef<LatLngLiteral | null>(null);
   const lastHazardFetchRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
   const lastRealtimeRefreshRef = useRef<number>(0);
   const sessionRef = useRef(session);
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+  const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
   const logDebug = useCallback((...args: unknown[]) => {
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
@@ -75,23 +64,11 @@ const RunTrackerPage: React.FC = () => {
     return haversineDistanceMeters(latest, { lat, lng }) / 1000;
   }, []);
 
-  const getHazardIconUrl = useCallback((hazard: HazardReport) => {
-    const severity = hazard.severity_weight ?? 0;
-    if (severity >= 0.7) return 'https://maps.google.com/mapfiles/ms/icons/red-dot.png';
-    if (severity >= 0.4) return 'https://maps.google.com/mapfiles/ms/icons/orange-dot.png';
-    return 'https://maps.google.com/mapfiles/ms/icons/yellow-dot.png';
-  }, []);
-
   const clearGuidedRoute = useCallback(() => {
     setGuidedRoute(null);
-    // Force complete re-render by changing key
-    setMapRefreshKey(prev => prev + 1);
-    // Force map refresh when clearing guided route
-    setTimeout(() => {
-      if (mapInstanceRef.current) {
-        google.maps.event.trigger(mapInstanceRef.current, 'resize');
-      }
-    }, 100);
+    requestAnimationFrame(() => {
+      mapHandleRef.current?.resize();
+    });
   }, []);
 
   const pathCoords = useMemo(
@@ -117,12 +94,6 @@ const RunTrackerPage: React.FC = () => {
     return parts.join(' \u2022 ');
   }, [guidedRoute]);
   const shouldShowLivePath = pathCoords.length > 0 && session.status !== 'IDLE';
-  const mapCenter = useMemo(() => {
-    if (shouldShowLivePath) {
-      return pathCoords[pathCoords.length - 1];
-    }
-    return guidedStart ?? googleMapDefaultCenter;
-  }, [shouldShowLivePath, pathCoords, guidedStart]);
   const hasGuide = Boolean(guidedRoute);
   const hazardSummaryText = hazardLoading
     ? 'Checking nearby hazards...'
@@ -131,7 +102,7 @@ const RunTrackerPage: React.FC = () => {
       : 'No hazards nearby';
 
 
-  const loadHazards = useCallback(async (center: google.maps.LatLngLiteral, options: { force?: boolean } = {}) => {
+  const loadHazards = useCallback(async (center: LatLngLiteral, options: { force?: boolean } = {}) => {
     if (!center) return;
     logDebug('loadHazards: request', { center, options });
     const now = Date.now();
@@ -177,72 +148,10 @@ const RunTrackerPage: React.FC = () => {
   }, [logDebug]);
 
   useEffect(() => {
-    if (!apiKey) {
-      setMapError('Google Maps API key missing.');
-    } else {
-      setMapError(null);
+    if (!mapboxToken) {
+      setMapError('Mapbox access token missing.');
     }
-  }, [apiKey]);
-
-  /**
-   * BLACK MAP PREVENTION STRATEGY
-   *
-   * This page implements multiple layers of defense against Google Maps black screen issues:
-   *
-   * 1. Component Mount Refresh (below): Triggers map resize at 100ms, 300ms, and 500ms after mount
-   * 2. Map Load Callback (handleMapLoad): Triggers resize at 100ms, 300ms, 500ms, and 800ms after map loads
-   * 3. Window Resize Listener: Responds to browser/app resize and orientation changes
-   * 4. Toggle Button Refresh: Triggers resize when switching between map/stats view
-   * 5. Tiles Loaded Listener: Confirms map tiles are fully rendered
-   * 6. LoadScript Error Handling: Provides clear error messages if API fails to load
-   * 7. Loading Element: Shows "Loading map..." message during API load
-   *
-   * Additional tips for users:
-   * - Clear browser cache with Ctrl+Shift+R (hard refresh)
-   * - Clear Ionic cache: rm -rf node_modules .ionic www && npm install
-   * - Ensure stable internet connection for Google Maps API
-   * - Check API key is valid and has Maps JavaScript API enabled
-   */
-
-  // Fix black screen issue when navigating to this page
-  useEffect(() => {
-    const refreshMap = () => {
-      if (mapInstanceRef.current && window.google) {
-        google.maps.event.trigger(mapInstanceRef.current, 'resize');
-        logDebug('Map refreshed on component mount');
-      }
-    };
-
-    // Multiple refresh attempts at different intervals for reliability
-    const timer1 = setTimeout(refreshMap, 100);
-    const timer2 = setTimeout(refreshMap, 300);
-    const timer3 = setTimeout(refreshMap, 500);
-
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-    };
-  }, [logDebug]);
-
-  // Add window resize listener to handle orientation changes and app resizing
-  useEffect(() => {
-    const handleResize = () => {
-      if (mapInstanceRef.current && window.google) {
-        google.maps.event.trigger(mapInstanceRef.current, 'resize');
-        logDebug('Map refreshed on window resize');
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    // Also listen for orientation changes on mobile
-    window.addEventListener('orientationchange', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('orientationchange', handleResize);
-    };
-  }, [logDebug]);
+  }, [mapboxToken]);
 
   useEffect(() => {
     if (!pathCoords.length) return;
@@ -292,55 +201,6 @@ const RunTrackerPage: React.FC = () => {
       supabase.removeChannel(channel);
     };
   }, [loadHazards]);
-
-  const handleMapLoad = useCallback((map: google.maps.Map) => {
-    logDebug('Google map loaded');
-    logDebug('Map center:', map.getCenter()?.toJSON());
-    logDebug('Map zoom:', map.getZoom());
-    logDebug('Map div:', map.getDiv());
-    mapInstanceRef.current = map;
-    setMapLoaded(true);
-
-    // Force multiple resizes at different intervals to ensure proper rendering
-    // This is more aggressive to prevent black screens
-    const refreshIntervals = [100, 300, 500, 800];
-    refreshIntervals.forEach(delay => {
-      setTimeout(() => {
-        if (mapInstanceRef.current && window.google) {
-          google.maps.event.trigger(mapInstanceRef.current, 'resize');
-          logDebug(`Triggered map resize at ${delay}ms`);
-
-          // Also ensure the map is centered correctly
-          if (pathCoords.length) {
-            mapInstanceRef.current.panTo(pathCoords[pathCoords.length - 1]);
-          } else if (guidedStart) {
-            mapInstanceRef.current.panTo(guidedStart);
-          }
-        }
-      }, delay);
-    });
-
-    // Listen for tiles loaded event to confirm map is fully rendered
-    const tilesLoadedListener = map.addListener('tilesloaded', () => {
-      logDebug('Map tiles fully loaded');
-      google.maps.event.removeListener(tilesLoadedListener);
-    });
-  }, [logDebug, pathCoords, guidedStart]);
-
-  const handleMapUnmount = useCallback(() => {
-    logDebug('Google map unmounted');
-    mapInstanceRef.current = null;
-    setMapLoaded(false);
-  }, [logDebug]);
-
-  useEffect(() => {
-    if (!mapInstanceRef.current) return;
-    if (pathCoords.length) {
-      mapInstanceRef.current.panTo(pathCoords[pathCoords.length - 1]);
-    } else if (guidedStart) {
-      mapInstanceRef.current.panTo(guidedStart);
-    }
-  }, [pathCoords, guidedStart]);
 
   const status = session.status;
   const isIdle = status === 'IDLE';
@@ -440,21 +300,8 @@ const RunTrackerPage: React.FC = () => {
       source: 'run-tracking',
     });
   };
-  const liveMarkerIcon = useMemo<google.maps.Symbol | undefined>(() => {
-    const googleObj = (window as any)?.google;
-    if (!googleObj?.maps?.SymbolPath) return undefined;
-    return {
-      path: googleObj.maps.SymbolPath.CIRCLE,
-      scale: 9,
-      fillColor: '#4caf50',
-      fillOpacity: 1,
-      strokeColor: '#ffffff',
-      strokeWeight: 2,
-    } as google.maps.Symbol;
-  }, [mapLoaded]);
-
-  console.log('[RunTracking] Render - apiKey:', !!apiKey, 'mapError:', mapError, 'mapLoaded:', mapLoaded);
-  console.log('[RunTracking] mapCenter:', mapCenter, 'pathCoords.length:', pathCoords.length);
+  console.log('[RunTracking] Render - mapbox token:', !!mapboxToken, 'mapError:', mapError, 'mapLoaded:', mapLoaded);
+  console.log('[RunTracking] latestCoord:', latestCoord, 'pathCoords.length:', pathCoords.length);
   console.log('[RunTracking] guidedRoute:', guidedRoute?.routeName, 'guidedPath.length:', guidedPath.length);
 
   return (
@@ -471,121 +318,29 @@ const RunTrackerPage: React.FC = () => {
             </div>
           )}
 
-          {(!apiKey || mapError) && (
-            <div className="map-iframe map-error-placeholder">
-              <p>{mapError ?? 'Google Maps API key missing.'}</p>
-            </div>
-          )}
-
-          {apiKey && !mapError && (
-            <LoadScript
-              googleMapsApiKey={apiKey}
-              libraries={mapLibraries}
-              loadingElement={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading map...</div>}
-              onLoad={() => {
-                console.log('[RunTracking] LoadScript onLoad called');
-                logDebug('Google Maps API loaded successfully');
-              }}
-              onError={(error) => {
-                console.error('[RunTracking] LoadScript error:', error);
-                setMapError('Unable to load Google Maps. Please check your connection and try again.');
-                logDebug('LoadScript error:', error);
-              }}
-              preventGoogleFontsLoading={false}
-            >
-              <GoogleMap
-                key={`map-${mapRefreshKey}`}
-                mapContainerStyle={mapContainerStyle}
-                mapContainerClassName="map-iframe"
-                center={mapCenter}
-                options={mapOptions}
-                onLoad={handleMapLoad}
-                onUnmount={handleMapUnmount}
-              >
-                {guidedPath.length > 0 && guidedRoute && (
-                  <>
-                    <Polyline
-                      key={`guided-${guidedRoute.routeId || 'route'}`}
-                      path={guidedPath}
-                      options={{
-                        strokeColor: '#2196F3',
-                        strokeOpacity: 0.65,
-                        strokeWeight: 4,
-                        zIndex: 2,
-                      }}
-                    />
-                    {guidedStart && (
-                      <MarkerF
-                        key={`guided-start-${guidedRoute.routeId || 'start'}`}
-                        position={guidedStart}
-                        icon={guidedStartIconUrl}
-                      />
-                    )}
-                    {guidedEnd && !pathCoords.length && (
-                      <MarkerF
-                        key={`guided-end-${guidedRoute.routeId || 'end'}`}
-                        position={guidedEnd}
-                        icon={guidedEndIconUrl}
-                      />
-                    )}
-                  </>
-                )}
-                {shouldShowLivePath && (
-                  <>
-                    <Polyline
-                      path={pathCoords}
-                      options={{
-                        strokeColor: '#92c628',
-                        strokeOpacity: 1,
-                        strokeWeight: 4,
-                      }}
-                    />
-                    <MarkerF
-                      position={pathCoords[pathCoords.length - 1]}
-                      icon={liveMarkerIcon}
-                    />
-                  </>
-                )}
-                {shouldShowLivePath && latestCoord && (
-                  <CircleF
-                    center={latestCoord}
-                    radius={HAZARD_RADIUS_METERS}
-                    options={{
-                      fillColor: '#FFB74D',
-                      fillOpacity: 0.2,
-                      strokeColor: '#FB8C00',
-                      strokeWeight: 1,
-                      strokeOpacity: 0.7,
-                    }}
-                  />
-                )}
-                {hazards.map((hazard) => {
-                  if (!Number.isFinite(hazard.lat) || !Number.isFinite(hazard.lng)) {
-                    return null;
-                  }
-                  return (
-                    <MarkerF
-                      key={`hazard-${hazard.report_id}`}
-                      position={{ lat: hazard.lat, lng: hazard.lng }}
-                      icon={getHazardIconUrl(hazard)}
-                      onClick={() => setSelectedHazard(hazard)}
-                    />
-                  );
-                })}
-              </GoogleMap>
-            </LoadScript>
-          )}
+          <RunTrackerMap
+            ref={mapHandleRef}
+            pathCoords={pathCoords}
+            guidedPath={guidedPath}
+            guidedStart={guidedStart}
+            guidedEnd={guidedEnd}
+            hazards={hazards}
+            selectedHazardId={selectedHazard?.report_id ?? null}
+            hazardRadiusMeters={HAZARD_RADIUS_METERS}
+            mapOnlyView={mapOnlyView}
+            mapboxToken={mapboxToken}
+            onMapReadyChange={setMapLoaded}
+            onSelectHazard={setSelectedHazard}
+            onError={setMapError}
+          />
 
           <button
             className="view-toggle"
             onClick={() => {
               setMapOnlyView((prev) => !prev);
-              // Refresh map after toggle to prevent black screen
-              setTimeout(() => {
-                if (mapInstanceRef.current && window.google) {
-                  google.maps.event.trigger(mapInstanceRef.current, 'resize');
-                }
-              }, 100);
+              requestAnimationFrame(() => {
+                mapHandleRef.current?.resize();
+              });
             }}
           >
             <IonIcon icon={mapOutline} /> {mapOnlyView ? 'Show stats' : 'Map only'}
@@ -610,7 +365,7 @@ const RunTrackerPage: React.FC = () => {
                   <span className="status-label">Status</span>
                   <h3 className="status-value">{status}</h3>
                   <p className="status-subtext">
-                    GPS {pathCoords.length > 0 ? 'locked' : 'searching'} â€¢ {session.samples.length} pts
+                    GPS {pathCoords.length > 0 ? 'locked' : 'searching'} - {session.samples.length} pts
                   </p>
                 </div>
                 <button
@@ -620,8 +375,8 @@ const RunTrackerPage: React.FC = () => {
                       pathCoords[pathCoords.length - 1] ??
                       guidedPath[guidedPath.length - 1] ??
                       guidedStart ??
-                      googleMapDefaultCenter;
-                    mapInstanceRef.current?.panTo(target);
+                      mapboxDefaultCenter;
+                    mapHandleRef.current?.recenter(target);
                   }}
                   disabled={(!pathCoords.length && !guidedPath.length) || !mapLoaded}
                 >
@@ -719,7 +474,7 @@ const RunTrackerPage: React.FC = () => {
                     <h3>{selectedHazard.title}</h3>
                     <p className="hazard-meta">
                       {selectedHazard.incident_type}
-                      {' Â· '}
+                      {' Ãƒâ€šÃ‚Â· '}
                       Reported {formatRelativeTime(selectedHazard.reported_at)} by {selectedHazard.users?.username ?? 'runner'}
                     </p>
                     {selectedHazardDistance && (

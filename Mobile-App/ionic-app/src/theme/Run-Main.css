@@ -85,9 +85,23 @@
   z-index: 1;
 }
 
-/* Target only the first Google Maps background container */
-.map-iframe > div:first-child {
-  background-color: #1a1a1a !important;
+.mapbox-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.map-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  z-index: 2;
 }
 
 .map-error-placeholder {
@@ -99,6 +113,58 @@
   text-align: center;
   padding: 24px;
   font-size: 14px;
+}
+
+.runner-marker {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid #ffffff;
+  background: #4caf50;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.guided-marker {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.guided-marker.start {
+  background: #1e88e5;
+}
+
+.guided-marker.end {
+  background: #43a047;
+}
+
+.hazard-marker {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hazard-marker.high {
+  background: #d32f2f;
+}
+
+.hazard-marker.medium {
+  background: #f57c00;
+}
+
+.hazard-marker.low {
+  background: #fdd835;
+}
+
+.hazard-marker.selected {
+  transform: scale(1.15);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 
 /* Location indicator visuals removed per updated UX */
