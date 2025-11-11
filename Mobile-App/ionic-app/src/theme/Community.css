@@ -10,6 +10,9 @@
   --background: #000000;
   --color: #ffffff;
   background: #000000;
+  /* Handle safe area insets for devices with notches */
+  --padding-start: env(safe-area-inset-left);
+  --padding-end: env(safe-area-inset-right);
 }
 
 /* Header Styles */
@@ -85,6 +88,8 @@
 /* Search Container */
 .search-container {
   padding: 16px;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
   background: #000000;
 }
 
@@ -105,6 +110,8 @@
 /* Current Challenge Card */
 .current-challenge-card {
   margin: 0 16px 20px 16px;
+  margin-left: max(16px, env(safe-area-inset-left));
+  margin-right: max(16px, env(safe-area-inset-right));
   --background: #1a1a1a;
   border-radius: 16px;
   overflow: hidden;
@@ -185,6 +192,8 @@
 /* Create Challenge Button */
 .create-challenge-btn {
   margin: 0 16px 24px 16px;
+  margin-left: max(16px, env(safe-area-inset-left));
+  margin-right: max(16px, env(safe-area-inset-right));
   --background: #2a2a2a;
   --color: #ffffff;
   --border-radius: 12px;
@@ -196,6 +205,8 @@
 /* Suggested Section */
 .suggested-section {
   padding: 0 16px;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
 }
 
 .section-title {
@@ -258,6 +269,8 @@
   color: #ffffff;
   min-height: 100%;
   padding: 0;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 .post-input-card {
@@ -349,6 +362,8 @@
 /* Groups Tab */
 .groups-tab {
   padding: 16px;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
   background: #000000;
 }
 

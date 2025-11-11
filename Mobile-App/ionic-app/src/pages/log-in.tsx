@@ -106,12 +106,13 @@ const Login: React.FC = () => {
                       type="email"
                       placeholder="Enter your email"
                       value={email}
-                      onIonChange={(e) => setEmail(e.detail.value || "")}
+                      onIonInput={(e) => setEmail(e.detail.value || "")}
+                      debounce={0}
                       required
                     />
                   </div>
 
-                 
+
                   <div className="input-group2" style={{ position: 'relative' }}>
                     <label className="input-label2">Password</label>
                     <IonInput
@@ -119,7 +120,8 @@ const Login: React.FC = () => {
                       type={showPassword ? 'text' : 'password'}
                       placeholder="Enter your password"
                       value={password}
-                      onIonChange={(e) => setPassword(e.detail.value || "")}
+                      onIonInput={(e) => setPassword(e.detail.value || "")}
+                      debounce={0}
                       required
                     />
                     <IonButton fill="clear" size="small" style={{ position: 'absolute', right: 0, top: 30 }} onClick={() => setShowPassword(s => !s)}>

@@ -17,6 +17,8 @@ export type RunState = 'IDLE' | 'RUNNING' | 'PAUSED' | 'FINISHED';
 const MIN_SAMPLE_DELTA_METERS = 3; // filter GPS jitter below ~3m
 const MAX_SAMPLE_ACCURACY_METERS = 25; // ignore low-accuracy samples
 const MIN_SPEED_MPS_FOR_MOVEMENT = 0.45; // ≈ 26 min/km
+const INSTANT_PACE_WINDOW_MS = 10000; // 10 seconds
+const INSTANT_PACE_ALPHA = 0.35;
 
 export type RunSession = {
   id: string;
@@ -30,6 +32,7 @@ export type RunSession = {
   elapsedMs: number;
   avgPaceMinPerKm: number;
   caloriesKcal: number;
+  instantPaceMinPerKm: number;
   routeGuideId?: string | null;
   visibility: 'public' | 'private';
   name?: string;
@@ -69,6 +72,7 @@ function createEmptySession(): RunSession {
     elapsedMs: 0,
     avgPaceMinPerKm: 0,
     caloriesKcal: 0,
+    instantPaceMinPerKm: 0,
     visibility: 'private',
     routeGuideId: null,
     recordedRouteId: null,
@@ -227,10 +231,18 @@ const recalc = (session: RunSession): RunSession => {
   const pace = canCompute ? derivePace(session.movingDistanceMeters, movingMs) : 0;
   const weight = session.userWeightKg ?? session.weightKg ?? DEFAULT_WEIGHT_KG;
   const calories = canCompute ? caloriesFromDistance(session.movingDistanceMeters, weight) : 0;
+  const instantWindowPace = calculateInstantPace(session.samples);
+  const prevInstant = session.instantPaceMinPerKm ?? 0;
+  const smoothedInstant = instantWindowPace > 0
+    ? (prevInstant > 0
+      ? prevInstant * (1 - INSTANT_PACE_ALPHA) + instantWindowPace * INSTANT_PACE_ALPHA
+      : instantWindowPace)
+    : (prevInstant > 0 ? prevInstant * (1 - INSTANT_PACE_ALPHA) : 0);
   return {
     ...session,
-    avgPaceMinPerKm: Number(isFinite(pace) ? pace.toFixed(2) : 0),
+    avgPaceMinPerKm: Number.isFinite(pace) ? Number(pace.toFixed(2)) : 0,
     caloriesKcal: isFinite(calories) ? Number(calories.toFixed(1)) : 0,
+    instantPaceMinPerKm: isFinite(smoothedInstant) ? Number(smoothedInstant.toFixed(2)) : 0,
   };
 };
 
@@ -244,6 +256,37 @@ const closeLastPause = (pauses: PauseInterval[], end: number): PauseInterval[] =
   return updated;
 };
 
+const calculateInstantPace = (samples: GpsSample[]): number => {
+  if (samples.length < 2) return 0;
+  const last = samples[samples.length - 1];
+  if (!isFinite(last.t)) return 0;
+  const windowStart = last.t - INSTANT_PACE_WINDOW_MS;
+  let startIndex = samples.findIndex((sample) => sample.t >= windowStart);
+  if (startIndex === -1) startIndex = 0;
+  if (startIndex >= samples.length - 1) {
+    if (samples.length < 2) return 0;
+    startIndex = samples.length - 2;
+  }
+
+  let distance = 0;
+  let previous = samples[startIndex];
+  for (let i = startIndex + 1; i < samples.length; i += 1) {
+    const current = samples[i];
+    if (!isFinite(current.lat) || !isFinite(current.lng) || !isFinite(previous.lat) || !isFinite(previous.lng)) {
+      continue;
+    }
+    distance += haversineDistanceMeters(previous, current);
+    previous = current;
+  }
+
+  const elapsedMs = last.t - samples[startIndex].t;
+  if (!isFinite(distance) || distance <= 0 || !isFinite(elapsedMs) || elapsedMs <= 0) {
+    return 0;
+  }
+
+  return (elapsedMs / distance) / 60;
+};
+
 const normalizeSession = (session: RunSession): RunSession => {
   return recalc({
     ...createEmptySession(),
@@ -255,6 +298,7 @@ const normalizeSession = (session: RunSession): RunSession => {
     elapsedMs: session.elapsedMs ?? 0,
     status: session.status ?? 'IDLE',
     userWeightKg: session.userWeightKg ?? DEFAULT_WEIGHT_KG,
+    instantPaceMinPerKm: session.instantPaceMinPerKm ?? 0,
   });
 };
 
