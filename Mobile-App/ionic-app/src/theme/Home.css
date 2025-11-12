@@ -19,10 +19,9 @@
   --ion-color-base: #ffffff;
   --background: #000000;
   --color: #ffffff;
-  --padding-top: max(8px, env(safe-area-inset-top));
+  --padding-top: env(safe-area-inset-top);
   --padding-bottom: 8px;
   --min-height: 56px;
-  padding-top: env(safe-area-inset-top);
 }
 
 

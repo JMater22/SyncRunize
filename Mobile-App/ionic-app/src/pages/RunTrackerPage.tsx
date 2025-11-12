@@ -238,7 +238,23 @@ const RunTrackerPage: React.FC = () => {
 
   const handleRecord = async (meta: { name: string; visibility: 'public' | 'private' }) => {
     try {
+      // ✅ FIX: Log route name from user input for debugging
+      console.log('[RunTracker] Recording run with meta:', {
+        name: meta.name,
+        visibility: meta.visibility
+      });
+
       const recorded = await recordRun(meta);
+
+      // ✅ FIX: Verify route name in response matches user input
+      console.log('[RunTracker] Recorded route result:', {
+        routeId: recorded.routeId,
+        routeNameFromBackend: recorded.routeName,
+        routeNameFromInput: meta.name,
+        namesMatch: recorded.routeName === meta.name,
+        snapshotPresent: !!recorded.snapshotUrl
+      });
+
       clearGuidedRoute();
       history.push('/run-pre-post', {
         routeId: recorded.routeId,
@@ -254,7 +270,7 @@ const RunTrackerPage: React.FC = () => {
         },
       });
     } catch (err: any) {
-      console.error(err);
+      console.error('[RunTracker] Failed to record run:', err);
       setToastMessage(err?.message || 'Failed to save run. Please try again.');
     }
   };

@@ -1,7 +1,7 @@
 /* Back Button - Icon Only */
 .custom-back-button-icon {
   position: fixed;
-  top: 16px;
+  top: calc(16px + env(safe-area-inset-top));
   left: 16px;
   width: 48px;
   height: 48px;
@@ -58,7 +58,7 @@
 
 .guided-map-chip {
   position: fixed;
-  top: 72px;
+  top: calc(72px + env(safe-area-inset-top));
   left: 16px;
   display: inline-flex;
   align-items: center;
@@ -224,7 +224,7 @@
 
 .view-toggle {
   position: fixed;
-  top: 16px;
+  top: calc(16px + env(safe-area-inset-top));
   right: 16px;
   z-index: 12;
   background: rgba(0, 0, 0, 0.65);

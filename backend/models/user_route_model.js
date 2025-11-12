@@ -262,13 +262,30 @@ export const createRoute = async (data) => {
   // Generate snapshot
   let snapshot_url = null;
   try {
+    // ✅ FIX: Enhanced logging for snapshot generation debugging
+    const provider = process.env.MAP_SNAPSHOT_PROVIDER || 'mapbox';
+    console.log('[Routes] Generating route snapshot...', {
+      provider,
+      pathLength: pathArray.length,
+      mapboxTokenPresent: !!process.env.MAPBOX_ACCESS_TOKEN
+    });
+
     snapshot_url = generateRouteSnapshot(pathArray, {
       width: 800,
       height: 600,
       lineColor: "#008000",
     });
+
+    console.log('[Routes] Snapshot generation result:', {
+      success: !!snapshot_url,
+      url: snapshot_url ? snapshot_url.substring(0, 100) + '...' : 'null'
+    });
   } catch (error) {
-    console.error("Snapshot generation failed:", error);
+    console.error("[Routes] Snapshot generation failed:", {
+      error: error.message,
+      provider: process.env.MAP_SNAPSHOT_PROVIDER || 'mapbox',
+      stack: error.stack
+    });
   }
 
   // ========== Database Insert with Final Values ==========
