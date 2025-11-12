@@ -11,7 +11,8 @@ import { speakText } from '../services/tts';
 import { TrafficApi, type TrafficIncident } from '../services/traffic';
 import { useUser } from '../contexts/UserContext';
 import { DEFAULT_WEIGHT_KG } from '../services/met';
-import { mapboxSmoothSample } from '../lib/gpsSmoothing';
+import { kalmanLikeFilter, createSmoothingState, type SmoothingState } from '../lib/advancedGpsSmoothing';
+import { analyzeRunPath, getElevationCalorieMultiplier, type PathWithElevation } from '../services/mapbox';
 
 const STORAGE_KEY = 'syncrunize-run-tracker-v1';
 const HAZARD_POLL_INTERVAL_MS = 45_000;
@@ -82,7 +83,7 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPersistedSamples = useRef(0);
   const hydratedRef = useRef(false);
-  const smoothingStateRef = useRef<{ last: GpsSample | null }>({ last: null });
+  const smoothingStateRef = useRef<SmoothingState>(createSmoothingState());
   const [isAppActive, setIsAppActive] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -137,10 +138,11 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
 
   const handleSamples = useCallback((samples: GpsSample[]) => {
     if (!samples.length) return;
+    // Professional Kalman-like filtering with outlier rejection
     const smoothed = samples.map((sample) => {
-      const nextSample = mapboxSmoothSample(smoothingStateRef.current.last, sample);
-      smoothingStateRef.current.last = nextSample;
-      return nextSample;
+      const result = kalmanLikeFilter(smoothingStateRef.current, sample);
+      smoothingStateRef.current = result.state;
+      return result.smoothed;
     });
     dispatch({ type: 'ADD_SAMPLES', samples: smoothed });
   }, [dispatch]);
@@ -325,8 +327,8 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     }
 
     const intervalMs = status === 'RUNNING'
-      ? (isAppActive ? 1000 : 2000)
-      : (isAppActive ? 3500 : 4500);
+      ? (isAppActive ? 5000 : 8000) // Optimized: 5s active, 8s background
+      : (isAppActive ? 10000 : 15000); // Idle: 10s active, 15s background
 
     stopSampler();
     samplerRef.current = startSampler({
@@ -409,7 +411,7 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
 
   const startRun = useCallback(() => {
     setError(null);
-    smoothingStateRef.current.last = null;
+    smoothingStateRef.current = createSmoothingState(); // Reset Kalman filter state
     dispatch({ type: 'START' });
   }, [dispatch]);
 
@@ -435,7 +437,10 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     resetSession();
     clearStorage();
     lastPersistedSamples.current = 0;
-    smoothingStateRef.current.last = null;
+    smoothingStateRef.current = createSmoothingState();
+    // ✅ FIX: Clear alert caches to prevent memory leak
+    hazardAlertState.current.cache.clear();
+    trafficAlertState.current.cache.clear();
   }, [resetSession, stopSampler, clearTimer, clearStorage]);
 
   const recordRun = useCallback(async (
@@ -447,16 +452,68 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     if (!session.samples.length) {
       throw new Error('No location samples captured.');
     }
+
+    // ✅ FIX: Prevent duplicate routes - set recording flag BEFORE async work
+    if (isRecording) {
+      throw new Error('Recording already in progress');
+    }
+
     setError(null);
     setIsRecording(true);
     dispatch({ type: 'SET_META', name: meta.name, visibility: meta.visibility });
 
     try {
-      const payload = buildRoutePayload(session, meta);
+      // Professional-grade: Analyze path for elevation data (Strava standard)
+      console.log('[RunTracker] Analyzing route elevation...');
+
+      // ✅ FIX: Add 10-second timeout to elevation analysis to prevent indefinite hangs
+      // If MapBox API is slow or unresponsive, gracefully fall back to no elevation data
+      const ELEVATION_TIMEOUT_MS = 10000; // 10 seconds
+      const pathAnalysis = await Promise.race([
+        analyzeRunPath(session.samples),
+        new Promise<PathWithElevation>((resolve) =>
+          setTimeout(() => {
+            console.warn('[RunTracker] Elevation analysis timed out after 10s - proceeding without elevation data');
+            resolve({
+              coordinates: session.samples.map(s => ({ lat: s.lat, lng: s.lng })),
+              elevationGain: 0,
+              elevationLoss: 0,
+              elevationProfile: [],
+              dataQuality: 'none'
+            });
+          }, ELEVATION_TIMEOUT_MS)
+        )
+      ]);
+
+      // ✅ FIX: Validate elevation data quality before applying calorie multiplier
+      const hasValidElevation = pathAnalysis.dataQuality === 'complete' || pathAnalysis.dataQuality === 'partial';
+
+      if (!hasValidElevation) {
+        console.warn('[RunTracker] Elevation data quality insufficient - skipping elevation adjustment');
+      }
+
+      // Calculate elevation-adjusted calories only if data is valid
+      const elevationMultiplier = hasValidElevation
+        ? getElevationCalorieMultiplier(session.movingDistanceMeters, pathAnalysis.elevationGain)
+        : 1.0; // No adjustment if elevation data is invalid
+
+      const payload = buildRoutePayload(session, meta, hasValidElevation ? {
+        elevationGain: pathAnalysis.elevationGain,
+        elevationLoss: pathAnalysis.elevationLoss,
+        elevationMultiplier,
+      } : undefined);
+
       const route = await withRetry(() => createRoute(payload));
       const parsedPath = normalizeRoutePath(route?.chosen_path, payload.chosen_path);
+
+      // ✅ FIX: Only clear storage AFTER successful save - prevents data loss on network failure
       clearStorage();
       resetSession();
+      setIsRecording(false);
+      // ✅ FIX: Clear alert caches after successful recording to prevent memory leak
+      hazardAlertState.current.cache.clear();
+      trafficAlertState.current.cache.clear();
+
       return {
         routeId: route.route_id,
         routeName: route.route_name ?? meta.name,
@@ -472,15 +529,18 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
       console.error('Failed to record run', err);
       const message = err?.response?.data?.error || err?.message || 'Failed to record run';
       setError(message);
-      throw err;
-    } finally {
       setIsRecording(false);
+      // ✅ FIX: Reset Kalman filter to prevent corrupted state in next run
+      smoothingStateRef.current = createSmoothingState();
+      // ✅ FIX: Don't clear storage on failure - user can retry later
+      // Session remains in localStorage for recovery
+      throw err;
     }
-  }, [session, dispatch, clearStorage, resetSession]);
+  }, [session, dispatch, clearStorage, resetSession, isRecording]);
 
   useEffect(() => {
     if (session.status === 'IDLE') {
-      smoothingStateRef.current.last = null;
+      smoothingStateRef.current = createSmoothingState();
     }
   }, [session.status]);
 
@@ -502,7 +562,11 @@ export const RunTrackerController = () => {
   return null;
 };
 
-const buildRoutePayload = (session: RunSession, meta: RecordMeta): CreateRouteRequest => {
+const buildRoutePayload = (
+  session: RunSession,
+  meta: RecordMeta,
+  elevation?: { elevationGain: number; elevationLoss: number; elevationMultiplier: number }
+): CreateRouteRequest => {
   const chosen_path = session.samples.map((sample) => ({ lat: sample.lat, lng: sample.lng, t: sample.t }));
   const first = chosen_path[0];
   const last = chosen_path[chosen_path.length - 1] ?? first;
@@ -514,18 +578,28 @@ const buildRoutePayload = (session: RunSession, meta: RecordMeta): CreateRouteRe
   const distanceKm = session.movingDistanceMeters / 1000;
   const durationSeconds = Math.max(1, Math.round(session.elapsedMs / 1000));
 
+  // Apply elevation adjustment to calories if available (Strava method)
+  const baseCalories = Number(session.caloriesKcal.toFixed(1));
+  const adjustedCalories = elevation
+    ? Number((baseCalories * elevation.elevationMultiplier).toFixed(1))
+    : baseCalories;
+
   return {
     route_name: meta.name,
     visibility: meta.visibility,
     duration_seconds: durationSeconds,
     average_pace: Number(session.avgPaceMinPerKm || 0),
     distance_km: Number(distanceKm.toFixed(3)),
-    estimated_calories: Number(session.caloriesKcal.toFixed(1)),
+    estimated_calories: adjustedCalories,
     chosen_path,
     start_lat: first.lat,
     start_lng: first.lng,
     end_lat: last.lat,
     end_lng: last.lng,
     weight_kg: session.userWeightKg ?? DEFAULT_WEIGHT_KG,
+    // Professional-grade elevation data (Strava/Nike standard)
+    elevation_gain: elevation ? Number(elevation.elevationGain.toFixed(1)) : undefined,
+    elevation_loss: elevation ? Number(elevation.elevationLoss.toFixed(1)) : undefined,
+    elevation_multiplier: elevation ? Number(elevation.elevationMultiplier.toFixed(3)) : undefined,
   };
 };

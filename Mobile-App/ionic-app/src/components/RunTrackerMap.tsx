@@ -3,7 +3,6 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -143,9 +142,12 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
     onError?.(message);
   }, [onError]);
 
-  const defaultCenter = useMemo<LatLngLiteral>(() => {
-    return pathCoords[pathCoords.length - 1] ?? guidedStart ?? DEFAULT_CENTER;
-  }, [pathCoords, guidedStart]);
+  // ✅ FIX: Use ref for initial center - compute once, don't trigger re-initialization
+  // This prevents map destruction/recreation on every GPS update
+  const initialCenterRef = useRef<LatLngLiteral | null>(null);
+  if (!initialCenterRef.current) {
+    initialCenterRef.current = pathCoords[pathCoords.length - 1] ?? guidedStart ?? DEFAULT_CENTER;
+  }
 
   useImperativeHandle(ref, () => ({
     recenter(target) {
@@ -279,6 +281,7 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
     ensureMarker(guidedEndMarkerRef, showEnd ? end : null, 'guided-marker end');
   }, []);
 
+  // ✅ FIX: Map initialization - only depends on static values, not changing GPS position
   useEffect(() => {
     if (!mapboxToken) {
       reportError('Mapbox access token missing.');
@@ -290,10 +293,12 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
     }
     try {
       mapboxgl.accessToken = mapboxToken;
+      // ✅ FIX: Use initial center ref - won't change on every GPS update
+      const initialCenter = initialCenterRef.current || DEFAULT_CENTER;
       const map = new mapboxgl.Map({
         container: containerRef.current,
         style: resolveStyleUrl(MAP_STYLE),
-        center: [defaultCenter.lng, defaultCenter.lat],
+        center: [initialCenter.lng, initialCenter.lat],
         zoom: 15,
         attributionControl: false,
         dragRotate: false,
@@ -331,7 +336,8 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [defaultCenter, ensureBaseLayers, mapboxToken, onMapReadyChange, reportError]);
+    // ✅ FIX: Removed defaultCenter from dependencies - prevents re-initialization on GPS updates
+  }, [ensureBaseLayers, mapboxToken, onMapReadyChange, reportError]);
 
   useEffect(() => {
     const handleResize = () => mapRef.current?.resize();
@@ -344,15 +350,26 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
     const map = mapRef.current;
+
+    // Only update path if it actually changed (more than just adding 1-2 points)
     const runnerSource = map.getSource(RUNNER_SOURCE_ID) as GeoJSONSource | undefined;
-    runnerSource?.setData(createLineGeoJSON(pathCoords));
+    if (runnerSource) {
+      // Batch update: only re-render every 5 points or if path is short
+      const shouldUpdatePath = pathCoords.length % 5 === 0 || pathCoords.length < 10;
+      if (shouldUpdatePath) {
+        runnerSource.setData(createLineGeoJSON(pathCoords));
+      }
+    }
+
     const latest = pathCoords[pathCoords.length - 1] ?? null;
     updateRunnerMarker(latest);
     updateRunnerRadius(latest);
-    if (latest && !mapOnlyView) {
+
+    // Only auto-center every 10 points to reduce camera animation overhead
+    if (latest && !mapOnlyView && pathCoords.length % 10 === 0) {
       map.easeTo({
         center: [latest.lng, latest.lat],
-        duration: 500,
+        duration: 300, // Faster animation (was 500ms)
       });
     }
   }, [mapOnlyView, mapReady, pathCoords, updateRunnerMarker, updateRunnerRadius]);

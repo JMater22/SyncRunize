@@ -17,7 +17,7 @@ import {
   IonText,
   IonSpinner,
 } from '@ionic/react';
-import { closeOutline } from 'ionicons/icons';
+import { closeOutline, trendingUp, trendingDown } from 'ionicons/icons';
 import type { RunSession } from '../state/runTrackerContext';
 import type { RecordMeta } from '../hooks/useRunTracker';
 import { formatPace } from '../lib/utils';
@@ -110,6 +110,28 @@ export const ActivitySummarySheet = ({
             <strong>{session.caloriesKcal.toFixed(0)} kcal</strong>
           </div>
         </section>
+
+        {/* Elevation Stats - Only show if elevation data exists */}
+        {session.elevationGainMeters !== undefined && session.elevationGainMeters > 0 && (
+          <section className="summary-stats" style={{ marginTop: '12px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                <IonIcon icon={trendingUp} style={{ color: 'var(--ion-color-success)', fontSize: '18px' }} />
+                <strong>+{session.elevationGainMeters.toFixed(0)}m</strong>
+              </div>
+              <p className="label">Elevation Gain</p>
+            </div>
+            {session.elevationLossMeters !== undefined && session.elevationLossMeters > 0 && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                  <IonIcon icon={trendingDown} style={{ color: 'var(--ion-color-warning)', fontSize: '18px' }} />
+                  <strong>-{session.elevationLossMeters.toFixed(0)}m</strong>
+                </div>
+                <p className="label">Elevation Loss</p>
+              </div>
+            )}
+          </section>
+        )}
 
         <IonList inset>
           <IonItem>

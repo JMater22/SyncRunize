@@ -57,43 +57,70 @@ const buildFirebaseData = (data = {}) => {
   }, {});
 };
 
-export const sendPushNotification = async ({ userId, title, body, data }) => {
-  if (!ensureFirebaseApp()) return;
+export const sendPushNotification = async ({ userId, title, body, data, priority = 'high' }) => {
+  if (!ensureFirebaseApp()) return { sent: 0, failed: 0 };
 
   const tokens = await DeviceTokens.getActiveTokensForUser(userId);
   if (!tokens || tokens.length === 0) {
     console.log(`[Push] No device tokens found for user ${userId}`);
-    return;
+    return { sent: 0, failed: 0 };
   }
 
+  let sentCount = 0;
+  let failedCount = 0;
+
   await Promise.all(
-    tokens.map(async ({ token }) => {
+    tokens.map(async ({ token, platform }) => {
       try {
-        await admin.messaging().send({
+        const message = {
           token,
           notification: {
             title,
             body,
           },
           android: {
+            priority: priority, // 'high' or 'normal'
             notification: {
               channelId: DEFAULT_CHANNEL_ID,
               sound: "default",
+              priority: priority === 'high' ? 'high' : 'default',
+              defaultSound: true,
+              defaultVibrateTimings: true,
+              defaultLightSettings: true,
+            },
+          },
+          apns: {
+            payload: {
+              aps: {
+                sound: "default",
+                badge: 1,
+              },
             },
           },
           data: buildFirebaseData(data),
-        });
+        };
+
+        const response = await admin.messaging().send(message);
+        sentCount++;
+        console.log(`[Push] ✅ Sent to user ${userId} (${platform}):`, response);
       } catch (error) {
-        console.error("[Push] Failed to send push", error.message);
+        failedCount++;
+        console.error(`[Push] ❌ Failed to send to user ${userId} (${platform}):`, error.message);
+
         const tokenInvalid =
           error.code === "messaging/registration-token-not-registered" ||
           error.code === "messaging/invalid-registration-token";
+
         if (tokenInvalid) {
+          console.log(`[Push] Marking token as invalid for user ${userId}`);
           await DeviceTokens.markTokenAsFailed(token);
         }
       }
     })
   );
+
+  console.log(`[Push] Delivery summary for user ${userId}: ${sentCount} sent, ${failedCount} failed`);
+  return { sent: sentCount, failed: failedCount };
 };
 
 export const sendAlertPush = async ({ userId, summary, type, notification }) => {

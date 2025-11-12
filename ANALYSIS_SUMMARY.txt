@@ -1,0 +1,78 @@
+COMPLETE FLOW ANALYSIS SUMMARY
+From Finishing a Run to Creating a Post
+
+GENERATED FILE: FLOW_ANALYSIS.md (197 lines)
+Location: D:\CAPSTONE-PROGRAM\SyncRunize\FLOW_ANALYSIS.md
+
+KEY FINDINGS:
+
+1. CREATEROUTE FUNCTION
+   - Called by: useRunTracker.recordRun()
+   - File: Mobile-App/ionic-app/src/hooks/useRunTracker.ts (lines 441-479)
+   - Sends: POST /routes with CreateRouteRequest
+   - Endpoint: backend/models/user_route_model.js (lines 20-107)
+   - Parameters sent:
+     * route_name, visibility, duration_seconds, average_pace
+     * distance_km, estimated_calories, chosen_path (GPS array)
+     * start_lat, start_lng, end_lat, end_lng, weight_kg
+
+2. BACKEND PROCESSING
+   - Calculates distance_km from GPS path using haversineDistance
+   - Calculates average_pace = (duration / 60) / distance
+   - Calculates estimated_calories = weight_kg * distance_km * 1.036
+   - Generates snapshot_url via generateRouteSnapshot()
+   - Stores all values in user_routes table
+
+3. SNAPSHOT GENERATION
+   - File: backend/utils/map_snapshot.js
+   - Uses Mapbox Static API
+   - Encodes path as GeoJSON with markers
+   - Stored in user_routes.snapshot_url
+
+4. POST CREATION
+   - File: Mobile-App/ionic-app/src/pages/PrePostPage.tsx
+   - Sends: route_id, content, image_url to backend
+   - File: backend/models/post_model.js (lines 262-275)
+   - Stores in posts table with user_id, content, image_url
+
+5. PRE-POST PAGE
+   - File: Mobile-App/ionic-app/src/pages/PrePostPage.tsx
+   - Loads route data (if needed via RoutesApi.getRoute)
+   - Displays: route_name, snapshot image, caption textarea
+   - Snapshot handling:
+     * Primary: snapshotUrl from route (server-generated)
+     * Fallback: buildMapboxStaticSnapshot() if needed (NOT stored)
+
+DATABASE SCHEMA:
+  user_routes: route_id, user_id, route_name, chosen_path (JSON),
+               distance_km, duration_seconds, average_pace, 
+               estimated_calories, snapshot_url, visibility, route_status, created_at
+  
+  posts: post_id, user_id, route_id, content, image_url, visibility, created_at
+
+REDUNDANCY ISSUE IDENTIFIED:
+  - Deprecated createPostFromRoute() stores route metrics in posts table
+  - These already exist in user_routes table
+  - Creates data duplication and inconsistency
+  - GOOD NEWS: Normal flow uses simple createPost() which is correct
+  - Redundancy only occurs with deprecated method (not used)
+
+RECOMMENDATIONS:
+  1. Never use createPostFromRoute() - creates redundant data
+  2. Always use simple createPost() endpoint
+  3. Verify posts table doesn't have metric columns
+  4. Remove if they exist: route_name, distance_km, duration_seconds, 
+     average_pace, estimated_calories
+  5. Display logic should JOIN posts to routes for full data
+
+KEY FILES:
+  - useRunTracker.ts: recordRun(), buildRoutePayload()
+  - user_route_model.js: Backend calculations
+  - map_snapshot.js: Snapshot generation
+  - PrePostPage.tsx: Preview and post creation
+  - post_model.js: Post storage
+
+THE SYSTEM WORKS WELL!
+All metrics calculated correctly, snapshots generated properly,
+post creation minimal and correct. Only issue is deprecated method
+that isn't being used.

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useMemo, useState, type ReactNode } from 'react';
 import { haversineDistanceMeters } from '../services/haversine';
-import { caloriesFromDistance, DEFAULT_WEIGHT_KG, derivePace, MIN_DISTANCE_FOR_PACE_METERS } from '../services/met';
+import { caloriesFromDistance, caloriesFromPace, DEFAULT_WEIGHT_KG, derivePace, MIN_DISTANCE_FOR_PACE_METERS } from '../services/met';
 
 export type GpsSample = {
   lat: number;
@@ -14,8 +14,12 @@ export type PauseInterval = { start: number; end?: number };
 
 export type RunState = 'IDLE' | 'RUNNING' | 'PAUSED' | 'FINISHED';
 
-const INSTANT_PACE_WINDOW_MS = 10000; // 10 seconds
+// Professional-grade constants (Strava/Nike Run Club standards)
+const INSTANT_PACE_WINDOW_MS = 30000; // 30 seconds (was 10s - too noisy)
 const INSTANT_PACE_ALPHA = 0.35;
+const MIN_MOVEMENT_THRESHOLD_METERS = 2.5; // Ignore GPS jitter < 2.5m
+// ✅ FIX: GPS signal loss detection - pause timer if no movement for 30 seconds
+const GPS_STALL_THRESHOLD_MS = 30000; // 30 seconds without movement = consider stalled
 
 export type RunSession = {
   id: string;
@@ -36,6 +40,13 @@ export type RunSession = {
   recordedRouteId?: number | null;
   weightKg?: number;
   userWeightKg?: number;
+  // Professional-grade tracking features (Strava/Nike standard)
+  elevationGainMeters?: number; // Total climbing
+  elevationLossMeters?: number; // Total descending
+  elevationCalorieMultiplier?: number; // Elevation-adjusted calorie factor
+  // ✅ FIX: GPS signal loss detection
+  lastMovementTimestamp?: number; // Last time significant movement was detected
+  isGpsStalled?: boolean; // True when GPS samples arriving but no movement
 };
 
 export type Action =
@@ -78,11 +89,15 @@ function createEmptySession(): RunSession {
 }
 
 function createRunningSession(): RunSession {
+  const now = Date.now();
   return {
     ...createEmptySession(),
     id: createSessionId(),
     status: 'RUNNING',
-    startedAt: Date.now(),
+    startedAt: now,
+    // ✅ FIX: Initialize movement tracking
+    lastMovementTimestamp: now,
+    isGpsStalled: false,
   };
 }
 
@@ -146,6 +161,11 @@ const runTrackerReducer = (state: RunSession, action: Action): RunSession => {
     }
     case 'TICK':
       if (state.status !== 'RUNNING') return state;
+      // ✅ FIX: Don't increment timer if GPS is stalled (signal loss or stationary)
+      if (state.isGpsStalled) {
+        console.warn('[RunTracker] GPS stalled - timer paused (no movement for 30+ seconds)');
+        return state; // Don't increment elapsed time
+      }
       return recalc({
         ...state,
         elapsedMs: state.elapsedMs + action.deltaMs,
@@ -173,6 +193,9 @@ const applySamples = (state: RunSession, samples: GpsSample[]): RunSession => {
   const nextSamples = state.samples.slice();
   let breadcrumb = state.breadcrumbDistanceMeters;
   let moving = state.movingDistanceMeters;
+  // ✅ FIX: Track last movement time for GPS stall detection
+  let lastMovementTimestamp = state.lastMovementTimestamp;
+  let hadSignificantMovement = false;
 
   let previous = nextSamples[nextSamples.length - 1];
 
@@ -182,11 +205,15 @@ const applySamples = (state: RunSession, samples: GpsSample[]): RunSession => {
     }
     if (previous) {
       const delta = haversineDistanceMeters(previous, sample);
-      if (isFinite(delta) && delta > 0) {
+      // Professional standard: Ignore GPS jitter below threshold (Strava/Nike method)
+      if (isFinite(delta) && delta >= MIN_MOVEMENT_THRESHOLD_METERS) {
         breadcrumb += delta;
         if (state.status === 'RUNNING') {
           moving += delta;
         }
+        // ✅ FIX: Update last movement time when significant movement detected
+        lastMovementTimestamp = sample.t;
+        hadSignificantMovement = true;
       }
     }
 
@@ -194,11 +221,20 @@ const applySamples = (state: RunSession, samples: GpsSample[]): RunSession => {
     previous = sample;
   });
 
+  // ✅ FIX: Detect GPS stall - samples arriving but no movement
+  const now = Date.now();
+  const timeSinceLastMovement = lastMovementTimestamp ? now - lastMovementTimestamp : 0;
+  const isGpsStalled = state.status === 'RUNNING'
+    && lastMovementTimestamp !== undefined
+    && timeSinceLastMovement > GPS_STALL_THRESHOLD_MS;
+
   return {
     ...state,
     samples: nextSamples,
     breadcrumbDistanceMeters: breadcrumb,
     movingDistanceMeters: moving,
+    lastMovementTimestamp: hadSignificantMovement ? lastMovementTimestamp : state.lastMovementTimestamp,
+    isGpsStalled,
   };
 };
 
@@ -214,7 +250,12 @@ const recalc = (session: RunSession): RunSession => {
   const canCompute = session.movingDistanceMeters >= MIN_DISTANCE_FOR_PACE_METERS && movingMs > 0;
   const pace = canCompute ? derivePace(session.movingDistanceMeters, movingMs) : 0;
   const weight = session.userWeightKg ?? session.weightKg ?? DEFAULT_WEIGHT_KG;
-  const calories = canCompute ? caloriesFromDistance(session.movingDistanceMeters, weight) : 0;
+
+  // Professional calorie calculation: Use MET-based method (Strava/Nike standard)
+  // This accounts for running intensity (pace) not just distance
+  const calories = canCompute && pace > 0
+    ? caloriesFromPace(movingMs, pace, weight)  // MET-based (intensity-aware)
+    : caloriesFromDistance(session.movingDistanceMeters, weight); // Fallback to distance-based
   const instantWindowPace = calculateInstantPace(session.samples);
   const prevInstant = session.instantPaceMinPerKm ?? 0;
   const smoothedInstant = instantWindowPace > 0

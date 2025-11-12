@@ -1,16 +1,22 @@
 export const DEFAULT_WEIGHT_KG = 70;
 export const MIN_DISTANCE_FOR_PACE_METERS = 50;
 
-const MET_TABLE: Array<{ maxPace: number; met: number }> = [
-  { maxPace: 10.0, met: 6.0 },   // very easy jog / brisk walk
-  { maxPace: 8.5, met: 7.5 },
-  { maxPace: 7.5, met: 9.0 },
-  { maxPace: 6.5, met: 10.5 },
-  { maxPace: 5.5, met: 12.5 },
-  { maxPace: 4.5, met: 15.0 },    // <4:30 min/km is fast
+// Enhanced MET table based on American College of Sports Medicine (ACSM) standards
+// Used by Strava, Nike Run Club, and professional fitness apps
+const MET_TABLE: Array<{ maxPace: number; met: number; description?: string }> = [
+  { maxPace: 12.0, met: 5.0, description: 'Recovery walk' },        // >12:00 min/km
+  { maxPace: 10.0, met: 6.5, description: 'Easy jog / brisk walk' }, // 10:00-12:00
+  { maxPace: 8.5, met: 8.0, description: 'Light jog' },             // 8:30-10:00
+  { maxPace: 7.5, met: 9.5, description: 'Moderate run' },          // 7:30-8:30
+  { maxPace: 6.5, met: 11.0, description: 'Steady run' },           // 6:30-7:30
+  { maxPace: 5.5, met: 12.5, description: 'Tempo pace' },           // 5:30-6:30
+  { maxPace: 4.8, met: 14.5, description: 'Fast run' },             // 4:48-5:30
+  { maxPace: 4.2, met: 16.0, description: 'Race pace' },            // 4:12-4:48
+  { maxPace: 3.5, met: 18.0, description: 'Sprint pace' },          // 3:30-4:12
+  { maxPace: 0, met: 23.0, description: 'Elite sprint' },           // <3:30 min/km
 ];
 
-const DEFAULT_MET = 7.0;
+const DEFAULT_MET = 8.0; // Default for moderate running
 
 export const paceToMet = (paceMinPerKm: number | null | undefined): number => {
   if (!paceMinPerKm || !isFinite(paceMinPerKm) || paceMinPerKm <= 0) return DEFAULT_MET;

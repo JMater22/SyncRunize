@@ -87,9 +87,13 @@ const PrePostPage: React.FC = () => {
   }, [path, snapshotUrl, mapboxToken]);
 
   const handlePost = async () => {
-    if (!routeId) return;
+    if (!routeId || !routeData) {
+      setToast('Route data not loaded yet.');
+      return;
+    }
     setPosting(true);
     try {
+      // Use the dedicated from-route endpoint with proper data from fetched route
       await createPost({
         route_id: routeId,
         content,

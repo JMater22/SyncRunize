@@ -13,7 +13,11 @@ export interface CreateRouteRequest {
   end_lat: number;
   end_lng: number;
   snapshot_url?: string | null;
-  weight_kg?:number;
+  weight_kg?: number;
+  // Professional tracking features (Strava/Nike standard)
+  elevation_gain?: number; // Total meters climbed
+  elevation_loss?: number; // Total meters descended
+  elevation_multiplier?: number; // Calorie adjustment factor
 }
 
 export interface CreateRouteResponse {

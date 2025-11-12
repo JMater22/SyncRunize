@@ -28,7 +28,6 @@ import Leaderboards from "./pages/leaderboards";
 import Notification from "./pages/notification";
 import EditProfile from "./pages/Edit-Profile";
 import Notice from "./pages/Notice";
-import PausedRun from "./pages/Paused-Run";
 import CreateRoute from "./pages/create-route";
 import Following from "./pages/Following";
 import SearchRunners from "./pages/Search-Runners";
@@ -36,7 +35,6 @@ import SavedRoutes from "./pages/saved-routes";
 import EstimatedTime from "./pages/Estimated-Time";
 import TrafficNotice from "./pages/Traffic-Notice";
 import HazardReport from "./pages/Hazard-Report";
-import ActivitySummary from "./pages/Activity-Summary";
 import Information from "./pages/Profile-Information";
 import PasswordSecurity from "./pages/Password-Security";
 import CreateAccount from "./pages/create-account";
@@ -132,7 +130,6 @@ const App: React.FC = () => {
                   <Route exact path="/leaderboards" component={Leaderboards} />
                   <Route exact path="/notification" component={Notification} />
                   <Route exact path="/edit-profile" component={EditProfile} />
-                  <Route exact path="/paused" component={PausedRun} />
                   <Route exact path="/notice" component={Notice} />
                   <Route exact path="/create-route" component={CreateRoute} />
                   <Route exact path="/following" component={Following} />
@@ -141,7 +138,6 @@ const App: React.FC = () => {
                   <Route exact path="/estimated-time" component={EstimatedTime} />
                   <Route exact path="/traffic-notice" component={TrafficNotice} />
                   <Route exact path="/hazard-report" component={HazardReport} />
-                  <Route exact path="/activity-summary" component={ActivitySummary} />
                   <Route exact path="/profile-info" component={Information} />
                   <Route exact path="/security" component={PasswordSecurity} />
                   {/* Auth screens remain accessible but are redundant when logged in */}

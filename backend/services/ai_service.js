@@ -31,48 +31,74 @@ const callOpenAI = async (prompt, options = {}) => {
 
 export const summarizeHazard = async (hazard) => {
   try {
-    const prompt = `You are a running safety assistant generating brief alerts for joggers.
+    const prompt = `You are a running safety assistant generating brief voice alerts for joggers.
 
-Write a clear sentence that calmly informs the runner about this specific hazard nearby.
-Avoid advice or instructions. Use plain text with no markdown or symbols.
+Write ONE clear, concise sentence that informs the runner about this hazard ahead.
+The alert will be spoken out loud while they're running, so make it natural and easy to understand.
 
-Details:
-- Incident: ${hazard.incident_type || hazard.type || "Unknown"}
-- Description: ${hazard.description || "No details provided"}
-- Location: (${hazard.lat}, ${hazard.lng})
-- Trust Score: ${hazard.trust_score ?? "N/A"}
-- Agreement Score: ${hazard.agreement_score ?? "N/A"}
+RULES:
+- Maximum 15 words
+- Use simple, conversational language (like talking to a friend)
+- DO NOT include coordinates, latitude, longitude, or technical data
+- DO NOT give advice or instructions
+- DO NOT use markdown, emojis, or special characters
+- Focus on WHAT the hazard is, not WHERE it is (the runner knows it's nearby)
 
-Only output the alert sentence.`;
+Hazard Information:
+- Type: ${hazard.incident_type || hazard.type || "Unknown hazard"}
+- Details: ${hazard.description || "No additional details"}
 
-    const summary = await callOpenAI(prompt, { maxTokens: 120 });
-    return summary || "Hazard reported in this location.";
+Example good alerts:
+- "Broken glass on the path ahead"
+- "Pothole reported on this route"
+- "Wet surface ahead, be careful"
+- "Construction zone nearby"
+
+Generate the alert now:`;
+
+    const summary = await callOpenAI(prompt, { maxTokens: 50, temperature: 0.5 });
+    return summary || "Hazard reported ahead on your route.";
   } catch (error) {
     console.error("AI summary error:", error.response?.data || error.message);
-    return "Hazard reported in this location.";
+    return "Hazard reported ahead on your route.";
   }
 };
 
 export const summarizeTrafficAlert = async (traffic) => {
   try {
-    const prompt = `You are a running safety assistant. Write one short sentence to warn a jogger about nearby traffic conditions.
+    const severityLevel = traffic.severity || traffic.severity_weight;
+    const severityText = severityLevel > 0.7 ? "Heavy" : severityLevel > 0.4 ? "Moderate" : "Light";
 
-Details:
-- Condition: ${traffic.condition || traffic.incident_type || "Traffic alert"}
-- Description: ${traffic.description || "No details provided"}
-- Location: (${traffic.lat}, ${traffic.lng})
-- Severity: ${traffic.severity || traffic.severity_weight || "unknown"}
+    const prompt = `You are a running safety assistant generating voice alerts for joggers.
 
-Rules:
-- Under 20 words.
-- Plain English, no emojis, markdown, or instructions.
-- Example tone: "Heavy traffic near Elm Street."`;
+Create ONE short sentence to warn a runner about traffic conditions ahead.
+This will be spoken out loud, so make it natural and conversational.
 
-    const summary = await callOpenAI(prompt, { temperature: 0.6, maxTokens: 80 });
-    return summary || "Traffic disruption reported nearby.";
+RULES:
+- Maximum 12 words
+- Simple, everyday language
+- DO NOT include coordinates, latitude, longitude, or addresses
+- DO NOT use markdown, emojis, or special characters
+- Just state the traffic condition clearly
+
+Traffic Information:
+- Condition: ${traffic.condition || traffic.incident_type || "Traffic congestion"}
+- Severity: ${severityText}
+- Details: ${traffic.description || "No additional details"}
+
+Example good alerts:
+- "Heavy traffic ahead"
+- "Road congestion on your route"
+- "Slow moving vehicles nearby"
+- "Traffic jam on the path"
+
+Generate the alert now:`;
+
+    const summary = await callOpenAI(prompt, { temperature: 0.5, maxTokens: 40 });
+    return summary || `${severityText} traffic reported ahead.`;
   } catch (error) {
     console.error("AI traffic summary error:", error.response?.data || error.message);
-    return "Traffic disruption reported nearby.";
+    return "Traffic reported ahead on your route.";
   }
 };
 

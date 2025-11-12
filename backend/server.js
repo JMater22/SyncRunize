@@ -49,6 +49,18 @@
   app.use(bodyParser.json({ limit: '5mb' }));
   app.use(bodyParser.urlencoded({ limit: '5mb', extended: true }));
   app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+  // ✅ FIX: Health check endpoint for easy backend verification from devices
+  app.get('/api/health', (req, res) => {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: Math.floor(process.uptime()),
+      environment: process.env.NODE_ENV || 'development',
+      version: '1.0.0'
+    });
+  });
+
   // ---------------- Routes ----------------
   app.use("/api/users", userRoutes);
   app.use("/api/posts", postRoutes);

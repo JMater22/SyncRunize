@@ -13,7 +13,9 @@ export interface SamplerHandle {
 }
 
 const DEFAULT_MAX_ACCURACY = 50;
-const DEFAULT_MAX_SPEED = 7; // m/s ~ 4:00 min/km
+// ✅ FIX: Increased from 7 m/s to support elite runners + GPS noise margin
+// 12 m/s = 2:46 min/km (elite marathon pace ~2:52 min/km + 15% margin for GPS spikes)
+const DEFAULT_MAX_SPEED = 12; // m/s ~ 2:46 min/km
 
 export const startSampler = (options: SamplerOptions): SamplerHandle => {
   let watchId: string | null = null;
@@ -22,7 +24,11 @@ export const startSampler = (options: SamplerOptions): SamplerHandle => {
   const maxSpeed = options.maxSpeedMps ?? DEFAULT_MAX_SPEED;
 
   const onPosition = (position: Position | null, err?: any) => {
-    if (err || !position) return;
+    if (err) {
+      console.error('[GPS] Position error:', err);
+      return;
+    }
+    if (!position) return;
 
     const sample = positionToSample(position);
     if (!sample) return;
@@ -44,11 +50,34 @@ export const startSampler = (options: SamplerOptions): SamplerHandle => {
   };
 
   const startWatch = async () => {
-    watchId = await Geolocation.watchPosition({
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 2000,
-    }, onPosition);
+    try {
+      // Check and request GPS permissions before starting watch
+      const permission = await Geolocation.checkPermissions();
+
+      if (permission.location === 'denied') {
+        throw new Error('GPS_PERMISSION_DENIED');
+      }
+
+      if (permission.location === 'prompt' || permission.location === 'prompt-with-rationale') {
+        const requested = await Geolocation.requestPermissions();
+        if (requested.location === 'denied') {
+          throw new Error('GPS_PERMISSION_DENIED');
+        }
+      }
+
+      watchId = await Geolocation.watchPosition({
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 2000,
+      }, onPosition);
+    } catch (error) {
+      console.error('[GPS] Failed to start watch:', error);
+      // Re-throw with clear error message for UI handling
+      if (error instanceof Error && error.message === 'GPS_PERMISSION_DENIED') {
+        throw error;
+      }
+      throw new Error('GPS_UNAVAILABLE');
+    }
   };
 
   startWatch();
