@@ -161,11 +161,9 @@ const runTrackerReducer = (state: RunSession, action: Action): RunSession => {
     }
     case 'TICK':
       if (state.status !== 'RUNNING') return state;
-      // ✅ FIX: Don't increment timer if GPS is stalled (signal loss or stationary)
-      if (state.isGpsStalled) {
-        console.warn('[RunTracker] GPS stalled - timer paused (no movement for 30+ seconds)');
-        return state; // Don't increment elapsed time
-      }
+      // ✅ FIX: Timer always counts when RUNNING (removed GPS stall check that caused timer to freeze)
+      // Timer should track elapsed time during run, regardless of GPS movement
+      // Distance/pace calculations already handle stationary periods correctly
       return recalc({
         ...state,
         elapsedMs: state.elapsedMs + action.deltaMs,

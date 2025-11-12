@@ -244,7 +244,16 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
                 <IonCardContent>
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
                     <IonAvatar style={{ width: '40px', height: '40px', marginRight: '12px' }}>
-                      <img src={getAvatarUrl(post.author_avatar)} alt={post.author_name} />
+                      <img
+                        src={getAvatarUrl(post.author_avatar)}
+                        alt={post.author_name}
+                        onError={(e) => {
+                          console.warn('[CommunityFeed] Avatar failed to load for user:', post.author_username);
+                          // Fallback to default avatar
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'https://ionicframework.com/docs/img/demos/avatar.svg';
+                        }}
+                      />
                     </IonAvatar>
                     <div style={{ flex: 1 }}>
                       <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>{post.author_name}</h3>
@@ -306,6 +315,14 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
                       src={post.snapshot_url}
                       alt="Route map"
                       style={{ borderRadius: '8px', marginBottom: '12px' }}
+                      onIonError={(e) => {
+                        console.warn('[CommunityFeed] Route snapshot failed to load for post:', post.post_id);
+                        // Hide the broken image by setting display to none
+                        const target = e.target as HTMLElement;
+                        if (target) {
+                          target.style.display = 'none';
+                        }
+                      }}
                     />
                   )}
 

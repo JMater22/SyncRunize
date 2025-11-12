@@ -321,20 +321,21 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
   useEffect(() => {
     if (!isController) return;
     const status = session.status;
-    if (status === 'IDLE' || status === 'FINISHED') {
+    // ✅ FIX: Stop GPS sampler completely when paused to prevent unwanted line drawing
+    // Previously, GPS continued at slower interval (10-15s) which caused lines to draw even when stationary
+    if (status === 'IDLE' || status === 'FINISHED' || status === 'PAUSED') {
       stopSampler();
       return;
     }
 
-    const intervalMs = status === 'RUNNING'
-      ? (isAppActive ? 5000 : 8000) // Optimized: 5s active, 8s background
-      : (isAppActive ? 10000 : 15000); // Idle: 10s active, 15s background
+    // Only RUNNING state continues GPS sampling
+    const intervalMs = isAppActive ? 5000 : 8000; // 5s active, 8s background
 
     stopSampler();
     samplerRef.current = startSampler({
       intervalMs,
       onSamples: handleSamples,
-      maxAccuracyMeters: status === 'RUNNING' ? 40 : 60,
+      maxAccuracyMeters: 40,
     });
 
     return () => {

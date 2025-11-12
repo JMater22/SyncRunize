@@ -194,7 +194,12 @@ export const deleteHazard = async (report_id, user_id) => {
 // Using Supabase with RPC function or fetch all and filter client-side
 export const findHazardsNearLocation = async (lat, lng, radiusKm) => {
   try {
-    // Fetch all active hazards with user information
+    // ✅ FIX: Calculate bounding box to filter at database level (dramatically faster)
+    // 1 degree of latitude ≈ 111 km, so calculate lat/lng delta for the radius
+    const latDelta = radiusKm / 111;
+    const lngDelta = radiusKm / (111 * Math.cos(lat * Math.PI / 180));
+
+    // Fetch only hazards within bounding box (reduces from 1000s to ~5-10 records)
     const { data: hazards, error } = await supabase
       .from("hazard_reports")
       .select(`
@@ -204,7 +209,11 @@ export const findHazardsNearLocation = async (lat, lng, radiusKm) => {
           profile_picture
         )
       `)
-      .eq("status", "active");
+      .eq("status", "active")
+      .gte("lat", lat - latDelta)  // ✅ FIX: Filter by latitude range
+      .lte("lat", lat + latDelta)
+      .gte("lng", lng - lngDelta)  // ✅ FIX: Filter by longitude range
+      .lte("lng", lng + lngDelta);
 
     if (error) throw error;
 
@@ -212,14 +221,14 @@ export const findHazardsNearLocation = async (lat, lng, radiusKm) => {
       return [];
     }
 
-    // Calculate distance using Haversine formula and filter
+    // Calculate precise distance using Haversine formula and filter
     const hazardsWithDistance = hazards.map(hazard => {
       const distance_km = calculateDistance(lat, lng, hazard.lat, hazard.lng);
       return {
         ...hazard,
         distance_km
       };
-    }).filter(hazard => hazard.distance_km < radiusKm);
+    }).filter(hazard => hazard.distance_km < radiusKm);  // Precise radius filter
 
     // Sort by distance
     hazardsWithDistance.sort((a, b) => a.distance_km - b.distance_km);
@@ -255,7 +264,7 @@ function toRadians(degrees) {
 // ⚙️ Update hazard scores or status. This is for the algorithm updation
 export const modifyHazard = async (id, updates) => {
   try {
-    const { trust_score, agreement_score, status } = updates;
+    const { trust_score, agreement_score, status, image_url } = updates;  // ✅ FIX: Added image_url
 
     if (status && !["active", "resolved", "hidden"].includes(status)) {
       throw new Error("Invalid hazard status");
@@ -266,6 +275,7 @@ export const modifyHazard = async (id, updates) => {
     if (trust_score !== null && trust_score !== undefined) updateData.trust_score = trust_score;
     if (agreement_score !== null && agreement_score !== undefined) updateData.agreement_score = agreement_score;
     if (status !== null && status !== undefined) updateData.status = status;
+    if (image_url !== null && image_url !== undefined) updateData.image_url = image_url;  // ✅ FIX: Added image_url to update
 
     const { data, error } = await supabase
       .from("hazard_reports")

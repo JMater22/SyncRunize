@@ -15,12 +15,17 @@ const uploadHazardImageToSupabase = async (file) => {
   const storageFileName = `${Date.now()}-${sanitizeFileName(file.originalname)}`;
   const storagePath = `hazardImage/${storageFileName}`;
   try {
-    const { error } = await supabase.storage.from("asset").upload(storagePath, buffer, {
+    // ✅ FIX: Changed from "asset" to "assets" (plural) to match Supabase bucket name
+    const { error } = await supabase.storage.from("assets").upload(storagePath, buffer, {
       contentType: file.mimetype,
       upsert: true,
     });
-    if (error) throw error;
-    const { data } = supabase.storage.from("asset").getPublicUrl(storagePath);
+    if (error) {
+      console.error('[Hazard] Supabase storage upload error:', error);
+      throw error;
+    }
+    const { data } = supabase.storage.from("assets").getPublicUrl(storagePath);
+    console.log('[Hazard] Image uploaded to:', data?.publicUrl);
     return data?.publicUrl || null;
   } finally {
     safeDeleteFile(`/uploads/hazards/${file.filename}`);
@@ -43,50 +48,98 @@ export const createHazard = async (req, res) => {
       return res.status(400).json({ error: "Invalid latitude or longitude." });
     }
 
-    if (req.file) {
-      hazardData.image_url = await uploadHazardImageToSupabase(req.file);
-    }
+    // ✅ FIX: Store file reference but don't upload yet (non-blocking)
+    const fileToUpload = req.file;
 
-    // Step 1: Insert into DB
+    // Step 1: Insert into DB (without image URL initially)
     const newHazard = await Hazard.create(hazardData);
     if (!newHazard) throw new Error("Failed to insert hazard");
 
-    // Step 2: Find nearby hazards
-    const neighbors = await Hazard.findHazardsNearLocation(
-      newHazard.lat,
-      newHazard.lng,
-      0.3
-    );
-
-    // Step 3: Compute agreement & trust
-    const agreement = await computeAgreement(newHazard, neighbors);
-    const trust = await computeTrust([...neighbors, newHazard]);
-
-    // Step 4: Update scores
-    const updated = await Hazard.modifyHazard(newHazard.report_id, {
-      agreement_score: agreement,
-      trust_score: trust,
-    });
-
-    // Step 5: Return response immediately (don't block on AI summary)
+    // ✅ CRITICAL FIX: Return response IMMEDIATELY - Don't wait for anything!
+    // Algorithm scoring, image upload, and AI summary all happen in background
     res.status(201).json({
       message: "✅ Hazard created successfully",
-      hazard: updated,
+      hazard: newHazard,
       ai_summary: null, // Generated in background
     });
 
-    // Step 6: Generate AI summary and notify users in background (non-blocking)
-    summarizeHazard(updated)
+    // Step 2-4: Compute scores in background (NON-BLOCKING)
+    // This runs AFTER the response is sent, so it never blocks the user
+    (async () => {
+      try {
+        const neighbors = await Hazard.findHazardsNearLocation(
+          newHazard.lat,
+          newHazard.lng,
+          0.3
+        );
+
+        let agreement = 0;
+        let trust = 0;
+
+        try {
+          const [agreementResult, trustResult] = await Promise.allSettled([
+            computeAgreement(newHazard, neighbors),
+            computeTrust([...neighbors, newHazard])
+          ]);
+
+          agreement = (agreementResult.status === 'fulfilled' && agreementResult.value !== null)
+            ? agreementResult.value
+            : 0;
+          trust = (trustResult.status === 'fulfilled' && trustResult.value !== null)
+            ? trustResult.value
+            : 0;
+
+          console.log(`[Hazard] Computed scores for ${newHazard.report_id}: agreement=${agreement}, trust=${trust}`);
+        } catch (err) {
+          console.warn('[Hazard] Failed to compute scores:', err.message);
+        }
+
+        // Update scores in background
+        await Hazard.modifyHazard(newHazard.report_id, {
+          agreement_score: agreement,
+          trust_score: trust,
+        });
+
+        console.log(`[Hazard] ✅ Scores updated for hazard ${newHazard.report_id}`);
+      } catch (err) {
+        console.error('[Hazard] Background scoring failed:', err.message);
+      }
+    })();
+
+    // Step 6: Upload image in background (non-blocking)
+    if (fileToUpload) {
+      uploadHazardImageToSupabase(fileToUpload)
+        .then(async (imageUrl) => {
+          if (imageUrl) {
+            await Hazard.modifyHazard(newHazard.report_id, { image_url: imageUrl });
+            console.log(`[Hazard] ✅ Image uploaded for hazard ${newHazard.report_id}`);
+          }
+        })
+        .catch((err) => {
+          console.error("⚠️ Failed to upload hazard image:", err);
+        });
+    }
+
+    // Step 7: Generate AI summary and notify users in background (non-blocking)
+    summarizeHazard(newHazard)
       .then((summary) => {
-        console.log(`[Hazard] ✅ AI summary generated for hazard ${updated.report_id}`);
-        return notifyNearbyUsersOfHazard(updated, summary, userId);
+        console.log(`[Hazard] ✅ AI summary generated for hazard ${newHazard.report_id}`);
+        return notifyNearbyUsersOfHazard(newHazard, summary, userId);
       })
       .catch((err) => {
         console.error("⚠️ Failed to generate summary or notify users:", err);
       });
   } catch (err) {
     console.error("❌ Failed to create hazard:", err);
-    res.status(500).json({ error: "Failed to create hazard" });
+    console.error("❌ Error details:", {
+      message: err.message,
+      stack: err.stack,
+      code: err.code
+    });
+    res.status(500).json({
+      error: "Failed to create hazard",
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
   };
 

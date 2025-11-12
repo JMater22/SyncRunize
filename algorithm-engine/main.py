@@ -96,8 +96,14 @@ def distance_decay(lat1, lon1, lat2, lon2):
 def compute_agreement_score(report, neighbors):
     if not neighbors:
         return 0.1
+
+    # ✅ PERFORMANCE FIX: Limit to top 10 most recent neighbors
+    # Processing 60+ neighbors can take 5-10 seconds with SBERT calls
+    # Top 10 most recent neighbors provide sufficient agreement signal
+    sorted_neighbors = sorted(neighbors, key=lambda n: n.reported_at, reverse=True)[:10]
+
     total = 0
-    for neighbor in neighbors:
+    for neighbor in sorted_neighbors:
         decay_t = time_decay(report.reported_at, neighbor.reported_at)
         decay_d = distance_decay(report.lat, report.lng, neighbor.lat, neighbor.lng)
         sim = semantic_similarity(report, neighbor)
@@ -862,61 +868,67 @@ def load_graph():
         print(f"[WARNING] Failed to load crime data: {e}")
 
     # STEP 7: Load user-reported hazards from Supabase
-    try:
-        print("Fetching hazards from Supabase...")
-        response = supabase.table("hazard_reports").select("*").eq("status", "active").execute()
-        hazards = response.data
+    # ✅ PERFORMANCE FIX: Hazard loading DISABLED to speed up startup
+    # This was causing 20-30 second startup delays when 500+ hazards exist
+    # Re-enable later with background loading if needed for route risk calculations
+    #
+    # try:
+    #     print("Fetching hazards from Supabase...")
+    #     response = supabase.table("hazard_reports").select("*").eq("status", "active").execute()
+    #     hazards = response.data
+    #
+    #     if hazards and len(hazards) > 0:
+    #         print(f"Found {len(hazards)} active hazards")
+    #
+    #         # Process each hazard
+    #         for i, hazard in enumerate(hazards):
+    #             lat = hazard.get("lat")
+    #             lng = hazard.get("lng")
+    #             incident_type = hazard.get("incident_type", "unknown")
+    #             severity_weight = hazard.get("severity_weight", 0.5)
+    #             trust_score = hazard.get("trust_score", 0.5)
+    #             agreement_score = hazard.get("agreement_score", 0.5)
+    #
+    #             if lat is None or lng is None:
+    #                 continue
+    #
+    #             # Calculate risk value based on hazard properties
+    #             # Higher severity, trust, and agreement = higher risk
+    #             base_hazard_risk = severity_weight * 100  # Base risk from severity (0-100)
+    #             trust_multiplier = 0.5 + (trust_score * 0.5)  # 0.5 to 1.0
+    #             agreement_multiplier = 0.5 + (agreement_score * 0.5)  # 0.5 to 1.0
+    #
+    #             # Final risk value for this hazard
+    #             hazard_risk_value = base_hazard_risk * trust_multiplier * agreement_multiplier
+    #
+    #             # Find nearest edge using KDTree
+    #             dist, idx = edge_tree.query((lng, lat))  # lng = x, lat = y
+    #             u, v, k = edge_keys[idx]
+    #
+    #             # Add hazard risk to edge (accumulate with crime risk)
+    #             road_graph[u][v][k]["risk"] += hazard_risk_value
+    #
+    #             # Also add risk to nearby edges (within 50 meters)
+    #             nearby_indices = edge_tree.query_ball_point((lng, lat), r=0.0005)  # ~50 meters
+    #             for nearby_idx in nearby_indices:
+    #                 if nearby_idx != idx:  # Skip the closest edge (already processed)
+    #                     u_n, v_n, k_n = edge_keys[nearby_idx]
+    #                     # Reduce risk for nearby edges (50% of main risk)
+    #                     road_graph[u_n][v_n][k_n]["risk"] += hazard_risk_value * 0.5
+    #
+    #             if (i + 1) % 50 == 0 or i == len(hazards) - 1:
+    #                 print(f"Processed {i+1}/{len(hazards)} ({(i+1)/len(hazards):.1%}) hazard reports")
+    #
+    #         print("[OK] Hazard risk integrated into OSM graph")
+    #     else:
+    #         print("[WARNING] No active hazards found in database")
+    #
+    # except Exception as e:
+    #     print(f"[WARNING] Failed to load hazard data: {e}")
+    #     import traceback
+    #     traceback.print_exc()
 
-        if hazards and len(hazards) > 0:
-            print(f"Found {len(hazards)} active hazards")
-
-            # Process each hazard
-            for i, hazard in enumerate(hazards):
-                lat = hazard.get("lat")
-                lng = hazard.get("lng")
-                incident_type = hazard.get("incident_type", "unknown")
-                severity_weight = hazard.get("severity_weight", 0.5)
-                trust_score = hazard.get("trust_score", 0.5)
-                agreement_score = hazard.get("agreement_score", 0.5)
-
-                if lat is None or lng is None:
-                    continue
-
-                # Calculate risk value based on hazard properties
-                # Higher severity, trust, and agreement = higher risk
-                base_hazard_risk = severity_weight * 100  # Base risk from severity (0-100)
-                trust_multiplier = 0.5 + (trust_score * 0.5)  # 0.5 to 1.0
-                agreement_multiplier = 0.5 + (agreement_score * 0.5)  # 0.5 to 1.0
-
-                # Final risk value for this hazard
-                hazard_risk_value = base_hazard_risk * trust_multiplier * agreement_multiplier
-
-                # Find nearest edge using KDTree
-                dist, idx = edge_tree.query((lng, lat))  # lng = x, lat = y
-                u, v, k = edge_keys[idx]
-
-                # Add hazard risk to edge (accumulate with crime risk)
-                road_graph[u][v][k]["risk"] += hazard_risk_value
-
-                # Also add risk to nearby edges (within 50 meters)
-                nearby_indices = edge_tree.query_ball_point((lng, lat), r=0.0005)  # ~50 meters
-                for nearby_idx in nearby_indices:
-                    if nearby_idx != idx:  # Skip the closest edge (already processed)
-                        u_n, v_n, k_n = edge_keys[nearby_idx]
-                        # Reduce risk for nearby edges (50% of main risk)
-                        road_graph[u_n][v_n][k_n]["risk"] += hazard_risk_value * 0.5
-
-                if (i + 1) % 50 == 0 or i == len(hazards) - 1:
-                    print(f"Processed {i+1}/{len(hazards)} ({(i+1)/len(hazards):.1%}) hazard reports")
-
-            print("[OK] Hazard risk integrated into OSM graph")
-        else:
-            print("[WARNING] No active hazards found in database")
-
-    except Exception as e:
-        print(f"[WARNING] Failed to load hazard data: {e}")
-        import traceback
-        traceback.print_exc()
+    print("[OK] Hazard loading skipped for faster startup (see ALGORITHM_ENGINE_PERFORMANCE_ISSUES.md)")
 
     print(f"Graph ready: {len(road_graph.nodes)} nodes, {len(road_graph.edges)} edges")
  

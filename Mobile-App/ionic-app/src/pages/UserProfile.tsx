@@ -311,7 +311,15 @@ export default function Profile() {
         {/* Profile Section */}
         <IonItem lines="none">
           <IonAvatar slot="start">
-            <img src={getAvatarUrl(currentUser.profile_picture)} alt={currentUser.name} />
+            <img
+              src={getAvatarUrl(currentUser.profile_picture)}
+              alt={currentUser.name}
+              onError={(e) => {
+                console.warn('[UserProfile] Avatar failed to load');
+                const target = e.target as HTMLImageElement;
+                target.src = 'https://ionicframework.com/docs/img/demos/avatar.svg';
+              }}
+            />
           </IonAvatar>
           <IonLabel>
             <h2>{currentUser.name}</h2>

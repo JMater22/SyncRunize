@@ -308,6 +308,14 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
       map.on('load', () => {
         ensureBaseLayers(map);
         map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }));
+
+        // ✅ FIX: Resize map after load to ensure proper dimensions
+        // Without this, map may render at incorrect size until toggle is clicked
+        requestAnimationFrame(() => {
+          map.resize();
+          console.log('[RunTrackerMap] Map resized after initial load');
+        });
+
         setMapReady(true);
         onMapReadyChange?.(true);
         reportError(null);

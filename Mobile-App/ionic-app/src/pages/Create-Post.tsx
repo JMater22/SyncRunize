@@ -197,7 +197,17 @@ const CreatePost: React.FC = () => {
             </IonButton>
           ) : (
             <div className="preview-container">
-              <IonImg src={image} alt="Preview" className="preview-image" />
+              <IonImg
+                src={image}
+                alt="Preview"
+                className="preview-image"
+                onIonError={(e) => {
+                  console.warn('[CreatePost] Image failed to load');
+                  // If image fails to load, remove it from state
+                  setImage(null);
+                  showToastMessage('Failed to load image preview', 'warning');
+                }}
+              />
               <IonButton
                 fill="clear"
                 className="remove-image-btn"

@@ -503,6 +503,25 @@ const RunTrackerPage: React.FC = () => {
                   <p className="hazard-detail-description">{selectedHazard.description}</p>
                 )}
 
+                {selectedHazard.image_url && (
+                  <div style={{ marginTop: '16px', marginBottom: '16px' }}>
+                    <img
+                      src={selectedHazard.image_url}
+                      alt={selectedHazard.title}
+                      style={{
+                        width: '100%',
+                        borderRadius: '8px',
+                        maxHeight: '300px',
+                        objectFit: 'cover'
+                      }}
+                      onError={(e) => {
+                        console.warn('[RunTracker] Hazard image failed to load:', selectedHazard.image_url);
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+
                 <div className="hazard-detail-actions">
                   <IonButton
                     fill="clear"

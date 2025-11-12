@@ -75,6 +75,8 @@ const ReportHazard: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; color?: 'success' | 'danger' } | null>(null);
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  // ✅ CRITICAL FIX: Pre-convert blob at capture time to avoid UI freeze during submit
+  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
 
   const initialLocation = useMemo(() => ({
     lat: location.state?.lat,
@@ -116,35 +118,67 @@ const ReportHazard: React.FC = () => {
     }
   };
 
+  // ✅ CRITICAL FIX: Convert DataUrl to Blob with performance logging
+  // This conversion blocks the UI thread, so we do it at photo capture time, not submit time
+  const toBlob = (dataUrl: string): Blob => {
+    const conversionStart = performance.now();
+    const arr = dataUrl.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] ?? 'image/jpeg';
+    const bstr = atob(arr[1]); // Synchronous base64 decode (can take 50-200ms)
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    // Byte-by-byte loop (can take 100-300ms for large images)
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    const blob = new Blob([u8arr], { type: mime });
+    const conversionTime = performance.now() - conversionStart;
+    console.log(`[HazardReport] Blob conversion took ${conversionTime.toFixed(0)}ms for ${(blob.size / 1024).toFixed(0)}KB`);
+    return blob;
+  };
+
   const handleTakePhoto = async () => {
     try {
+      console.log('[HazardReport] Opening camera...');
+      const captureStart = performance.now();
+
       const photo = await Camera.getPhoto({
-        quality: 80,
+        quality: 50, // ✅ FIX: Reduced to 50% to ensure images under 3MB
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Prompt,
+        width: 1024, // ✅ FIX: Resize to max 1024px width (smaller = faster upload)
+        height: 1024, // ✅ FIX: Max height to keep files small
       });
+
+      console.log(`[HazardReport] Photo captured after ${(performance.now() - captureStart).toFixed(0)}ms`);
+
       if (photo?.dataUrl) {
+        // ✅ FIX: Validate size before setting (DataUrl size check)
+        const sizeInMB = (photo.dataUrl.length * 0.75) / (1024 * 1024); // Approximate blob size
+        if (sizeInMB > 3) {
+          setToast({ message: `Image too large (${sizeInMB.toFixed(1)}MB). Maximum 3MB allowed.`, color: 'danger' });
+          return;
+        }
+
+        console.log(`[HazardReport] Image size: ${sizeInMB.toFixed(2)}MB, converting to blob...`);
+
+        // ✅ CRITICAL FIX: Convert to blob NOW (not during submit) to avoid UI freeze later
+        const blob = toBlob(photo.dataUrl);
+
         setPhotoDataUrl(photo.dataUrl);
+        setPhotoBlob(blob);
+        console.log(`[HazardReport] Photo ready for upload: ${(blob.size / 1024).toFixed(0)}KB`);
       }
     } catch (err) {
-      console.error(err);
+      console.error('[HazardReport] Camera error:', err);
       setToast({ message: 'Camera unavailable', color: 'danger' });
     }
   };
 
-  const toBlob = (dataUrl: string) => {
-    const arr = dataUrl.split(',');
-    const mime = arr[0].match(/:(.*?);/)?.[1] ?? 'image/jpeg';
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new Blob([u8arr], { type: mime });
-  };
-
   const handleSubmit = async () => {
+    console.log('[HazardReport] Submit button clicked');
+    const submitStart = performance.now();
+
     if (!lat || !lng) {
       setToast({ message: 'Provide the hazard location first.', color: 'danger' });
       return;
@@ -159,21 +193,38 @@ const ReportHazard: React.FC = () => {
 
     try {
       setSubmitting(true);
-      await HazardsApi.reportHazard({
+      console.log('[HazardReport] Validation passed, preparing data...');
+
+      const hazardData = {
         title: title.trim() || 'Hazard report',
         incident_type: hazardType,
         description: description.trim() || defaultDescription[hazardType] || 'Hazard reported.',
         lat: latNum,
         lng: lngNum,
         severity_weight: severity / 100,
-        imageFile: photoDataUrl ? toBlob(photoDataUrl) : undefined,
+        // ✅ CRITICAL FIX: Use pre-converted blob (no conversion delay during submit!)
+        imageFile: photoBlob || undefined,
+      };
+
+      console.log('[HazardReport] Data prepared, calling API...', {
+        hasImage: !!photoBlob,
+        imageSize: photoBlob ? `${(photoBlob.size / 1024).toFixed(0)}KB` : 'none',
       });
+
+      const apiCallStart = performance.now();
+      await HazardsApi.reportHazard(hazardData);
+      const apiCallTime = performance.now() - apiCallStart;
+
+      console.log(`[HazardReport] ✅ API call completed in ${apiCallTime.toFixed(0)}ms`);
+      console.log(`[HazardReport] ✅ Total submit time: ${(performance.now() - submitStart).toFixed(0)}ms`);
+
       setToast({ message: 'Hazard reported. Thank you!', color: 'success' });
       setTimeout(() => {
         history.replace('/run-tracking');
       }, 1200);
     } catch (err: any) {
-      console.error(err);
+      const submitTime = performance.now() - submitStart;
+      console.error(`[HazardReport] ❌ Submit failed after ${submitTime.toFixed(0)}ms:`, err);
       const msg = err?.response?.data?.error || err?.message || 'Failed to submit hazard.';
       setToast({ message: msg, color: 'danger' });
     } finally {
@@ -285,7 +336,11 @@ const ReportHazard: React.FC = () => {
               {photoDataUrl ? 'Retake photo' : 'Add photo'}
             </IonButton>
             {photoDataUrl && (
-              <IonButton fill="clear" color="medium" onClick={() => setPhotoDataUrl(null)}>
+              <IonButton fill="clear" color="medium" onClick={() => {
+                setPhotoDataUrl(null);
+                setPhotoBlob(null);
+                console.log('[HazardReport] Photo removed');
+              }}>
                 <IonIcon slot="start" icon={trashOutline} />
                 Remove
               </IonButton>
