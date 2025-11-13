@@ -143,48 +143,33 @@ export const updateHazard = async (report_id, user_id, updates) => {
 };
 
 /**
- * Delete hazard owned by user. Returns deleted row object on success, otherwise null.
- * Also removes image file from disk if present.
+ * Delete hazard owned by user (SOFT DELETE). Returns updated row object on success, otherwise null.
+ * ✅ IMPROVED: Changes status to 'deleted' instead of removing row permanently.
+ * Preserves data for trust score history and audit trail. Images are kept for recovery.
  */
 export const deleteHazard = async (report_id, user_id) => {
   try {
-    // 1) Get image_url (to delete file later)
-    const { data: existing, error: fetchError } = await supabase
+    // ✅ SOFT DELETE: Update status instead of deleting row
+    const { data: result, error: updateError } = await supabase
       .from("hazard_reports")
-      .select("image_url")
-      .eq("report_id", report_id)
-      .eq("user_id", user_id)
-      .single();
-
-    if (fetchError || !existing) return null;
-
-    const imageUrl = existing.image_url;
-
-    // 2) Delete row and return deleted row
-    const { data: result, error: deleteError } = await supabase
-      .from("hazard_reports")
-      .delete()
+      .update({
+        status: 'deleted',
+        deleted_at: new Date().toISOString()
+      })
       .eq("report_id", report_id)
       .eq("user_id", user_id)
       .select()
       .single();
 
-    if (deleteError) throw deleteError;
+    if (updateError) throw updateError;
 
-    // 3) Delete image file if it existed
-    if (imageUrl) {
-      try {
-        const relativePath = imageUrl.startsWith("/") ? imageUrl.slice(1) : imageUrl;
-        const imgPath = path.join(process.cwd(), relativePath);
-        if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-      } catch (err) {
-        console.warn("⚠️ Failed to delete image after deleting DB row:", err.message);
-      }
-    }
+    // ✅ KEEP IMAGE: Don't delete image file (preserve for audit trail and potential recovery)
+    // Images can be cleaned up later via scheduled job for old deleted hazards
+    // Example cleanup: DELETE images where deleted_at < NOW() - INTERVAL '90 days'
 
     return result;
   } catch (error) {
-    console.error("Error deleting hazard:", error.message);
+    console.error("Error soft-deleting hazard:", error.message);
     throw error;
   }
 };

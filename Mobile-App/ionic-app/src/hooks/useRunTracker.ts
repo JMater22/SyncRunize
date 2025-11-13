@@ -414,16 +414,22 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     setError(null);
     smoothingStateRef.current = createSmoothingState(); // Reset Kalman filter state
     dispatch({ type: 'START' });
+    // ✅ TTS: Notify user that run tracking has started
+    speakText('Run tracking started. Stay safe!').catch(() => undefined);
   }, [dispatch]);
 
   const pauseRun = useCallback(() => {
     if (session.status !== 'RUNNING') return;
     dispatch({ type: 'PAUSE', at: Date.now() });
+    // ✅ TTS: Notify user that tracking is paused
+    speakText('Tracking paused.').catch(() => undefined);
   }, [dispatch, session.status]);
 
   const resumeRun = useCallback(() => {
     if (session.status !== 'PAUSED') return;
     dispatch({ type: 'RESUME', at: Date.now() });
+    // ✅ TTS: Notify user that tracking has resumed
+    speakText('Resumed. Keep going!').catch(() => undefined);
   }, [dispatch, session.status]);
 
   const finishRun = useCallback(() => {

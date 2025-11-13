@@ -118,6 +118,7 @@ const CreateRouteMap = () => {
   const [showTrafficLayer, setShowTrafficLayer] = useState(false);
   const [trafficLayer, setTrafficLayer] = useState<google.maps.TrafficLayer | null>(null);
   const [generatedPath, setGeneratedPath] = useState<LatLng[]>([]);
+  const [polylineVersion, setPolylineVersion] = useState(0);
   const [generatedRoute, setGeneratedRoute] = useState<GeneratedRoute | null>(null);
   const [distanceInfo, setDistanceInfo] = useState<{
     distance_warning: boolean;
@@ -126,6 +127,10 @@ const CreateRouteMap = () => {
   } | null>(null);
   // Keep an imperative reference to the rendered polyline to force-remove on cancel if needed
   const polylineRef = useRef<google.maps.Polyline | null>(null);
+  const updateGeneratedPath = useCallback((newPath: LatLng[]) => {
+    setGeneratedPath(newPath);
+    setPolylineVersion((prev) => prev + 1);
+  }, []);
   const [safetyAnalysis, setSafetyAnalysis] = useState<SafetyAnalysis | null>(null);
 
   // Hazard states
@@ -487,7 +492,7 @@ const CreateRouteMap = () => {
     try {
       setDistanceInfo(null);
       setIsGenerating(true);
-      setGeneratedPath([]);
+      updateGeneratedPath([]);
       setGeneratedRoute(null);
       setShowActions(false);
 
@@ -538,37 +543,38 @@ const CreateRouteMap = () => {
 
       // Convert coordinates to correct format
       // Algorithm returns arrays: [[lat1, lng1], [lat2, lng2], ...]
-      const pathPoints: LatLng[] = coordinates.map((coord: any) => {
-        // Accept a few common formats from algorithm backends
+      const normalizeCoordinate = (coord: any): LatLng | null => {
         if (Array.isArray(coord) && coord.length >= 2) {
-          let a = parseFloat(coord[0]);
-          let b = parseFloat(coord[1]);
-          // Detect [lon, lat] vs [lat, lon] and normalize to {lat, lng}
-          // Valid latitude range: [-90, 90]; longitude: [-180, 180]
-          const looksLikeLatLon = Math.abs(a) <= 90 && Math.abs(b) <= 180;
-          const looksLikeLonLat = Math.abs(a) <= 180 && Math.abs(b) <= 90;
-          if (looksLikeLatLon && !looksLikeLonLat) {
-            return { lat: a, lng: b };
+          let lat = Number(coord[0]);
+          let lng = Number(coord[1]);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            const latOutOfRange = Math.abs(lat) > 90;
+            const lngLooksLikeLat = Math.abs(lng) <= 90;
+            const lngOutOfRange = Math.abs(lng) > 180;
+            if ((latOutOfRange && lngLooksLikeLat) || lngOutOfRange) {
+              [lat, lng] = [lng, lat];
+            }
+            if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+              return { lat, lng };
+            }
           }
-          if (looksLikeLonLat && !looksLikeLatLon) {
-            return { lat: b, lng: a };
-          }
-          // Ambiguous: default to [lat, lon]
-          return { lat: a, lng: b };
         } else if (coord && typeof coord === 'object') {
-          if (coord.lat !== undefined && coord.lng !== undefined) {
-            return { lat: parseFloat(coord.lat), lng: parseFloat(coord.lng) };
-          }
-          if (coord.latitude !== undefined && coord.longitude !== undefined) {
-            return { lat: parseFloat(coord.latitude), lng: parseFloat(coord.longitude) };
-          }
-          if (coord.lat !== undefined && coord.lon !== undefined) {
-            return { lat: parseFloat(coord.lat), lng: parseFloat(coord.lon) };
+          const latValue = coord.lat ?? coord.latitude;
+          const lngValue = coord.lng ?? coord.lon ?? coord.longitude;
+          const latNum = Number(latValue);
+          const lngNum = Number(lngValue);
+          if (Number.isFinite(latNum) && Number.isFinite(lngNum)) {
+            return { lat: latNum, lng: lngNum };
           }
         }
         console.error('Invalid coordinate format:', coord);
-        return { lat: 0, lng: 0 };
-      }).filter((p: LatLng) => p.lat !== 0 && p.lng !== 0);
+        return null;
+      };
+
+      const normalizedCoords: (LatLng | null)[] = coordinates.map((coord: any) => normalizeCoordinate(coord));
+      const pathPoints: LatLng[] = normalizedCoords
+        .filter((p): p is LatLng => p !== null)
+        .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
 
       console.log('Converted to', pathPoints.length, 'path points');
 
@@ -703,10 +709,10 @@ const CreateRouteMap = () => {
         : [];
 
       if (drawingPoints.length > 0) {
-        setGeneratedPath(drawingPoints);
+        updateGeneratedPath(drawingPoints);
       } else {
         // Fallback to algorithm path if parsing failed
-        setGeneratedPath(pathPoints);
+        updateGeneratedPath(pathPoints);
       }
       setShowActions(true);
 
@@ -793,7 +799,7 @@ const CreateRouteMap = () => {
       polylineRef.current = null;
     }
     // Clear all route-related state
-    setGeneratedPath([]);
+    updateGeneratedPath([]);
     setGeneratedRoute(null);
     setSafetyAnalysis(null);
     setShowActions(false);
@@ -1327,7 +1333,7 @@ const CreateRouteMap = () => {
                 {/* Generated Route Path */}
                 {generatedPath.length > 0 && (
                   <Polyline
-                    key={`route-${generatedPath[0].lat}-${generatedPath[generatedPath.length-1].lng}`}
+                    key={`route-${polylineVersion}`}
                     path={generatedPath}
                     onLoad={(poly) => { polylineRef.current = poly; }}
                     onUnmount={() => { polylineRef.current = null; }}
