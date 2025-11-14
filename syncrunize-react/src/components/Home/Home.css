@@ -194,65 +194,81 @@ h2.profile-name {
 }
 
 
-/* ================= Enhanced Activity Cards ================= */
+/* ================= Enhanced Activity Cards (Facebook-inspired) ================= */
 .activity-feed {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 .activity-card-enhanced {
   background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e4e6eb;
   overflow: hidden;
   margin: 0;
-  transition: all 0.3s ease;
+  transition: box-shadow 0.2s ease;
 }
 
 .activity-card-enhanced:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
 }
 
 .activity-header-enhanced {
-  padding: 16px 18px 14px;
-  background: #f0f0f0;
-  color: #000000;
+  padding: 12px 16px;
+  background: #ffffff;
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
+  align-items: center;
+  gap: 12px;
+  border-bottom: none;
 }
 
 .activity-user-avatar {
-  width: 42px;
-  height: 42px;
-  border: 2.5px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  width: 40px;
+  height: 40px;
+  border: none;
+  box-shadow: none;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.activity-user-avatar:hover {
+  transform: scale(1.05);
 }
 
 .activity-user-info {
   flex: 1;
+  min-width: 0;
 }
 
 .activity-user-name {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
-  margin: 0 0 6px 0;
-  color: rgb(0, 0, 0);
+  margin: 0;
+  color: #050505;
+  line-height: 20px;
+  cursor: pointer;
+  display: inline;
+}
+
+.activity-user-name:hover {
+  text-decoration: underline;
 }
 
 .activity-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 4px;
+  gap: 4px;
+  margin-top: 2px;
 }
+
 span.activity-handle {
-  font-size: 14px;
-  color: #424242;
+  font-size: 13px;
+  color: #65676b;
+  font-weight: 400;
+  margin-left: 4px;
 }
 
 .activity-type-chip {
@@ -265,43 +281,64 @@ span.activity-handle {
 
 .activity-time {
   font-size: 13px;
-  color: rgba(0, 0, 0, 0.8);
-  font-weight: 500;
+  color: #65676b;
+  font-weight: 400;
 }
 
 .activity-location {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.9);
+  color: #65676b;
 }
 
 .activity-location ion-icon {
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .activity-content-enhanced {
   padding: 0;
 }
 
+.activity-content-enhanced > h4 {
+  padding: 0 16px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #050505;
+  line-height: 20px;
+}
+
+.activity-content-enhanced > p {
+  padding: 0 16px;
+  margin-bottom: 12px;
+  font-size: 15px;
+  color: #050505;
+  line-height: 20px;
+}
+
 .activity-stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 0;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 12px 16px;
+  background: #f7f8fa;
+  border-top: 1px solid #e4e6eb;
+  border-bottom: 1px solid #e4e6eb;
 }
 
 .stat-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 18px 14px;
-  border-right: 1px solid #e2e8f0;
-  transition: all 0.3s ease;
+  gap: 4px;
+  padding: 8px 4px;
+  transition: opacity 0.2s ease;
   text-align: center;
   justify-content: center;
+  border-right: none;
 }
 
 .stat-card:last-child {
@@ -309,7 +346,7 @@ span.activity-handle {
 }
 
 .stat-card:hover {
-  background: #f8fafc;
+  opacity: 0.8;
 }
 
 .stat-card ion-icon {
@@ -319,41 +356,47 @@ span.activity-handle {
 .stat-card div {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .stat-label {
-  font-size: 13px;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-weight: 700;
+  font-size: 12px;
+  color: #65676b;
+  text-transform: capitalize;
+  letter-spacing: 0;
+  font-weight: 400;
   order: -1;
 }
 
 .stat-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: #1e293b;
-  line-height: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: #050505;
+  line-height: 1.2;
 }
 
 .activity-map-container {
   position: relative;
-  padding: 16px;
-  background: #f8fafc;
+  padding: 0;
+  background: #000000;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
 }
 
 .activity-map {
   width: 100%;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .map-overlay {
   position: absolute;
-  top: 32px;
-  right: 32px;
+  top: 12px;
+  right: 12px;
 }
 
 .completion-badge {
@@ -364,132 +407,185 @@ span.activity-handle {
   padding: 6px 12px;
 }
 
+/* Likes/Comments Counter */
+.activity-engagement-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid #e4e6eb;
+  font-size: 15px;
+  color: #65676b;
+}
+
+.engagement-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.engagement-icon {
+  width: 18px;
+  height: 18px;
+  background: #92C628;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.engagement-icon ion-icon {
+  font-size: 12px;
+  color: white;
+}
+
 .activity-actions-enhanced {
   display: flex;
   align-items: center;
-  padding: 14px 18px;
-  border-top: 1px solid #e2e8f0;
+  padding: 4px 16px 8px;
   background: white;
-  gap: 8px;
+  gap: 4px;
+  border-top: none;
 }
 
 .action-btn {
-  --color: #64748b;
-  --border-radius: 20px;
-  font-size: 14px;
-  font-weight: 500;
-  height: 36px;
-  transition: all 0.3s ease;
+  --color: #65676b;
+  --border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  height: 32px;
+  transition: all 0.2s ease;
+  flex: 1;
+  margin: 0;
 }
 
 .action-btn:hover {
-  --background: #f1f5f9;
+  --background: #f2f3f5;
 }
 
 .like-btn:hover {
-  --color: #ef4444;
+  --color: #92C628;
 }
 
 .like-btn.liked {
-  --color: #ef4444;
+  --color: #92C628;
 }
 
 .like-btn.liked ion-icon {
-  fill: #ef4444;
+  color: #92C628;
 }
 
 .comment-btn:hover {
-  --color: #3b82f6;
+  --color: #65676b;
 }
 
 .share-btn:hover {
-  --color: #10b981;
+  --color: #65676b;
 }
 
 .action-btn ion-icon {
-  margin-right: 6px;
-  font-size: 16px;
+  margin-right: 8px;
+  font-size: 20px;
 }
 
-/* ================= Enhanced Comments ================= */
+.action-btn span {
+  font-size: 15px;
+}
+
+/* ================= Enhanced Comments (Facebook-style) ================= */
 .comments-section-enhanced {
-  border-top: 1px solid #e2e8f0;
-  background: #f8fafc;
-  padding: 16px;
+  border-top: 1px solid #e4e6eb;
+  background: #ffffff;
+  padding: 12px 16px;
 }
 
 .comments-header {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .comments-header h4 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: #1e293b;
+  color: #050505;
   margin: 0;
 }
 
 .comment-enhanced {
   display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 12px;
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  border: none;
 }
 
 .comment-avatar {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
 }
 
 .comment-content {
-  flex: 1;
+  background: #f0f2f5;
+  border-radius: 18px;
+  padding: 8px 12px;
+  display: inline-block;
+  margin-bottom: 4px;
 }
 
 .comment-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 0;
+  margin-bottom: 2px;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .comment-user {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #1e293b;
+  color: #050505;
+  line-height: 16px;
+  margin-bottom: 2px;
+  display: block;
 }
 
 .comment-time {
   font-size: 12px;
-  color: #64748b;
+  color: #65676b;
+  margin-left: 12px;
+  display: inline-block;
 }
 
 .comment-text {
-  font-size: 14px;
-  color: #475569;
+  font-size: 15px;
+  color: #050505;
   margin: 0;
-  line-height: 1.4;
+  line-height: 20px;
 }
 
 .add-comment {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
-  margin-top: 16px;
-  padding: 12px;
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  margin-top: 12px;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  border: none;
 }
 
 .comment-input {
-  --background: transparent;
-  --color: #1e293b;
-  --placeholder-color: #94a3b8;
-  font-size: 14px;
+  --background: #f0f2f5;
+  --color: #050505;
+  --placeholder-color: #65676b;
+  --border-radius: 18px;
+  --padding-start: 12px;
+  --padding-end: 12px;
+  font-size: 15px;
+  border-radius: 18px;
 }
 
 /* ================= Enhanced Right Sidebar ================= */

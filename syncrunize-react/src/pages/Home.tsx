@@ -802,6 +802,25 @@ const Home: React.FC = () => {
                         </div>
                       )}
 
+                      {/* Engagement Summary (Likes & Comments Count) */}
+                      {(post.likes_count > 0 || post.comments_count > 0) && (
+                        <div className="activity-engagement-summary">
+                          <div className="engagement-left">
+                            {post.likes_count > 0 && (
+                              <>
+                                <div className="engagement-icon">
+                                  <IonIcon icon={heartOutline} />
+                                </div>
+                                <span>{post.likes_count}</span>
+                              </>
+                            )}
+                          </div>
+                          {post.comments_count > 0 && (
+                            <span>{post.comments_count} {post.comments_count === 1 ? 'comment' : 'comments'}</span>
+                          )}
+                        </div>
+                      )}
+
                       {/* Actions */}
                       <div className="activity-actions-enhanced">
                         <IonButton
@@ -838,10 +857,10 @@ const Home: React.FC = () => {
                                 style={{ cursor: 'pointer' }}
                                 onClick={() => handleViewProfile(comment.user_id)}
                               >
-                              <img src={comment.profile_picture || DEFAULT_AVATAR} alt={comment.username} />
+                                <img src={comment.profile_picture || DEFAULT_AVATAR} alt={comment.username} />
                               </IonAvatar>
-                              <div className="comment-content">
-                                <div className="comment-header">
+                              <div style={{ flex: 1 }}>
+                                <div className="comment-content">
                                   <strong
                                     className="comment-user"
                                     style={{ cursor: 'pointer' }}
@@ -849,9 +868,9 @@ const Home: React.FC = () => {
                                   >
                                     {comment.name}
                                   </strong>
-                                  <span className="comment-time">{formatRelativeTime(comment.created_at)}</span>
+                                  <p className="comment-text">{comment.content}</p>
                                 </div>
-                                <p className="comment-text">{comment.content}</p>
+                                <span className="comment-time">{formatRelativeTime(comment.created_at)}</span>
                               </div>
                             </div>
                           ))}
