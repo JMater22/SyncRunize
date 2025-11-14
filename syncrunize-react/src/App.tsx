@@ -26,7 +26,6 @@ import Challenges from "./pages/Challenges";
 import RunTracking from "./pages/RunTracking";
 import RoutesPage from "./pages/RoutesPage";
 import SavedRoutesPage from "./components/Routes/SavedRoutesPage";
-import Activities from "./pages/Activities";
 import Profile from "./pages/Profile";
 import ViewProfile from "./pages/ViewProfile";
 import ViewPost from "./pages/ViewPost";
@@ -181,11 +180,6 @@ const AppContent: React.FC<{ session: any; userData: any; loading: boolean }> = 
               } />
             <Route
               exact
-              path="/activities"
-              render={() => (session ? <Activities /> : <Redirect to="/login" />)}
-            />
-            <Route
-              exact
               path="/profile"
               render={() => (session ? <Profile /> : <Redirect to="/login" />)}
             />
@@ -232,9 +226,6 @@ const AppContent: React.FC<{ session: any; userData: any; loading: boolean }> = 
                 </IonTabButton>
                 <IonTabButton tab="run-tracking" href="/run-tracking">
                   <IonLabel>Run Tracking</IonLabel>
-                </IonTabButton>
-                <IonTabButton tab="activities" href="/activities">
-                  <IonLabel>Activities</IonLabel>
                 </IonTabButton>
                 <IonTabButton tab="community" href="/community">
                   <IonLabel>Community</IonLabel>

@@ -2,28 +2,46 @@ import React from "react";
 import {
   IonPage,
   IonContent,
+  IonButton,
 } from "@ionic/react";
 
-import Laptop from "../assets/RT LAPTOP.png";
+import Laptop from "../assets/RT Mobile.png";
 import '../components/RunTracking/RunTracking.css';
 
-
 const RunTracking: React.FC = () => { 
-return (
-    <IonPage>
+  const handleDownloadAPK = () => {
+    // Replace with your actual APK download URL
+    const apkUrl = "/path/to/your/app.apk";
+    const link = document.createElement('a');
+    link.href = apkUrl;
+    link.download = "RunTracking.apk";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <IonPage> 
       <IonContent className="ion-padding">
         <main className="mobile-app-info">
-          <img src={Laptop} alt="Profile" />
+          <img src={Laptop} alt="Run Tracking Mobile App" />
           <div className="mobile-app-text">
             <h2>Run Tracking Available on Mobile App Only</h2>
             <p>
-              Track your runs, monitor your progress, and stay motivated  all
-              from your phone. Download the app now to get started!
+              Experience seamless run tracking with real-time GPS monitoring, 
+              personalized insights, and achievement milestones. Take your fitness 
+              journey to the next level — download now and start running smarter!
             </p>
+            <IonButton 
+              expand="block"  
+              className="download-btn"
+              onClick={handleDownloadAPK}
+            >
+              Download APK
+            </IonButton>
           </div>
         </main>
       </IonContent>
-
     </IonPage>
   );
 };
