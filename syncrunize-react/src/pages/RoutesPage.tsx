@@ -177,10 +177,10 @@ const RoutesPage: React.FC = () => {
           </IonCol>
 
           <IonCol size="4" className="button-col ion-text-right">
-            <IonButton expand="block" onClick={handleSavedRoutes}>
+            <IonButton expand="block" onClick={handleSavedRoutes} className="saved-routes-btn">
               Saved Routes
             </IonButton>
-            <IonButton expand="block" onClick={handleCreateRoute}>
+            <IonButton expand="block" onClick={handleCreateRoute} className="create-route-btn">
               Create New Route
             </IonButton>
           </IonCol>
