@@ -1,348 +1,265 @@
-/* Existing styles */
-.custom-size {
-  font-size: 1.5rem;
-  margin-bottom: 0;
-}
-.map-img {
-  width: 120px;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 8px;
-  margin: 10px;
-  margin-top: 3rem;
+/* ===== ROUTES PAGE STYLES - Dark Theme ===== */
+
+/* Page and Header */
+.routes-page ion-header {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
-.custom-map {
-  width: 120px;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 8px;
-  margin: 10px;
-  margin-top: 2rem;
-} 
-
-.map-container {
-  position: relative;
-}
-
-.runner-icon {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 2rem;
-}
-
-.route-panel {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #1e1e1e;
-  background-color: #000;
-  border-top-left-radius: 16px;
-  border-top-right-radius: 16px;
-  padding: 16px;
-  color: white;
-}
-
-/* Route Header Styles */
-.route-header {
-  --background: #1a1a1a;
+.routes-page ion-toolbar {
+  --background: rgba(0, 0, 0, 0.9);
   --color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-} 
-
-.route-toolbar {
-  --background: #1a1a1a;
-  --color: #ffffff;
-  --padding-top: 8px;
-  --padding-bottom: 8px;
-  --min-height: 56px;
+  backdrop-filter: blur(10px);
 }
 
-/* Back Button */
-.route-back-buttons {
-  margin-left: 15px;
-}
-
-.route-back-button {
-  --color: #ffffff;
-  --icon-font-size: 24px;
-  font-size: 16px;
-  font-weight: 500;
-  text-transform: none;
-}
-
-
-
-/* Title */
-.route-title {
-  font-size: 18px;
+.routes-page ion-title {
+  font-size: 20px;
   font-weight: 600;
-  color: #ffffff;
-  text-align: center;
+  color: #f1f7e3;
 }
 
-
-/* Locate Button */
-.route-locate-button {
-  --color: #92C628;
-  --background: transparent;
-  --background-hover: rgba(77, 166, 255, 0.1);
-  --background-activated: rgba(77, 166, 255, 0.2);
-  --border-radius: 8px;
-  width: 44px;
-  height: 44px;
-  margin: 0 2px;
+.routes-page ion-button {
+  --color: rgba(255, 255, 255, 0.9);
 }
 
-.route-locate-icon {
-  font-size: 24px;
-  color: #92C628;
+.routes-page ion-content {
+  --background: #000;
+  background: #000 !important;
 }
 
-.route-loading-spinner {
-  color: #92C628;;
-  --color: #92C628;
-  width: 20px;
-  height: 20px;
+.routes-search-bar {
+  padding: 16px 16px 8px;
 }
 
-/* Bookmark Button */
-.route-bookmark-button {
-  --color: #92C628;
-  --background: transparent;
-  --background-hover: rgba(77, 166, 255, 0.1);
-  --background-activated: rgba(77, 166, 255, 0.2);
-  --border-radius: 8px;
-  width: 44px;
-  height: 44px;
-  margin: 0 2px;
-}
-
-.route-bookmark-icon {
-  font-size: 24px;
-  color: #92C628;
-}
-
-/* Disabled state */
-.route-locate-button:disabled {
-  --color: rgba(77, 166, 255, 0.4);
-  opacity: 0.5;
-}
-
-.route-details-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.public-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.section-title {
-  margin-top: 16px;
-  font-size: 1rem;
-}
-
-.action-buttons {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 20px;
-}
-
-.cancel-btn {
-  flex: 1;
-  margin-right: 8px;
+.routes-page .routes-search-bar ion-searchbar::part(native) {
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f5f5f5;
+  backdrop-filter: blur(4px);
 }
 
-.save-btn {
-  flex: 1;
-  margin-left: 8px;
-  border-radius: 12px;
+.routes-page .routes-search-bar ion-searchbar::part(icon) {
+  color: rgba(255, 255, 255, 0.6);
 }
 
-/* New styles from TSX */
-.search-bar {
-  padding: 10px;
+.routes-page .routes-search-bar ion-searchbar::part(placeholder) {
+  color: rgba(255, 255, 255, 0.5);
 }
 
-.current-location-info {
-  padding: 10px;
-  background-color: #f0f0f0;
-  text-align: center;
-}
-
-.map-area {
-  position: relative;
-  width: 100%;
-  height: calc(100vh - 280px);
-  overflow: hidden;
-  border-radius: 10px;
-  padding: 20px;
-}
-
-.map-iframe {
-  border: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 10px;
-}
-
-/* Accordion Header Title */
-.Suggested-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 0;
-  margin-left: 10px;
-  color: #ffffff;
-}
-
-/* Accordion Styles - FIXED COLORS */
-.accordion-header {
-  font-weight: bold;
-  --background: #1a1a1a;
-  --background-activated: #2a2a2a;
-  --background-hover: #2a2a2a;
-  --color: #ffffff;
-  --padding-start: 16px;
-  --padding-end: 16px;
-  
-}
-
-.accordion-content {
-  padding: 12px;
-  height: calc(100vh - 200px);
-  overflow-y: auto;
-  background-color: #000;
-}
-
-/* Route Card Section */
-.route-card {
-  background-color: #1a1a1a;
-  color: #424242;
-  margin-bottom: 16px;
-  border-radius: 12px;
-  border-style: solid;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.route-card::part(native) {
-  background-color: #1a1a1a;
-}
-
-.route-card-inner {
+.routes-empty {
   display: flex;
   flex-direction: column;
-  padding: 0;
-}
-
-.route-card ion-card-header {
-  padding: 16px 16px 8px 16px;
-  background-color: #1a1a1a;
-}
-
-.route-card-title {
-  color: #ffffff;
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 0;
-  text-align: center;
-  
-}
-
-.route-card ion-card-content {
-  padding: 0 16px 16px 16px;
-}
-
-.current-location-info {
-    padding: 10px;
-    background-color: #424242;
-    text-align: center;
-}
-.route-meta {
-  margin-bottom: 2px;
-  color: #b0b0b0;
-  font-size: 0.9rem;
-  font-weight: 500;
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-}
-
-.route-meta span {
-  display: flex;
   align-items: center;
-  gap: 4px;
-  
-}
-
-.route-location {
-  margin-bottom: 12px;
-  margin-top: 4px;
-  margin-left: 8px;
-  color: #888;
-  font-size: 0.875rem;
-  text-align: center;
-}
-
-.route-buttons {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
   justify-content: center;
-  
-}
-
-.route-action-btn {
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-transform: none;
-  --padding-start: 16px;
-  --padding-end: 16px;
-  height: 36px;
+  gap: 12px;
+  padding: 40px 24px;
   text-align: center;
 }
 
-.route-map-container {
-  width: 100%;
-  height: 200px;
-  border-radius: 0 0 12px 12px;
-  overflow: hidden;
-  margin: 0;
+.routes-page .routes-empty {
+  color: rgba(255, 255, 255, 0.7);
 }
 
-.route-map-iframe {
-  border: 0;
+.routes-page .routes-empty ion-icon {
+  font-size: 48px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.routes-page .routes-empty ion-spinner {
+  --color: #92c628;
+  width: 48px;
+  height: 48px;
+}
+
+.routes-feed-card {
+  margin: 12px 16px;
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.routes-page .routes-feed-card {
+  background: rgba(0, 0, 0, 0.75);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.routes-page .routes-feed-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.routes-feed-card-media {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  background: #0a0a0a;
+}
+
+.routes-feed-card-media img {
   width: 100%;
   height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
-/* Floating Action Button (Create Route) */
-.create-route-fab {
-  margin: 16px;
-  z-index:Q1000;
+.routes-page .routes-feed-card ion-card-header {
+  background: transparent;
 }
 
-.create-route-fab-button {
-  --background: #92C628; 
-  --background-hover: #92C628; 
-  --background-activated: #92C628; 
-  --border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  margin: 0px 10px 10px 0px;
-
+.routes-page .routes-feed-card ion-card-title {
+  color: #f1f7e3;
+  font-size: 18px;
+  font-weight: 600;
 }
 
-.create-route-fab-icon {
-  font-size: 24px;
-  color: #000000;
+.routes-feed-card-meta {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.routes-page .routes-feed-card-meta {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.routes-page .routes-feed-card ion-card-content {
+  background: transparent;
+}
+
+.routes-feed-card-description {
+  font-size: 14px;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.routes-page .routes-feed-card-description {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.routes-feed-card-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.routes-page .routes-feed-card-actions ion-button[color="success"] {
+  --background: linear-gradient(135deg, #b4ff65, #8acb2d);
+  --background-hover: linear-gradient(135deg, #a3f054, #7aba2c);
+  --background-activated: linear-gradient(135deg, #92e043, #6aa82b);
+  --color: #0c1504;
+  --border-radius: 10px;
+  font-weight: 700;
+  text-transform: none;
+}
+
+.routes-page .routes-feed-card-actions ion-button[fill="outline"] {
+  --border-color: rgba(255, 255, 255, 0.3);
+  --color: rgba(255, 255, 255, 0.9);
+  --border-radius: 10px;
+  font-weight: 600;
+  text-transform: none;
+}
+
+.routes-page .routes-feed-card-actions ion-button[fill="outline"]:hover {
+  --background: rgba(255, 255, 255, 0.08);
+}
+
+.routes-feed-detail-modal {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.routes-page .routes-feed-detail-modal ion-header {
+  --background: rgba(0, 0, 0, 0.9);
+}
+
+.routes-page .routes-feed-detail-modal ion-toolbar {
+  --background: rgba(0, 0, 0, 0.9);
+  --color: #fff;
+}
+
+.routes-page .routes-feed-detail-modal ion-title {
+  color: #f1f7e3;
+}
+
+.routes-page .routes-feed-detail-modal ion-content {
+  --background: #000;
+}
+
+.routes-feed-detail-image {
+  width: 100%;
+  height: 260px;
+  overflow: hidden;
+  background: #0a0a0a;
+}
+
+.routes-feed-detail-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.routes-feed-detail-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.routes-feed-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.routes-feed-detail-stats > div {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.routes-feed-detail-stats ion-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.routes-page .routes-feed-detail-stats ion-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.routes-feed-detail-stats strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 16px;
+}
+
+.routes-page .routes-feed-detail-stats strong {
+  color: #f3ffe3;
+  font-weight: 600;
+}
+
+.routes-feed-detail-description {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.routes-page .routes-feed-detail-description {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+@media (min-width: 768px) {
+  .routes-feed-card {
+    margin: 16px auto;
+    max-width: 540px;
+  }
+
+  .routes-feed-detail-body {
+    max-width: 640px;
+    margin: 0 auto;
+  }
 }

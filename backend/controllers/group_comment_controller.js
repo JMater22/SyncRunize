@@ -2,12 +2,14 @@ import * as GroupCommentModel from "../models/group_comment_model.js";
 import * as NotificationService from "../services/notification_service.js";
 import { supabase } from "../utils/supabase.js";
 
-// ✅ GET comments
+// ✅ GET comments with pagination
 export const getComments = async (req, res) => {
   try {
     const { groupPostId } = req.params;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
 
-    const comments = await GroupCommentModel.getComments(parseInt(groupPostId, 10));
+    const comments = await GroupCommentModel.getComments(parseInt(groupPostId, 10), limit, offset);
 
     res.json(comments);
   } catch (err) {

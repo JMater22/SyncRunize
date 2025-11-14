@@ -1,7 +1,8 @@
 import express from "express";
+import multer from "multer";
 import * as HazardController from "../controllers/hazard_controller.js";
 import { authenticate } from "../utils/auth_middleware.js";
-import { uploadHazardImage } from "../config/multer_config.js";
+import { uploadHazardImage, handleMulterError } from "../config/multer_config.js";
 
 const router = express.Router();
 
@@ -9,7 +10,22 @@ const router = express.Router();
 router.post(
   "/",
   authenticate,
-  uploadHazardImage.single("image"), // optional image when creating
+  (req, res, next) => {
+    // ✅ FIX: Wrap multer to catch errors properly
+    uploadHazardImage.single("image")(req, res, (err) => {
+      if (err) {
+        // Handle multer errors immediately
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ error: 'Image file too large. Maximum size is 5MB.' });
+          }
+          return res.status(400).json({ error: `File upload error: ${err.message}` });
+        }
+        return res.status(400).json({ error: err.message || 'File upload failed' });
+      }
+      next();
+    });
+  },
   HazardController.createHazard
 );
 

@@ -1,0 +1,38 @@
+.post-card-skeleton {
+  margin: 16px;
+  padding: 16px;
+}
+
+.skeleton-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.skeleton-user-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skeleton-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.skeleton-route-info {
+  display: flex;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+.skeleton-actions {
+  display: flex;
+  gap: 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ion-color-light);
+}

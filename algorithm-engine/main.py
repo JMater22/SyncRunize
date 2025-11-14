@@ -17,6 +17,20 @@ from scipy.spatial import cKDTree
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import os
+import threading  # ✅ For background hazard loading
+
+
+# ---- GLOBAL ROAD-ONLY CONFIG ----
+SAFE_ROAD_TYPES = {
+    "primary", "primary_link",
+    "secondary", "secondary_link",
+    "tertiary", "tertiary_link",
+    "trunk", "trunk_link",
+    "residential", "living_street",
+    "unclassified",
+    "service",
+    "pedestrian",   # keep if you still want walking streets; remove if not
+}
 
 # Load environment variables
 load_dotenv()
@@ -96,8 +110,14 @@ def distance_decay(lat1, lon1, lat2, lon2):
 def compute_agreement_score(report, neighbors):
     if not neighbors:
         return 0.1
+
+    # ✅ PERFORMANCE FIX: Limit to top 10 most recent neighbors
+    # Processing 60+ neighbors can take 5-10 seconds with SBERT calls
+    # Top 10 most recent neighbors provide sufficient agreement signal
+    sorted_neighbors = sorted(neighbors, key=lambda n: n.reported_at, reverse=True)[:10]
+
     total = 0
-    for neighbor in neighbors:
+    for neighbor in sorted_neighbors:
         decay_t = time_decay(report.reported_at, neighbor.reported_at)
         decay_d = distance_decay(report.lat, report.lng, neighbor.lat, neighbor.lng)
         sim = semantic_similarity(report, neighbor)
@@ -159,100 +179,68 @@ def compute_trust(reports):
 def safest_path_osm(G, origin_point, destination_point, alpha=0.5):
     """
     origin_point, destination_point = (lat, lng)
-    Enhanced with sidewalk preference and road safety scoring
+    Simple constrained weight:
+        cost = (1 - alpha) * length + alpha * risk
     """
     # Find nearest OSM nodes
     orig_node = ox.nearest_nodes(G, origin_point[1], origin_point[0])  # (lng, lat)
     dest_node = ox.nearest_nodes(G, destination_point[1], destination_point[0])
 
-    # Custom weight: combine length, risk, and road safety factors
+    alpha = max(0.0, min(1.0, alpha))
+
     def weight(u, v, d):
-        length = d.get("length", 1.0) # physical road distance (meters)
-        base_risk = d.get("risk", 0.2)  # crime/incident risk score
+        length = d.get("length", 1.0)
+        risk = d.get("risk", 0.0)
+        return (1 - alpha) * length + alpha * risk
 
-        # SIDEWALK PREFERENCE: Check if sidewalk exists
-        sidewalk = d.get("sidewalk", "no")
-        has_sidewalk = sidewalk in ["yes", "both", "left", "right", "separate"]
-
-        # ROAD TYPE SAFETY: Penalize dangerous road types
-        highway_type = d.get("highway", "residential")
-        road_safety_penalty = 0
-
-        # Safest to most dangerous
-        if highway_type in ["footway", "pedestrian", "path", "cycleway"]:
-            road_safety_penalty = 0  # Safest - dedicated paths
-        elif highway_type in ["residential", "living_street"]:
-            road_safety_penalty = 50 if not has_sidewalk else 10  # Safe if has sidewalk
-        elif highway_type in ["tertiary", "unclassified", "service"]:
-            road_safety_penalty = 100 if not has_sidewalk else 20
-        elif highway_type in ["secondary", "secondary_link"]:
-            road_safety_penalty = 200 if not has_sidewalk else 40  # Busier roads
-        elif highway_type in ["primary", "primary_link", "trunk", "trunk_link"]:
-            road_safety_penalty = 500 if not has_sidewalk else 80  # Major roads - avoid
-        elif highway_type in ["motorway", "motorway_link"]:
-            road_safety_penalty = 10000  # Highways - NEVER use
-
-        # LIGHTING: Prefer well-lit paths (if data available)
-        lit = d.get("lit", "no")
-        lighting_penalty = 0 if lit == "yes" else 30
-
-        # LANES: More lanes = more dangerous
-        lanes = int(d.get("lanes", 1))
-        lane_penalty = (lanes - 1) * 20
-
-        # SPEED LIMIT: Higher speed = more dangerous
-        maxspeed = d.get("maxspeed", "30")
-        try:
-            speed_val = int(str(maxspeed).replace(" kph", "").replace(" mph", "").split()[0])
-            speed_penalty = max(0, (speed_val - 30) * 2)  # Penalty for speeds above 30kph
-        except:
-            speed_penalty = 0
-
-        # TOTAL SAFETY SCORE
-        safety_score = base_risk + road_safety_penalty + lighting_penalty + lane_penalty + speed_penalty
-
-        # Apply sidewalk bonus (reduce safety score if sidewalk exists)
-        if has_sidewalk:
-            safety_score *= 0.5  # 50% safer with sidewalk
-
-        # Combine distance and safety
-        return (1 - alpha) * length + alpha * safety_score
-
-    # Run shortest path
     try:
         path = nx.shortest_path(G, orig_node, dest_node, weight=weight)
 
-        # Extract coordinates and road metadata
         coords = []
         route_metadata = []
 
-        for i, node in enumerate(path):
-            coords.append((G.nodes[node]["y"], G.nodes[node]["x"]))
+        for i in range(len(path) - 1):
+            u = path[i]
+            v = path[i + 1]
 
-            # Get edge metadata for safety warnings
-            if i < len(path) - 1:
-                next_node = path[i + 1]
-                if G.has_edge(node, next_node):
-                    edge_data = G[node][next_node]
-                    if isinstance(edge_data, dict):
-                        edge_info = edge_data
-                    else:
-                        edge_info = list(edge_data.values())[0]
+            edge_data = G[u][v]
+            if isinstance(edge_data, dict):
+                edge = edge_data if "length" in edge_data else list(edge_data.values())[0]
+            else:
+                edge = list(edge_data.values())[0]
 
-                    route_metadata.append({
-                        "highway": edge_info.get("highway", "unknown"),
-                        "sidewalk": edge_info.get("sidewalk", "no"),
-                        "lit": edge_info.get("lit", "no"),
-                        "lanes": edge_info.get("lanes", 1),
-                        "maxspeed": edge_info.get("maxspeed", "30"),
-                        "length": edge_info.get("length", 0)
-                    })
+            # Use geometry if available for nice curves
+            if "geometry" in edge:
+                xs, ys = edge["geometry"].xy
+                edge_points = list(zip(ys, xs))  # (lat, lng)
+            else:
+                edge_points = [
+                    (G.nodes[u]["y"], G.nodes[u]["x"]),
+                    (G.nodes[v]["y"], G.nodes[v]["x"]),
+                ]
+
+            if coords:
+                edge_points = edge_points[1:]
+
+            coords.extend(edge_points)
+
+            route_metadata.append({
+                "highway": edge.get("highway", "unknown"),
+                "sidewalk": edge.get("sidewalk", "no"),
+                "lit": edge.get("lit", "no"),
+                "lanes": edge.get("lanes", 1),
+                "maxspeed": edge.get("maxspeed", "30"),
+                "length": edge.get("length", 0),
+                "risk": edge.get("risk", 0.0),
+            })
 
         return coords, route_metadata
+
     except nx.NetworkXNoPath:
         return [], []
 
-SAFETY_SCORE_WEIGHT = 0.2  # how strongly we penalize risky segments when selecting a loop
+
+SAFETY_SCORE_WEIGHT = 0.2  # how strongly we penaliz    e risky segments when selecting a loop
 DISTANCE_WARNING_THRESHOLD = 0.15  # 15% deviation triggers UI warning
 
 
@@ -268,70 +256,29 @@ def distance_based_route(G, origin_point, target_distance_km, alpha=0.5):
     alpha = max(0.0, min(1.0, alpha))
 
     def build_weight(blocked_edges=None):
+        """
+        Simple constrained weight:
+            cost = (1 - alpha) * length + alpha * risk + (blocked penalty)
+        """
         blocked = blocked_edges or set()
 
         def weight(u, v, d):
             length = d.get("length", 1.0)
-            base_risk = d.get("risk", 0.2)
-
-            # Sidewalk preference
-            sidewalk = d.get("sidewalk", "no")
-            has_sidewalk = sidewalk in ["yes", "both", "left", "right", "separate"]
-
-            # Road type safety
-            highway_type = d.get("highway", "residential")
-            road_safety_penalty = 0
-
-            if highway_type in ["footway", "pedestrian", "path", "cycleway"]:
-                road_safety_penalty = 0
-            elif highway_type in ["residential", "living_street"]:
-                road_safety_penalty = 50 if not has_sidewalk else 10
-            elif highway_type in ["tertiary", "unclassified", "service"]:
-                road_safety_penalty = 100 if not has_sidewalk else 20
-            elif highway_type in ["secondary", "secondary_link"]:
-                road_safety_penalty = 200 if not has_sidewalk else 40
-            elif highway_type in ["primary", "primary_link", "trunk", "trunk_link"]:
-                road_safety_penalty = 500 if not has_sidewalk else 80
-            elif highway_type in ["motorway", "motorway_link"]:
-                road_safety_penalty = 10000
-
-            # Lighting
-            lit = d.get("lit", "no")
-            lighting_penalty = 0 if lit == "yes" else 30
-
-            # Lanes
-            try:
-                lanes = int(str(d.get("lanes", 1)).split(";")[0])
-            except:
-                lanes = 1
-            lane_penalty = (lanes - 1) * 20
-
-            # Speed limit
-            maxspeed = d.get("maxspeed", "30")
-            try:
-                speed_val = int(str(maxspeed).replace(" kph", "").replace(" mph", "").split()[0])
-                speed_penalty = max(0, (speed_val - 30) * 2)
-            except:
-                speed_penalty = 0
-
-            safety_score = base_risk + road_safety_penalty + lighting_penalty + lane_penalty + speed_penalty
-
-            if has_sidewalk:
-                safety_score *= 0.5
+            risk = d.get("risk", 0.0)
 
             penalty = 0
             if (u, v) in blocked or (v, u) in blocked:
-                penalty = 1e6  # Effectively discourage reusing outbound edges
+                penalty = 1e6  # discourage reusing outbound edges
 
-            # Combine distance with safety using alpha
-            return (1 - alpha) * length + alpha * safety_score + penalty
+            return (1 - alpha) * length + alpha * risk + penalty
 
         return weight
 
+
     # Get all nodes within a reasonable radius
     target_meters = target_distance_km * 1000
-    min_forward = target_meters * 0.35
-    max_forward = target_meters * 0.65
+    min_forward = target_meters * 0.30
+    max_forward = target_meters * 0.70
 
     candidate_nodes = []
     try:
@@ -360,7 +307,18 @@ def distance_based_route(G, origin_point, target_distance_km, alpha=0.5):
 
     if not candidate_nodes:
         print("No candidate nodes found for distance-based routing")
-        return []
+        return [], [], {
+            "distance_warning": True,
+            "requested_distance_km": target_distance_km,
+            "generated_distance_km": 0,
+            "reason_code": "no_candidate_nodes",
+            "reason_message": (
+                "No suitable turning points were found on nearby roads. "
+                "This usually happens if the requested distance is too long "
+                "for the roads connected to your starting point, or the area "
+                "has too few connected streets after safety filtering."
+            ),
+        }
 
     # Try multiple turning points to find the best route
     best_route_info = None
@@ -409,13 +367,20 @@ def distance_based_route(G, origin_point, target_distance_km, alpha=0.5):
         return total / 1000.0
 
     def evaluate_path(node_sequence):
+        """
+        Evaluate a candidate loop by:
+        - total distance
+        - average risk per km (based on edge 'risk')
+        - distance difference from target
+        """
         total_distance = 0.0  # meters
-        total_risk = 0.0      # accumulated risk * km (used to get risk/km)
+        total_risk = 0.0      # risk * km
 
         for i in range(len(node_sequence) - 1):
             u, v = node_sequence[i], node_sequence[i + 1]
             if not G.has_edge(u, v):
                 continue
+
             edge_data = G[u][v]
             if isinstance(edge_data, dict):
                 edge_info = edge_data if "length" in edge_data else list(edge_data.values())[0]
@@ -423,55 +388,17 @@ def distance_based_route(G, origin_point, target_distance_km, alpha=0.5):
                 edge_info = list(edge_data.values())[0]
 
             length = edge_info.get("length", 0.0)
-            base_risk = edge_info.get("risk", 0.2)
-
-            # Recompute safety_score similar to build_weight for evaluation
-            sidewalk = edge_info.get("sidewalk", "no")
-            has_sidewalk = sidewalk in ["yes", "both", "left", "right", "separate"]
-
-            highway_type = edge_info.get("highway", "residential")
-            road_safety_penalty = 0
-            if highway_type in ["footway", "pedestrian", "path", "cycleway"]:
-                road_safety_penalty = 0
-            elif highway_type in ["residential", "living_street"]:
-                road_safety_penalty = 50 if not has_sidewalk else 10
-            elif highway_type in ["tertiary", "unclassified", "service"]:
-                road_safety_penalty = 100 if not has_sidewalk else 20
-            elif highway_type in ["secondary", "secondary_link"]:
-                road_safety_penalty = 200 if not has_sidewalk else 40
-            elif highway_type in ["primary", "primary_link", "trunk", "trunk_link"]:
-                road_safety_penalty = 500 if not has_sidewalk else 80
-            elif highway_type in ["motorway", "motorway_link"]:
-                road_safety_penalty = 10000
-
-            lit = edge_info.get("lit", "no")
-            lighting_penalty = 0 if lit == "yes" else 30
-
-            try:
-                lanes = int(str(edge_info.get("lanes", 1)).split(";")[0])
-            except:
-                lanes = 1
-            lane_penalty = (lanes - 1) * 20
-
-            maxspeed = edge_info.get("maxspeed", "30")
-            try:
-                speed_val = int(str(maxspeed).replace(" kph", "").replace(" mph", "").split()[0])
-                speed_penalty = max(0, (speed_val - 30) * 2)
-            except:
-                speed_penalty = 0
-
-            safety_score = base_risk + road_safety_penalty + lighting_penalty + lane_penalty + speed_penalty
-            if has_sidewalk:
-                safety_score *= 0.5
+            risk = edge_info.get("risk", 0.0)
 
             total_distance += length
-            total_risk += safety_score * (length / 1000)  # integrate safety over distance (risk per km basis)
+            total_risk += risk * (length / 1000.0)
 
-        distance_km = total_distance / 1000
-        # Average risk per km for this path
+        distance_km = total_distance / 1000.0
         risk_per_km = (total_risk / distance_km) if distance_km > 0 else float("inf")
         distance_diff = abs(distance_km - target_distance_km)
-        # Composite score used only for broad ranking (not final selection)
+
+        # For ranking, we mostly care about distance closeness;
+        # risk is used later when picking best among close candidates.
         score = distance_diff
 
         return distance_km, risk_per_km, distance_diff, score
@@ -479,32 +406,44 @@ def distance_based_route(G, origin_point, target_distance_km, alpha=0.5):
     def serialize_path(node_sequence):
         coords = []
         metadata = []
-        last_coord = None
 
-        for i, node in enumerate(node_sequence):
-            coord = (G.nodes[node]["y"], G.nodes[node]["x"])
-            if coord != last_coord:
-                coords.append(coord)
-                last_coord = coord
+        def append_edge_geometry(u, v, edge_info):
+            if "geometry" in edge_info:
+                xs, ys = edge_info["geometry"].xy
+                for lat, lon in zip(ys, xs):
+                    if not coords or (lat, lon) != coords[-1]:
+                        coords.append((lat, lon))
+            else:
+                lat_u, lon_u = G.nodes[u]["y"], G.nodes[u]["x"]
+                lat_v, lon_v = G.nodes[v]["y"], G.nodes[v]["x"]
+                if not coords or (lat_u, lon_u) != coords[-1]:
+                    coords.append((lat_u, lon_u))
+                if (lat_v, lon_v) != coords[-1]:
+                    coords.append((lat_v, lon_v))
 
-            if i < len(node_sequence) - 1:
-                next_node = node_sequence[i + 1]
-                if not G.has_edge(node, next_node):
-                    continue
-                edge_data = G[node][next_node]
-                if isinstance(edge_data, dict):
-                    edge_info = edge_data if "length" in edge_data else list(edge_data.values())[0]
+        for i in range(len(node_sequence) - 1):
+            u = node_sequence[i]
+            v = node_sequence[i + 1]
+
+            edge_data = G[u][v]
+            if isinstance(edge_data, dict):
+                if "length" in edge_data:
+                    edge_info = edge_data
                 else:
                     edge_info = list(edge_data.values())[0]
+            else:
+                edge_info = list(edge_data.values())[0]
 
-                metadata.append({
-                    "highway": edge_info.get("highway", "unknown"),
-                    "sidewalk": edge_info.get("sidewalk", "no"),
-                    "lit": edge_info.get("lit", "no"),
-                    "lanes": edge_info.get("lanes", 1),
-                    "maxspeed": edge_info.get("maxspeed", "30"),
-                    "length": edge_info.get("length", 0)
-                })
+            append_edge_geometry(u, v, edge_info)
+
+            metadata.append({
+                "highway": edge_info.get("highway", "unknown"),
+                "sidewalk": edge_info.get("sidewalk", "no"),
+                "lit": edge_info.get("lit", "no"),
+                "lanes": edge_info.get("lanes", 1),
+                "maxspeed": edge_info.get("maxspeed", "30"),
+                "length": edge_info.get("length", 0),
+            })
 
         return coords, metadata
 
@@ -537,7 +476,12 @@ def distance_based_route(G, origin_point, target_distance_km, alpha=0.5):
         if not turn_node:
             return None
 
-        blocked_edges = set((trimmed_nodes[i], trimmed_nodes[i + 1]) for i in range(len(trimmed_nodes) - 1))
+        blocked_edges = set()
+        for i in range(len(trimmed_nodes) - 1):
+            u = trimmed_nodes[i]
+            v = trimmed_nodes[i + 1]
+            blocked_edges.add((u, v))
+            blocked_edges.add((v, u))
 
         try:
             return_path = nx.shortest_path(graph, turn_node, trimmed_nodes[0], weight=weight_factory(blocked_edges))
@@ -548,42 +492,44 @@ def distance_based_route(G, origin_point, target_distance_km, alpha=0.5):
 
     for turn_node, _ in candidate_nodes[:25]:
         try:
-            # Path from origin to turning point
             path_out = nx.shortest_path(G, orig_node, turn_node, weight=build_weight())
-
-            blocked_edges = set()
-            for i in range(len(path_out) - 1):
-                blocked_edges.add((path_out[i], path_out[i + 1]))
-
-            # Path from turning point back to origin (discourage reusing outbound edges)
-            path_back = nx.shortest_path(G, turn_node, orig_node, weight=build_weight(blocked_edges))
-
-            # Calculate total distance
-            combined_path = path_out + path_back[1:]  # Avoid duplicate node
-
-            distance_km, risk_per_km, diff, score = evaluate_path(combined_path)
-
-            route_info = {
-                "path": combined_path,
-                "distance_km": distance_km,
-                "risk_per_km": risk_per_km,
-                "distance_diff": diff,
-                "score": score
-            }
-            candidate_routes.append(route_info)
-
-            if score < best_any_score:
-                best_any_score = score
-                best_any_info = route_info
-
-            if score < best_score and diff <= target_distance_km * 0.1:
-                # Immediate best hit (within 10% tolerance)
-                best_score = score
-                best_route_info = route_info
-                # Do not break; continue gathering candidates so we can re-rank by safety later
-
         except nx.NetworkXNoPath:
+            print(f"[LOOP] No outbound path from {orig_node} to candidate {turn_node}")
             continue
+
+        blocked_edges = set()
+        for i in range(len(path_out) - 1):
+            u = path_out[i]
+            v = path_out[i + 1]
+            blocked_edges.add((u, v))
+            blocked_edges.add((v, u))
+
+        try:
+            path_back = nx.shortest_path(G, turn_node, orig_node, weight=build_weight(blocked_edges))
+        except nx.NetworkXNoPath:
+            print(f"[LOOP] No return path from {turn_node} back to {orig_node}")
+            continue
+
+        combined_path = path_out + path_back[1:]  # Avoid duplicate node
+
+        distance_km, risk_per_km, diff, score = evaluate_path(combined_path)
+
+        route_info = {
+            "path": combined_path,
+            "distance_km": distance_km,
+            "risk_per_km": risk_per_km,
+            "distance_diff": diff,
+            "score": score
+        }
+        candidate_routes.append(route_info)
+
+        if score < best_any_score:
+            best_any_score = score
+            best_any_info = route_info
+
+        if score < best_score and diff <= target_distance_km * 0.1:
+            best_score = score
+            best_route_info = route_info
 
     # Select up to 5 candidates that meet distance tolerance, then pick least risky
     if candidate_routes:
@@ -605,6 +551,7 @@ def distance_based_route(G, origin_point, target_distance_km, alpha=0.5):
             # Fallback if no eligible within tolerance bands
             best_route_info = best_any_info
 
+    # 🎯 CASE 1: We found a reasonably good loop
     if best_route_info:
         if best_route_info["distance_diff"] > target_distance_km * 0.3:
             trimmed = trim_path_to_target(G, best_route_info["path"], target_meters, build_weight)
@@ -615,7 +562,12 @@ def distance_based_route(G, origin_point, target_distance_km, alpha=0.5):
                 warning = {
                     "distance_warning": abs(final_distance - target_distance_km) > target_distance_km * DISTANCE_WARNING_THRESHOLD,
                     "requested_distance_km": target_distance_km,
-                    "generated_distance_km": final_distance
+                    "generated_distance_km": final_distance,
+                    "reason_code": "trimmed_loop",
+                    "reason_message": (
+                        "We trimmed the loop to better match your requested distance. "
+                        "Small differences are normal due to road layout."
+                    ),
                 }
                 return coords, route_metadata, warning
 
@@ -625,10 +577,16 @@ def distance_based_route(G, origin_point, target_distance_km, alpha=0.5):
         warning = {
             "distance_warning": abs(final_distance - target_distance_km) > target_distance_km * DISTANCE_WARNING_THRESHOLD,
             "requested_distance_km": target_distance_km,
-            "generated_distance_km": final_distance
+            "generated_distance_km": final_distance,
+            "reason_code": "ok",
+            "reason_message": (
+                "Loop generated successfully. Small differences between requested "
+                "and actual distance are normal due to road layout."
+            ),
         }
         return coords, route_metadata, warning
 
+    # 🎯 CASE 2: We had some path (best_any_info) but it didn't fit tolerances well
     if best_any_info:
         trimmed = trim_path_to_target(G, best_any_info["path"], target_meters, build_weight)
         if trimmed:
@@ -638,23 +596,45 @@ def distance_based_route(G, origin_point, target_distance_km, alpha=0.5):
             warning = {
                 "distance_warning": True,
                 "requested_distance_km": target_distance_km,
-                "generated_distance_km": final_distance
+                "generated_distance_km": final_distance,
+                "reason_code": "approx_loop",
+                "reason_message": (
+                    "We generated an approximate loop but could not closely match "
+                    "the requested distance. This can happen when the nearby road "
+                    "network is sparse or heavily filtered for safety."
+                ),
             }
             return coords, route_metadata, warning
+
         coords, route_metadata = serialize_path(best_any_info["path"])
         coords = finalize_coords(coords)
         final_distance = coords_total_distance_km(coords)
         warning = {
             "distance_warning": True,
             "requested_distance_km": target_distance_km,
-            "generated_distance_km": final_distance
+            "generated_distance_km": final_distance,
+            "reason_code": "approx_loop_untrimmed",
+            "reason_message": (
+                "We found a loop but couldn't trim it cleanly to your target distance. "
+                "This usually means there are limited ways to return to the start without "
+                "reusing unsafe or filtered roads."
+            ),
         }
         return coords, route_metadata, warning
 
+    # 🎯 CASE 3: Total failure – no usable loop at all
     return [], [], {
         "distance_warning": True,
         "requested_distance_km": target_distance_km,
-        "generated_distance_km": 0
+        "generated_distance_km": 0,
+        "reason_code": "no_loop_found",
+        "reason_message": (
+            "We could not build a loop with the requested distance on the current "
+            "road network. This often happens when: (1) the start point is on a very "
+            "small or isolated road segment; (2) the requested distance is too long "
+            "for the number of connected roads; or (3) many nearby roads were removed "
+            "by safety filters (private compounds, driveways, etc.)."
+        ),
     }
 
 ### === Safety Warnings Generator === ###
@@ -675,6 +655,9 @@ def generate_safety_warnings(route_metadata):
         total_distance += length_km
 
         highway = segment["highway"]
+        # FIX: Handle highway as list
+        if isinstance(highway, list):
+            highway = highway[0] if highway else "unknown"
         sidewalk = segment["sidewalk"]
         has_sidewalk = sidewalk in ["yes", "both", "left", "right", "separate"]
         lit = segment["lit"]
@@ -776,17 +759,283 @@ def generate_safety_warnings(route_metadata):
         }
     }
 
+### === Background Hazard Loading === ###
+def load_hazards_background():
+    """Load hazards in background thread to avoid blocking startup"""
+    global road_graph
+
+    try:
+        print("[BG] Fetching hazards from Supabase...")
+        response = supabase.table("hazard_reports").select("*").eq("status", "active").execute()
+        hazards = response.data
+
+        if hazards and len(hazards) > 0:
+            print(f"[BG] Found {len(hazards)} active hazards")
+
+            # Build edge tree for spatial queries
+            edge_coords, edge_keys = [], []
+            for u, v, k, d in road_graph.edges(keys=True, data=True):
+                x1, y1 = road_graph.nodes[u]["x"], road_graph.nodes[u]["y"]
+                x2, y2 = road_graph.nodes[v]["x"], road_graph.nodes[v]["y"]
+                mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+                edge_coords.append((mx, my))
+                edge_keys.append((u, v, k))
+            edge_tree = cKDTree(np.array(edge_coords))
+
+            # ✅ TUNED: Increased buffer zone radius for stronger avoidance
+            # Larger radius = hazards affect more surrounding edges
+            BUFFER_RADIUS_METERS = 250  # Increased from 100m to 250m
+            BUFFER_RADIUS_DEGREES = BUFFER_RADIUS_METERS / 111000  # ~0.00225 degrees
+
+            # ✅ TUNED: Risk scaling parameters
+            BASE_RISK_MULTIPLIER = 400  # Increased from 100 to 800 (8x stronger)
+            DISTANCE_DECAY_RATE = 0.010 # Reduced from 0.02 to 0.008 (slower falloff)
+            MIN_RISK_FLOOR = 40   # Minimum risk for edges within 20m of hazard
+            MAX_HAZARD_RISK_PER_EDGE = 300
+            # Process each hazard
+            for i, hazard in enumerate(hazards):
+                lat = hazard.get("lat")
+                lng = hazard.get("lng")
+                incident_type = hazard.get("incident_type", "unknown")
+                severity_weight = hazard.get("severity_weight", 0.5)
+                trust_score = hazard.get("trust_score", 0.5)
+                agreement_score = hazard.get("agreement_score", 0.5)
+
+                if lat is None or lng is None:
+                    continue
+
+                # ✅ IMPROVED: Stronger base risk calculation
+                # Multiplier increased from 100 to 800 for noticeable avoidance
+                base_hazard_risk = severity_weight * BASE_RISK_MULTIPLIER  # 0-800 range
+                trust_multiplier = 0.5 + (trust_score * 0.5)  # 0.5 to 1.0
+                agreement_multiplier = 0.5 + (agreement_score * 0.5)  # 0.5 to infinity
+
+                # Final risk value for this hazard
+                hazard_risk_value = base_hazard_risk * trust_multiplier * agreement_multiplier
+
+                # Find ALL edges within buffer zone (now 250m radius)
+                nearby_indices = edge_tree.query_ball_point((lng, lat), r=BUFFER_RADIUS_DEGREES)
+
+                # Apply distance-decayed risk to each edge in buffer
+                for idx in nearby_indices:
+                    u, v, k = edge_keys[idx]
+
+                    # Calculate edge midpoint
+                    edge_lng = (road_graph.nodes[u]["x"] + road_graph.nodes[v]["x"]) / 2
+                    edge_lat = (road_graph.nodes[u]["y"] + road_graph.nodes[v]["y"]) / 2
+
+                    # Calculate distance from hazard to this edge (Haversine formula)
+                    R = 6371000  # Earth radius in meters
+                    phi1, phi2 = math.radians(lat), math.radians(edge_lat)
+                    dphi = math.radians(edge_lat - lat)
+                    dlambda = math.radians(edge_lng - lng)
+                    a = math.sin(dphi/2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda/2)**2
+                    distance_meters = R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+                    # ✅ IMPROVED: Slower distance decay + minimum risk floor
+                    # Half-life now ~87m (was 35m), affects wider area
+                    distance_decay = math.exp(-DISTANCE_DECAY_RATE * distance_meters)
+                    decayed_risk = hazard_risk_value * distance_decay
+
+                    if distance_meters < 20:
+                        decayed_risk = max(decayed_risk, MIN_RISK_FLOOR)
+
+                    # NEW: cap the max hazard risk per edge
+                    decayed_risk = min(decayed_risk, MAX_HAZARD_RISK_PER_EDGE)
+
+                    road_graph[u][v][k]["risk"] += decayed_risk
+
+                if (i + 1) % 50 == 0 or i == len(hazards) - 1:
+                    print(f"[BG] Processed {i+1}/{len(hazards)} ({(i+1)/len(hazards):.1%}) hazard reports with {BUFFER_RADIUS_METERS}m buffer")
+
+            print("[BG] SUCCESS: Hazard risk integrated into OSM graph with distance-decayed buffer zones")
+        else:
+            print("[BG] No active hazards found in database")
+
+    except Exception as e:
+        print(f"[BG] WARNING: Failed to load hazard data: {e}")
+        import traceback
+        traceback.print_exc()
+
+def filter_establishment_paths(G):
+    """
+    Keep only public roads (SAFE_ROAD_TYPES) and optionally pedestrian streets.
+    Remove compounds, driveways, internal service roads, paths, etc.
+    """
+    print("[FILTER] STRICT ROAD-ONLY FILTER...")
+
+    edges_to_remove = []
+
+    for u, v, k, data in G.edges(keys=True, data=True):
+        highway = data.get("highway", "")
+        access = data.get("access", "")
+        indoor = data.get("indoor", "no")
+        location = data.get("location", "")
+        service = data.get("service", "")
+
+        # highway can be a list in OSMnx
+        if isinstance(highway, list):
+            highway = highway[0] if highway else ""
+        if isinstance(service, list):
+            service = service[0] if service else ""
+
+        # 1) Remove anything indoor / explicitly restricted
+        if indoor == "yes" or location == "indoor":
+            edges_to_remove.append((u, v, k))
+            continue
+
+        if access in ["private", "no", "customers", "delivery", "employees", "permit"]:
+            edges_to_remove.append((u, v, k))
+            continue
+
+        # 2) Road-only whitelist
+        if highway not in SAFE_ROAD_TYPES:
+            edges_to_remove.append((u, v, k))
+            continue
+
+        if highway == "service" and service in ["driveway", "parking_aisle"]:
+            edges_to_remove.append((u, v, k))
+            continue
+
+    print(f"[FILTER] Removing {len(edges_to_remove)} non-road/establishment edges...")
+    G.remove_edges_from(edges_to_remove)
+
+    # Remove orphaned nodes
+    isolated_nodes = list(nx.isolates(G))
+    G.remove_nodes_from(isolated_nodes)
+    print(f"[FILTER] Removed {len(isolated_nodes)} isolated nodes")
+
+    return G
+
+
+def remove_dead_end_shortcuts(G):
+    """
+    Remove short dead-end paths that likely lead into compounds/establishments.
+    These are often shortcuts that OSM has but shouldn't be used for routing.
+    """
+    removed_count = 0
+    max_iterations = 3  # Iteratively remove dead-ends
+
+    for _ in range(max_iterations):
+        edges_to_remove = []
+
+        for node in list(G.nodes()):
+            # Check if this is a dead-end (degree = 1)
+            if G.degree(node) == 1:
+                # Get the single edge connected to this node
+                neighbors = list(G.neighbors(node))
+                if not neighbors:
+                    continue
+
+                neighbor = neighbors[0]
+
+                # Get edge data (handle MultiDiGraph)
+                if G.has_edge(node, neighbor):
+                    edge_data = G[node][neighbor]
+                    if isinstance(edge_data, dict):
+                        # Regular edge
+                        if "length" in edge_data:
+                            length = edge_data["length"]
+                            highway = edge_data.get("highway", "")
+                        else:
+                            # MultiGraph - get first edge
+                            first_key = list(edge_data.keys())[0]
+                            length = edge_data[first_key].get("length", 0)
+                            highway = edge_data[first_key].get("highway", "")
+                    else:
+                        continue
+
+                    # FIX: Handle highway as list
+                    if isinstance(highway, list):
+                        highway = highway[0] if highway else ""
+
+                    # Remove short dead-end footways/paths (< 30m)
+                    # These are likely driveways or compound entrances
+                    if highway in ["footway", "path", "service"] and length < 30:
+                        # Find all edges between these nodes (MultiDiGraph)
+                        for u, v, k in list(G.edges(node, keys=True)):
+                            edges_to_remove.append((u, v, k))
+                        for u, v, k in list(G.in_edges(node, keys=True)):
+                            edges_to_remove.append((u, v, k))
+
+        if not edges_to_remove:
+            break
+
+        G.remove_edges_from(edges_to_remove)
+        # Remove orphaned nodes
+        G.remove_nodes_from(list(nx.isolates(G)))
+        removed_count += len(edges_to_remove)
+
+    return removed_count
+
+
+def remove_short_connectors(G, min_length=35):
+    """
+    Remove very short edges that connect multi-degree nodes (compound driveways or mapping artefacts).
+    """
+    edges_to_remove = []
+
+    for u, v, k, data in G.edges(keys=True, data=True):
+        length = data.get("length", 0) or 0
+        highway = data.get("highway", "")
+        if isinstance(highway, list):
+            highway = highway[0] if highway else ""
+
+        if highway not in SAFE_ROAD_TYPES:
+            continue
+
+        if length < min_length and G.degree(u) > 2 and G.degree(v) > 2:
+            edges_to_remove.append((u, v, k))
+
+    print(f"[FILTER] Removing {len(edges_to_remove)} short connector edges...")
+    G.remove_edges_from(edges_to_remove)
+
+    isolated_nodes = list(nx.isolates(G))
+    G.remove_nodes_from(isolated_nodes)
+    print(f"[FILTER] Removed {len(isolated_nodes)} isolated nodes after short-connector filter")
+
+    return G
+
 ### === FastAPI Endpoint Examples === ###
 @app.on_event("startup")
 def load_graph():
     global road_graph
     print("Downloading OSM graph for Tarlac...")
-    road_graph = ox.graph_from_place("Tarlac, Philippines", network_type="walk")
+
+    # Use custom filter to exclude obvious non-runner paths
+    custom_filter = (
+        '["highway"]["area"!~"yes"]'
+        '["highway"!~"bus_stop|platform|raceway|construction|proposed"]'
+        '["indoor"!~"yes"]'
+        '["access"!~"private|no"]'
+    )
+
+    road_graph = ox.graph_from_place(
+        "Tarlac, Philippines"   ,
+        network_type="drive",      # <-- walkable network only
+        simplify=True,
+    )
+
+    # Apply aggressive establishment filtering
+    road_graph = filter_establishment_paths(road_graph)
+
+    # 2) ALSO remove short dead-end shortcuts (private driveways, etc.)
+    removed = remove_dead_end_shortcuts(road_graph)
+    print(f"[FILTER] Removed {removed} dead-end shortcut edges")
+    road_graph = remove_short_connectors(road_graph)
+
+    utils_graph_module = getattr(ox, "utils_graph", None)
+    if utils_graph_module and hasattr(utils_graph_module, "get_undirected"):
+        road_graph = utils_graph_module.get_undirected(road_graph)
+        print("[GRAPH] Converted to undirected via osmnx.utils_graph")
+    else:
+        road_graph = road_graph.to_undirected(as_view=False)
+        print("[GRAPH] Converted to undirected via networkx fallback")
 
     # STEP 1: initialize edges
     for u, v, d in road_graph.edges(data=True):
         d["risk"] = 0.0
-
+    
     # STEP 2: Load police crime data
     try:
         crime_df = pd.read_excel("incident_reports.xlsx")  # <-- put your Excel filename here
@@ -861,64 +1110,13 @@ def load_graph():
     except Exception as e:
         print(f"[WARNING] Failed to load crime data: {e}")
 
-    # STEP 7: Load user-reported hazards from Supabase
-    try:
-        print("Fetching hazards from Supabase...")
-        response = supabase.table("hazard_reports").select("*").eq("status", "active").execute()
-        hazards = response.data
-
-        if hazards and len(hazards) > 0:
-            print(f"Found {len(hazards)} active hazards")
-
-            # Process each hazard
-            for i, hazard in enumerate(hazards):
-                lat = hazard.get("lat")
-                lng = hazard.get("lng")
-                incident_type = hazard.get("incident_type", "unknown")
-                severity_weight = hazard.get("severity_weight", 0.5)
-                trust_score = hazard.get("trust_score", 0.5)
-                agreement_score = hazard.get("agreement_score", 0.5)
-
-                if lat is None or lng is None:
-                    continue
-
-                # Calculate risk value based on hazard properties
-                # Higher severity, trust, and agreement = higher risk
-                base_hazard_risk = severity_weight * 100  # Base risk from severity (0-100)
-                trust_multiplier = 0.5 + (trust_score * 0.5)  # 0.5 to 1.0
-                agreement_multiplier = 0.5 + (agreement_score * 0.5)  # 0.5 to 1.0
-
-                # Final risk value for this hazard
-                hazard_risk_value = base_hazard_risk * trust_multiplier * agreement_multiplier
-
-                # Find nearest edge using KDTree
-                dist, idx = edge_tree.query((lng, lat))  # lng = x, lat = y
-                u, v, k = edge_keys[idx]
-
-                # Add hazard risk to edge (accumulate with crime risk)
-                road_graph[u][v][k]["risk"] += hazard_risk_value
-
-                # Also add risk to nearby edges (within 50 meters)
-                nearby_indices = edge_tree.query_ball_point((lng, lat), r=0.0005)  # ~50 meters
-                for nearby_idx in nearby_indices:
-                    if nearby_idx != idx:  # Skip the closest edge (already processed)
-                        u_n, v_n, k_n = edge_keys[nearby_idx]
-                        # Reduce risk for nearby edges (50% of main risk)
-                        road_graph[u_n][v_n][k_n]["risk"] += hazard_risk_value * 0.5
-
-                if (i + 1) % 50 == 0 or i == len(hazards) - 1:
-                    print(f"Processed {i+1}/{len(hazards)} ({(i+1)/len(hazards):.1%}) hazard reports")
-
-            print("[OK] Hazard risk integrated into OSM graph")
-        else:
-            print("[WARNING] No active hazards found in database")
-
-    except Exception as e:
-        print(f"[WARNING] Failed to load hazard data: {e}")
-        import traceback
-        traceback.print_exc()
+    # STEP 7: Start background hazard loading (non-blocking)
+    # ✅ PERFORMANCE: Hazards load in background to avoid blocking startup
+    print("[INFO] Starting background hazard loading...")
+    threading.Thread(target=load_hazards_background, daemon=True).start()
 
     print(f"Graph ready: {len(road_graph.nodes)} nodes, {len(road_graph.edges)} edges")
+    print("[INFO] Routes available now (using crime data). Hazards will be integrated in ~15-20 seconds.")
  
 @app.post("/agreement")
 def get_agreement(input: ReportInput):

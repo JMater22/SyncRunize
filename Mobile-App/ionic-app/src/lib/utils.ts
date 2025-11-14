@@ -48,6 +48,33 @@ export const formatPace = (
   return `${mins}:${String(secs).padStart(2, '0')} ${unitLabel}`;
 };
 
+export const paceStringToMinutes = (
+  pace: string | number | null | undefined,
+  fallbackDistanceKm?: number,
+  fallbackDurationSeconds?: number
+): number => {
+  if (typeof pace === 'number' && isFinite(pace) && pace > 0) {
+    return pace;
+  }
+
+  if (typeof pace === 'string' && pace.includes(':')) {
+    const [minsStr, secsStr] = pace.split(':');
+    const mins = Number(minsStr);
+    const secs = Number(secsStr);
+    if (isFinite(mins) && mins >= 0) {
+      const seconds = isFinite(secs) && secs >= 0 ? secs : 0;
+      return mins + seconds / 60;
+    }
+  }
+
+  if (fallbackDistanceKm && fallbackDistanceKm > 0 && fallbackDurationSeconds && fallbackDurationSeconds > 0) {
+    const minutes = fallbackDurationSeconds / 60;
+    return minutes / fallbackDistanceKm;
+  }
+
+  return 0;
+};
+
 // ========================================
 // TIME FORMATTING UTILITIES
 // ========================================

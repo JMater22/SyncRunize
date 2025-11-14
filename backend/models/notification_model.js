@@ -6,7 +6,7 @@ export const getUnreadNotifications = async (userId) => {
     .from("notifications")
     .select(`
       *,
-      actor:actor_id (
+      actor:users!actor_id (
         user_id,
         name,
         username,
@@ -27,7 +27,7 @@ export const getAllNotifications = async (userId) => {
     .from("notifications")
     .select(`
       *,
-      actor:actor_id (
+      actor:users!actor_id (
         user_id,
         name,
         username,

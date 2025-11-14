@@ -2,12 +2,14 @@
 import express from "express";
 import { authenticate, optionalAuth } from "../utils/auth_middleware.js";
 import * as RouteController from "../controllers/user_route_controller.js";
+import { getUnSavedPublicRoutesController } from "../controllers/route_controller.js";
 
 const router = express.Router();
 
 // ⭐ IMPORTANT: Order matters! Most specific routes first, then dynamic params
 
 // Static routes first (exact matches)
+router.get("/public", optionalAuth, getUnSavedPublicRoutesController);
 router.get("/badges/:userId", RouteController.getUserChallengesWithBadge);
 router.get("/badges/detail/:userChallengeId", RouteController.getUserChallengeWithBadge);
 router.get("/challenges/:userId", RouteController.getUserChallenges);

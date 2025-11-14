@@ -23,6 +23,11 @@ export const getAllNotifications = async (req, res) => {
     const userId = req.user.user_id;
 
     const notifications = await NotificationModel.getAllNotifications(userId);
+    console.log(`📥 [getAllNotifications] Fetched ${notifications.length} notifications for user ${userId}`);
+    if (notifications.length > 0) {
+      console.log('📥 [getAllNotifications] First notification:', JSON.stringify(notifications[0], null, 2));
+      console.log('📥 [getAllNotifications] First notification actor:', notifications[0].actor);
+    }
     res.status(200).json({ success: true, data: notifications });
   } catch (error) {
     console.error("Error fetching all notifications:", error);

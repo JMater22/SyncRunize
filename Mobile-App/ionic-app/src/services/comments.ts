@@ -17,9 +17,11 @@ export interface CreateCommentData {
 }
 
 export const CommentsApi = {
-  // Get comments for a post
-  getComments: async (postId: number): Promise<Comment[]> => {
-    const { data } = await api.get(`/comments/${postId}`);
+  // Get comments for a post with pagination
+  getComments: async (postId: number, limit: number = 20, offset: number = 0): Promise<Comment[]> => {
+    const { data } = await api.get(`/comments/${postId}`, {
+      params: { limit, offset }
+    });
     return data;
   },
 

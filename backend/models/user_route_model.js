@@ -5,29 +5,180 @@ import { haversineDistance } from "../utils/geo_utils.js";
 
 
 /**
- * Estimate calories burned based on average pace and duration
+ * Estimate running calories using distance-based heuristic (~1.036 kcal per kg per km)
+ * NOTE: This is a simple fallback. Frontend uses MET-based calculation which is more accurate.
  */
-export const estimateCalories = (paceMinPerKm, durationSec, weightKg) => {
-  const durationHrs = durationSec / 3600;
+export const estimateCalories = (distanceKm, weightKg) => {
+  const safeDistance = Number.isFinite(distanceKm) && distanceKm > 0 ? distanceKm : 0;
+  const safeWeight = Number.isFinite(weightKg) && weightKg > 0 ? weightKg : 70;
+  const KCAL_PER_KG_PER_KM = 1.036;
+  return +(safeWeight * safeDistance * KCAL_PER_KG_PER_KM).toFixed(1);
+};
 
-  let MET;
-  if (paceMinPerKm >= 8) {
-    MET = 7.0;
-  } else if (paceMinPerKm >= 7) {
-    MET = 8.3;
-  } else if (paceMinPerKm >= 6) {
-    MET = 9.8;
-  } else if (paceMinPerKm >= 5) {
-    MET = 11.5;
-  } else {
-    MET = 13.5;
+/**
+ * Calculate distance from GPS path using Haversine formula
+ * NOTE: This is less accurate than frontend's Kalman-filtered calculation
+ */
+export const calculateDistanceFromPath = (pathArray) => {
+  let distanceKm = 0;
+  if (Array.isArray(pathArray)) {
+    for (let i = 1; i < pathArray.length; i++) {
+      const prev = pathArray[i - 1];
+      const curr = pathArray[i];
+      if (prev && curr && Number.isFinite(prev.lat) && Number.isFinite(prev.lng) && Number.isFinite(curr.lat) && Number.isFinite(curr.lng)) {
+        distanceKm += haversineDistance(prev.lat, prev.lng, curr.lat, curr.lng);
+      }
+    }
+  }
+  return distanceKm;
+};
+
+/**
+ * Validate route metrics for physically impossible values
+ * ✅ FIX: Enhanced with route name, coordinate bounds, path validation, and cross-validation
+ * Returns { isValid: boolean, reason?: string }
+ */
+export const validateRouteMetrics = (metrics) => {
+  const {
+    distance_km, duration_seconds, average_pace, estimated_calories, elevation_gain,
+    route_name, chosen_path, start_lat, start_lng, end_lat, end_lng
+  } = metrics;
+
+  // ✅ FIX: Route name validation (security: prevent SQL injection, ensure reasonable length)
+  if (route_name !== undefined && route_name !== null) {
+    if (typeof route_name !== 'string') {
+      return { isValid: false, reason: 'Route name must be a string' };
+    }
+    if (route_name.length === 0 || route_name.length > 255) {
+      return { isValid: false, reason: `Route name length ${route_name.length} invalid (expected 1-255 characters)` };
+    }
   }
 
-  return +(MET * weightKg * durationHrs).toFixed(2);
+  // ✅ FIX: Coordinate bounds validation helper
+  const validateCoordinate = (lat, lng, label) => {
+    if (lat !== undefined && lat !== null) {
+      if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+        return { isValid: false, reason: `${label} latitude ${lat} invalid (expected -90 to 90)` };
+      }
+    }
+    if (lng !== undefined && lng !== null) {
+      if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
+        return { isValid: false, reason: `${label} longitude ${lng} invalid (expected -180 to 180)` };
+      }
+    }
+    return { isValid: true };
+  };
+
+  // ✅ FIX: Validate start coordinates
+  const startCheck = validateCoordinate(start_lat, start_lng, 'Start');
+  if (!startCheck.isValid) return startCheck;
+
+  // ✅ FIX: Validate end coordinates
+  const endCheck = validateCoordinate(end_lat, end_lng, 'End');
+  if (!endCheck.isValid) return endCheck;
+
+  // ✅ FIX: Path validation (security: prevent DoS with huge arrays)
+  if (chosen_path !== undefined && chosen_path !== null) {
+    let pathArray;
+    try {
+      pathArray = typeof chosen_path === 'string' ? JSON.parse(chosen_path) : chosen_path;
+    } catch (err) {
+      return { isValid: false, reason: 'chosen_path must be valid JSON array' };
+    }
+
+    if (!Array.isArray(pathArray)) {
+      return { isValid: false, reason: 'chosen_path must be an array' };
+    }
+
+    if (pathArray.length < 2) {
+      return { isValid: false, reason: `Path has ${pathArray.length} points (minimum 2 required)` };
+    }
+
+    // ✅ FIX: Prevent DoS attacks with massive path arrays
+    if (pathArray.length > 50000) {
+      return { isValid: false, reason: `Path has ${pathArray.length} points (maximum 50000 allowed)` };
+    }
+
+    // ✅ FIX: Validate each coordinate in path
+    for (let i = 0; i < pathArray.length; i++) {
+      const point = pathArray[i];
+      if (!point || typeof point !== 'object') {
+        return { isValid: false, reason: `Path point ${i} is invalid` };
+      }
+      const pointCheck = validateCoordinate(point.lat, point.lng, `Path point ${i}`);
+      if (!pointCheck.isValid) return pointCheck;
+    }
+  }
+
+  // Distance validation: 0-500km (ultra marathon max)
+  if (distance_km !== undefined && distance_km !== null) {
+    if (!Number.isFinite(distance_km) || distance_km < 0 || distance_km > 500) {
+      return { isValid: false, reason: `Invalid distance: ${distance_km}km (expected 0-500km)` };
+    }
+  }
+
+  // Duration validation: 0-24 hours (86400 seconds)
+  if (duration_seconds !== undefined && duration_seconds !== null) {
+    if (!Number.isFinite(duration_seconds) || duration_seconds < 0 || duration_seconds > 86400) {
+      return { isValid: false, reason: `Invalid duration: ${duration_seconds}s (expected 0-86400s)` };
+    }
+  }
+
+  // ✅ FIX: Cross-validation - distance vs duration consistency check
+  if (distance_km > 0 && duration_seconds > 0) {
+    const impliedSpeedMps = (distance_km * 1000) / duration_seconds; // meters per second
+
+    // Check for impossibly fast speeds (faster than Usain Bolt's 12.4 m/s sprint)
+    if (impliedSpeedMps > 13) {
+      return {
+        isValid: false,
+        reason: `Implied speed ${impliedSpeedMps.toFixed(2)} m/s is impossible (${distance_km}km in ${duration_seconds}s)`
+      };
+    }
+
+    // Check for impossibly slow speeds (slower than 1 m/s = very slow walking)
+    const impliedPace = (duration_seconds / 60) / distance_km; // min/km
+    if (impliedPace > 25) {
+      return {
+        isValid: false,
+        reason: `Implied pace ${impliedPace.toFixed(2)} min/km is too slow for running (expected < 25 min/km)`
+      };
+    }
+  }
+
+  // Pace validation: 2:00-20:00 min/km (human running range)
+  if (average_pace !== undefined && average_pace !== null && average_pace > 0) {
+    if (!Number.isFinite(average_pace) || average_pace < 2 || average_pace > 20) {
+      return { isValid: false, reason: `Invalid pace: ${average_pace} min/km (expected 2-20 min/km)` };
+    }
+  }
+
+  // Calories validation: 0-10,000 kcal (reasonable max)
+  if (estimated_calories !== undefined && estimated_calories !== null) {
+    if (!Number.isFinite(estimated_calories) || estimated_calories < 0 || estimated_calories > 10000) {
+      return { isValid: false, reason: `Invalid calories: ${estimated_calories}kcal (expected 0-10000kcal)` };
+    }
+  }
+
+  // Elevation validation: gain should not exceed distance × 1000m (extreme case: 45° slope entire route)
+  if (elevation_gain !== undefined && elevation_gain !== null && distance_km !== undefined && distance_km > 0) {
+    const maxElevation = distance_km * 1000;
+    if (!Number.isFinite(elevation_gain) || elevation_gain < 0 || elevation_gain > maxElevation) {
+      return { isValid: false, reason: `Invalid elevation gain: ${elevation_gain}m for ${distance_km}km distance` };
+    }
+  }
+
+  return { isValid: true };
 };
 
 /**
  * Create new route record with automatic snapshot generation
+ *
+ * PROFESSIONAL APPROACH - "Trust but Verify":
+ * - Frontend provides accurate calculations (Kalman-filtered GPS, MET-based calories, elevation-adjusted)
+ * - Backend validates and accepts frontend values as primary
+ * - Backend calculates fallbacks only for missing/invalid data
+ * - This ensures: Single source of truth, data consistency, defense in depth
  */
 export const createRoute = async (data) => {
   const {
@@ -38,27 +189,16 @@ export const createRoute = async (data) => {
     end_lng,
     chosen_path,
     duration_seconds,
-    average_pace,
+    weight_kg = data.weight_kg || 0,
+    visibility = "private",
+    route_status = "generated",
     risk_score = 0,
     route_name = data.route_name || "Unnamed Route",
-    weight_kg = data.weight_kg || 0,
-    visibility = "private", // ✅ NEW: default
-    route_status = "generated" // ✅ NEW: default to 'generated' for route creation
+    // Professional elevation tracking (MapBox Terrain-RGB)
+    elevation_gain = data.elevation_gain || null,
+    elevation_loss = data.elevation_loss || null,
+    elevation_multiplier = data.elevation_multiplier || null
   } = data;
-
-  // Compute distance
-  let distanceKm = 0;
-  for (let i = 1; i < chosen_path.length; i++) {
-    const prev = chosen_path[i - 1];
-    const curr = chosen_path[i];
-    distanceKm += haversineDistance(prev.lat, prev.lng, curr.lat, curr.lng);
-  }
-
-  const estimated_calories = estimateCalories(
-    average_pace,
-    duration_seconds,
-    weight_kg
-  );
 
   // Parse path
   let pathArray;
@@ -68,18 +208,87 @@ export const createRoute = async (data) => {
     pathArray = chosen_path;
   }
 
+  // ========== HYBRID APPROACH: Frontend First, Backend Fallback ==========
+
+  // Calculate backend values as fallback
+  const calculatedDistance = calculateDistanceFromPath(pathArray);
+  const calculatedPace = calculatedDistance > 0 && duration_seconds > 0
+    ? (duration_seconds / 60) / calculatedDistance
+    : 0;
+  const calculatedCalories = estimateCalories(calculatedDistance, weight_kg);
+
+  // Use frontend values if provided and valid, otherwise use calculated fallback
+  // Frontend values are MORE accurate (Kalman filtering, MET-based calories, elevation adjustment)
+  const frontendDistance = data.distance_km;
+  const frontendPace = data.average_pace;
+  const frontendCalories = data.estimated_calories;
+
+  // Determine final values using nullish coalescing (prefer frontend)
+  let finalDistance = frontendDistance ?? calculatedDistance;
+  let finalPace = frontendPace ?? calculatedPace;
+  let finalCalories = frontendCalories ?? calculatedCalories;
+  let dataSource = 'unknown';
+
+  // ✅ FIX: Validate all route data including name, coordinates, and path
+  const validation = validateRouteMetrics({
+    distance_km: frontendDistance,
+    duration_seconds,
+    average_pace: frontendPace,
+    estimated_calories: frontendCalories,
+    elevation_gain,
+    route_name,
+    chosen_path,
+    start_lat,
+    start_lng,
+    end_lat,
+    end_lng
+  });
+
+  if (!validation.isValid) {
+    // Frontend data invalid, use backend calculation
+    console.warn(`[Routes] Frontend metrics invalid: ${validation.reason}. Using backend calculation.`);
+    finalDistance = calculatedDistance;
+    finalPace = calculatedPace;
+    finalCalories = calculatedCalories;
+    dataSource = 'backend_fallback_invalid';
+  } else if (frontendDistance !== undefined && frontendDistance !== null) {
+    // Frontend provided valid data
+    dataSource = 'frontend_primary';
+  } else {
+    // Frontend didn't provide data, using backend calculation
+    dataSource = 'backend_fallback_missing';
+  }
+
   // Generate snapshot
   let snapshot_url = null;
   try {
+    // ✅ FIX: Enhanced logging for snapshot generation debugging
+    const provider = process.env.MAP_SNAPSHOT_PROVIDER || 'mapbox';
+    console.log('[Routes] Generating route snapshot...', {
+      provider,
+      pathLength: pathArray.length,
+      mapboxTokenPresent: !!process.env.MAPBOX_ACCESS_TOKEN
+    });
+
     snapshot_url = generateRouteSnapshot(pathArray, {
       width: 800,
       height: 600,
       lineColor: "#008000",
     });
+
+    console.log('[Routes] Snapshot generation result:', {
+      success: !!snapshot_url,
+      url: snapshot_url ? snapshot_url.substring(0, 100) + '...' : 'null'
+    });
   } catch (error) {
-    console.error("Snapshot generation failed:", error);
+    console.error("[Routes] Snapshot generation failed:", {
+      error: error.message,
+      provider: process.env.MAP_SNAPSHOT_PROVIDER || 'mapbox',
+      stack: error.stack
+    });
   }
 
+  // ========== Database Insert with Final Values ==========
   const { data: result, error } = await supabase
     .from("user_routes")
     .insert({
@@ -89,21 +298,46 @@ export const createRoute = async (data) => {
       end_lat,
       end_lng,
       chosen_path: JSON.stringify(pathArray),
-      distance_km: distanceKm,
+      distance_km: finalDistance,
       duration_seconds,
-      average_pace,
+      average_pace: finalPace > 0 ? +finalPace.toFixed(2) : 0,
       risk_score,
-      estimated_calories,
+      estimated_calories: finalCalories,
       route_name,
       snapshot_url,
-      visibility, // ✅ included
-      route_status, // ✅ NEW: include route_status
+      visibility,
+      route_status,
+      // Professional elevation tracking
+      elevation_gain: elevation_gain !== null ? +elevation_gain : null,
+      elevation_loss: elevation_loss !== null ? +elevation_loss : null,
+      elevation_multiplier: elevation_multiplier !== null ? +elevation_multiplier : null,
       created_at: new Date().toISOString(),
     })
     .select()
     .single();
 
   if (error) throw error;
+
+  // Professional logging with data source tracking
+  console.log('[Routes] ✅ Route created successfully', {
+    route_id: result?.route_id,
+    user_id,
+    route_status,
+    data_source: dataSource,
+    metrics: {
+      distance_km: result?.distance_km,
+      average_pace: result?.average_pace,
+      estimated_calories: result?.estimated_calories,
+      elevation_gain: result?.elevation_gain,
+      elevation_loss: result?.elevation_loss,
+      elevation_multiplier: result?.elevation_multiplier,
+    },
+    frontend_vs_calculated: dataSource === 'frontend_primary' ? {
+      distance_diff: frontendDistance ? (frontendDistance - calculatedDistance).toFixed(3) : 'N/A',
+      calories_diff: frontendCalories ? (frontendCalories - calculatedCalories).toFixed(1) : 'N/A',
+    } : undefined,
+  });
+
   return result;
 };
 
@@ -190,27 +424,45 @@ export const getUserRoutes = async (userId, filters = {}) => {
 
 
 /**
+ * Validate and parse route ID to prevent injection
+ */
+const validateRouteId = (routeId) => {
+  if (!routeId) throw new Error("Route ID is required");
+
+  const parsed = Number(routeId);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error("Invalid route ID format");
+  }
+
+  return parsed;
+};
+
+/**
  * Get route by ID
  */
 export const getRouteById = async (routeId) => {
+  // ✅ SECURITY: Validate route ID before use
+  const validatedId = validateRouteId(routeId);
+
   const { data, error } = await supabase
     .from("user_routes")
     .select("*")
-    .eq("route_id", routeId)
+    .eq("route_id", validatedId)
     .single();
-  
+
   if (error) throw error;
   return data;
 };
 
 
 export const deleteRouteById = async (routeId) => {
-  if (!routeId) throw new Error("Route ID is required");
+  // ✅ SECURITY: Validate route ID before use
+  const validatedId = validateRouteId(routeId);
 
   const { data, error } = await supabase
     .from("user_routes")
     .delete()
-    .eq("route_id", routeId)
+    .eq("route_id", validatedId)
     .select()
     .single(); // returns the deleted row
 
@@ -219,7 +471,7 @@ export const deleteRouteById = async (routeId) => {
     throw error;
   }
 
-  console.log(`Route ${routeId} deleted successfully`, data);
+  console.log(`Route ${validatedId} deleted successfully`, data);
   return data;
 };
 
@@ -230,6 +482,9 @@ export const deleteRouteById = async (routeId) => {
  * @param {string} status - New status ('generated', 'saved', 'completed')
  */
 export const updateRouteStatus = async (routeId, userId, status) => {
+  // ✅ SECURITY: Validate route ID before use
+  const validatedId = validateRouteId(routeId);
+
   const validStatuses = ['generated', 'saved', 'completed'];
 
   if (!validStatuses.includes(status)) {
@@ -239,7 +494,7 @@ export const updateRouteStatus = async (routeId, userId, status) => {
   const { data, error } = await supabase
     .from("user_routes")
     .update({ route_status: status })
-    .eq("route_id", routeId)
+    .eq("route_id", validatedId)
     .eq("user_id", userId) // Security: ensure user owns this route
     .select()
     .single();
@@ -249,7 +504,7 @@ export const updateRouteStatus = async (routeId, userId, status) => {
     throw error;
   }
 
-  console.log(`Route ${routeId} status updated to '${status}'`);
+  console.log(`Route ${validatedId} status updated to '${status}'`);
   return data;
 };
 

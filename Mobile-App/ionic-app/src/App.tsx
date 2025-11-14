@@ -28,16 +28,13 @@ import Leaderboards from "./pages/leaderboards";
 import Notification from "./pages/notification";
 import EditProfile from "./pages/Edit-Profile";
 import Notice from "./pages/Notice";
-import PausedRun from "./pages/Paused-Run";
 import CreateRoute from "./pages/create-route";
 import Following from "./pages/Following";
 import SearchRunners from "./pages/Search-Runners";
 import SavedRoutes from "./pages/saved-routes";
 import EstimatedTime from "./pages/Estimated-Time";
 import TrafficNotice from "./pages/Traffic-Notice";
-import HazardNotice from "./pages/Hazard-Notice";
 import HazardReport from "./pages/Hazard-Report";
-import ActivitySummary from "./pages/Activity-Summary";
 import Information from "./pages/Profile-Information";
 import PasswordSecurity from "./pages/Password-Security";
 import CreateAccount from "./pages/create-account";
@@ -50,6 +47,7 @@ import Badges from "./pages/Badges";
 import CreatePost from "./pages/Create-Post";
 import ForgotPassword from "./pages/forgot-password";
 import ResetPassword from "./pages/reset-password";
+import PrePostPage from "./pages/PrePostPage";
 
 import HomeIcon from "./components/assets/icons/home.svg";
 import RouteIcon from "./components/assets/icons/conversion_path.svg";
@@ -72,6 +70,8 @@ import "@ionic/react/css/palettes/dark.system.css";
 /* Theme Variables */
 import "./theme/variables.css";
 import "./theme/global.css";
+import { RunTrackerProvider } from "./state/runTrackerContext";
+import { RunTrackerController } from "./hooks/useRunTracker";
 
 setupIonicReact();
 
@@ -114,7 +114,9 @@ const App: React.FC = () => {
       <PostsProvider>
         <NotificationProvider>
           <ChallengesProvider>
-            <IonReactRouter>
+            <RunTrackerProvider>
+              <RunTrackerController />
+              <IonReactRouter>
               <IonTabs>
                 <IonRouterOutlet>
                   <Route exact path="/home" component={Home} />
@@ -128,7 +130,6 @@ const App: React.FC = () => {
                   <Route exact path="/leaderboards" component={Leaderboards} />
                   <Route exact path="/notification" component={Notification} />
                   <Route exact path="/edit-profile" component={EditProfile} />
-                  <Route exact path="/paused" component={PausedRun} />
                   <Route exact path="/notice" component={Notice} />
                   <Route exact path="/create-route" component={CreateRoute} />
                   <Route exact path="/following" component={Following} />
@@ -136,9 +137,7 @@ const App: React.FC = () => {
                   <Route exact path="/saved-routes" component={SavedRoutes} />
                   <Route exact path="/estimated-time" component={EstimatedTime} />
                   <Route exact path="/traffic-notice" component={TrafficNotice} />
-                  <Route exact path="/hazard-notice" component={HazardNotice} />
                   <Route exact path="/hazard-report" component={HazardReport} />
-                  <Route exact path="/activity-summary" component={ActivitySummary} />
                   <Route exact path="/profile-info" component={Information} />
                   <Route exact path="/security" component={PasswordSecurity} />
                   {/* Auth screens remain accessible but are redundant when logged in */}
@@ -151,6 +150,7 @@ const App: React.FC = () => {
                   <Route exact path="/activities" component={ViewActivity} />
                   <Route exact path="/badges" component={Badges} />
                   <Route exact path="/create-post" component={CreatePost} />
+                  <Route exact path="/run-pre-post" component={PrePostPage} />
 
                   <Route exact path="/">
                     <Redirect to="/home" />
@@ -186,6 +186,7 @@ const App: React.FC = () => {
                 </IonTabBar>
               </IonTabs>
             </IonReactRouter>
+            </RunTrackerProvider>
           </ChallengesProvider>
         </NotificationProvider>
       </PostsProvider>

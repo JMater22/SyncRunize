@@ -49,11 +49,12 @@ export interface Badge {
 }
 
 export interface ChallengeWithStatus extends Challenge {
+  challenge_name?: string;
   joined?: boolean;
   completed?: boolean;
   progress_percent?: number;
   user_challenge_id?: number;
-  description:string;
+  description: string;
 }
 
 export const ChallengesApi = {
@@ -63,7 +64,7 @@ export const ChallengesApi = {
     const challenges = Array.isArray(data) ? data : (Array.isArray(data.challenges) ? data.challenges : []);
 
     // Transform backend properties to match mobile expectations
-    return challenges.map(ch => ({
+    return challenges.map((ch: any) => ({
       ...ch,
       challenge_name: ch.challenge_name || ch.name,
       challenge_slug: ch.challenge_slug || ch.slug,

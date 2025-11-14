@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   IonAvatar,
   IonButton,
@@ -15,13 +15,18 @@ import {
   IonToolbar,
   IonHeader,
   IonIcon,
+  IonInfiniteScroll,
+  IonInfiniteScrollContent,
 } from '@ionic/react';
 import { heart, heartOutline, chatbubbleOutline, close, searchOutline } from 'ionicons/icons';
-import { RefresherEventDetail } from '@ionic/react';
+import { RefresherEventDetail, InfiniteScrollCustomEvent } from '@ionic/react';
 import { useUser } from '../contexts/UserContext';
-import { usePosts } from '../contexts/PostsContext';
+import { PostsApi, Post } from '../services/posts';
+import { LikesApi } from '../services/likes';
 import { CommentsApi, Comment } from '../services/comments';
 import { getAvatarUrl, formatRelativeTime, formatDuration } from '../lib/utils';
+import PostCardSkeleton from './skeletons/PostCardSkeleton';
+import CommentSkeleton from './skeletons/CommentSkeleton';
 
 type ToastColor = 'success' | 'danger' | 'warning';
 
@@ -29,10 +34,20 @@ interface CommunityFeedTabProps {
   onToast?: (message: string, color?: ToastColor) => void;
 }
 
+const POSTS_PER_PAGE = 10;
+
 const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
   const { currentUser, loading: userLoading } = useUser();
-  const { posts, loading, error, fetchFeed, toggleLike, addComment } = usePosts();
 
+  // Pagination states
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Comments states
   const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -40,29 +55,82 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
 
+  // Initial load
   useEffect(() => {
+    console.log('[CommunityFeedTab] useEffect - currentUser:', currentUser?.user_id, 'userLoading:', userLoading);
     if (!currentUser || userLoading) return;
-    fetchFeed();
+    loadInitialFeed();
   }, [currentUser, userLoading]);
 
   const notify = (message: string, color: ToastColor = 'success') => {
     onToast?.(message, color);
   };
 
+  const loadInitialFeed = async () => {
+    console.log('[CommunityFeedTab] loadInitialFeed called');
+    try {
+      setLoading(true);
+      setError(null);
+      const fetchedPosts = await PostsApi.getFeed(POSTS_PER_PAGE, 0);
+      console.log('[CommunityFeedTab] Fetched posts:', fetchedPosts.length);
+      setPosts(fetchedPosts);
+      setOffset(POSTS_PER_PAGE);
+      setHasMore(fetchedPosts.length === POSTS_PER_PAGE);
+    } catch (err: any) {
+      console.error('[CommunityFeedTab] Failed to fetch feed:', err);
+      setError(err.response?.data?.error || 'Failed to load feed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMorePosts = async (event: InfiniteScrollCustomEvent) => {
+    try {
+      const fetchedPosts = await PostsApi.getFeed(POSTS_PER_PAGE, offset);
+      setPosts(prev => [...prev, ...fetchedPosts]);
+      setOffset(prev => prev + POSTS_PER_PAGE);
+      setHasMore(fetchedPosts.length === POSTS_PER_PAGE);
+    } catch (err: any) {
+      console.error('Failed to load more posts:', err);
+      notify('Failed to load more posts', 'danger');
+    } finally {
+      event.target.complete();
+    }
+  };
+
   const handleRefresh = async (event: CustomEvent<RefresherEventDetail>) => {
     try {
-      if (!currentUser || userLoading) return;
-      await fetchFeed();
+      setIsRefreshing(true);
+      const fetchedPosts = await PostsApi.getFeed(POSTS_PER_PAGE, 0);
+      setPosts(fetchedPosts);
+      setOffset(POSTS_PER_PAGE);
+      setHasMore(fetchedPosts.length === POSTS_PER_PAGE);
+    } catch (err: any) {
+      console.error('Failed to refresh feed:', err);
+      notify('Failed to refresh feed', 'danger');
     } finally {
+      setIsRefreshing(false);
       event.detail.complete();
     }
   };
 
   const handleLike = async (postId: number) => {
     try {
-      await toggleLike(postId);
+      // Optimistic update
+      setPosts(prev => prev.map(post =>
+        post.post_id === postId
+          ? { ...post, is_liked: !post.is_liked, likes_count: post.is_liked ? post.likes_count - 1 : post.likes_count + 1 }
+          : post
+      ));
+      await LikesApi.toggleLike(postId);
     } catch (err) {
       console.error('Failed to update like:', err);
+      // Revert optimistic update on error
+      setPosts(prev => prev.map(post =>
+        post.post_id === postId
+          ? { ...post, is_liked: !post.is_liked, likes_count: post.is_liked ? post.likes_count - 1 : post.likes_count + 1 }
+          : post
+      ));
       notify('Failed to update like', 'danger');
     }
   };
@@ -70,7 +138,7 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
   const fetchComments = async (postId: number) => {
     try {
       setLoadingComments(true);
-      const fetchedComments = await CommentsApi.getComments(postId);
+      const fetchedComments = await CommentsApi.getComments(postId, 50, 0); // Load first 50 comments
       setComments(fetchedComments);
     } catch (err) {
       console.error('Failed to fetch comments:', err);
@@ -91,7 +159,15 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
 
     try {
       setSubmittingComment(true);
-      await addComment(selectedPostId, newComment.trim());
+      await CommentsApi.addComment(selectedPostId, { content: newComment.trim() });
+
+      // Update comment count optimistically
+      setPosts(prev => prev.map(post =>
+        post.post_id === selectedPostId
+          ? { ...post, comments_count: post.comments_count + 1 }
+          : post
+      ));
+
       await fetchComments(selectedPostId);
       setNewComment('');
       notify('Comment added successfully', 'success');
@@ -120,9 +196,11 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
     );
   }
 
+  console.log('[CommunityFeedTab] Rendering with posts:', posts.length);
+
   return (
     <>
-      <div className="feed-tab">
+      <div className="feed-tab-container">
         <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
           <IonRefresherContent></IonRefresherContent>
         </IonRefresher>
@@ -137,15 +215,15 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
           Find Athletes
         </IonButton>
 
-        {loading ? (
-          <div className="ion-text-center ion-padding">
-            <IonSpinner name="crescent" />
-            <p>Loading posts...</p>
+        {loading && posts.length === 0 ? (
+          // Show skeleton loaders on initial load
+          <div className="feed-posts">
+            {[1, 2, 3].map(i => <PostCardSkeleton key={i} />)}
           </div>
         ) : error ? (
           <div className="ion-text-center ion-padding">
             <p style={{ color: 'var(--ion-color-danger)' }}>{error}</p>
-            <IonButton onClick={() => fetchFeed()} size="small">
+            <IonButton onClick={loadInitialFeed} size="small">
               Retry
             </IonButton>
           </div>
@@ -159,13 +237,23 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
             </IonButton>
           </div>
         ) : (
-          <div className="feed-posts">
-            {posts.map((post) => (
+          <>
+            <div className="feed-posts">
+              {posts.map((post) => (
               <IonCard key={post.post_id} className="post-card">
                 <IonCardContent>
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
                     <IonAvatar style={{ width: '40px', height: '40px', marginRight: '12px' }}>
-                      <img src={getAvatarUrl(post.author_avatar)} alt={post.author_name} />
+                      <img
+                        src={getAvatarUrl(post.author_avatar)}
+                        alt={post.author_name}
+                        onError={(e) => {
+                          console.warn('[CommunityFeed] Avatar failed to load for user:', post.author_username);
+                          // Fallback to default avatar
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'https://ionicframework.com/docs/img/demos/avatar.svg';
+                        }}
+                      />
                     </IonAvatar>
                     <div style={{ flex: 1 }}>
                       <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>{post.author_name}</h3>
@@ -227,6 +315,14 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
                       src={post.snapshot_url}
                       alt="Route map"
                       style={{ borderRadius: '8px', marginBottom: '12px' }}
+                      onIonError={(e) => {
+                        console.warn('[CommunityFeed] Route snapshot failed to load for post:', post.post_id);
+                        // Hide the broken image by setting display to none
+                        const target = e.target as HTMLElement;
+                        if (target) {
+                          target.style.display = 'none';
+                        }
+                      }}
                     />
                   )}
 
@@ -258,7 +354,20 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
                 </IonCardContent>
               </IonCard>
             ))}
-          </div>
+            </div>
+
+            {/* Infinite Scroll */}
+            <IonInfiniteScroll
+              onIonInfinite={loadMorePosts}
+              threshold="100px"
+              disabled={!hasMore}
+            >
+              <IonInfiniteScrollContent
+                loadingSpinner="bubbles"
+                loadingText="Loading more posts..."
+              ></IonInfiniteScrollContent>
+            </IonInfiniteScroll>
+          </>
         )}
       </div>
 
@@ -274,9 +383,9 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
 
         <IonContent className="ion-padding">
           {loadingComments ? (
-            <div className="ion-text-center ion-padding">
-              <IonSpinner name="crescent" />
-              <p>Loading comments...</p>
+            // Show skeleton loaders while loading comments
+            <div>
+              {[1, 2, 3].map(i => <CommentSkeleton key={i} />)}
             </div>
           ) : comments.length === 0 ? (
             <div className="ion-text-center ion-padding">
@@ -298,11 +407,11 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
                   }}
                 >
                   <IonAvatar style={{ width: '36px', height: '36px', marginRight: '12px', flexShrink: 0 }}>
-                    <img src={getAvatarUrl(comment.author_avatar)} alt={comment.author_name} />
+                    <img src={getAvatarUrl(comment.profile_picture)} alt={comment.name} />
                   </IonAvatar>
                   <div style={{ flex: 1 }}>
                     <div style={{ marginBottom: '4px' }}>
-                      <strong style={{ fontSize: '14px' }}>{comment.author_name}</strong>
+                      <strong style={{ fontSize: '14px' }}>{comment.name}</strong>
                       <span style={{ fontSize: '12px', color: 'var(--ion-color-medium)', marginLeft: '8px' }}>
                         {formatRelativeTime(comment.created_at)}
                       </span>

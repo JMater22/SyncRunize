@@ -10,7 +10,7 @@ export interface Route {
   estimated_calories: number;
   route_type: 'run' | 'walk' | 'cycle';
   route_status: 'generated' | 'completed' | 'saved';
-  chosen_path: Array<{ lat: number; lng: number }>;
+  chosen_path: Array<{ lat: number; lng: number }> | string | null;
   map_image_url?: string;
   snapshot_url?: string;
   description?: string;
@@ -28,19 +28,6 @@ export interface GenerateRouteData {
   end_lng?: number;
   distance_km?: number;
   route_type?: 'run' | 'walk' | 'cycle';
-}
-
-export interface SaveRouteData {
-  route_name: string;
-  distance_km: number;
-  duration_seconds: number;
-  average_pace: string;
-  estimated_calories: number;
-  route_type?: 'run' | 'walk' | 'cycle';
-  chosen_path: Array<{ lat: number; lng: number }>;
-  description?: string;
-  visibility?: 'public' | 'private';
-  snapshot_url?: string;
 }
 
 export interface UpdateRouteData {
@@ -61,10 +48,19 @@ export const RoutesApi = {
     return data;
   },
 
-  // Get public routes
+  // Get public routes (fallbacks if auth-only endpoint fails)
   getPublicRoutes: async (): Promise<Route[]> => {
-    const { data } = await api.get('/unsaved/public');
-    return data.routes || data;
+    const fetchRoutes = async (url: string) => {
+      const { data } = await api.get(url);
+      return data.routes || data;
+    };
+
+    try {
+      return await fetchRoutes('/routes/public');
+    } catch (err: any) {
+      console.warn('[RoutesApi] /routes/public failed, falling back to /unsaved/public', err?.response?.status);
+      return await fetchRoutes('/unsaved/public');
+    }
   },
 
   // Get single route
@@ -76,12 +72,6 @@ export const RoutesApi = {
   // Generate route with AI
   generateRoute: async (routeData: GenerateRouteData): Promise<any> => {
     const { data } = await api.post('/routes/generate', routeData);
-    return data;
-  },
-
-  // Save route
-  saveRoute: async (routeData: SaveRouteData): Promise<Route> => {
-    const { data } = await api.post('/routes/save', routeData);
     return data;
   },
 

@@ -3,7 +3,7 @@ import { generateRouteSafetyWarnings } from "../services/ai_service.js";
 
 export const getUnSavedPublicRoutesController = async (req, res) => {
   try {
-    const userId = req.user.user_id; // assuming `req.user` is set by auth middleware
+    const userId = req.user?.user_id || null;
     const routes = await getUnSavedPublicRoutes(userId);
 
     return res.status(200).json({

@@ -22,16 +22,15 @@ import {
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { imageOutline, closeCircle } from "ionicons/icons";
 import { useHistory } from "react-router-dom";
-import { usePosts } from "../contexts/PostsContext";
 import { useUser } from "../contexts/UserContext";
 import { RoutesApi, Route } from "../services/routes";
+import { PostsApi } from "../services/posts";
 import { formatDistance, formatDuration } from "../lib/utils";
 import "../theme/Create-Post.css";
 
 const CreatePost: React.FC = () => {
   const history = useHistory();
   const { currentUser } = useUser();
-  const { createPost } = usePosts();
 
   const [content, setContent] = useState("");
   const [image, setImage] = useState<string | null>(null);
@@ -93,7 +92,11 @@ const CreatePost: React.FC = () => {
 
     try {
       setSubmitting(true);
-      await createPost(content.trim() || undefined, selectedRouteId, visibility);
+      await PostsApi.createPost({
+        content: content.trim() || undefined,
+        route_id: selectedRouteId,
+        visibility
+      });
 
       showToastMessage("Post created successfully!", 'success');
 
@@ -194,7 +197,17 @@ const CreatePost: React.FC = () => {
             </IonButton>
           ) : (
             <div className="preview-container">
-              <IonImg src={image} alt="Preview" className="preview-image" />
+              <IonImg
+                src={image}
+                alt="Preview"
+                className="preview-image"
+                onIonError={(e) => {
+                  console.warn('[CreatePost] Image failed to load');
+                  // If image fails to load, remove it from state
+                  setImage(null);
+                  showToastMessage('Failed to load image preview', 'warning');
+                }}
+              />
               <IonButton
                 fill="clear"
                 className="remove-image-btn"

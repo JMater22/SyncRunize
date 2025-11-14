@@ -1,0 +1,11 @@
+.comment-skeleton {
+  --padding-start: 16px;
+  --inner-padding-end: 16px;
+}
+
+.comment-skeleton-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

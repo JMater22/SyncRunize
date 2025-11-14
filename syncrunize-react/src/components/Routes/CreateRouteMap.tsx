@@ -26,26 +26,24 @@ import {
   informationCircleOutline
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
-import { GoogleMap, LoadScript, Polyline } from '@react-google-maps/api';
-import { MarkerF } from '@react-google-maps/api';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import axios from 'axios';
 import { supabase } from '../../supabaseClient';
 import { DEFAULT_AVATAR } from '../../constants/avatar';
 import { kmToMiles } from '../../utils/distanceConverter';
 import './CreateRouteMap.css';
 
-// Google Maps configuration
-const libraries: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
+// Mapbox configuration
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+
 const mapContainerStyle = {
   width: '100%',
   height: '100%'
 };
 
 // Default center (Tarlac, Philippines)
-const defaultCenter = {
-  lat: 15.4755,
-  lng: 120.5963
-};
+const defaultCenter: [number, number] = [120.5963, 15.4755]; // [lng, lat]
 
 interface LatLng {
   lat: number;
@@ -84,13 +82,6 @@ interface HazardReport {
     username: string;
     profile_picture: string | null;
   };
-  // Establishment info (enriched from Places API)
-  establishment?: {
-    place_id: string;
-    displayName: string;
-    formattedAddress: string;
-    types: string[];
-  };
 }
 
 interface GeneratedRoute {
@@ -104,6 +95,14 @@ interface GeneratedRoute {
   route_status: string;
 }
 
+interface MapboxFeature {
+  id: string;
+  place_name: string;
+  center: [number, number];
+  text: string;
+  place_type: string[];
+}
+
 const CreateRouteMap = () => {
   const history = useHistory();
 
@@ -113,10 +112,10 @@ const CreateRouteMap = () => {
   const [endPoint, setEndPoint] = useState<LatLng | null>(null);
 
   // Map states
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [mapType, setMapType] = useState<'roadmap' | 'satellite' | 'terrain'>('roadmap');
-  const [showTrafficLayer, setShowTrafficLayer] = useState(false);
-  const [trafficLayer, setTrafficLayer] = useState<google.maps.TrafficLayer | null>(null);
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapType, setMapType] = useState<'streets' | 'satellite' | 'outdoors'>('streets');
   const [generatedPath, setGeneratedPath] = useState<LatLng[]>([]);
   const [generatedRoute, setGeneratedRoute] = useState<GeneratedRoute | null>(null);
   const [distanceInfo, setDistanceInfo] = useState<{
@@ -124,9 +123,12 @@ const CreateRouteMap = () => {
     requested_distance_km: number;
     generated_distance_km: number;
   } | null>(null);
-  // Keep an imperative reference to the rendered polyline to force-remove on cancel if needed
-  const polylineRef = useRef<google.maps.Polyline | null>(null);
   const [safetyAnalysis, setSafetyAnalysis] = useState<SafetyAnalysis | null>(null);
+
+  // Marker references
+  const startMarker = useRef<mapboxgl.Marker | null>(null);
+  const endMarker = useRef<mapboxgl.Marker | null>(null);
+  const hazardMarkers = useRef<mapboxgl.Marker[]>([]);
 
   // Hazard states
   const [hazards, setHazards] = useState<HazardReport[]>([]);
@@ -152,26 +154,49 @@ const CreateRouteMap = () => {
   const [endSearchQuery, setEndSearchQuery] = useState('');
 
   // Autocomplete suggestions
-  const [startSuggestions, setStartSuggestions] = useState<google.maps.places.AutocompleteSuggestion[]>([]);
-  const [endSuggestions, setEndSuggestions] = useState<google.maps.places.AutocompleteSuggestion[]>([]);
+  const [startSuggestions, setStartSuggestions] = useState<MapboxFeature[]>([]);
+  const [endSuggestions, setEndSuggestions] = useState<MapboxFeature[]>([]);
   const [showStartSuggestions, setShowStartSuggestions] = useState(false);
   const [showEndSuggestions, setShowEndSuggestions] = useState(false);
 
-  // Services
-  const geocoder = useRef<google.maps.Geocoder | null>(null);
-
-  // Initialize Google Maps services when map loads
+  // Initialize Mapbox map
   useEffect(() => {
-    if (map && window.google) {
-      geocoder.current = new google.maps.Geocoder();
+    if (!mapContainer.current || map.current) return;
 
-      // Initialize traffic layer
-      const traffic = new google.maps.TrafficLayer();
-      setTrafficLayer(traffic);
-    }
-  }, [map]);
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: defaultCenter,
+      zoom: 13
+    });
 
-  // Load user unit preference (km/mi) and map to component units (km/miles)
+    // Add navigation controls
+    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+    // Fetch hazards when map is loaded
+    map.current.on('load', () => {
+      setMapLoaded(true);
+      // Resize map to fit container properly
+      setTimeout(() => {
+        if (map.current) {
+          map.current.resize();
+        }
+      }, 100);
+      fetchHazardsInView();
+    });
+
+    // Fetch hazards when map is moved
+    map.current.on('idle', fetchHazardsInView);
+
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, []);
+
+  // Load user unit preference (km/mi)
   useEffect(() => {
     (async () => {
       try {
@@ -186,93 +211,74 @@ const CreateRouteMap = () => {
     })();
   }, []);
 
-  // Toggle traffic layer visibility
+  // Update map style when mapType changes
   useEffect(() => {
-    if (trafficLayer && map) {
-      if (showTrafficLayer) {
-        trafficLayer.setMap(map);
-      } else {
-        trafficLayer.setMap(null);
-      }
-    }
-  }, [showTrafficLayer, trafficLayer, map]);
+    if (!map.current || !mapLoaded) return;
 
-  // Enrich hazard with establishment info using Places API
-  // Temporarily disabled due to Places API compatibility issues
-  const enrichWithEstablishment = async (hazard: HazardReport): Promise<HazardReport> => {
-    return hazard;
-  };
+    const styleMap: Record<string, string> = {
+      streets: 'mapbox://styles/mapbox/streets-v12',
+      satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
+      outdoors: 'mapbox://styles/mapbox/outdoors-v12'
+    };
 
-  // Get appropriate marker icon based on hazard type
-  const getMarkerIcon = (hazard: HazardReport) => {
-    const baseSize = new google.maps.Size(32, 32);
-    const anchor = new google.maps.Point(16, 32);
+    map.current.setStyle(styleMap[mapType]);
+  }, [mapType, mapLoaded]);
 
-    if (hazard.establishment) {
-      // Use building/establishment icon for hazards at establishments
-      return {
-        url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-        scaledSize: baseSize,
-        anchor: anchor
-      };
-    } else {
-      // Use warning icon for general hazards
-      return {
-        url: 'http://maps.google.com/mapfiles/ms/icons/orange-dot.png',
-        scaledSize: baseSize,
-        anchor: anchor
-      };
-    }
-  };
-
-  // Fetch all active hazards (no radius filtering for web version)
+  // Fetch all active hazards
   const fetchHazardsInView = useCallback(async () => {
-    if (!map) return;
+    if (!map.current) return;
 
     try {
-      // For web version, fetch ALL active hazards without radius filtering
-      // Pass a very large radius to get all hazards in the region
+      const center = map.current.getCenter();
       const response = await axios.get<{ hazards: HazardReport[] }>(
         `${import.meta.env.VITE_API_URL}/hazards/nearby`,
         {
           params: {
-            lat: map.getCenter()?.lat(),
-            lng: map.getCenter()?.lng(),
-            radius: 1000 // 1000km radius to effectively get all hazards
+            lat: center.lat,
+            lng: center.lng,
+            radius: 1000 // 1000km radius to get all hazards
           }
         }
       );
 
       const fetchedHazards = response.data.hazards || [];
+      setHazards(fetchedHazards);
 
-      // Enrich hazards with establishment information
-      const enrichedHazards = await Promise.all(
-        fetchedHazards.map((hazard: HazardReport) => enrichWithEstablishment(hazard))
-      );
+      // Clear existing hazard markers
+      hazardMarkers.current.forEach(marker => marker.remove());
+      hazardMarkers.current = [];
 
-      setHazards(enrichedHazards);
+      // Add new hazard markers
+      fetchedHazards.forEach((hazard) => {
+        const el = document.createElement('div');
+        el.className = 'hazard-marker';
+        el.style.width = '24px';
+        el.style.height = '24px';
+        el.style.borderRadius = '50%';
+        el.style.backgroundColor = '#ff6b35';
+        el.style.border = '2px solid white';
+        el.style.cursor = 'pointer';
+        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+
+        el.addEventListener('click', () => {
+          setSelectedHazard(hazard);
+          setShowHazardModal(true);
+        });
+
+        const marker = new mapboxgl.Marker(el)
+          .setLngLat([hazard.lng, hazard.lat])
+          .addTo(map.current!);
+
+        hazardMarkers.current.push(marker);
+      });
     } catch (error) {
       console.error('Failed to fetch hazards:', error);
     }
-  }, [map]);
+  }, []);
 
-  // Fetch hazards when map is loaded or moved
-  useEffect(() => {
-    if (map) {
-      fetchHazardsInView();
-
-      // Listen to map idle event (after pan/zoom)
-      const listener = map.addListener('idle', fetchHazardsInView);
-
-      return () => {
-        google.maps.event.removeListener(listener);
-      };
-    }
-  }, [map, fetchHazardsInView]);
-
-  // Fetch autocomplete suggestions using new AutocompleteSuggestion API
+  // Fetch autocomplete suggestions using Mapbox Geocoding API
   const fetchSuggestions = useCallback(async (query: string, type: 'start' | 'end') => {
-    if (!query || query.length < 2 || !window.google) {
+    if (!query || query.length < 2) {
       if (type === 'start') {
         setStartSuggestions([]);
         setShowStartSuggestions(false);
@@ -284,29 +290,26 @@ const CreateRouteMap = () => {
     }
 
     try {
-      const request = {
-        input: query,
-        includedRegionCodes: ['PH'],
-      };
-
-      const { suggestions } = await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
-
-      if (suggestions && suggestions.length > 0) {
-        if (type === 'start') {
-          setStartSuggestions(suggestions);
-          setShowStartSuggestions(true);
-        } else {
-          setEndSuggestions(suggestions);
-          setShowEndSuggestions(true);
+      const response = await axios.get(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`,
+        {
+          params: {
+            access_token: mapboxgl.accessToken,
+            country: 'PH',
+            limit: 5,
+            types: 'place,locality,neighborhood,address,poi'
+          }
         }
+      );
+
+      const features = response.data.features || [];
+
+      if (type === 'start') {
+        setStartSuggestions(features);
+        setShowStartSuggestions(features.length > 0);
       } else {
-        if (type === 'start') {
-          setStartSuggestions([]);
-          setShowStartSuggestions(false);
-        } else {
-          setEndSuggestions([]);
-          setShowEndSuggestions(false);
-        }
+        setEndSuggestions(features);
+        setShowEndSuggestions(features.length > 0);
       }
     } catch (error) {
       console.error('Autocomplete suggestions failed:', error);
@@ -320,83 +323,172 @@ const CreateRouteMap = () => {
     }
   }, []);
 
-  // Select suggestion and get coordinates using new Place API
-  const selectSuggestion = useCallback(async (placePrediction: google.maps.places.PlacePrediction, description: string, type: 'start' | 'end') => {
-    if (!map) return;
+  // Select suggestion from autocomplete
+  const selectSuggestion = useCallback((feature: MapboxFeature, type: 'start' | 'end') => {
+    if (!map.current) return;
 
-    try {
-      // Use the new Place API to fetch place details
-      const place = placePrediction.toPlace();
-      await place.fetchFields({ fields: ['location', 'displayName'] });
+    const [lng, lat] = feature.center;
+    const point = { lat, lng };
 
-      const location = place.location;
-      if (!location) {
-        throw new Error('No location found for this place');
-      }
+    if (type === 'start') {
+      setStartPoint(point);
+      setStartSearchQuery(feature.place_name);
+      setShowStartSuggestions(false);
+      setToastMessage(`✓ Start: ${feature.place_name}`);
 
-      const point = {
-        lat: location.lat(),
-        lng: location.lng()
-      };
-
-      if (type === 'start') {
-        setStartPoint(point);
-        setStartSearchQuery(description);
-        setShowStartSuggestions(false);
-        setToastMessage(`✓ Start: ${description}`);
+      // Update or create start marker
+      if (startMarker.current) {
+        startMarker.current.setLngLat([lng, lat]);
       } else {
-        setEndPoint(point);
-        setEndSearchQuery(description);
-        setShowEndSuggestions(false);
-        setToastMessage(`✓ End: ${description}`);
-      }
+        const el = document.createElement('div');
+        el.className = 'custom-marker';
+        el.style.width = '30px';
+        el.style.height = '30px';
+        el.style.borderRadius = '50%';
+        el.style.backgroundColor = '#10b981';
+        el.style.border = '3px solid white';
+        el.style.display = 'flex';
+        el.style.alignItems = 'center';
+        el.style.justifyContent = 'center';
+        el.style.color = 'white';
+        el.style.fontWeight = 'bold';
+        el.style.fontSize = '14px';
+        el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+        el.textContent = 'S';
 
-      setShowToast(true);
-      map.panTo(point);
-      map.setZoom(15);
-    } catch (error) {
-      console.error('Place selection failed:', error);
-      setToastMessage('Failed to select location');
-      setShowToast(true);
+        startMarker.current = new mapboxgl.Marker(el)
+          .setLngLat([lng, lat])
+          .addTo(map.current);
+      }
+    } else {
+      setEndPoint(point);
+      setEndSearchQuery(feature.place_name);
+      setShowEndSuggestions(false);
+      setToastMessage(`✓ End: ${feature.place_name}`);
+
+      // Update or create end marker
+      if (endMarker.current) {
+        endMarker.current.setLngLat([lng, lat]);
+      } else {
+        const el = document.createElement('div');
+        el.className = 'custom-marker';
+        el.style.width = '30px';
+        el.style.height = '30px';
+        el.style.borderRadius = '50%';
+        el.style.backgroundColor = '#ef4444';
+        el.style.border = '3px solid white';
+        el.style.display = 'flex';
+        el.style.alignItems = 'center';
+        el.style.justifyContent = 'center';
+        el.style.color = 'white';
+        el.style.fontWeight = 'bold';
+        el.style.fontSize = '14px';
+        el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+        el.textContent = 'E';
+
+        endMarker.current = new mapboxgl.Marker(el)
+          .setLngLat([lng, lat])
+          .addTo(map.current);
+      }
     }
-  }, [map]);
+
+    setShowToast(true);
+    map.current.flyTo({ center: [lng, lat], zoom: 15 });
+  }, []);
 
   // Handle map click for pinning locations
-  const handleMapClick = useCallback(async (e: google.maps.MapMouseEvent) => {
-    if (!e.latLng || !geocoder.current) return;
+  const handleMapClick = useCallback(async (e: mapboxgl.MapMouseEvent) => {
+    if (!pinMode || !map.current) return;
 
-    const clickedPoint = {
-      lat: e.latLng.lat(),
-      lng: e.latLng.lng()
-    };
+    const { lng, lat } = e.lngLat;
+    const clickedPoint = { lat, lng };
 
     // Reverse geocode to get place name
     try {
-      const result = await geocoder.current.geocode({ location: clickedPoint });
-      const placeName = result.results[0]?.formatted_address || `${clickedPoint.lat.toFixed(4)}, ${clickedPoint.lng.toFixed(4)}`;
+      const response = await axios.get(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json`,
+        {
+          params: {
+            access_token: mapboxgl.accessToken,
+            limit: 1
+          }
+        }
+      );
+
+      const placeName = response.data.features[0]?.place_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 
       if (pinMode === 'start') {
         setStartPoint(clickedPoint);
         setStartSearchQuery(placeName);
         setPinMode(null);
         setToastMessage(`✓ Start: ${placeName}`);
-        setShowToast(true);
+
+        // Update or create start marker
+        if (startMarker.current) {
+          startMarker.current.setLngLat([lng, lat]);
+        } else {
+          const el = document.createElement('div');
+          el.className = 'custom-marker';
+          el.style.width = '30px';
+          el.style.height = '30px';
+          el.style.borderRadius = '50%';
+          el.style.backgroundColor = '#10b981';
+          el.style.border = '3px solid white';
+          el.style.display = 'flex';
+          el.style.alignItems = 'center';
+          el.style.justifyContent = 'center';
+          el.style.color = 'white';
+          el.style.fontWeight = 'bold';
+          el.style.fontSize = '14px';
+          el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+          el.textContent = 'S';
+
+          startMarker.current = new mapboxgl.Marker(el)
+            .setLngLat([lng, lat])
+            .addTo(map.current!);
+        }
       } else if (pinMode === 'end' && routeMode === 'endpoint') {
         setEndPoint(clickedPoint);
         setEndSearchQuery(placeName);
         setPinMode(null);
         setToastMessage(`✓ End: ${placeName}`);
-        setShowToast(true);
+
+        // Update or create end marker
+        if (endMarker.current) {
+          endMarker.current.setLngLat([lng, lat]);
+        } else {
+          const el = document.createElement('div');
+          el.className = 'custom-marker';
+          el.style.width = '30px';
+          el.style.height = '30px';
+          el.style.borderRadius = '50%';
+          el.style.backgroundColor = '#ef4444';
+          el.style.border = '3px solid white';
+          el.style.display = 'flex';
+          el.style.alignItems = 'center';
+          el.style.justifyContent = 'center';
+          el.style.color = 'white';
+          el.style.fontWeight = 'bold';
+          el.style.fontSize = '14px';
+          el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+          el.textContent = 'E';
+
+          endMarker.current = new mapboxgl.Marker(el)
+            .setLngLat([lng, lat])
+            .addTo(map.current!);
+        }
       }
+
+      setShowToast(true);
     } catch (error) {
       console.error('Reverse geocoding failed:', error);
       if (pinMode === 'start') {
         setStartPoint(clickedPoint);
-        setStartSearchQuery(`${clickedPoint.lat.toFixed(4)}, ${clickedPoint.lng.toFixed(4)}`);
+        setStartSearchQuery(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
         setPinMode(null);
       } else if (pinMode === 'end' && routeMode === 'endpoint') {
         setEndPoint(clickedPoint);
-        setEndSearchQuery(`${clickedPoint.lat.toFixed(4)}, ${clickedPoint.lng.toFixed(4)}`);
+        setEndSearchQuery(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
         setPinMode(null);
       }
       setToastMessage('Point set!');
@@ -404,64 +496,94 @@ const CreateRouteMap = () => {
     }
   }, [pinMode, routeMode]);
 
-  // Search for location using Geocoding API
-  const searchLocation = async (query: string, type: 'start' | 'end') => {
-    if (!query || !geocoder.current) {
-      setToastMessage('Please enter a location to search');
-      setShowToast(true);
-      return;
-    }
+  // Attach map click handler
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
 
-    if (!map) {
-      setToastMessage('Map not ready. Please wait a moment.');
-      setShowToast(true);
-      return;
-    }
+    const clickHandler = (e: mapboxgl.MapMouseEvent) => {
+      handleMapClick(e);
+    };
+
+    map.current.on('click', clickHandler);
+
+    return () => {
+      if (map.current) {
+        map.current.off('click', clickHandler);
+      }
+    };
+  }, [mapLoaded, handleMapClick]);
+
+  // Update polyline on map
+  const updatePolyline = useCallback((path: LatLng[]) => {
+    if (!map.current || !mapLoaded) return;
 
     try {
-      setToastMessage(`Searching for ${query}...`);
-      setShowToast(true);
+      const coordinates: [number, number][] = path.map(p => [p.lng, p.lat]);
 
-      const result = await geocoder.current.geocode({
-        address: query,
-        region: 'PH', // Bias to Philippines
-        componentRestrictions: { country: 'PH' }
+      // Remove existing route layer and source safely
+      try {
+        if (map.current.getLayer('route')) {
+          map.current.removeLayer('route');
+        }
+      } catch (e) {
+        console.warn('Failed to remove route layer:', e);
+      }
+
+      try {
+        if (map.current.getSource('route')) {
+          map.current.removeSource('route');
+        }
+      } catch (e) {
+        console.warn('Failed to remove route source:', e);
+      }
+
+      if (coordinates.length === 0) return;
+
+      // Add new route layer
+      map.current.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: coordinates
+          }
+        }
       });
 
-      if (result.results && result.results.length > 0) {
-        const location = result.results[0].geometry.location;
-        const point = {
-          lat: location.lat(),
-          lng: location.lng()
-        };
-
-        const placeName = result.results[0].formatted_address;
-
-        if (type === 'start') {
-          setStartPoint(point);
-          setStartSearchQuery(placeName);
-          setToastMessage(`✓ Start: ${placeName}`);
-        } else {
-          setEndPoint(point);
-          setEndSearchQuery(placeName);
-          setToastMessage(`✓ End: ${placeName}`);
+      map.current.addLayer({
+        id: 'route',
+        type: 'line',
+        source: 'route',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': '#92C628',
+          'line-width': 5,
+          'line-opacity': 0.8
         }
+      });
 
-        setShowToast(true);
+      // Fit map to route bounds
+      if (coordinates.length > 1) {
+        const bounds = coordinates.reduce((bounds, coord) => {
+          return bounds.extend(coord as [number, number]);
+        }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
 
-        // Pan and zoom to location
-        map.panTo(point);
-        map.setZoom(15);
-      } else {
-        setToastMessage(`No location found for "${query}". Try adding city or landmark.`);
-        setShowToast(true);
+        map.current.fitBounds(bounds, { padding: 50 });
       }
-    } catch (error: any) {
-      console.error('Geocoding failed:', error);
-      setToastMessage(`Search failed: ${error.message || 'Unknown error'}`);
-      setShowToast(true);
+    } catch (error) {
+      console.error('Error updating polyline:', error);
     }
-  };
+  }, [mapLoaded]);
+
+  // Update polyline when generatedPath changes
+  useEffect(() => {
+    updatePolyline(generatedPath);
+  }, [generatedPath, updatePolyline]);
 
   // Generate route using algorithm engine
   const handleGenerateRoute = async () => {
@@ -514,6 +636,8 @@ const CreateRouteMap = () => {
         });
       }
 
+      console.log('Full backend response:', algoResponse.data);
+
       const coordinates = algoResponse.data.coordinates;
       const safetyData = algoResponse.data.safety;
       const distanceInfoData = algoResponse.data.distance_info;
@@ -524,10 +648,11 @@ const CreateRouteMap = () => {
         setDistanceInfo(null);
       }
 
-      console.log('Algorithm returned', coordinates?.length || 0, 'coordinates');
+      console.log('Extracted coordinates:', coordinates);
+      console.log('Coordinates length:', coordinates?.length || 0);
       console.log('Safety analysis:', safetyData);
 
-      // Use safety warnings directly from algorithm engine (no GPT enhancement for web)
+      // Use safety warnings directly from algorithm engine
       if (safetyData) {
         setSafetyAnalysis(safetyData);
       }
@@ -537,38 +662,38 @@ const CreateRouteMap = () => {
       }
 
       // Convert coordinates to correct format
-      // Algorithm returns arrays: [[lat1, lng1], [lat2, lng2], ...]
-      const pathPoints: LatLng[] = coordinates.map((coord: any) => {
-        // Accept a few common formats from algorithm backends
+      const normalizeCoordinate = (coord: any): LatLng | null => {
         if (Array.isArray(coord) && coord.length >= 2) {
-          let a = parseFloat(coord[0]);
-          let b = parseFloat(coord[1]);
-          // Detect [lon, lat] vs [lat, lon] and normalize to {lat, lng}
-          // Valid latitude range: [-90, 90]; longitude: [-180, 180]
-          const looksLikeLatLon = Math.abs(a) <= 90 && Math.abs(b) <= 180;
-          const looksLikeLonLat = Math.abs(a) <= 180 && Math.abs(b) <= 90;
-          if (looksLikeLatLon && !looksLikeLonLat) {
-            return { lat: a, lng: b };
+          let lat = Number(coord[0]);
+          let lng = Number(coord[1]);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            const latOutOfRange = Math.abs(lat) > 90;
+            const lngLooksLikeLat = Math.abs(lng) <= 90;
+            const lngOutOfRange = Math.abs(lng) > 180;
+            if ((latOutOfRange && lngLooksLikeLat) || lngOutOfRange) {
+              [lat, lng] = [lng, lat];
+            }
+            if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+              return { lat, lng };
+            }
           }
-          if (looksLikeLonLat && !looksLikeLatLon) {
-            return { lat: b, lng: a };
-          }
-          // Ambiguous: default to [lat, lon]
-          return { lat: a, lng: b };
         } else if (coord && typeof coord === 'object') {
-          if (coord.lat !== undefined && coord.lng !== undefined) {
-            return { lat: parseFloat(coord.lat), lng: parseFloat(coord.lng) };
-          }
-          if (coord.latitude !== undefined && coord.longitude !== undefined) {
-            return { lat: parseFloat(coord.latitude), lng: parseFloat(coord.longitude) };
-          }
-          if (coord.lat !== undefined && coord.lon !== undefined) {
-            return { lat: parseFloat(coord.lat), lng: parseFloat(coord.lon) };
+          const latValue = coord.lat ?? coord.latitude;
+          const lngValue = coord.lng ?? coord.lon ?? coord.longitude;
+          const latNum = Number(latValue);
+          const lngNum = Number(lngValue);
+          if (Number.isFinite(latNum) && Number.isFinite(lngNum)) {
+            return { lat: latNum, lng: lngNum };
           }
         }
         console.error('Invalid coordinate format:', coord);
-        return { lat: 0, lng: 0 };
-      }).filter((p: LatLng) => p.lat !== 0 && p.lng !== 0);
+        return null;
+      };
+
+      const normalizedCoords: (LatLng | null)[] = coordinates.map((coord: any) => normalizeCoordinate(coord));
+      const pathPoints: LatLng[] = normalizedCoords
+        .filter((p): p is LatLng => p !== null)
+        .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
 
       console.log('Converted to', pathPoints.length, 'path points');
 
@@ -577,20 +702,18 @@ const CreateRouteMap = () => {
       if (routeMode === 'endpoint') {
         chosenEnd = endPoint && pathPoints.length > 0 ? endPoint : (pathPoints[pathPoints.length - 1] ?? null);
       } else if (routeMode === 'distance' && pathPoints.length > 0) {
-        // Default to last path point
         chosenEnd = pathPoints[pathPoints.length - 1];
-        // If the route is a loop (end ≈ start), pick the farthest point from the start as visual endpoint
+        const toRad = (deg: number) => deg * Math.PI / 180;
+        const haversineKm = (a: LatLng, b: LatLng) => {
+          const R = 6371;
+          const dLat = toRad(b.lat - a.lat);
+          const dLng = toRad(b.lng - a.lng);
+          const s = Math.sin(dLat/2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng/2) ** 2;
+          return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+        };
         if (startPoint) {
-          const toRad = (deg: number) => deg * Math.PI / 180;
-          const haversineKm = (a: LatLng, b: LatLng) => {
-            const R = 6371;
-            const dLat = toRad(b.lat - a.lat);
-            const dLng = toRad(b.lng - a.lng);
-            const s = Math.sin(dLat/2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng/2) ** 2;
-            return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
-          };
           const distToStart = haversineKm(startPoint, chosenEnd);
-          if (distToStart < 0.05) { // ~50 meters threshold
+          if (distToStart < 0.05) {
             let best = chosenEnd;
             let bestDist = distToStart;
             for (const p of pathPoints) {
@@ -600,33 +723,33 @@ const CreateRouteMap = () => {
             chosenEnd = best;
           }
         }
-        // Update end marker to the chosen endpoint
         setEndPoint(chosenEnd);
-      }
 
-      // Determine if the returned path is a closed loop (end near start)
-      const isClosedLoop = (() => {
-        if (!startPoint || pathPoints.length < 2) return false;
-        const toRad = (deg: number) => deg * Math.PI / 180;
-        const haversineKm = (a: LatLng, b: LatLng) => {
-          const R = 6371;
-          const dLat = toRad(b.lat - a.lat);
-          const dLng = toRad(b.lng - a.lng);
-          const s = Math.sin(dLat/2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng/2) ** 2;
-          return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
-        };
-        return haversineKm(startPoint, pathPoints[pathPoints.length - 1]) < 0.05;
-      })();
+        // Update end marker for circular routes
+        if (endMarker.current) {
+          endMarker.current.setLngLat([chosenEnd.lng, chosenEnd.lat]);
+        } else {
+          const el = document.createElement('div');
+          el.className = 'custom-marker';
+          el.style.width = '30px';
+          el.style.height = '30px';
+          el.style.borderRadius = '50%';
+          el.style.backgroundColor = '#ef4444';
+          el.style.border = '3px solid white';
+          el.style.display = 'flex';
+          el.style.alignItems = 'center';
+          el.style.justifyContent = 'center';
+          el.style.color = 'white';
+          el.style.fontWeight = 'bold';
+          el.style.fontSize = '14px';
+          el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+          el.textContent = 'E';
 
-      // Align polyline endpoints exactly to the selected pins (to avoid subtle offsets)
-      if (pathPoints.length > 0 && startPoint) {
-        pathPoints[0] = { lat: +startPoint.lat.toFixed(6), lng: +startPoint.lng.toFixed(6) };
+          endMarker.current = new mapboxgl.Marker(el)
+            .setLngLat([chosenEnd.lng, chosenEnd.lat])
+            .addTo(map.current!);
+        }
       }
-      if (pathPoints.length > 1 && chosenEnd && !isClosedLoop) {
-        pathPoints[pathPoints.length - 1] = { lat: +chosenEnd.lat.toFixed(6), lng: +chosenEnd.lng.toFixed(6) };
-      }
-
-      // Do not render the interim path; render the saved path returned by backend below
 
       // Step 2: Save route to backend with status 'generated'
       const { data: { session } } = await supabase.auth.getSession();
@@ -642,8 +765,7 @@ const CreateRouteMap = () => {
         for (let i = 1; i < points.length; i++) {
           const prev = points[i - 1];
           const curr = points[i];
-          // Haversine formula
-          const R = 6371; // Earth's radius in km
+          const R = 6371;
           const dLat = (curr.lat - prev.lat) * Math.PI / 180;
           const dLng = (curr.lng - prev.lng) * Math.PI / 180;
           const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -656,10 +778,8 @@ const CreateRouteMap = () => {
       };
 
       const distanceKm = calculateDistance(pathPoints);
-
-      // Estimate duration based on average running pace (5 min/km)
-      const estimatedPace = 5.5; // min/km
-      const estimatedDuration = Math.round(distanceKm * estimatedPace * 60); // seconds
+      const estimatedPace = 5.5;
+      const estimatedDuration = Math.round(distanceKm * estimatedPace * 60);
 
       console.log('Route stats:', { distanceKm, estimatedDuration });
 
@@ -674,7 +794,7 @@ const CreateRouteMap = () => {
           duration_seconds: estimatedDuration,
           average_pace: estimatedPace,
           route_name: routeName || (routeMode === 'distance' ? `${targetDistance} ${distanceUnit} Run` : 'Unnamed Route'),
-          risk_score: 0.2, // Default low risk
+          risk_score: 0.2,
           visibility: 'private'
         },
         {
@@ -686,7 +806,7 @@ const CreateRouteMap = () => {
       const savedRoute = routeResponse.data.route;
       setGeneratedRoute(savedRoute);
 
-      // Parse chosen_path from saved route and render exactly what is persisted
+      // Parse chosen_path from saved route
       let savedPath: any = savedRoute?.chosen_path;
       try {
         savedPath = typeof savedPath === 'string' ? JSON.parse(savedPath) : savedPath;
@@ -705,29 +825,60 @@ const CreateRouteMap = () => {
       if (drawingPoints.length > 0) {
         setGeneratedPath(drawingPoints);
       } else {
-        // Fallback to algorithm path if parsing failed
         setGeneratedPath(pathPoints);
       }
       setShowActions(true);
-
-      // Fit map to show the route (saved path preferred)
-      if (map) {
-        const bounds = new google.maps.LatLngBounds();
-        const pts = (drawingPoints && drawingPoints.length > 0) ? drawingPoints : pathPoints;
-        if (pts.length > 0) {
-          pts.forEach(point => bounds.extend(point));
-          map.fitBounds(bounds);
-        }
-      }
 
       setToastMessage(`Route generated! Distance: ${distanceKm.toFixed(2)} km`);
       setShowToast(true);
 
     } catch (error: any) {
       console.error('Route generation failed:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to generate route';
-      setToastMessage(errorMessage);
-      setShowToast(true);
+      console.log('Error response data:', error.response?.data);
+      console.log('Error detail:', error.response?.data?.detail);
+      console.log('Error detail type:', typeof error.response?.data?.detail);
+
+      // Add 1-second delay before showing error
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Check if this is a "no safe route" error from backend
+      let errorData = error.response?.data?.detail;
+
+      // If errorData is a string, try to parse it as JSON
+      if (typeof errorData === 'string') {
+        try {
+          errorData = JSON.parse(errorData);
+        } catch (e) {
+          // If parsing fails, it's just a regular string error
+        }
+      }
+
+      if (errorData && typeof errorData === 'object' && errorData.error === 'no_safe_route') {
+        // Simple message for runners - just title, message, and reason in sentence format
+        const title = errorData.title || 'No Safe Route Available';
+        const message = errorData.message || 'We couldn\'t find a safe running path between these locations.';
+        const reason = errorData.reason || 'The only available route passes through hazard areas.';
+
+        setToastMessage(`${title}. ${message} ${reason} Please try different start or end points.`);
+        setShowToast(true);
+      } else {
+        // Other errors - handle both string and object errors
+        let errorMessage = 'Failed to generate route';
+
+        if (typeof error.response?.data?.detail === 'string') {
+          errorMessage = error.response.data.detail;
+        } else if (typeof error.response?.data?.detail === 'object') {
+          // If detail is an object, extract message fields
+          errorMessage = error.response.data.detail.message || error.response.data.detail.title || 'Failed to generate route';
+        } else if (error.response?.data?.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+
+        setToastMessage(errorMessage);
+        setShowToast(true);
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -761,7 +912,7 @@ const CreateRouteMap = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            route_id: generatedRoute.route_id, // ✅ send here
+            route_id: generatedRoute.route_id,
           }),
         }
       );
@@ -772,7 +923,6 @@ const CreateRouteMap = () => {
       setToastMessage('✓ Route saved successfully! Redirecting...');
       setShowToast(true);
 
-      // Navigate to routes page after a delay
       setTimeout(() => {
         history.push('/routes');
       }, 1500);
@@ -787,37 +937,45 @@ const CreateRouteMap = () => {
 
   // Cancel route creation
   const handleCancel = () => {
-    // Force-remove polyline from map in case the library keeps it mounted
-    if (polylineRef.current) {
-      try { polylineRef.current.setMap(null); } catch {}
-      polylineRef.current = null;
+    // Clean up map layers first
+    if (map.current && mapLoaded) {
+      try {
+        if (map.current.getLayer('route')) {
+          map.current.removeLayer('route');
+        }
+        if (map.current.getSource('route')) {
+          map.current.removeSource('route');
+        }
+      } catch (e) {
+        console.warn('Error cleaning up route layers:', e);
+      }
     }
-    // Clear all route-related state
+
+    // Clear all state
     setGeneratedPath([]);
     setGeneratedRoute(null);
     setSafetyAnalysis(null);
     setShowActions(false);
     setDistanceInfo(null);
-
-    // Clear markers - reset to selection stage
     setStartPoint(null);
     setEndPoint(null);
-
-    // Clear input fields
     setRouteName('');
     setStartSearchQuery('');
     setEndSearchQuery('');
-
-    // Reset pin mode
     setPinMode(null);
+
+    // Remove markers
+    if (startMarker.current) {
+      startMarker.current.remove();
+      startMarker.current = null;
+    }
+    if (endMarker.current) {
+      endMarker.current.remove();
+      endMarker.current = null;
+    }
 
     setToastMessage('Route cancelled');
     setShowToast(true);
-
-    // Full refresh to ensure all map overlays and markers reset cleanly
-    setTimeout(() => {
-      try { window.location.reload(); } catch {}
-    }, 300);
   };
 
   const formatDisplayDistance = (valueKm: number) => {
@@ -908,35 +1066,19 @@ const CreateRouteMap = () => {
                 {/* Autocomplete Suggestions */}
                 {showStartSuggestions && startSuggestions.length > 0 && (
                   <div className="suggestions-dropdown">
-                    {startSuggestions.map((suggestion, index) => {
-                      const placePrediction = suggestion.placePrediction;
-                      if (!placePrediction) return null;
-
-                      // Helper to extract string from FormattableText or string
-                      const getText = (value: any): string => {
-                        if (typeof value === 'string') return value;
-                        if (value?.text) return typeof value.text === 'string' ? value.text : '';
-                        return '';
-                      };
-
-                      const mainText: string = getText(placePrediction.mainText) || getText(placePrediction.text) || '';
-                      const secondaryText: string = getText(placePrediction.secondaryText);
-                      const fullText: string = getText(placePrediction.text) || `${mainText} ${secondaryText}`.trim();
-
-                      return (
-                        <div
-                          key={`start-${index}`}
-                          className="suggestion-item"
-                          onClick={() => selectSuggestion(placePrediction, fullText, 'start')}
-                        >
-                          <IonIcon icon={locationOutline} className="suggestion-icon" />
-                          <div className="suggestion-text">
-                            <div className="suggestion-main">{mainText}</div>
-                            <div className="suggestion-secondary">{secondaryText}</div>
-                          </div>
+                    {startSuggestions.map((feature, index) => (
+                      <div
+                        key={`start-${feature.id}-${index}`}
+                        className="suggestion-item"
+                        onClick={() => selectSuggestion(feature, 'start')}
+                      >
+                        <IonIcon icon={locationOutline} className="suggestion-icon" />
+                        <div className="suggestion-text">
+                          <div className="suggestion-main">{feature.text}</div>
+                          <div className="suggestion-secondary">{feature.place_name}</div>
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -964,6 +1106,10 @@ const CreateRouteMap = () => {
                     setRouteMode('endpoint');
                     setEndPoint(null);
                     setEndSearchQuery('');
+                    if (endMarker.current) {
+                      endMarker.current.remove();
+                      endMarker.current = null;
+                    }
                   }}
                 >
                   <IonIcon icon={navigateOutline} className="mode-icon" />
@@ -980,6 +1126,10 @@ const CreateRouteMap = () => {
                     setEndPoint(null);
                     setEndSearchQuery('');
                     setPinMode(null);
+                    if (endMarker.current) {
+                      endMarker.current.remove();
+                      endMarker.current = null;
+                    }
                   }}
                 >
                   <IonIcon icon={navigateOutline} className="mode-icon" />
@@ -1079,35 +1229,19 @@ const CreateRouteMap = () => {
                   {/* Autocomplete Suggestions */}
                   {showEndSuggestions && endSuggestions.length > 0 && (
                     <div className="suggestions-dropdown">
-                      {endSuggestions.map((suggestion, index) => {
-                        const placePrediction = suggestion.placePrediction;
-                        if (!placePrediction) return null;
-
-                        // Helper to extract string from FormattableText or string
-                        const getText = (value: any): string => {
-                          if (typeof value === 'string') return value;
-                          if (value?.text) return typeof value.text === 'string' ? value.text : '';
-                          return '';
-                        };
-
-                        const mainText: string = getText(placePrediction.mainText) || getText(placePrediction.text) || '';
-                        const secondaryText: string = getText(placePrediction.secondaryText);
-                        const fullText: string = getText(placePrediction.text) || `${mainText} ${secondaryText}`.trim();
-
-                        return (
-                          <div
-                            key={`end-${index}`}
-                            className="suggestion-item"
-                            onClick={() => selectSuggestion(placePrediction, fullText, 'end')}
-                          >
-                            <IonIcon icon={locationOutline} className="suggestion-icon" />
-                            <div className="suggestion-text">
-                              <div className="suggestion-main">{mainText}</div>
-                              <div className="suggestion-secondary">{secondaryText}</div>
-                            </div>
+                      {endSuggestions.map((feature, index) => (
+                        <div
+                          key={`end-${feature.id}-${index}`}
+                          className="suggestion-item"
+                          onClick={() => selectSuggestion(feature, 'end')}
+                        >
+                          <IonIcon icon={locationOutline} className="suggestion-icon" />
+                          <div className="suggestion-text">
+                            <div className="suggestion-main">{feature.text}</div>
+                            <div className="suggestion-secondary">{feature.place_name}</div>
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -1152,7 +1286,6 @@ const CreateRouteMap = () => {
                 <IonCard className="route-info-card">
                   <IonCardContent>
                     <h3>{generatedRoute.route_name}</h3>
-                    {/* Quick unit toggle for displayed stats */}
                     <div style={{ display: 'flex', gap: 8, margin: '6px 0 10px' }}>
                       <button
                         className={`unit-btn ${distanceUnit === 'km' ? 'active' : ''}`}
@@ -1170,43 +1303,43 @@ const CreateRouteMap = () => {
                       </button>
                     </div>
 
-                      <div className="route-stats">
-                        <div className="stat-item">
-                          <span className="stat-label">Distance</span>
-                          <span className="stat-value">
-                            {distanceUnit === 'km'
-                              ? `${(distanceInfo?.generated_distance_km ?? generatedRoute.distance_km).toFixed(2)} km`
-                              : `${kmToMiles(distanceInfo?.generated_distance_km ?? generatedRoute.distance_km).toFixed(2)} miles`}
-                          </span>
-                        </div>
+                    <div className="route-stats">
+                      <div className="stat-item">
+                        <span className="stat-label">Distance</span>
+                        <span className="stat-value">
+                          {distanceUnit === 'km'
+                            ? `${(distanceInfo?.generated_distance_km ?? generatedRoute.distance_km).toFixed(2)} km`
+                            : `${kmToMiles(distanceInfo?.generated_distance_km ?? generatedRoute.distance_km).toFixed(2)} miles`}
+                        </span>
+                      </div>
                       <div className="stat-item">
                         <span className="stat-label">Est. Time</span>
                         <span className="stat-value">{Math.round(generatedRoute.duration_seconds / 60)} min</span>
                       </div>
                     </div>
-                </IonCardContent>
-              </IonCard>
+                  </IonCardContent>
+                </IonCard>
 
-              {routeMode === 'distance' && distanceInfo && (
-                <div
-                  className={`distance-warning-banner ${distanceInfo.distance_warning ? 'warning' : 'success'}`}
-                >
-                  {distanceInfo.distance_warning ? (
-                    <>
-                      <strong>Safety first.</strong> We couldn't find a safe{' '}
-                      {formatDisplayDistance(distanceInfo.requested_distance_km)} loop starting here. This route covers{' '}
-                      <strong>{formatDisplayDistance(distanceInfo.generated_distance_km)}</strong> to avoid hazards near
-                      your start point. Try choosing another start location if you need an exact distance.
-                    </>
-                  ) : (
-                    <>
-                      <strong>Great news!</strong> This route closely matches your{' '}
-                      {formatDisplayDistance(distanceInfo.requested_distance_km)} target while keeping you on the safest
-                      streets nearby.
-                    </>
-                  )}
-                </div>
-              )}
+                {routeMode === 'distance' && distanceInfo && (
+                  <div
+                    className={`distance-warning-banner ${distanceInfo.distance_warning ? 'warning' : 'success'}`}
+                  >
+                    {distanceInfo.distance_warning ? (
+                      <>
+                        <strong>Safety first.</strong> We couldn't find a safe{' '}
+                        {formatDisplayDistance(distanceInfo.requested_distance_km)} loop starting here. This route covers{' '}
+                        <strong>{formatDisplayDistance(distanceInfo.generated_distance_km)}</strong> to avoid hazards near
+                        your start point. Try choosing another start location if you need an exact distance.
+                      </>
+                    ) : (
+                      <>
+                        <strong>Great news!</strong> This route closely matches your{' '}
+                        {formatDisplayDistance(distanceInfo.requested_distance_km)} target while keeping you on the safest
+                        streets nearby.
+                      </>
+                    )}
+                  </div>
+                )}
 
                 {/* Safety Warnings Card */}
                 {safetyAnalysis && safetyAnalysis.warnings.length > 0 && (
@@ -1258,8 +1391,8 @@ const CreateRouteMap = () => {
           <div className="map-container">
             <div className="map-tabs">
               <button
-                className={`map-tab ${mapType === 'roadmap' ? 'active' : ''}`}
-                onClick={() => setMapType('roadmap')}
+                className={`map-tab ${mapType === 'streets' ? 'active' : ''}`}
+                onClick={() => setMapType('streets')}
               >
                 Map
               </button>
@@ -1270,90 +1403,15 @@ const CreateRouteMap = () => {
                 Satellite
               </button>
               <button
-                className={`map-tab ${mapType === 'terrain' ? 'active' : ''}`}
-                onClick={() => setMapType('terrain')}
+                className={`map-tab ${mapType === 'outdoors' ? 'active' : ''}`}
+                onClick={() => setMapType('outdoors')}
               >
-                Terrain
-              </button>
-              <button
-                className={`map-tab ${showTrafficLayer ? 'active' : ''}`}
-                onClick={() => setShowTrafficLayer(!showTrafficLayer)}
-              >
-                Traffic {showTrafficLayer ? '✓' : ''}
+                Outdoors
               </button>
             </div>
 
-            <LoadScript
-              googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
-              libraries={libraries}
-            >
-              <GoogleMap
-                mapContainerStyle={mapContainerStyle}
-                center={startPoint || defaultCenter}
-                zoom={13}
-                mapTypeId={mapType}
-                onClick={handleMapClick}
-                onLoad={setMap}
-                options={{
-                  streetViewControl: false,
-                  mapTypeControl: false,
-                  fullscreenControl: true,
-                }}
-              >
-                {/* Start Point Marker */}
-                {startPoint && (
-                  <MarkerF
-                    key={`start-${startPoint.lat}-${startPoint.lng}`}
-                    position={startPoint}
-                    label="S"
-                    icon={{
-                      url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
-                    }}
-                  />
-                )}
-
-                {/* End Point Marker */}
-                {endPoint && (
-                  <MarkerF
-                    key={`end-${endPoint.lat}-${endPoint.lng}`}
-                    position={endPoint}
-                    label="E"
-                    icon={{
-                      url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
-                    }}
-                  />
-                )}
-
-                {/* Generated Route Path */}
-                {generatedPath.length > 0 && (
-                  <Polyline
-                    key={`route-${generatedPath[0].lat}-${generatedPath[generatedPath.length-1].lng}`}
-                    path={generatedPath}
-                    onLoad={(poly) => { polylineRef.current = poly; }}
-                    onUnmount={() => { polylineRef.current = null; }}
-                    options={{
-                      strokeColor: '#92C628',
-                      strokeOpacity: 0.8,
-                      strokeWeight: 5,
-                    }}
-                  />
-                )}
-
-                {/* Hazard Markers */}
-                {hazards.map((hazard) => (
-                  <MarkerF
-                    key={hazard.report_id}
-                    position={{ lat: hazard.lat, lng: hazard.lng }}
-                    icon={getMarkerIcon(hazard)}
-                    title={hazard.establishment ? hazard.establishment.displayName : hazard.title}
-                    onClick={() => {
-                      setSelectedHazard(hazard);
-                      setShowHazardModal(true);
-                    }}
-                  />
-                ))}
-              </GoogleMap>
-            </LoadScript>
+            {/* Mapbox Map Container */}
+            <div ref={mapContainer} style={mapContainerStyle} />
 
             {/* Pin Mode Indicator */}
             {pinMode && (
@@ -1370,11 +1428,11 @@ const CreateRouteMap = () => {
           isOpen={showToast}
           onDidDismiss={() => setShowToast(false)}
           message={toastMessage}
-          duration={2000}
+          duration={5000}
           position="top"
         />
 
-        {/* Instagram-style Hazard Detail Modal */}
+        {/* Hazard Detail Modal */}
         <IonModal
           isOpen={showHazardModal}
           onDidDismiss={() => {
@@ -1397,7 +1455,6 @@ const CreateRouteMap = () => {
           <IonContent className="hazard-modal-content">
             {selectedHazard && (
               <div className="hazard-detail-container">
-                {/* Hazard Image - only show if image_url exists and is not null/empty */}
                 {selectedHazard.image_url && selectedHazard.image_url.trim() !== '' && (
                   <div className="hazard-image-container">
                     <img
@@ -1408,15 +1465,14 @@ const CreateRouteMap = () => {
                   </div>
                 )}
 
-                {/* Hazard Info */}
                 <div className="hazard-info">
                   <div className="hazard-header">
                     <div className="hazard-user-info">
-                    <img
-                      src={selectedHazard.users?.profile_picture || DEFAULT_AVATAR}
-                      alt={selectedHazard.users?.username || 'Anonymous'}
-                      className="user-avatar"
-                    />
+                      <img
+                        src={selectedHazard.users?.profile_picture || DEFAULT_AVATAR}
+                        alt={selectedHazard.users?.username || 'Anonymous'}
+                        className="user-avatar"
+                      />
                       <div className="user-details">
                         <span className="username">
                           {selectedHazard.users?.username || 'Anonymous'}

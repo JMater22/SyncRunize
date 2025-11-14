@@ -1,7 +1,7 @@
 import { supabase } from "../utils/supabase.js";
 
-// Get comments for a post
-export const getCommentsByPost = async (postId) => {
+// Get comments for a post with pagination
+export const getCommentsByPost = async (postId, limit = 20, offset = 0) => {
   const { data, error } = await supabase
     .from("comments")
     .select(`
@@ -16,7 +16,8 @@ export const getCommentsByPost = async (postId) => {
       )
     `)
     .eq("post_id", postId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .range(offset, offset + limit - 1);
 
   if (error) throw error;
 

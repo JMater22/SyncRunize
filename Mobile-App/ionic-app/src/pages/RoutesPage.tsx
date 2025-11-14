@@ -1,464 +1,296 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   IonPage,
   IonHeader,
   IonToolbar,
-  IonButtons,
-  IonBackButton,
   IonTitle,
-  IonContent,
+  IonButtons,
   IonButton,
-  IonIcon,
-  IonFab,
-  IonFabButton,
+  IonContent,
+  IonSearchbar,
   IonCard,
   IonCardHeader,
-  IonCardTitle,
   IonCardContent,
-  IonLabel,
-  IonAccordion,
-  IonAccordionGroup,
-  IonItem,
-  IonSearchbar,
+  IonCardTitle,
+  IonIcon,
   IonSpinner,
+  IonModal,
+  IonLabel,
   IonToast,
-  IonAlert,
-  IonModal
-} from "@ionic/react";
-import { bookmark, pencil, locate, locationOutline } from "ionicons/icons";
-import { Geolocation } from "@capacitor/geolocation";
-import { RoutesApi, Route } from "../services/routes";
-import { SavedRoutesApi } from "../services/saved-routes";
-import { useUser } from "../contexts/UserContext";
-import "../theme/Routes.css"
+} from '@ionic/react';
+import { bookmark, pencil, navigateOutline, informationCircleOutline } from 'ionicons/icons';
+import { useHistory } from 'react-router-dom';
+import { RoutesApi, Route } from '../services/routes';
+import { SavedRoutesApi } from '../services/saved-routes';
+import { buildGuidedRoutePayload, normalizeRoutePath } from '../lib/routeGuides';
+import { formatDurationShort, formatPace } from '../lib/utils';
+import '../theme/Routes.css';
 
-interface Position {
-  latitude: number;
-  longitude: number;
-}
-
-const RouteSuggestion: React.FC = () => {
-  const { currentUser } = useUser();
-  const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
+const RoutesPage: React.FC = () => {
+  const history = useHistory();
+  const [routes, setRoutes] = useState<Route[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingRoutes, setLoadingRoutes] = useState(false);
-  const [error, setError] = useState<string>("");
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastColor, setToastColor] = useState<"success" | "danger" | "primary">("danger");
-  const [accordionValue, setAccordionValue] = useState<string | undefined>(undefined);
-  const [showPermissionAlert, setShowPermissionAlert] = useState(false);
-  const [showInitialPrompt, setShowInitialPrompt] = useState(false);
-  const [permissionStatus, setPermissionStatus] = useState<string>("prompt");
-  const [hasCheckedPermission, setHasCheckedPermission] = useState(false);
-  const [publicRoutes, setPublicRoutes] = useState<Route[]>([]);
-  const [filteredRoutes, setFilteredRoutes] = useState<Route[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+  const [savingRouteId, setSavingRouteId] = useState<number | null>(null);
+  const [usingRouteId, setUsingRouteId] = useState<number | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [toast, setToast] = useState<{ open: boolean; message: string; color: 'success' | 'danger' | 'primary' }>({
+    open: false,
+    message: '',
+    color: 'success',
+  });
 
-  useEffect(() => {
-    checkInitialPermissions();
-    fetchPublicRoutes();
+  const showToast = (message: string, color: 'success' | 'danger' | 'primary' = 'success') => {
+    setToast({ open: true, message, color });
+  };
+
+  const fetchRoutes = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await RoutesApi.getPublicRoutes();
+      setRoutes(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      console.error('Failed to load routes:', err);
+      showToast(err?.message || 'Unable to load public routes', 'danger');
+      setRoutes([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    // Filter routes based on search query
-    if (searchQuery.trim()) {
-      const filtered = publicRoutes.filter(route =>
-        route.route_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        route.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredRoutes(filtered);
-    } else {
-      setFilteredRoutes(publicRoutes);
-    }
-  }, [searchQuery, publicRoutes]);
+    fetchRoutes();
+  }, [fetchRoutes]);
 
-  const fetchPublicRoutes = async () => {
-    try {
-      setLoadingRoutes(true);
-      const routes = await RoutesApi.getPublicRoutes();
-      setPublicRoutes(Array.isArray(routes) ? routes : []);
-      setFilteredRoutes(Array.isArray(routes) ? routes : []);
-    } catch (err: any) {
-      console.error('Failed to fetch public routes:', err);
-      setPublicRoutes([]);
-      setFilteredRoutes([]);
-    } finally {
-      setLoadingRoutes(false);
-    }
-  };
+  const filteredRoutes = useMemo(() => {
+    if (!searchQuery.trim()) return routes;
+    const query = searchQuery.toLowerCase();
+    return routes.filter(
+      (route) =>
+        route.route_name.toLowerCase().includes(query) ||
+        (route.description ? route.description.toLowerCase().includes(query) : false),
+    );
+  }, [routes, searchQuery]);
 
   const handleSaveRoute = async (routeId: number) => {
-    if (!currentUser) {
-      setToastMessage('Please log in to save routes');
-      setToastColor('danger');
-      setShowToast(true);
-      return;
-    }
-
     try {
+      setSavingRouteId(routeId);
       await SavedRoutesApi.saveRouteToLibrary({ route_id: routeId });
-      setToastMessage('Route saved successfully!');
-      setToastColor('success');
-      setShowToast(true);
+      showToast('Route saved to your library');
     } catch (err: any) {
       console.error('Failed to save route:', err);
-      setToastMessage(err.message || 'Failed to save route');
-      setToastColor('danger');
-      setShowToast(true);
-    }
-  };
-
-  const checkInitialPermissions = async () => {
-    try {
-      const permission = await Geolocation.checkPermissions();
-      setPermissionStatus(permission.location);
-      setHasCheckedPermission(true);
-
-      if (permission.location === "granted") {
-        // Already have permission, get location
-        await getCurrentPosition();
-      } else if (permission.location === "denied") {
-        // Permission was previously denied
-        console.log("Location permission denied");
-      }
-      // If prompt, we don't show anything yet - user can click locate button
-    } catch (err) {
-      console.error("Error checking permissions:", err);
-      setHasCheckedPermission(true);
-    }
-  };
-
-  const requestLocationAccess = async () => {
-    setShowInitialPrompt(false);
-    setLoading(true);
-
-    try {
-      const { location } = await Geolocation.requestPermissions();
-      setPermissionStatus(location);
-
-      if (location === "granted") {
-        await getCurrentPosition();
-        setToastMessage(" Location access granted!");
-        setToastColor("success");
-        setShowToast(true);
-      } else if (location === "denied") {
-        setShowPermissionAlert(true);
-      }
-    } catch (err) {
-      console.error("Permission request error:", err);
-      setError("Failed to request location permission.");
-      setToastMessage("Failed to request location permission.");
-      setToastColor("danger");
-      setShowToast(true);
+      showToast(err?.message || 'Unable to save route', 'danger');
     } finally {
-      setLoading(false);
+      setSavingRouteId(null);
     }
   };
 
-  const handleLocateClick = async () => {
-    const permission = await Geolocation.checkPermissions();
-    
-    if (permission.location === "granted") {
-      getCurrentPosition();
-    } else if (permission.location === "denied") {
-      setShowPermissionAlert(true);
-    } else {
-      // Show prompt
-      setShowInitialPrompt(true);
-    }
-  };
-
-  const getCurrentPosition = async () => {
-    setLoading(true);
-    setError("");
-
+  const handleUseRoute = async (route: Route) => {
     try {
-      const permission = await Geolocation.checkPermissions();
-
-      if (permission.location !== "granted") {
-        setShowInitialPrompt(true);
-        setLoading(false);
-        return;
+      setUsingRouteId(route.route_id);
+      let hydrated = route;
+      let path = normalizeRoutePath(route.chosen_path, []);
+      if (!path.length) {
+        hydrated = await RoutesApi.getRoute(route.route_id);
+        path = normalizeRoutePath(hydrated.chosen_path, []);
       }
-
-      const position = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      });
-
-      setCurrentPosition({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude
-      });
-      
-      
-      console.log("Current position:", position.coords);
+      if (!path.length) {
+        throw new Error('This route does not have a path yet.');
+      }
+      const payload = buildGuidedRoutePayload(hydrated, path);
+      history.push('/run-tracking', { guidedRoute: payload });
     } catch (err: any) {
-      console.error("Error getting location:", err);
-      
-      let errorMessage = "Failed to get location";
-      if (err.message?.includes("location unavailable")) {
-        errorMessage = "Location unavailable. Please enable GPS.";
-      } else if (err.message?.includes("timeout")) {
-        errorMessage = "Location request timed out. Try again.";
-      }
-      
-      setError(errorMessage);
-      setToastColor("danger");
-      setToastMessage(errorMessage); 
-      setShowToast(true);
+      console.error('Failed to use route:', err);
+      showToast(err?.message || 'Unable to load this route', 'danger');
     } finally {
-      setLoading(false);
+      setUsingRouteId(null);
     }
+  };
+
+  const openDetails = (route: Route) => {
+    setSelectedRoute(route);
+    setShowDetails(true);
+  };
+
+  const closeDetails = () => {
+    setShowDetails(false);
+    setSelectedRoute(null);
+  };
+
+  const renderRouteMeta = (route: Route) => {
+    const stats: string[] = [];
+    stats.push(`${route.distance_km.toFixed(2)} km`);
+    stats.push(formatDurationShort(route.duration_seconds));
+    if (route.average_pace) {
+      stats.push(formatPace(route.average_pace));
+    }
+    return stats.join(' · ');
   };
 
   return (
-    <IonPage>
-      <IonHeader style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-        <IonToolbar>
-          <IonButtons slot="start">
-            <IonBackButton defaultHref="/home" text="" />
-          </IonButtons>
-
-          <IonTitle>Route Suggestion</IonTitle>
-
+    <IonPage className="routes-page">
+      <IonHeader className="route-header">
+        <IonToolbar className="route-toolbar">
+          <IonTitle>Routes</IonTitle>
           <IonButtons slot="end">
-            <IonButton
-              onClick={handleLocateClick}
-              disabled={loading}
-            >
-              {loading ? (
-                <IonSpinner name="crescent" />
-              ) : (
-                <IonIcon 
-                  icon={locate} 
-                  style={{ 
-                    color: currentPosition ? '#92C628' : '#666',
-                    fontSize: '24px'
-                  }} 
-                />
-              )}
+            <IonButton fill="clear" onClick={() => history.push('/saved-routes')}>
+              <IonIcon icon={bookmark} slot="icon-only" />
             </IonButton>
-
-            <IonButton routerLink="/saved-routes">
-              <IonIcon icon={bookmark} style={{ fontSize: '24px', color: '#92C628'}} />
+            <IonButton fill="clear" onClick={() => history.push('/create-route')}>
+              <IonIcon icon={pencil} slot="icon-only" />
             </IonButton>
           </IonButtons>
         </IonToolbar>
       </IonHeader>
 
       <IonContent fullscreen>
-        <div style={{ padding: '16px 16px 8px' }}>
+        <div className="routes-search-bar">
           <IonSearchbar
-            placeholder="Search routes"
+            placeholder="Search public routes"
             value={searchQuery}
             onIonInput={(e) => setSearchQuery(e.detail.value || '')}
-            style={{
-              '--background': '#f5f5f5',
-              '--border-radius': '12px'
-            }}
           />
         </div>
 
-        {currentPosition && (
-          <div style={{
-            padding: '8px 16px',
-            background: '#e8f5e9',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '13px',
-            color: '#1b5e20'
-          }}>
-            <IonIcon icon={locationOutline} />
-            <span>
-              Lat: {currentPosition.latitude.toFixed(6)}, Lng: {currentPosition.longitude.toFixed(6)}
-            </span>
+        {loading ? (
+          <div className="routes-empty">
+            <IonSpinner name="crescent" />
+            <p>Loading public routes...</p>
           </div>
-        )}
-
-        {accordionValue !== "routes" && (
-          <div style={{ position: 'relative', height: '630px', margin: '0' }}>
-            <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d27403.697792075374!2d120.58200860881004!3d15.48705054784102!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3396c63f4ab68e0d%3A0x13f9415d7a5bfd4b!2sTarlac%20City%2C%20Tarlac!5e0!3m2!1sen!2sph!4v1761910044713!5m2!1sen!2sph"
-              style={{ width: '100%', height: '100%', border: 'none' }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              title="Main Map"
-            />
-
-            <IonFab vertical="bottom" horizontal="end" slot="fixed">
-              <IonFabButton routerLink="/create-route" color="success">
-                <IonIcon icon={pencil} />
-              </IonFabButton>
-            </IonFab>
+        ) : filteredRoutes.length === 0 ? (
+          <div className="routes-empty">
+            <IonIcon icon={informationCircleOutline} />
+            <p>{searchQuery ? 'No routes match your search.' : 'No public routes available yet.'}</p>
           </div>
-        )}
-
-        <IonAccordionGroup 
-          value={accordionValue} 
-          onIonChange={(e) => setAccordionValue(e.detail.value)}
-        >
-          <IonAccordion value="routes">
-            <IonItem slot="header" lines="none" style={{ fontWeight: '600' }}>
-              <IonLabel>Suggested Routes For You</IonLabel>
-            </IonItem>
-
-            <div slot="content" style={{ padding: '16px' }}>
-              {loadingRoutes ? (
-                <div style={{ textAlign: 'center', padding: '32px' }}>
-                  <IonSpinner name="crescent" />
-                  <p style={{ marginTop: '16px', color: '#666' }}>Loading routes...</p>
+        ) : (
+          filteredRoutes.map((route) => (
+            <IonCard key={route.route_id} className="routes-feed-card" onClick={() => openDetails(route)}>
+              {route.snapshot_url && (
+                <div className="routes-feed-card-media">
+                  <img src={route.snapshot_url} alt={`${route.route_name} map`} />
                 </div>
-              ) : filteredRoutes.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '32px' }}>
-                  <p style={{ color: '#666' }}>
-                    {searchQuery ? 'No routes found matching your search.' : 'No public routes available.'}
-                  </p>
-                </div>
-              ) : (
-                filteredRoutes.map((route, index) => (
-                  <IonCard key={route.route_id} style={{ marginBottom: '16px' }}>
-                    <IonCardHeader>
-                      <IonCardTitle>{route.route_name}</IonCardTitle>
-                    </IonCardHeader>
-
-                    <IonCardContent>
-                      <div style={{
-                        display: 'flex',
-                        gap: '8px',
-                        fontSize: '14px',
-                        color: '#666',
-                        marginBottom: '8px',
-                      }}>
-                        <span>{route.distance_km.toFixed(2)} km</span>
-                        <span>
-                          {Math.floor(route.duration_seconds / 60)}m {route.duration_seconds % 60}s
-                        </span>
-                        <span style={{ textTransform: 'capitalize' }}>• {route.route_type}</span>
-                      </div>
-                      {route.description && (
-                        <p style={{ fontSize: '14px', color: '#888', marginBottom: '16px' }}>
-                          {route.description}
-                        </p>
-                      )}
-
-                      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                        <IonButton
-                          size="small"
-                          color="success"
-                          onClick={() => handleSaveRoute(route.route_id)}
-                        >
-                          Save
-                        </IonButton>
-                        <IonButton
-                          size="small"
-                          color="success"
-                          fill="outline"
-                          disabled={!currentPosition}
-                          onClick={() => {
-                            if (!currentPosition) {
-                              setShowInitialPrompt(true);
-                            }
-                          }}
-                        >
-                          From your location
-                        </IonButton>
-                      </div>
-
-                      {route.snapshot_url && (
-                        <div style={{ borderRadius: '8px', overflow: 'hidden', height: '200px' }}>
-                          <img
-                            src={route.snapshot_url}
-                            alt={`${route.route_name} map`}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                        </div>
-                      )}
-                    </IonCardContent>
-                  </IonCard>
-                ))
               )}
-            </div>
-          </IonAccordion>
-        </IonAccordionGroup>
+              <IonCardHeader>
+                <IonCardTitle>{route.route_name}</IonCardTitle>
+                <p className="routes-feed-card-meta">{renderRouteMeta(route)}</p>
+              </IonCardHeader>
+              <IonCardContent>
+                {route.description && <p className="routes-feed-card-description">{route.description}</p>}
+                <div className="routes-feed-card-actions">
+                  <IonButton
+                    size="small"
+                    color="success"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSaveRoute(route.route_id);
+                    }}
+                    disabled={savingRouteId === route.route_id}
+                  >
+                    {savingRouteId === route.route_id && <IonSpinner slot="start" name="crescent" />}
+                    Save
+                  </IonButton>
+                  <IonButton
+                    size="small"
+                    fill="outline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleUseRoute(route);
+                    }}
+                    disabled={usingRouteId === route.route_id}
+                  >
+                    {usingRouteId === route.route_id ? (
+                      <IonSpinner slot="start" name="crescent" />
+                    ) : (
+                      <IonIcon slot="start" icon={navigateOutline} />
+                    )}
+                    Use route
+                  </IonButton>
+                </div>
+              </IonCardContent>
+            </IonCard>
+          ))
+        )}
 
-        {/* Initial Location Prompt Modal */}
-        <IonModal isOpen={showInitialPrompt} backdropDismiss={false}>
-          <div style={{
-            padding: '32px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%',
-            textAlign: 'center'
-          }}>
-            <IonIcon
-              icon={locationOutline}
-              style={{
-                fontSize: '80px',
-                color: '#4285f4',
-                marginBottom: '24px'
-              }}
-            />
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>
-              Allow Location Access
-            </h2>
-            <p style={{ fontSize: '16px', color: '#666', marginBottom: '32px', lineHeight: '1.5' }}>
-              Allow RunTracker to access your location to find nearby routes and personalize route suggestions based on your area.
-            </p>
-            <IonButton
-              expand="block"
-              onClick={requestLocationAccess}
-              style={{ marginBottom: '12px', width: '100%' }}
-            >
-              Allow Location Access
-            </IonButton>
-            <IonButton
-              expand="block"
-              fill="clear"
-              onClick={() => setShowInitialPrompt(false)}
-            >
-              Not Now
-            </IonButton>
-          </div>
+        <IonModal isOpen={showDetails && !!selectedRoute} onDidDismiss={closeDetails}>
+          {selectedRoute && (
+            <div className="routes-feed-detail-modal">
+              <IonHeader>
+                <IonToolbar>
+                  <IonTitle>{selectedRoute.route_name}</IonTitle>
+                  <IonButtons slot="end">
+                    <IonButton onClick={closeDetails}>Close</IonButton>
+                  </IonButtons>
+                </IonToolbar>
+              </IonHeader>
+              <IonContent>
+                {selectedRoute.snapshot_url && (
+                  <div className="routes-feed-detail-image">
+                    <img src={selectedRoute.snapshot_url} alt={`${selectedRoute.route_name} snapshot`} />
+                  </div>
+                )}
+                <div className="routes-feed-detail-body">
+                  <div className="routes-feed-detail-stats">
+                    <div>
+                      <IonLabel>Distance</IonLabel>
+                      <strong>{selectedRoute.distance_km.toFixed(2)} km</strong>
+                    </div>
+                    <div>
+                      <IonLabel>Duration</IonLabel>
+                      <strong>{formatDurationShort(selectedRoute.duration_seconds)}</strong>
+                    </div>
+                    <div>
+                      <IonLabel>Avg pace</IonLabel>
+                      <strong>{formatPace(selectedRoute.average_pace || 0)}</strong>
+                    </div>
+                    <div>
+                      <IonLabel>Calories</IonLabel>
+                      <strong>{Math.round(selectedRoute.estimated_calories || 0)} kcal</strong>
+                    </div>
+                  </div>
+                  {selectedRoute.description && (
+                    <p className="routes-feed-detail-description">{selectedRoute.description}</p>
+                  )}
+                  <div className="routes-feed-card-actions">
+                    <IonButton
+                      expand="block"
+                      color="success"
+                      onClick={() => handleSaveRoute(selectedRoute.route_id)}
+                      disabled={savingRouteId === selectedRoute.route_id}
+                    >
+                      {savingRouteId === selectedRoute.route_id && <IonSpinner slot="start" name="crescent" />}
+                      Save to my routes
+                    </IonButton>
+                    <IonButton
+                      expand="block"
+                      fill="outline"
+                      onClick={() => handleUseRoute(selectedRoute)}
+                      disabled={usingRouteId === selectedRoute.route_id}
+                    >
+                      {usingRouteId === selectedRoute.route_id ? (
+                        <IonSpinner slot="start" name="crescent" />
+                      ) : (
+                        <IonIcon slot="start" icon={navigateOutline} />
+                      )}
+                      Use this route
+                    </IonButton>
+                  </div>
+                </div>
+              </IonContent>
+            </div>
+          )}
         </IonModal>
 
-        {/* Permission Denied Alert */}
-        <IonAlert
-          isOpen={showPermissionAlert}
-          onDidDismiss={() => setShowPermissionAlert(false)}
-          header="Location Permission Required"
-          message="Location access is needed to show routes near you. Please enable it in your device settings."
-          buttons={[
-            {
-              text: "Cancel",
-              role: "cancel"
-            },
-            {
-              text: "Open Settings",
-              handler: () => {
-                alert("Please enable location in your device settings");
-              }
-            }
-          ]}
-        />
-
         <IonToast
-          isOpen={showToast}
-          onDidDismiss={() => setShowToast(false)}
-          message={toastMessage}
-          duration={3000}
-          color={toastColor}
-          position="top"
+          isOpen={toast.open}
+          message={toast.message}
+          onDidDismiss={() => setToast((prev) => ({ ...prev, open: false }))}
+          duration={2500}
+          color={toast.color}
         />
       </IonContent>
     </IonPage>
   );
 };
 
-export default RouteSuggestion;
+export default RoutesPage;

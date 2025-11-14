@@ -27,6 +27,8 @@
   import userRouteRoutes from "./routes/user_route_routes.js";
   import unsavedRoutes from "./routes/route_routes.js";
   import savedRouteRoutes from "./routes/saved_route_routes.js";
+  import alertRoutes from "./routes/alert_routes.js";
+  import deviceRoutes from "./routes/device_routes.js";
 
 
   import path from "path";
@@ -44,8 +46,21 @@
   const __dirname = path.dirname(__filename);
 
   app.use(cors());
-  app.use(bodyParser.json());
+  app.use(bodyParser.json({ limit: '5mb' }));
+  app.use(bodyParser.urlencoded({ limit: '5mb', extended: true }));
   app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+  // ✅ FIX: Health check endpoint for easy backend verification from devices
+  app.get('/api/health', (req, res) => {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: Math.floor(process.uptime()),
+      environment: process.env.NODE_ENV || 'development',
+      version: '1.0.0'
+    });
+  });
+
   // ---------------- Routes ----------------
   app.use("/api/users", userRoutes);
   app.use("/api/posts", postRoutes);
@@ -72,9 +87,14 @@
   app.use("/api/stats", statsRoutes);
   app.use("/api/routes", userRouteRoutes);
   app.use("/api/saved-routes", savedRouteRoutes);
+  app.use("/api/alerts", alertRoutes);
+  app.use("/api/devices", deviceRoutes);
   app.use("/api", emailRoutes);
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
+  
+  app.get("/api/health", (_req, res) => {
+    res.json({ ok: true, timestamp: new Date().toISOString() });
+  });
   
   // -----------------------------------------
 console.log('🔍 MAP_SNAPSHOT_PROVIDER:', process.env.MAP_SNAPSHOT_PROVIDER);

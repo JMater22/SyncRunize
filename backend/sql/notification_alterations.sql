@@ -11,12 +11,22 @@ ADD COLUMN IF NOT EXISTS badge_image_url TEXT NULL,
 ADD COLUMN IF NOT EXISTS like_count INTEGER NULL DEFAULT 0,
 ADD COLUMN IF NOT EXISTS comment_count INTEGER NULL DEFAULT 0;
 
--- Add foreign key constraint for challenge_id
-ALTER TABLE public.notifications
-ADD CONSTRAINT notifications_challenge_id_fkey
-FOREIGN KEY (challenge_id)
-REFERENCES challenges (challenge_id)
-ON DELETE SET NULL;
+-- Add foreign key constraint for challenge_id (safe re-run)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'notifications_challenge_id_fkey'
+      AND conrelid = 'public.notifications'::regclass
+  ) THEN
+    ALTER TABLE public.notifications
+    ADD CONSTRAINT notifications_challenge_id_fkey
+    FOREIGN KEY (challenge_id)
+    REFERENCES challenges (challenge_id)
+    ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- Update the type check constraint to include new notification types
 ALTER TABLE public.notifications
@@ -34,6 +44,8 @@ ADD CONSTRAINT notifications_type_check CHECK (
       'group_comment'::text,
       'hazard_nearby'::text,
       'hazard_update'::text,
+      'hazard_alert'::text,
+      'traffic_alert'::text,
       'system'::text,
       'challenge_progress'::text,
       'badge_earned'::text

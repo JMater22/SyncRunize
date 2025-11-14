@@ -2,6 +2,9 @@
 
 .search-runners-content {
   --background: #0a0a0a;
+  --color: #ffffff;
+  background: #0a0a0a;
+  color: #ffffff;
 }
 
 /* Search Section */

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   IonPage,
   IonHeader,
@@ -55,19 +55,19 @@ export default function Profile() {
     total_calories: string;
   }
 
-  const [statsData, setStatsData] = useState<{
+  // Calculate performance stats from user routes using useMemo for better performance
+  const statsData = useMemo<{
     day: StatSummary;
     week: StatSummary;
     month: StatSummary;
-  }>({
-    day: { title: "Today", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
-    week: { title: "This Week", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
-    month: { title: "This Month", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
-  });
-
-  // Calculate performance stats from user routes
-  useEffect(() => {
-    if (!userRoutes || userRoutes.length === 0) return;
+  }>(() => {
+    if (!userRoutes || userRoutes.length === 0) {
+      return {
+        day: { title: "Today", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+        week: { title: "This Week", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+        month: { title: "This Month", runs_count: 0, total_distance: "0.0 km", avg_pace: "0:00 /km", total_calories: "0 kcal" },
+      };
+    }
 
     // Helper function to calculate pace (min/km)
     const calculatePace = (durationSeconds: number, distanceKm: number) => {
@@ -110,11 +110,11 @@ export default function Profile() {
     const weekRoutes = filterByPeriod(userRoutes, 7);
     const monthRoutes = filterByPeriod(userRoutes, 30);
 
-    setStatsData({
+    return {
       day: { title: "Today", ...calcStats(dayRoutes) },
       week: { title: "This Week", ...calcStats(weekRoutes) },
       month: { title: "This Month", ...calcStats(monthRoutes) },
-    });
+    };
   }, [userRoutes]);
 
   const fetchProfileData = useCallback(async () => {
@@ -311,7 +311,15 @@ export default function Profile() {
         {/* Profile Section */}
         <IonItem lines="none">
           <IonAvatar slot="start">
-            <img src={getAvatarUrl(currentUser.profile_picture)} alt={currentUser.name} />
+            <img
+              src={getAvatarUrl(currentUser.profile_picture)}
+              alt={currentUser.name}
+              onError={(e) => {
+                console.warn('[UserProfile] Avatar failed to load');
+                const target = e.target as HTMLImageElement;
+                target.src = 'https://ionicframework.com/docs/img/demos/avatar.svg';
+              }}
+            />
           </IonAvatar>
           <IonLabel>
             <h2>{currentUser.name}</h2>

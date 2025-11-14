@@ -13,7 +13,7 @@ import {
 } from '@ionic/react';
 import { useNotifications } from '../../contexts/NotificationContext';
 import './NotificationMenu.css';
-import { DEFAULT_AVATAR } from '../../constants/avatar';
+import { DEFAULT_AVATAR, generateAvatarUrl } from '../../constants/avatar';
 
 const NotificationMenu: React.FC = () => {
   const { notifications, unreadCount, loading, markAsRead, clearAll, refreshNotifications } = useNotifications();
@@ -172,8 +172,14 @@ const NotificationMenu: React.FC = () => {
       return notification.badge_image_url || DEFAULT_AVATAR;
     }
 
-    // For other notifications, show actor's profile picture
-    return notification.actor?.profile_picture || DEFAULT_AVATAR;
+    // For other notifications, show actor's profile picture or generate avatar with initials
+    if (notification.actor?.profile_picture) {
+      return notification.actor.profile_picture;
+    }
+
+    // Generate avatar with user initials if no profile picture
+    const actorName = notification.actor?.username || notification.actor?.name;
+    return generateAvatarUrl(actorName, 128);
   };
 
   if (loading) {

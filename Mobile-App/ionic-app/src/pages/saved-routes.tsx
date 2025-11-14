@@ -15,11 +15,14 @@ import {
   IonCardTitle,
   IonSpinner,
   IonToast,
+  IonIcon,
 } from "@ionic/react";
 import { SavedRoutesApi } from "../services/saved-routes";
-import { Route } from "../services/routes";
+import { Route, RoutesApi } from "../services/routes";
 import { useUser } from "../contexts/UserContext";
 import { useHistory } from "react-router-dom";
+import { buildGuidedRoutePayload, normalizeRoutePath } from "../lib/routeGuides";
+import { navigateOutline } from "ionicons/icons";
 import "../theme/saved-routes.css";
 
 const SavedRoutes: React.FC = () => {
@@ -32,6 +35,7 @@ const SavedRoutes: React.FC = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastColor, setToastColor] = useState<'success' | 'danger'>('success');
+  const [usingRouteId, setUsingRouteId] = useState<number | null>(null);
 
   useEffect(() => {
     if (currentUser) {
@@ -42,10 +46,12 @@ const SavedRoutes: React.FC = () => {
   useEffect(() => {
     // Filter routes based on search query
     if (searchQuery.trim()) {
-      const filtered = savedRoutes.filter(route =>
-        route.route_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        route.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      const query = searchQuery.toLowerCase();
+      const filtered = savedRoutes.filter(route => {
+        const routeName = route.route_name?.toLowerCase() || '';
+        const description = route.description?.toLowerCase() || '';
+        return routeName.includes(query) || description.includes(query);
+      });
       setFilteredRoutes(filtered);
     } else {
       setFilteredRoutes(savedRoutes);
@@ -54,16 +60,26 @@ const SavedRoutes: React.FC = () => {
 
   const fetchSavedRoutes = async () => {
     if (!currentUser) return;
-
     try {
       setLoading(true);
-      const routes = await SavedRoutesApi.getSavedRoutes(currentUser.user_id);
-      setSavedRoutes(Array.isArray(routes) ? routes : []);
-      setFilteredRoutes(Array.isArray(routes) ? routes : []);
+      console.log('Fetching saved routes...');
+      const routes = await SavedRoutesApi.getSavedRoutes();
+      console.log('Fetched routes:', routes);
+
+      // Ensure routes is an array
+      const routesArray = Array.isArray(routes) ? routes : [];
+      console.log('Routes array length:', routesArray.length);
+
+      setSavedRoutes(routesArray);
+      setFilteredRoutes(routesArray);
     } catch (err: any) {
       console.error('Failed to fetch saved routes:', err);
+      console.error('Error details:', err.response?.data || err.message);
       setSavedRoutes([]);
       setFilteredRoutes([]);
+      setToastMessage(err.response?.data?.error || 'Failed to load saved routes');
+      setToastColor('danger');
+      setShowToast(true);
     } finally {
       setLoading(false);
     }
@@ -85,8 +101,35 @@ const SavedRoutes: React.FC = () => {
     }
   };
 
+  const handleUseRoute = async (route: Route) => {
+    try {
+      setUsingRouteId(route.route_id);
+      let targetRoute = route;
+      let path = normalizeRoutePath(route.chosen_path, []);
+
+      if (!path.length) {
+        targetRoute = await RoutesApi.getRoute(route.route_id);
+        path = normalizeRoutePath(targetRoute.chosen_path, []);
+      }
+
+      if (!path.length) {
+        throw new Error('This route does not have a saved path.');
+      }
+
+      const payload = buildGuidedRoutePayload(targetRoute, path);
+      history.push('/run-tracking', { guidedRoute: payload });
+    } catch (err: any) {
+      console.error('Failed to load guided route:', err);
+      setToastMessage(err?.message || 'Unable to load this route');
+      setToastColor('danger');
+      setShowToast(true);
+    } finally {
+      setUsingRouteId(null);
+    }
+  };
+
   return (
-    <IonPage>
+    <IonPage className="saved-routes-page">
       {/* Header */}
       <IonHeader>
         <IonToolbar>
@@ -107,39 +150,64 @@ const SavedRoutes: React.FC = () => {
         />
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '32px' }}>
+          <div className="loading-container">
             <IonSpinner name="crescent" />
-            <p style={{ marginTop: '16px', color: '#666' }}>Loading saved routes...</p>
+            <p>Loading saved routes...</p>
           </div>
         ) : !currentUser ? (
-          <div style={{ textAlign: 'center', padding: '32px' }}>
-            <p style={{ color: '#666' }}>Please log in to view saved routes.</p>
+          <div className="empty-state">
+            <p className="empty-state-text">Please log in to view saved routes.</p>
           </div>
         ) : filteredRoutes.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '32px' }}>
-            <p style={{ color: '#666' }}>
+          <div className="empty-state">
+            <p className="empty-state-text">
               {searchQuery ? 'No saved routes found matching your search.' : 'No saved routes yet. Browse public routes to save your favorites!'}
             </p>
-            <IonButton routerLink="/routes" style={{ marginTop: '16px' }}>
+            <IonButton routerLink="/routes">
               Browse Routes
             </IonButton>
           </div>
         ) : (
-          filteredRoutes.map((route) => (
-            <IonCard key={route.route_id} className="route-card">
-              <div className="route-card-inner">
+          filteredRoutes.map((route) => {
+            // Parse distance - handle both number and string formats
+            let distanceKm = 0;
+            if (route.distance_km !== null && route.distance_km !== undefined) {
+              distanceKm = typeof route.distance_km === 'string'
+                ? parseFloat(route.distance_km)
+                : Number(route.distance_km);
+            }
+
+            // Parse duration
+            const durationSeconds = Number(route.duration_seconds ?? 0);
+            const durationLabel = durationSeconds > 0
+              ? `${Math.floor(durationSeconds / 60)}m ${durationSeconds % 60}s`
+              : 'N/A';
+
+            console.log(`Route ${route.route_id}:`, {
+              name: route.route_name,
+              distance_km: route.distance_km,
+              distanceKm,
+              duration_seconds: route.duration_seconds,
+              durationSeconds
+            });
+
+            return (
+              <IonCard key={route.route_id} className="route-card">
+                <div className="route-card-inner">
                 <IonCardHeader>
-                  <IonCardTitle className="route-card-title">{route.route_name}</IonCardTitle>
+                  <IonCardTitle className="route-card-title">{route.route_name || 'Unnamed Route'}</IonCardTitle>
                 </IonCardHeader>
 
                 <IonCardContent>
                   <div className="route-meta">
                     <span>
-                      {route.distance_km.toFixed(2)} km : {Math.floor(route.duration_seconds / 60)}m {route.duration_seconds % 60}s
+                      {distanceKm > 0 ? distanceKm.toFixed(2) : '0.00'} km / {durationLabel}
                     </span>
-                    <span style={{ marginLeft: '8px', textTransform: 'capitalize' }}>
-                      • {route.route_type}
-                    </span>
+                    {route.route_type && (
+                      <span style={{ marginLeft: '8px', textTransform: 'capitalize' }}>
+                        • {route.route_type}
+                      </span>
+                    )}
                   </div>
                   {route.description && (
                     <p className="route-location">{route.description}</p>
@@ -158,9 +226,15 @@ const SavedRoutes: React.FC = () => {
                       size="small"
                       color="success"
                       className="route-action-btn"
-                      onClick={() => history.push(`/run-tracking`, { guidedRoute: route })}
+                      onClick={() => handleUseRoute(route)}
+                      disabled={usingRouteId === route.route_id}
                     >
-                      Start Guided Run
+                      {usingRouteId === route.route_id ? (
+                        <IonSpinner slot="start" name="crescent" />
+                      ) : (
+                        <IonIcon slot="start" icon={navigateOutline} />
+                      )}
+                      Use this route
                     </IonButton>
                   </div>
                 </IonCardContent>
@@ -176,8 +250,9 @@ const SavedRoutes: React.FC = () => {
                   </div>
                 )}
               </div>
-            </IonCard>
-          ))
+              </IonCard>
+            );
+          })
         )}
 
         <IonToast

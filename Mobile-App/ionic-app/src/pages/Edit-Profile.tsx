@@ -205,7 +205,16 @@ const EditProfile: React.FC = () => {
           {/* Profile Picture Section */}
           <div className="edit-avatar-section">
             <IonAvatar className="edit-avatar">
-              <IonImg src={editForm.profilePic} alt="Profile" />
+              <IonImg
+                src={editForm.profilePic}
+                alt="Profile"
+                onIonError={(e) => {
+                  console.warn('[EditProfile] Image failed to load, using fallback');
+                  // Fallback to default avatar if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://ionicframework.com/docs/img/demos/avatar.svg';
+                }}
+              />
             </IonAvatar>
             <IonButton
               fill="outline"

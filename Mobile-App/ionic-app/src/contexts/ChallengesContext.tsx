@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { ChallengesApi, UserChallenge, Badge, ChallengeWithStatus } from '../services/challenges';
 import { useUser } from './UserContext';
 
@@ -149,7 +149,7 @@ export const ChallengesProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, [currentUser]);
 
-  const joinChallenge = async (challengeId: number) => {
+  const joinChallenge = useCallback(async (challengeId: number) => {
     if (!currentUser) {
       throw new Error('User must be logged in to join challenges');
     }
@@ -178,9 +178,9 @@ export const ChallengesProvider: React.FC<{ children: ReactNode }> = ({ children
       console.error('Failed to join challenge:', err);
       throw err;
     }
-  };
+  }, [currentUser]);
 
-  const leaveChallenge = async (challengeId: number) => {
+  const leaveChallenge = useCallback(async (challengeId: number) => {
     if (!currentUser) {
       throw new Error('User must be logged in to leave challenges');
     }
@@ -201,7 +201,7 @@ export const ChallengesProvider: React.FC<{ children: ReactNode }> = ({ children
       console.error('Failed to leave challenge:', err);
       throw err;
     }
-  };
+  }, [currentUser]);
 
   // Fetch data when user changes
   useEffect(() => {
@@ -230,21 +230,24 @@ export const ChallengesProvider: React.FC<{ children: ReactNode }> = ({ children
     };
   }, [currentUser, fetchChallenges, fetchUserChallenges, fetchBadges]);
 
+  const value = useMemo(
+    () => ({
+      challenges,
+      userChallenges,
+      badges,
+      loading,
+      error,
+      fetchChallenges,
+      fetchUserChallenges,
+      fetchBadges,
+      joinChallenge,
+      leaveChallenge,
+    }),
+    [challenges, userChallenges, badges, loading, error, fetchChallenges, fetchUserChallenges, fetchBadges, joinChallenge, leaveChallenge]
+  );
+
   return (
-    <ChallengesContext.Provider
-      value={{
-        challenges,
-        userChallenges,
-        badges,
-        loading,
-        error,
-        fetchChallenges,
-        fetchUserChallenges,
-        fetchBadges,
-        joinChallenge,
-        leaveChallenge,
-      }}
-    >
+    <ChallengesContext.Provider value={value}>
       {children}
     </ChallengesContext.Provider>
   );

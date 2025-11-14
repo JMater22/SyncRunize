@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   IonPage,
   IonHeader,
@@ -11,199 +12,261 @@ import {
   IonAvatar,
   IonLabel,
   IonText,
-  IonBadge,
+  IonButton,
   IonRefresher,
-  IonRefresherContent
+  IonRefresherContent,
+  IonSpinner,
+  IonNote
 } from "@ionic/react";
-import { useState } from "react";
 import { RefresherEventDetail } from '@ionic/core';
-import '../theme/body.css';
-import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
+import { useHistory } from 'react-router-dom';
+import '../theme/notification.css';
 import '../theme/global.css';
-import { usePushNotifications } from "../components/push-notification";
-import { PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
-
-interface Notification {
-  id: string;
-  type: string;
-  user: string;
-  message: string;
-  time: string;
-  avatar: string;
-  isNew?: boolean;
-}
+import { useNotifications } from "../contexts/NotificationContext";
+import { DEFAULT_AVATAR } from "../constants/avatar";
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      type: 'follower',
-      user: 'Mike',
-      message: 'Nice! Mike is following you on Syncrunize',
-      time: '3 days ago',
-      avatar: ProfilePic,
-      isNew: false
-    },
-    {
-      id: '2',
-      type: 'reaction',
-      user: 'Jom',
-      message: 'Jom liked your comment',
-      time: '2 days ago',
-      avatar: ProfilePic,
-      isNew: false
-    },
-    {
-      id: '3',
-      type: 'kudos',
-      user: 'Alexander',
-      message: 'Nice work!',
-      time: '3 days ago',
-      avatar: ProfilePic,
-      isNew: false
-    },
-    {
-      id: '4',
-      type: 'achievement',
-      user: 'System',
-      message: 'Congrats on completing the challenge!',
-      time: '8 days ago',
-      avatar: '🏆',
-      isNew: false
-    }
-  ]);
+  const { notifications, loading, markAsRead, clearAll, fetchNotifications } = useNotifications();
+  const history = useHistory();
 
-  const [unreadCount, setUnreadCount] = useState(0);
+  const formatTimeAgo = (timestamp: string) => {
+    const now = new Date();
+    const notifTime = new Date(timestamp);
+    const diffMs = now.getTime() - notifTime.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
 
-  // Initialize push notifications
-  usePushNotifications({
-    onTokenReceived: (token) => {
-      console.log("[Notifications] FCM Token received:", token);
-      // Send token to your backend to register for all notification types
-      // e.g., sendTokenToBackend(token, 'all_notifications');
-    },
-    onNotificationReceived: (notification: PushNotificationSchema) => {
-      console.log("[Notifications] Notification received:", notification);
-      
-      // Add new notification to the list
-      const newNotification: Notification = {
-        id: Date.now().toString(),
-        type: notification.data?.type || 'general',
-        user: notification.data?.username || 'User',
-        message: notification.body || 'New notification',
-        time: 'Just now',
-        avatar: notification.data?.avatar || ProfilePic,
-        isNew: true
-      };
-
-      setNotifications(prev => [newNotification, ...prev]);
-      setUnreadCount(prev => prev + 1);
-    },
-    onNotificationActionPerformed: (notification: ActionPerformed) => {
-      console.log("[Notifications] Notification tapped:", notification);
-      
-      // Mark notification as read when tapped
-      const notificationId = notification.notification.data?.notificationId;
-      if (notificationId) {
-        setNotifications(prev =>
-          prev.map(n => n.id === notificationId ? { ...n, isNew: false } : n)
-        );
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      }
-    }
-  });
-
-  const handleRefresh = (event: CustomEvent<RefresherEventDetail>) => {
-    console.log("Refreshing notifications...");
-    // Simulate fetching new notifications
-    setTimeout(() => {
-      // Mark all as read
-      setNotifications(prev => prev.map(n => ({ ...n, isNew: false })));
-      setUnreadCount(0);
-      event.detail.complete();
-    }, 1000);
+    if (diffSecs < 60) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return notifTime.toLocaleDateString();
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => n.id === id ? { ...n, isNew: false } : n)
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
+  const handleRefresh = async (event: CustomEvent<RefresherEventDetail>) => {
+    try {
+      await fetchNotifications();
+    } catch (error) {
+      console.error('Failed to refresh notifications:', error);
+    } finally {
+      event.detail.complete();
+    }
+  };
+
+  const handleNotificationClick = async (notification: any) => {
+    console.log('[Notification] Clicked:', {
+      notification_id: notification.notification_id,
+      type: notification.type,
+      post_id: notification.post_id,
+      actor_id: notification.actor_id,
+      user_id: notification.user_id,
+      group_id: notification.group_id,
+    });
+
+    // Mark as read
+    await markAsRead(notification.notification_id);
+
+    // Navigate based on notification type
+    switch (notification.type) {
+      case 'follow':
+        if (notification.actor_id) {
+          history.push(`/other-profile?userId=${notification.actor_id}`);
+        }
+        break;
+
+      case 'like':
+      case 'comment':
+        // Navigate to posts page or home
+        history.push('/posts');
+        break;
+
+      case 'group_like':
+      case 'group_comment':
+      case 'group_invite':
+        if (notification.group_id) {
+          history.push(`/group-feed/${notification.group_id}`);
+        }
+        break;
+
+      case 'challenge_progress':
+        history.push('/my-challenges');
+        break;
+
+      case 'badge_earned':
+        history.push('/badges');
+        break;
+
+      default:
+        break;
+    }
+  };
+
+  const renderNotificationMessage = (notification: any) => {
+    // Debug logging
+    console.log('💬 [renderNotificationMessage] Notification:', {
+      type: notification.type,
+      actor: notification.actor,
+      actor_id: notification.actor_id,
+      message: notification.message
+    });
+
+    // Prefer username, then name; fall back to actor_id
+    const actorName = notification.actor?.username
+      || notification.actor?.name
+      || (notification.actor_id ? `User ${notification.actor_id}` : 'Someone');
+
+    console.log('💬 [renderNotificationMessage] Resolved actorName:', actorName);
+
+    switch (notification.type) {
+      case 'follow':
+        return (
+          <>
+            <strong>{actorName}</strong> {notification.message}
+          </>
+        );
+
+      case 'like':
+        return (
+          <>
+            <strong>{actorName}</strong> {notification.message}
+          </>
+        );
+
+      case 'comment':
+        return (
+          <>
+            <strong>{actorName}</strong> {notification.message}
+          </>
+        );
+
+      case 'group_like':
+        return (
+          <>
+            <strong>{actorName}</strong> {notification.message}
+          </>
+        );
+
+      case 'group_comment':
+        return (
+          <>
+            <strong>{actorName}</strong> {notification.message}
+          </>
+        );
+
+      case 'group_invite':
+        return <>{notification.message}</>;
+
+      case 'challenge_progress':
+        return <>{notification.message}</>;
+
+      case 'badge_earned':
+        return <>{notification.message}</>;
+
+      default:
+        return <>{notification.message}</>;
+    }
+  };
+
+  const getNotificationAvatar = (notification: any) => {
+    // For challenge and badge notifications, show the badge image
+    if (notification.type === 'challenge_progress' || notification.type === 'badge_earned') {
+      return notification.badge_image_url || DEFAULT_AVATAR;
+    }
+
+    // For other notifications, show actor's profile picture
+    const profilePicture = notification.actor?.profile_picture;
+
+    // If no profile picture, use default avatar
+    if (!profilePicture) {
+      return DEFAULT_AVATAR;
+    }
+
+    // If it's already a full URL (starts with http:// or https://), use it directly
+    if (profilePicture.startsWith('http://') || profilePicture.startsWith('https://')) {
+      return profilePicture;
+    }
+
+    // If it's a Supabase storage path, construct the full URL
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hooceemtoyucadhxuevx.supabase.co';
+
+    // Remove leading slash if present
+    const cleanPath = profilePicture.startsWith('/') ? profilePicture.slice(1) : profilePicture;
+
+    // Construct full Supabase storage URL
+    const fullUrl = `${supabaseUrl}/storage/v1/object/public/${cleanPath}`;
+    return fullUrl;
   };
 
   return (
-    <IonPage >
+    <IonPage>
       <IonHeader className="dark-header">
-        <IonToolbar className="notification-content">
+        <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/HomeModule/homeM1/index.html" />
+            <IonBackButton defaultHref="/home" />
           </IonButtons>
-          <IonTitle>
-            Notification
-            {unreadCount > 0 && (
-              <IonBadge color="danger" style={{ marginLeft: '8px', verticalAlign: 'super' }}>
-                {unreadCount}
-              </IonBadge>
-            )}
-          </IonTitle>
+          <IonTitle>Notifications</IonTitle>
+          {notifications.length > 0 && (
+            <IonButtons slot="end">
+              <IonButton fill="clear" onClick={clearAll}>
+                Clear All
+              </IonButton>
+            </IonButtons>
+          )}
         </IonToolbar>
       </IonHeader>
 
-      <IonContent className="dark-content" >
+      <IonContent className="dark-content notification-content" fullscreen>
         <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
           <IonRefresherContent></IonRefresherContent>
         </IonRefresher>
 
-        <IonList lines="none">
-          {notifications.map((notif) => (
-            <IonItem 
-              key={notif.id}
-              routerLink="/UserProfile/userP1/index.html"
-              onClick={() => markAsRead(notif.id)}
-              style={{ 
-                backgroundColor: notif.isNew ? 'rgba(66, 140, 255, 0.1)' : 'transparent'
-              }}
-            >
-              {notif.type === 'achievement' ? (
-                <div
-                  slot="start"
-                  style={{
-                    background: "#8bc34a",
-                    borderRadius: "50%",
-                    width: "48px",
-                    height: "48px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "20px",
-                  }}
-                >
-                  {notif.avatar}
-                </div>
-              ) : (
+        {loading ? (
+          <div className="notification-loading">
+            <IonSpinner name="crescent" />
+            <p>Loading notifications...</p>
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="notification-empty">
+            <IonText color="medium">
+              <p>No notifications yet</p>
+            </IonText>
+          </div>
+        ) : (
+          <IonList lines="full">
+            {notifications.map((notification) => (
+              <IonItem
+                key={notification.notification_id}
+                button
+                onClick={() => handleNotificationClick(notification)}
+                className={`notification-item ${notification.is_read ? 'read' : 'unread'}`}
+              >
                 <IonAvatar slot="start">
-                  <img src={notif.avatar} alt={notif.user} />
+                  <img
+                    src={getNotificationAvatar(notification)}
+                    alt={notification.type === 'challenge_progress' || notification.type === 'badge_earned' ? 'Badge' : (notification.actor?.username || 'User')}
+                    onError={(e) => {
+                      // Fallback to default avatar if image fails to load
+                      (e.target as HTMLImageElement).src = DEFAULT_AVATAR;
+                    }}
+                  />
                 </IonAvatar>
-              )}
-              <IonLabel>
-                <h3>
-                  {notif.type === 'follower' && 'New Follower'}
-                  {notif.type === 'reaction' && 'New Reaction'}
-                  {notif.type === 'kudos' && `Way to go, ${notif.user}`}
-                  {notif.type === 'achievement' && 'Challenge Completed'}
-                  {notif.type === 'general' && 'Notification'}
-                  {notif.isNew && (
-                    <IonBadge color="primary" style={{ marginLeft: '8px' }}>New</IonBadge>
-                  )}
-                </h3>
-                <p>{notif.message}</p>
-                <IonText color="medium">
-                  <small>{notif.time}</small>
-                </IonText>
-              </IonLabel>
-            </IonItem>
-          ))}
-        </IonList>
+                <IonLabel className="ion-text-wrap">
+                  <p className="notification-message">
+                    {renderNotificationMessage(notification)}
+                  </p>
+                  <IonNote className="notification-time">
+                    {formatTimeAgo(notification.created_at)}
+                  </IonNote>
+                </IonLabel>
+                {!notification.is_read && (
+                  <div className="unread-indicator" slot="end"></div>
+                )}
+              </IonItem>
+            ))}
+          </IonList>
+        )}
       </IonContent>
     </IonPage>
   );

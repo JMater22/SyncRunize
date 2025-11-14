@@ -1,47 +1,86 @@
 // utils/map_snapshot.js
 
-/**
- * Generate route snapshot using Google Maps Static API
- * This is what will be used in production (matches your paper)
- * @param {Array} routePath - Array of {lat, lng} coordinates
- * @param {Object} options - Customization options
- * @returns {string} Static map image URL
- */
-export const generateGoogleMapSnapshot = (routePath, options = {}) => {
+export const generateMapboxSnapshot = (routePath, options = {}) => {
   const {
     width = 600,
     height = 400,
-    lineColor = '0x0080ffff', // Blue with full opacity
-    lineWeight = 5,
-    mapType = 'roadmap', // roadmap, satellite, terrain, hybrid
+    strokeColor = '#4c9cff',
+    strokeWidth = 4,
+    strokeOpacity = 0.9,
+    style = process.env.MAPBOX_STATIC_STYLE || 'mapbox/streets-v12',
   } = options;
-
-  const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
   if (!routePath || routePath.length < 2) {
     throw new Error('Route must have at least 2 points');
   }
 
-  // Build path string
-  const pathString = routePath
-    .map(p => `${p.lat},${p.lng}`)
-    .join('|');
+  const token = process.env.MAPBOX_ACCESS_TOKEN
+    || process.env.MAPBOX_TOKEN
+    || process.env.MAPBOX_PUBLIC_TOKEN;
 
-  // Get start and end points
+  if (!token) {
+    throw new Error('Mapbox access token is missing');
+  }
+
+  const coordinates = routePath.map((point) => [Number(point.lng), Number(point.lat)]);
+  const geojson = encodeURIComponent(JSON.stringify({
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: {
+          stroke: strokeColor,
+          'stroke-width': strokeWidth,
+          'stroke-opacity': strokeOpacity,
+        },
+        geometry: {
+          type: 'LineString',
+          coordinates,
+        },
+      },
+    ],
+  }));
+
+  const overlays = [`geojson(${geojson})`];
+  const startPoint = routePath[0];
+  const endPoint = routePath[routePath.length - 1];
+  if (startPoint) {
+    overlays.push(`pin-s-a+1e88e5(${startPoint.lng},${startPoint.lat})`);
+  }
+  if (endPoint) {
+    overlays.push(`pin-s-b+43a047(${endPoint.lng},${endPoint.lat})`);
+  }
+
+  return `https://api.mapbox.com/styles/v1/${style}/static/${overlays.join(',')}/auto/${width}x${height}@2x?access_token=${token}`;
+};
+
+export const generateGoogleMapSnapshot = (routePath, options = {}) => {
+  const {
+    width = 600,
+    height = 400,
+    lineColor = '0x0080ffff',
+    lineWeight = 5,
+    mapType = 'roadmap',
+  } = options;
+
+  const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+  if (!GOOGLE_API_KEY) {
+    throw new Error('Google Maps API key is missing');
+  }
+
+  if (!routePath || routePath.length < 2) {
+    throw new Error('Route must have at least 2 points');
+  }
+
+  const pathString = routePath.map((p) => `${p.lat},${p.lng}`).join('|');
   const startPoint = routePath[0];
   const endPoint = routePath[routePath.length - 1];
 
-  // Build URL
-  const url = `https://maps.googleapis.com/maps/api/staticmap?` +
-    `size=${width}x${height}` +
-    `&scale=2` +
-    `&maptype=${mapType}` +
+  return `https://maps.googleapis.com/maps/api/staticmap?size=${width}x${height}&scale=2&maptype=${mapType}` +
     `&path=color:${lineColor}|weight:${lineWeight}|${pathString}` +
     `&markers=color:green|label:S|${startPoint.lat},${startPoint.lng}` +
     `&markers=color:red|label:F|${endPoint.lat},${endPoint.lng}` +
     `&key=${GOOGLE_API_KEY}`;
-
-  return url;
 };
 
 /**
@@ -135,9 +174,18 @@ export const generateMapTilerSnapshot = (routePath, options = {}) => {
  * Use environment variable to control which service to use
  */
 export const generateRouteSnapshot = (routePath, options = {}) => {
-  const provider = process.env.MAP_SNAPSHOT_PROVIDER || 'osm'; // 'google', 'osm', or 'maptiler'
+  const provider = process.env.MAP_SNAPSHOT_PROVIDER || 'mapbox'; // 'mapbox', 'osm', 'maptiler', 'google'
 
   console.log(`Generating route snapshot using provider: ${provider}`);
+
+  if (provider === 'mapbox') {
+    try {
+      return generateMapboxSnapshot(routePath, options);
+    } catch (err) {
+      console.warn('Mapbox snapshot failed, falling back to OSM', err?.message);
+      return generateOSMSnapshot(routePath, options);
+    }
+  }
 
   if (provider === 'google') {
     if (!process.env.GOOGLE_MAPS_API_KEY) {
@@ -145,13 +193,15 @@ export const generateRouteSnapshot = (routePath, options = {}) => {
       return generateOSMSnapshot(routePath, options);
     }
     return generateGoogleMapSnapshot(routePath, options);
-  } else if (provider === 'maptiler') {
+  }
+
+  if (provider === 'maptiler') {
     if (!process.env.MAPTILER_API_KEY) {
       console.warn('MapTiler API key not found, falling back to OSM');
       return generateOSMSnapshot(routePath, options);
     }
     return generateMapTilerSnapshot(routePath, options);
-  } else {
-    return generateOSMSnapshot(routePath, options);
   }
+
+  return generateOSMSnapshot(routePath, options);
 };

@@ -143,48 +143,33 @@ export const updateHazard = async (report_id, user_id, updates) => {
 };
 
 /**
- * Delete hazard owned by user. Returns deleted row object on success, otherwise null.
- * Also removes image file from disk if present.
+ * Delete hazard owned by user (SOFT DELETE). Returns updated row object on success, otherwise null.
+ * ✅ IMPROVED: Changes status to 'deleted' instead of removing row permanently.
+ * Preserves data for trust score history and audit trail. Images are kept for recovery.
  */
 export const deleteHazard = async (report_id, user_id) => {
   try {
-    // 1) Get image_url (to delete file later)
-    const { data: existing, error: fetchError } = await supabase
+    // ✅ SOFT DELETE: Update status instead of deleting row
+    const { data: result, error: updateError } = await supabase
       .from("hazard_reports")
-      .select("image_url")
-      .eq("report_id", report_id)
-      .eq("user_id", user_id)
-      .single();
-
-    if (fetchError || !existing) return null;
-
-    const imageUrl = existing.image_url;
-
-    // 2) Delete row and return deleted row
-    const { data: result, error: deleteError } = await supabase
-      .from("hazard_reports")
-      .delete()
+      .update({
+        status: 'deleted',
+        deleted_at: new Date().toISOString()
+      })
       .eq("report_id", report_id)
       .eq("user_id", user_id)
       .select()
       .single();
 
-    if (deleteError) throw deleteError;
+    if (updateError) throw updateError;
 
-    // 3) Delete image file if it existed
-    if (imageUrl) {
-      try {
-        const relativePath = imageUrl.startsWith("/") ? imageUrl.slice(1) : imageUrl;
-        const imgPath = path.join(process.cwd(), relativePath);
-        if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-      } catch (err) {
-        console.warn("⚠️ Failed to delete image after deleting DB row:", err.message);
-      }
-    }
+    // ✅ KEEP IMAGE: Don't delete image file (preserve for audit trail and potential recovery)
+    // Images can be cleaned up later via scheduled job for old deleted hazards
+    // Example cleanup: DELETE images where deleted_at < NOW() - INTERVAL '90 days'
 
     return result;
   } catch (error) {
-    console.error("Error deleting hazard:", error.message);
+    console.error("Error soft-deleting hazard:", error.message);
     throw error;
   }
 };
@@ -194,7 +179,12 @@ export const deleteHazard = async (report_id, user_id) => {
 // Using Supabase with RPC function or fetch all and filter client-side
 export const findHazardsNearLocation = async (lat, lng, radiusKm) => {
   try {
-    // Fetch all active hazards with user information
+    // ✅ FIX: Calculate bounding box to filter at database level (dramatically faster)
+    // 1 degree of latitude ≈ 111 km, so calculate lat/lng delta for the radius
+    const latDelta = radiusKm / 111;
+    const lngDelta = radiusKm / (111 * Math.cos(lat * Math.PI / 180));
+
+    // Fetch only hazards within bounding box (reduces from 1000s to ~5-10 records)
     const { data: hazards, error } = await supabase
       .from("hazard_reports")
       .select(`
@@ -204,7 +194,11 @@ export const findHazardsNearLocation = async (lat, lng, radiusKm) => {
           profile_picture
         )
       `)
-      .eq("status", "active");
+      .eq("status", "active")
+      .gte("lat", lat - latDelta)  // ✅ FIX: Filter by latitude range
+      .lte("lat", lat + latDelta)
+      .gte("lng", lng - lngDelta)  // ✅ FIX: Filter by longitude range
+      .lte("lng", lng + lngDelta);
 
     if (error) throw error;
 
@@ -212,14 +206,14 @@ export const findHazardsNearLocation = async (lat, lng, radiusKm) => {
       return [];
     }
 
-    // Calculate distance using Haversine formula and filter
+    // Calculate precise distance using Haversine formula and filter
     const hazardsWithDistance = hazards.map(hazard => {
       const distance_km = calculateDistance(lat, lng, hazard.lat, hazard.lng);
       return {
         ...hazard,
         distance_km
       };
-    }).filter(hazard => hazard.distance_km < radiusKm);
+    }).filter(hazard => hazard.distance_km < radiusKm);  // Precise radius filter
 
     // Sort by distance
     hazardsWithDistance.sort((a, b) => a.distance_km - b.distance_km);
@@ -255,7 +249,7 @@ function toRadians(degrees) {
 // ⚙️ Update hazard scores or status. This is for the algorithm updation
 export const modifyHazard = async (id, updates) => {
   try {
-    const { trust_score, agreement_score, status } = updates;
+    const { trust_score, agreement_score, status, image_url } = updates;  // ✅ FIX: Added image_url
 
     if (status && !["active", "resolved", "hidden"].includes(status)) {
       throw new Error("Invalid hazard status");
@@ -266,6 +260,7 @@ export const modifyHazard = async (id, updates) => {
     if (trust_score !== null && trust_score !== undefined) updateData.trust_score = trust_score;
     if (agreement_score !== null && agreement_score !== undefined) updateData.agreement_score = agreement_score;
     if (status !== null && status !== undefined) updateData.status = status;
+    if (image_url !== null && image_url !== undefined) updateData.image_url = image_url;  // ✅ FIX: Added image_url to update
 
     const { data, error } = await supabase
       .from("hazard_reports")

@@ -12,6 +12,7 @@ export interface HazardReport {
   severity_weight: number;
   trust_score: number;
   status: string;
+  distance_km?: number;
   users?: {
     username: string;
     profile_picture?: string | null;
@@ -24,8 +25,8 @@ export interface CreateHazardData {
   description: string;
   lat: number;
   lng: number;
-  image_url?: string;
   severity_weight?: number;
+  imageFile?: Blob | File | null;
 }
 
 export interface SafetyWarning {
@@ -53,14 +54,63 @@ export const HazardsApi = {
 
   // Get hazards near a point
   getHazardsNear: async (lat: number, lng: number, radiusKm: number = 5): Promise<HazardReport[]> => {
-    const { data } = await api.get('/hazards/near', { params: { lat, lng, radius_km: radiusKm } });
-    return data;
+    const { data } = await api.get('/hazards/nearby', { params: { lat, lng, radius: radiusKm } });
+    return data?.hazards ?? [];
   },
 
   // Report a hazard
   reportHazard: async (hazardData: CreateHazardData): Promise<HazardReport> => {
-    const { data } = await api.post('/hazards', hazardData);
-    return data;
+    console.log('[HazardsApi] reportHazard called with:', {
+      title: hazardData.title,
+      incident_type: hazardData.incident_type,
+      lat: hazardData.lat,
+      lng: hazardData.lng,
+      hasImage: !!hazardData.imageFile,
+      imageSize: hazardData.imageFile ? `${(hazardData.imageFile.size / 1024).toFixed(0)}KB` : 'none',
+    });
+
+    const formDataStart = performance.now();
+    const formData = new FormData();
+    formData.append('title', hazardData.title);
+    formData.append('incident_type', hazardData.incident_type);
+    formData.append('description', hazardData.description);
+    formData.append('lat', hazardData.lat.toString());
+    formData.append('lng', hazardData.lng.toString());
+    if (typeof hazardData.severity_weight === 'number') {
+      formData.append('severity_weight', hazardData.severity_weight.toString());
+    }
+    if (hazardData.imageFile) {
+      formData.append('image', hazardData.imageFile, 'hazard.jpg');
+    }
+    console.log(`[HazardsApi] FormData prepared in ${(performance.now() - formDataStart).toFixed(0)}ms`);
+
+    console.log('[HazardsApi] Sending POST /hazards...');
+    const requestStart = performance.now();
+
+    try {
+      const { data } = await api.post('/hazards', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000, // ✅ FIX: 30-second timeout to prevent infinite hanging
+      });
+
+      const requestTime = performance.now() - requestStart;
+      console.log(`[HazardsApi] ✅ Response received in ${requestTime.toFixed(0)}ms`);
+
+      return data?.hazard ?? data;
+    } catch (err: any) {
+      const requestTime = performance.now() - requestStart;
+      console.error(`[HazardsApi] ❌ Request failed after ${requestTime.toFixed(0)}ms:`, {
+        message: err.message,
+        status: err.response?.status,
+        data: err.response?.data,
+      });
+      throw err;
+    }
+  },
+
+  updateHazardStatus: async (hazardId: number, status: 'active' | 'resolved' | 'hidden'): Promise<HazardReport> => {
+    const { data } = await api.put(`/hazards/${hazardId}`, { status });
+    return data?.hazard ?? data;
   },
 
   // Get safety analysis for a route (if backend provides this)

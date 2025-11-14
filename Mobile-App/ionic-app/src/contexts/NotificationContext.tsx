@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import { NotificationsApi, Notification } from '../services/notifications';
 import { supabase } from '../lib/supabaseClient';
 import { useUser } from './UserContext';
@@ -24,13 +24,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   // Safely calculate unread count - ensure notifications is always an array
   const unreadCount = Array.isArray(notifications) ? notifications.filter(n => !n.is_read).length : 0;
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!currentUser) return;
 
     try {
       setLoading(true);
       setError(null);
       const data = await NotificationsApi.getAllNotifications(currentUser.user_id);
+      console.log('📥 [NotificationContext] Fetched notifications:', data);
+      console.log('📥 [NotificationContext] First notification actor:', data[0]?.actor);
       // Ensure data is always an array
       setNotifications(Array.isArray(data) ? data : []);
     } catch (err: any) {
@@ -40,9 +42,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]);
 
-  const markAsRead = async (notificationId: number) => {
+  const markAsRead = useCallback(async (notificationId: number) => {
     try {
       await NotificationsApi.markAsRead(notificationId);
 
@@ -56,9 +58,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       console.error('Failed to mark notification as read:', err);
       throw err;
     }
-  };
+  }, []);
 
-  const clearAll = async () => {
+  const clearAll = useCallback(async () => {
     if (!currentUser) return;
 
     try {
@@ -68,7 +70,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       console.error('Failed to clear notifications:', err);
       throw err;
     }
-  };
+  }, [currentUser]);
 
   // Fetch notifications when user changes
   useEffect(() => {
@@ -96,12 +98,33 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         async (payload) => {
           console.log('New notification received:', payload);
 
-          // Add new notification to state
-          const newNotification = payload.new as Notification;
+          // Fetch full notification with actor details
+          const { data: newNotification, error } = await supabase
+            .from('notifications')
+            .select(`
+              *,
+              actor:users!actor_id (
+                user_id,
+                name,
+                username,
+                profile_picture
+              )
+            `)
+            .eq('notification_id', payload.new.notification_id)
+            .single();
 
-          // Fetch full notification with actor details if needed
-          // For now, just add it
-          setNotifications(prev => [newNotification, ...prev]);
+          if (error) {
+            console.error('Error fetching new notification with actor:', error);
+            // Fallback: add without actor details
+            const payloadNotif = payload.new as Notification;
+            setNotifications(prev => [payloadNotif, ...prev]);
+            return;
+          }
+
+          if (newNotification) {
+            console.log('Adding new notification with actor:', newNotification);
+            setNotifications(prev => [newNotification, ...prev]);
+          }
         }
       )
       .on(
@@ -115,15 +138,58 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         async (payload) => {
           console.log('Notification updated:', payload);
 
-          // Update notification in state
-          const updatedNotification = payload.new as Notification;
-          setNotifications(prev =>
-            prev.map(n =>
-              n.notification_id === updatedNotification.notification_id
-                ? updatedNotification
-                : n
-            )
-          );
+          // Refetch full notification with actor details from Supabase
+          try {
+            const { data: updatedNotification, error } = await supabase
+              .from('notifications')
+              .select(`
+                *,
+                actor:users!actor_id (
+                  user_id,
+                  name,
+                  username,
+                  profile_picture
+                )
+              `)
+              .eq('notification_id', payload.new.notification_id)
+              .single();
+
+            if (error) {
+              console.error('Error fetching updated notification:', error);
+              // Fallback: preserve existing actor data
+              const payloadNotif = payload.new as Notification;
+              setNotifications(prev =>
+                prev.map(n =>
+                  n.notification_id === payloadNotif.notification_id
+                    ? { ...payloadNotif, actor: n.actor }
+                    : n
+                )
+              );
+              return;
+            }
+
+            if (updatedNotification) {
+              // Update with full notification including actor details
+              setNotifications(prev =>
+                prev.map(n =>
+                  n.notification_id === updatedNotification.notification_id
+                    ? updatedNotification
+                    : n
+                )
+              );
+            }
+          } catch (err) {
+            console.error('Failed to refetch notification:', err);
+            // Fallback: preserve existing actor data
+            const payloadNotif = payload.new as Notification;
+            setNotifications(prev =>
+              prev.map(n =>
+                n.notification_id === payloadNotif.notification_id
+                  ? { ...payloadNotif, actor: n.actor }
+                  : n
+              )
+            );
+          }
         }
       )
       .subscribe();
@@ -133,18 +199,21 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     };
   }, [currentUser]);
 
+  const value = useMemo(
+    () => ({
+      notifications,
+      unreadCount,
+      loading,
+      error,
+      fetchNotifications,
+      markAsRead,
+      clearAll,
+    }),
+    [notifications, unreadCount, loading, error, fetchNotifications, markAsRead, clearAll]
+  );
+
   return (
-    <NotificationContext.Provider
-      value={{
-        notifications,
-        unreadCount,
-        loading,
-        error,
-        fetchNotifications,
-        markAsRead,
-        clearAll,
-      }}
-    >
+    <NotificationContext.Provider value={value}>
       {children}
     </NotificationContext.Provider>
   );

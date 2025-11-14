@@ -255,7 +255,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
             .from('notifications')
             .select(`
               *,
-              actor:actor_id (
+              actor:users!actor_id (
                 user_id,
                 name,
                 username,
@@ -293,7 +293,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
             .from('notifications')
             .select(`
               *,
-              actor:actor_id (
+              actor:users!actor_id (
                 user_id,
                 name,
                 username,
@@ -305,6 +305,19 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
           if (error) {
             console.error('❌ NotificationContext: Error fetching updated notification:', error);
+            // Fallback: preserve existing actor data
+            const payloadNew = payload.new as Notification;
+            setNotifications((prev) =>
+              prev.map((notif) =>
+                notif.notification_id === payloadNew.notification_id
+                  ? { ...payloadNew, actor: notif.actor }
+                  : notif
+              )
+            );
+            // Update unread count if needed
+            if (payloadNew.is_read) {
+              setUnreadCount((prev) => Math.max(0, prev - 1));
+            }
             return;
           }
 

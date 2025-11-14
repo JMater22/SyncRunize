@@ -2,11 +2,13 @@ import * as CommentModel from "../models/comment_model.js";
 import * as NotificationService from "../services/notification_service.js";
 import { supabase } from "../utils/supabase.js";
 
-// GET comments for a post
+// GET comments for a post with pagination
 export const getComments = async (req, res) => {
   try {
     const { postId } = req.params;
-    const comments = await CommentModel.getCommentsByPost(postId);
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
+    const comments = await CommentModel.getCommentsByPost(postId, limit, offset);
     res.json(comments);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch comments" });

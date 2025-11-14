@@ -108,11 +108,25 @@ export const createPostFromRoute = async (req, res) => {
   }
 };
 
-// CREATE new post (original - keep for backward compatibility)
+// CREATE new post (enhanced to support route-based posts)
 export const createPost = async (req, res) => {
   try {
-    const { content, imageUrl } = req.body;
+    const { content, imageUrl, route_id, image_url, visibility } = req.body;
     const userId = req.user.user_id;
+
+    // If route_id is provided, use the from-route flow
+    if (route_id) {
+      const post = await PostModel.createPostFromRouteId({
+        userId,
+        routeId: route_id,
+        content,
+        snapshotUrl: image_url || imageUrl,
+        visibility
+      });
+      return res.status(201).json(post);
+    }
+
+    // Otherwise, create a generic text/image post
     const post = await PostModel.createPost(userId, content, imageUrl);
     res.status(201).json(post);
   } catch (err) {

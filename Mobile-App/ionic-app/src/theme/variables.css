@@ -184,4 +184,7 @@ ion-tab-button {
 ion-tab-button.tab-selected {
   color: #92C628;
   font-weight: 600;
+}:root {
+  --run-primary: #92c628;
+  --run-dark-surface: #050505;
 }

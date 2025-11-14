@@ -1,0 +1,804 @@
+
+SyncRunize: A Web-Based Application for Hazard-Aware
+Route Planning in Urban Running
+
+
+
+________________
+
+
+
+
+A Capstone Project Presented to
+The Faculty of the College of Computer Studies
+Tarlac State University
+Tarlac City
+
+
+
+________________
+
+
+
+
+In Partial Fulfillment
+of the Requirements for the Degree
+Bachelor of Science in Information Technology Web and Mobile Application
+
+
+
+________________
+
+
+
+by:
+
+Jonathan C. Melu
+Jomari P. Taruc
+Raennier Francis P. Mercado
+Vince Patrick I. Guillermo
+
+
+July 2026
+
+
+LIST OF TABLES
+Table 1. Parameter Selection	16
+Table 2. Hazard Type Semantic Similarity Matrix	18
+Table 3. Predefined Similarity Matrix	18
+Table 4. Functionality and Feature Matrix	20
+Table 5. Literature Matrix	22
+Table 6. Software Requirements Table	36
+Table 7. Development Hardware and Testing Devices Specifications	41
+Table 8. Project Team Roles and Responsibilities	45
+Table 9. Functional Requirement for User Module	65
+Table 10.  Non-Functional Requirement of SyncRunize	67
+Table 11. Product Backlog	82
+Table 12. Sprint #1	85
+Table 13. Sprint #2	86
+Table 14. Sprint #3	87
+Table 15. Sprint #4	87
+Table 16. Sprint #5	88
+Table 17. Sprint #6	89
+Table 18. Semantic Similarity Scoring	91
+Table 19. Authentication Module	98
+Table 20. Home Module	99
+Table 21. Route Module	101
+Table 22. Run Tracking Module (Mobile Only)	102
+Table 23. Biometric Health Module	103
+Table 24. Community Module	104
+Table 25. Progress Analytics Module	105
+Table 26. User Profile Module	106
+Table 27. Settings Module	107
+Table 28. User Groups for System Testing	108
+Table 29. Survey Summary Table	121
+Table 30. Excerpt of Raw Survey Responses (N = 14)	122
+
+
+LIST OF FIGURES
+Figure 1. Conceptual Framework of SyncRunize: A Web-Based Application for Hazard-Aware Route Planning in Urban Running	32
+Figure 2. System Architecture	50
+Figure 3. Network Architecture	52
+Figure 4. Use Case Diagram of SyncRunize: A Web-Based Application for Hazard-Aware Route Planning in Urban Running	60
+Figure 5. Use Case Diagram for Mobile Web and Web of SyncRunize: A Web-Based Application for Hazard-Aware Route Planning in Urban Running	62
+Figure 6. Data Schema of SyncRunize: A Web-Based Application for Hazard-Aware Route Planning in Urban Running	72
+Figure 7. Functional Decomposition Diagram	75
+Figure 8. Functional Decomposition Diagram for Mobile Web and Web	77
+Figure 9. Agile Scrum Process	79
+Figure 10. Gantt Chart	86
+Figure 11. Semantic Similarity Computation Flowchart	93
+Figure 12. Safe Route Pathfinding Algorithm Flowchart	96
+Figure 13. Introduction and Consent Statement	117
+Figure 14. Demographic Section	118
+Figure 15. Screenshot of the Google Form – Running Habits Section	119
+Figure 16. Screenshot of the Google Form – Safety Concerns Section	120
+Figure 17. Screenshot of the Google Form – Feature Preferences Section	121
+Figure 18. Distribution of Respondent Ages	124
+Figure 19. Gender Breakdown of Survey Participants	124
+Figure 20. Area Preferences (Urban, Semi-Urban, Both)	125
+Figure 21. Weekly Running Frequency Among Respondents	125
+Figure 22. Duration of Running Experience	126
+Figure 23. Incidence of Safety Concerns While Running (Yes/No)	126
+Figure 24. Types of Safety Concerns Encountered	127
+Figure 25. Level of Safety Concern (1 = Not at all, …, 5 = Extremely)	127
+Figure 26. Current Safety Measures Used by Runners (Open-ended Themes)	128
+Figure 27. Existing Running/Fitness App Usage (Yes/No)	129
+Figure 28. Most Useful Features in Current Running Apps	130
+Figure 29. Importance of Real-Time Hazard Reporting (Likert Scale)	130
+Figure 30. Willingness to Report/View Local Hazards (Yes/No)	131
+Figure 31. Likelihood of Participating in Challenges & Leaderboards (Likert)	131
+
+INTRODUCTION
+1.1	Project Context
+Physical inactivity was a significant public health issue, contributing to 3.2 million deaths annually and ranking among the top ten leading risk factors for global mortality [1]. Running and jogging had long been recognized as essential physical activities that reduce cardiovascular disease risk and overall mortality [2]. However, urban environments present various challenges for runners, including traffic congestion, unsafe road conditions, and insufficient pedestrian-friendly infrastructure, which limited access to safe running spaces.
+Pedestrian safety remained a critical issue, with 1.3 million pedestrian deaths occurring annually and pedestrians accounting for approximately 23% of global road fatalities [3]. The risks were particularly pronounced in developing countries, where rapid urbanization had outpaced the development of adequate pedestrian infrastructure. Insufficient sidewalks, poor street lighting, and unregulated road-sharing between vehicles and pedestrians had significantly increased the likelihood of collisions [4]. In Metro Manila, pedestrian fatalities represented 19% of road deaths, second only to motorcyclists, largely due to inadequate road segregation and severe traffic congestion [5]. These unsafe conditions directly affected individuals engaging in outdoor fitness activities, reducing movement efficiency by up to 40% daily [6]. Additionally, crime rates in urban areas, particularly in the Philippines, exacerbated safety concerns. According to data from that period, crime incidents had been steadily increasing, further discouraging outdoor physical activities due to safety risks [7]. 
+Given the global rise in smartphone adoption, with over 7 billion active smartphone subscriptions in 2023 [8], mobile application development had become a key enabler across various domains including health, education, and recreation. However, traditional development architectures presented significant drawbacks. Native apps suffered from platform dependency, high development time, and increased maintenance costs due to mobile platform fragmentation [9][10]. Hybrid apps, while offering a single codebase, often compromised performance and user experience due to reliance on browser engines and JavaScript bridges [11][12]. To address these challenges, Progressive Web Apps (PWAs) had emerged as a viable alternative that blended the best of native and web apps, offering features like offline accessibility, background sync, and push notifications without requiring installation [13]. PWAs were particularly suited for applications needing high reach, performance efficiency, and cross-platform compatibility.
+Existing fitness applications such as Strava, Nike Run Club, and Adidas Running primarily focused on performance tracking, including distance covered, pace, and calories burned. However, they lacked AI-driven real-time navigation that adapted to traffic and safety conditions. AI-based fitness solutions had shown significant potential in enhancing user experience, with AI-generated personalized training plans improving adherence to fitness goals by 30% [14]. Despite this, no widely available running application incorporated real-time route optimization based on urban traffic conditions.
+Furthermore, gamification had emerged as a proven strategy to enhance user engagement in digital fitness solutions. Gamification involves the application of game-like elements such as achievements, challenges, and progress tracking in non-game contexts to increase motivation and adherence [15]. Studies indicated that gamification improves user motivation, yet up to 80% of gamified apps failed due to poor implementation and engagement strategies [16]. This suggested the necessity of well-structured gamification frameworks tailored to fitness applications to sustain long-term behavioral adherence.
+Community-based running programs, such as parkrun, had demonstrated positive impacts on physical activity levels, social inclusion, and mental well-being. Individuals from socioeconomically disadvantaged backgrounds and previously inactive populations report significant improvements in health and engagement when participating in structured running initiatives [17]. However, existing community-based running models lacked technological integration that optimized group coordination, enhances route safety, and sustained engagement through gamification mechanisms.
+To support the development of the proposed application, the project team had conducted the SyncRunize Capstone Research Survey – Enhancing the Urban and Semi-Urban Running Experience. Among the 14 respondents, 11 had reported experiencing safety issues while running outdoors. The most common concerns included poor street lighting, encounters with stray dogs, and navigating unfamiliar or isolated routes. These safety issues significantly influenced the respondents' running behavior, with 12 having admitted to avoiding specific areas entirely due to past experiences or perceived dangers. This highlighted a strong need for integrated safety features in the SyncRunize application, particularly those addressing route visibility, animal-related hazards, and real-time alerts for potentially unsafe zones.
+To address the challenges of urban and semi-urban running safety, the proposed project was designed to optimize routes by analyzing environmental conditions came from crowdsourced reports and crime historical records, ensuring safer running experiences. To enhance the running experience, live traffic was displayed and sent as notification to runners. Gamification features, including personalized challenges and social leaderboards, encouraged users to follow verified safe routes. Additionally, community-driven functionalities enabled route-sharing, group coordination, and collaborative hazard reporting. Voice navigation provided real-time and hands-free guidance. The app was developed using the Progressive Web App (PWA) approach to ensure accessibility and performance across various devices. 
+The proposed project used prescriptive hazard-aware pathfinding system. Moreover, the route generated was fixed during runtime, relying solely on crowdsourced hazard reports and verified historical crime records. The system assessed hazard credibility using Trust Score and Agreement Score models, which collectively inform risk scoring for route computation. Real-time updates were not used for dynamic rerouting, but critical new hazard reports with high agreement scores were immediately pushed to the user as notifications.
+Natural Language Processing (NLP) was employed to facilitate hands-free voice input and descriptive assistance, using Sentence-BERT for semantic understanding. The routing component used modified Dijkstra algorithm tailored to include risk-based edge weights, not machine learning predictions. This structured yet flexible integration of descriptive and prescriptive components defined the uniqueness of the system.
+
+	Purpose and Description
+The purpose of this project was to design and develop a Progressive Web Application that optimizes route selection for urban and semi-urban runners by addressing safety risks, traffic congestion, and inefficient navigation. Unlike conventional fitness applications that focused primarily on performance tracking, the proposed system integrated real-time route recommendations based on other runners’ route history, crowdsourced hazard reporting, and safe navigation to enhance user safety and route efficiency. Additionally, gamification and community collaboration encouraged consistent physical activity and safer running habits.
+The system was designed to leverage traffic data from Google Maps and integrate user-submitted hazard reports to support route optimization. To supplement safety assessments, selected records from the Tarlac Police Provincial Office were analyzed to identify high-risk areas. These datasets, combined with community-contributed insights on poorly lit areas, unsafe zones, and obstructions, enabled the AI to adjust and improve route recommendations dynamically.
+A core feature of the system was AI-powered voice navigation, which provided real-time guidance, and safety notifications based on environmental conditions. The AI continuously learned from user feedback, traffic patterns, and reported hazards to improve safety predictions and route accuracy over time.
+The benefactors of this system were the following:
+For Urban Runners - The system was designed to provide urban runners with AI-driven route optimization, real-time navigation, and safety enhancements to minimize risks such as accidents, congestion, and road hazards.
+
+For Fitness Enthusiasts - Gamification elements, including personalized challenges, milestone achievements, and social leaderboards, were implemented to enhance motivation and engagement, encouraging consistent running habits while prioritizing safe routes.
+
+For Running Communities - The platform was developed to foster community-based collaboration, allowing users to coordinate group runs, share optimized routes, and contribute to real-time safety reporting, strengthening social connections and collective safety.
+
+For City Planners and Local Authorities - Aggregated data on pedestrian movement, congestion patterns, and safety reports was designed to support urban planning and public safety initiatives by identifying high-risk areas and improving pedestrian infrastructure.
+	Objectives
+The general objective of this project was to design and develop SyncRunize: A Web-Based Application for Hazard-Aware Route Planning in Urban Running, which enabled hazard-aware route planning to support safe and informed urban running experiences through crowdsourced data driven analysis. 
+
+
+The specific objectives were:
+To design and develop a Progressive Web Application (PWA) system with the following features:
+Home Module
+Route Module
+Run Tracking Module
+Biometric Health Feature
+Community Module
+Progress Analytics Module
+User Profile Module
+Settings Module
+To test and evaluate the system in terms of the following criteria:
+Testing
+ Black-Box Testing
+ISO 25010 Evaluation
+ Usability
+Performance Efficiency
+Reliability
+Security
+Safety
+
+1.4	Scope and Limitations
+The proposed project involved the design, development, and evaluation of SyncRunize, a mobile-first Progressive Web Application (PWA) that was designed to promote safe, data-informed, and community-driven running experiences within Tarlac Province and Tarlac City. Developed by students of the Bachelor of Science in Information Technology – Web and Mobile Application (BSIT-WMA) program at Tarlac State University, the system adopted a user-centered design approach to meet the real-world needs of urban and semi-urban runners. It was designed to accommodate varying road conditions, network limitations, and route complexities, ensuring inclusivity and accessibility within the specified geographic area.
+The application featured core modules such as user authentication, which supported both traditional email-password logins and social login mechanisms to ease account creation and access. Once authenticated, users were directed to a dashboard, which displayed personalized progress statistics, activity feeds, challenge invitations, and leaderboard rankings. The route module included route generation which used a prescriptive pathfinding algorithm that computed routes based on user-defined start point and distance, incorporating hazard risks from trust and agreement scores. The system did not perform adaptive or real-time rerouting.
+During live runs, the application provided real-time GPS tracking to monitor user location, offered turn-by-turn navigation, and delivered safety-related notifications through audio prompts. A voice assistant feature was implemented to support hands-free guidance during active sessions. This assistant functioned in English and did not offer multilingual support in the initial release. The voice assistant supported hands-free interaction with descriptive input and output only and did not affect route generation or rerouting. It was primarily used for hands-free interaction and hazard description entry. Runners were empowered to report hazards encountered along their routes, including but not limited to blocked roads, damaged sidewalks, slippery terrain, and poorly lit areas. These reports populated a crowdsourced hazard map, forming the core of the system’s safety intelligence.
+To improve the credibility of hazard reports, the system implemented a scoring model that combined a user’s Trust Score and each report’s Agreement Score, ensuring only credible data contributed to route risk evaluation. This scoring model assigned safety levels to route segments based on user reliability and corroboration, as determined by Trust and Agreement Scores. Additionally, a user trust scoring model was used to weigh reports from users with consistent and validated reporting histories more heavily than those from new or unverified contributors.
+The system used historical safety data provided by the Tarlac Police Provincial Office as a supplementary reference to identify high-risk areas. However, due to the absence of a live crime data API, this data was used only for route scoring and was not updated in real time, covering the period from January 2025 to one month prior to system deployment. This data served to identify historically problematic areas but did not directly influence real-time route generation. Its role was limited to providing general context for the development team during system configuration and initial hazard mapping.
+A community module was also included to enhance user engagement. This module allowed runners to create or join challenges, share completed routes, follow other users, and interact with a leaderboard system. The system included performance analytics tools, enabling users to review running statistics, identify trends, and plan future sessions. Users also had access to basic privacy settings to control the visibility of their activity within the app.
+The system was developed as a mobile-first PWA using Ionic Framework with React for frontend development and was wrapped using Capacitor to enable access to native device features, especially on iOS. This approach allowed the system to maintain the scalability and responsiveness of a web-based platform while gaining access to advanced functionalities such as background geolocation, continuous GPS tracking, and speech synthesis—all of which were not fully supported in traditional browser-based environments. On Android, users were able to install the application through browser prompts, while on iOS, installation was done through Safari’s “Add to Home Screen” functionality. However, for full functionality—especially background GPS tracking and real-time voice updates—the system required insta0llation via a Capacitor-wrapped mobile app on both platforms.
+The desktop version of SyncRunize provided limited access to non-real-time features such as account management, challenge creation, leaderboard browsing, and route planning. However, run tracking and background sensor features were disabled on desktop due to the absence of continuous geolocation support and limitations in accessing system-level sensors. Users attempting to access these modules via a desktop browser were prompted to switch to a supported mobile device. Similarly, users accessing the system via a standard mobile browser were encouraged to download the full application for complete access to features such as live tracking, hazard detection, and voice-guided navigation.
+The application supported mobile devices running Android version 10 and above and iOS version 15 and above, requiring a minimum of 4 GB RAM, GPS capability, and a modern browser with PWA support enabled. For desktop users, the system was accessible through the latest versions of Chrome, Safari, Firefox, or Edge on Windows 10 and above and macOS Monterey and above. Despite this broad platform compatibility, real-time functionalities remained restricted to mobile environments with sufficient sensor and API access.
+The system’s biometric health feature was limited to calorie burned estimation based on route distance and basic user data. It did not include other biometric tracking such as heart rate or oxygen level monitoring. Moreover, the application relied heavily on third-party services such as the Google Maps Platform, which could introduce occasional limitations such as inaccuracies in route rendering, delays due to API quotas, or restricted pedestrian-specific data in certain areas. A stable internet connection was required to access essential features, including live GPS tracking, prescriptive route display, voice assistant responses, and real-time hazard notifications. Offline functionality was limited to viewing previously cached data, such as saved routes and activity summaries.
+The system’s performance and usability were validated through black-box testing. Evaluation included internal testing by TSU BSIT-WMA students, field testing by local urban and semi-urban runners, and technical review by faculty advisers. For the initial deployment phase, the system required at least ten pre-seeded hazard reports, twenty user-submitted entries, and five well-defined hazard categories to ensure a functional hazard mapping experience. Five user-created and system-generated challenges were also seeded to validate the social module. These metrics supported minimum viable validation of the hazard scoring and community engagement systems. The geographical coverage remained limited to Tarlac City and Tarlac Province during testing and evaluation, allowing the development team to monitor data flow, user behavior, and system performance in a controlled setting.
+
+2. REVIEW OF RELATED LITERATURE
+Discussion of Models
+The project provided a comprehensive set of features aimed at enhancing route efficiency, safety, and user engagement through optimized navigation. Table 1 (Functionality and Feature Matrix) compared existing running applications, revealing their focus on activity tracking while lacking real-time AI-integrated route optimization. Table 2 (Literature Review Matrix) examined relevant studies on navigation, safety, and AI-assisted routing, highlighting gaps in adaptive pathfinding. These findings justified the need for an intelligent running assistant that integrates AI-driven navigation and real-time adjustments.  Thus, the models that were used are:
+	Calorie Burn Estimation Model
+To promote healthy physical activity among runners, the system integrated a biometric feature that estimated calories burned during or after a run. Unlike heart-rate based calculations that required smartwatches or fitness bands, this system used a lightweight approach based on user weight, speed, and running duration, consistent with methods used in commercial fitness apps.
+This estimation model followed the American College of Sports Medicine (ACSM) guidelines for calculating the oxygen cost of running on level ground. The estimated oxygen consumption (VO₂) was given by:
+
+Where:
+𝑣 was the runner’s speed in meters per minute
+To convert VO₂ to calories burned:
+ 
+Alternatively, for systems using speed in kilometers per hour:
+
+This formula was grounded in peer-reviewed literature and aligns with the calculation methods used by popular fitness applications such as Strava and Nike Run Club, which similarly estimated energy expenditure based on pace, weight, and time without biometric sensors [28], [29], [30].
+This approach was also consistent with empirical findings that the average energy cost of level running is approximately 1 kcal per kg per km, making the model both practical and accurate for general users [31].
+Trust and Agreement Scoring Models
+Trust Scoring Model
+Crowdsourced systems often faced challenges with report credibility due to the open nature of user participation. In this system, a trust scoring model was used to assess the reliability of each report based on the contributor’s historical accuracy and agreement with nearby submissions.
+This trust framework was grounded in research on Volunteered Geographic Information (VGI). Foody [32] emphasized the importance of integrating contributor credibility into spatial datasets, showing that reports from users with a strong history of agreement significantly increased spatial data accuracy. Similarly, Flanagin and Metzger [33] demonstrated that perceived credibility in user-generated spatial content was strengthened when supported by consensus among multiple contributors.
+Each reporter was assigned a trust score, which increased or decreased over time depending on how often their reports aligned with the consensus. The trust score T was calculated using a simplified Beta reputation model:
+
+Where:
+α: Number of validated (accurate) past reports
+𝛽: Number of contradicted or invalidated past reports
+This approach allowed new users to start with neutral trust, and gain credibility based on participation quality.
+Agreement Score (ASⱼ)
+In hazard-aware systems, Agreement Scoring (AS) was used to evaluate the reliability of individual hazard reports by measuring their similarity to other nearby reports in both space and time. It was based on the intuition that hazards were more credible if multiple users reported similar incidents near the same location within a reasonable time window.
+Unlike real-time navigation platforms, which typically relied on high-frequency updates and short windows (e.g., 30–60 minutes), our approach supported low-frequency environments where users might report hazards hours or days apart. Inspired by techniques in Lozano Domínguez & Sanguino [36], we extended the temporal window for agreement to 7 days, enabling delayed corroboration while applying exponential decay to favor recent data.
+Let report j be the report under evaluation, and k ∈ Nj ​be neighboring reports within the defined spatial and temporal bounds. The Agreement Score was computed as:
+
+
+Where:
+Δtjk ​: Time difference (in minutes) between reports j and k
+Δdjk ​: Distance (in meters) between reports j and k
+Sjk ​: Semantic similarity score between hazard types (1 if same, otherwise < 1)
+βt ​: Time decay constant
+βd ​: Distance decay constant
+Table 1. Parameter Selection
+
+Semantic Similarity:
+Sjk = 1: Identical hazard types
+0< Sjk <1: Related hazard types 
+
+Prior studies emphasized the role of semantic similarity in clustering related hazard reports. For example, study [36] noted the importance of matching user reports not just by label but also by meaning. The system applied a structured similarity scoring matrix to quantify the degree of alignment between hazard types. This supported environments with multiple hazard categories such as potholes, poor lighting, and structural damage.
+In addition to predefined labels, the system included an “Other” category to accommodate user-reported hazards not covered in standard options. When comparing “Other” with a known label, we applied a conservative default similarity of 0.3 unless semantic embeddings were available. If user-provided text existed, a transformer-based model (e.g., Sentence-BERT) could compute vector-based similarity using cosine distance.
+This hybrid scoring approach enabled the system to balance structured taxonomies with the flexibility of natural language descriptions, which is essential in dynamic, user-driven reporting systems.
+
+Semantic Similarity Computation
+To quantify semantic agreement between hazard types in the Agreement Score formula, we defined a similarity matrix Sjk ​ that reflected the relationship between different categories of urban hazards. Table 1 showed example similarity scores, where Sjk = 1 indicated identical hazard types, and lower values denoted partial or thematic similarity.
+Table 2. Hazard Type Semantic Similarity Matrix
+
+To compute semantic similarity ​ between two hazard reports j and k, we used a hybrid approach combining predefined similarity scores for common hazard types and Sentence-BERT (SBERT) embeddings for textual analysis of "Other" or ambiguous descriptions.
+Predefined Similarity Matrix
+The table below was a defined domain-specific similarity matrix for frequently reported hazard categories, informed by safety literature and domain heuristics:
+Table 3. Predefined Similarity Matrix
+These values could be fine-tuned using crowd feedback or clustering-based evaluation.
+Sentence Embedding for “Other” or Unstructured Inputs
+When either report used the “Other” category or includes free-form hazard text, semantic similarity was calculated using SBERT:
+Encode both hazard descriptions using SBERT.
+Compute cosine similarity between the embeddings.
+Normalize similarity to align with predefined scoring scale (0–1).
+This allowed the system to handle nuanced descriptions like “fallen tree near sidewalk” or “manhole cover missing” that fall outside standard categories.
+Modified Dijkstra Algorithm
+Traditional Dijkstra’s algorithm finds the path with minimum total distance [34]. In safety-aware routing, edge weights were altered to incorporate safety risks using both:
+Crowdsourced hazard risk: Weighted by Ti ⋅ ASj ​
+Crime incident data: Scaled by severity
+The final edge cost becomes:
+​
+ωedist ​: Distance of edge
+ωesafe ​: Combined hazard and crime risk
+α: User-defined safety preference (default = 0.6)
+This formulation was implemented by [35] where Dijkstra remained structurally unchanged but solved for the minimum-risk path.
+Crime Risk Weighting
+To quantify the impact of crime reports on route safety, proponents assigned severity-based weights to incidents. These weights were assumed based on general public safety perception and were used to differentiate the risk levels associated with various crime types:
+Violent crimes (e.g., assault): 1.0
+Property crimes (e.g., theft): 0.7
+Minor infractions (e.g., vandalism): 0.3
+
+
+Table 4. Functionality and Feature Matrix
+ 
+Safe Route Generation – The system used a prescriptive routing approach that generated the safest path based on historical crime data and verified hazard reports. It used Trust Score and Agreement Score models to evaluate the credibility of user-submitted hazard data, and applied a modified Dijkstra algorithm to compute routes that minimize safety risks while satisfying the user’s preferred distance or destination. 
+Traffic Awareness - Incorporated live traffic reports to help runners avoid congested or unsafe areas, improving safety and efficiency. 
+PWA Compatibility - The app was developed as a Progressive Web App, allowing users to access it seamlessly across mobile and desktop platforms without downloading a native app. 
+Voice Assistance - Provided AI-driven voice guidance for navigation, and route updates, ensuring hands-free running experience. 
+Gamification - Implemented challenges, achievements, and rewards to encourage users to stay engaged and motivated in their fitness journey. 
+ 
+Table 4 showed the comparison of existing running applications; it reveals that most focused primarily on tracking and analytics rather than safe route generation. Strava, Nike Run Club, and Adidas Running provided comprehensive activity tracking, including pace, distance, and calories burned, but they lacked AI-powered voice assistant for handsfree guidance and alerts from hazards and traffic awareness, making them less effective for urban runners. Map Runner stood out by incorporating traffic awareness, allowing runners to avoid congested areas; however, it did not integrate safe route planning. ASICS Runkeeper included voice assistance for guided running, similar to Nike Run Club, but did not offer optimized path suggestions. 
+Table 5. Literature Matrix
+
+Developing a Progressive Web Application (PWA) for urban and semi-urban runners required an understanding of existing navigation systems, gamification techniques, safety reporting mechanisms, and PWA development frameworks. Prior research had explored various aspects of these domains, but notable gaps remained in integrating real-time traffic-aware, safe route generation, crowdsourced safety alerts, and AI-powered voice-assisted navigation in a unified system.
+Gamification had been studied extensively in fitness applications, primarily to enhance user engagement. Khan [18] developed a mobile fitness game prototype that incorporated game mechanics and personalized motivation strategies. While the study demonstrated the effectiveness of gamification in promoting user participation, its limited testing scope and incomplete feature implementation suggested a need for further validation in real-world fitness applications. Additionally, the study did not address navigation safety concerns, a crucial factor for outdoor running applications.
+Navigation optimization had evolved beyond traditional shortest-path algorithms to consider factors such as safety and environmental conditions. Siriaraya et al. [20] proposed a taxonomy-based classification of pedestrian navigation systems, including safety-aware routing. However, their study lacked a standardized framework, making it difficult to compare the effectiveness of different approaches. Complementing this work, Lin and Lin [22] empirically identified two dominant navigation strategies: 58% of users favoring direction cues (e.g., compass/blue beam) for efficiency and 42% preferring landmarks for environmental grounding. This study's focus on university students and exclusion of real-time hazard scenarios presented an opportunity to extend these findings to diverse runner populations in dynamic environments.
+Crowdsourced safety reporting improved situational awareness in navigation systems. Hamilton et al. [24] developed Transafe, a platform aggregating crime and safety reports from users. The system generated real-time alerts, though potential reporting biases may impact data reliability. Alpkoçak and Cetin [27] created a safety-aware routing system using a modified A* algorithm with crime rate heuristics. This method calculated routes minimizing high-crime area exposure. The implementation currently excluded environmental factors and real-time traffic data, limiting route optimization capabilities.
+The development of Progressive Web Applications (PWAs) had gained traction due to their cross-platform accessibility and offline functionality. Muawwal [21] analyzed PWA implementation and its impact on mobile accessibility and website performance. The study highlighted the advantages of PWAs, including improved loading speed and user experience, but focused primarily on Express.js, limiting insights into PWA performance across different frameworks. Adetunji et al. [23] further compared mobile development architectures, concluding that PWAs offered significant benefits over native and hybrid applications. However, the study did not extensively discuss barriers to PWA adoption, particularly in integrating AI-driven features for fitness applications.
+Community-driven running applications had demonstrated their potential in fostering engagement and motivation among users. Yang et al. [25] examined the influence of social interaction on running behavior, emphasizing the role of group dynamics in sustaining fitness motivation. While the study provided insights into social engagement, it did not explore AI-driven personalization techniques that could enhance user experience in individual and group running scenarios. Similarly, Quirk et al. [17] investigated the impact of community-based running programs on physical activity levels. The research supported the benefits of social support in fitness applications but lacked an implementation framework that integrates safe route planning and gamified engagement.
+Existing studies provided a foundation for navigation-based fitness applications but did not comprehensively address real-time, safe route optimization, AI-powered voice navigation, and integrated hazard reporting. While prior research had examined gamification, safety-aware routing, and PWA development independently, the lack of a unified system that integrated these features represents a gap. This study aimed to bridge that gap by developing a PWA-based AI-integrated running application that leveraged real-time traffic data, crowdsourced hazard reports, and gamification to enhance user experience and ensure safer running routes. 
+Conceptual Framework
+
+Figure 1. Conceptual Framework of SyncRunize: A Web-Based Application for Hazard-Aware Route Planning in Urban Running
+
+The AI-powered running application was structured into five key stages: Input, Process, Output, Outcome, and Evaluation. The Input stage encompassed the necessary knowledge, software, and hardware components, including safe route optimization, Google Maps API integration, crowdsourced hazard reporting, gamification strategies, and mobile app development.
+The system optimized running routes by analyzing environmental conditions came from crowdsourced hazard reports and historical crime records. It enhanced safety with route generation, real-time hazard avoidance, and a hands-free interface. Gamification elements, such as achievement badges and leaderboards, fostered engagement, [17] while community features enabled route sharing and group runs.
+The system aimed to improve runner safety and efficiency by minimizing exposure to high-risk and hazard prone areas while promoting urban physical activity. Evaluation included user feedback on route accuracy, performance efficiency, usability, reliability, safety, security and engagement with iterative improvements based on hazard reports and retention data.
+
+
+
+Definition of Terms
+The key terminologies and definitions used in this study were outlined in this section for clarity:
+Voice Assistant (NLP-Powered) - Referred to a speech-based interface integrated into the system using Natural Language Processing (NLP). It allowed users to provide hazard descriptions and receive verbal feedback. It did not influence route generation or decision-making.
+Crowdsourced Report – Referred to data or reports gathered from a group of individuals, often users or community members, contributing real-time information about safety hazards, road conditions, or other relevant factors.
+Gamification – Referred to the use of game-like elements, such as leaderboards, challenges, and rewards, in non-game contexts to boost user engagement, motivation, and participation.
+Geolocation – Referred to determining a user’s real-time location using GPS or network signals. In SyncRunize, it supported route tracking, hazard localization, and personalized safety alerts based on user position.
+Navigation – Referred to the planned, fixed route generation process based on predefined inputs (start point and distance). In this system, it does not adapt during a run but notified users of hazards that arise in real-time.
+PWA (Progressive Web Application) – Referred to a mobile-first web application that combined features of native and web apps. It supported offline access, background tracking, and installation outside app stores, with access to device features through wrappers like Capacitor.
+Route – Referred to a system-generated path based on safety risk scores, distance, and start point. Routes were generated prescriptively and did not update dynamically once initiated.
+Urban – Referred to areas with high population density, developed infrastructure, and active pedestrian and vehicular movement. In this study, urban areas were the primary focus for route generation and hazard mapping due to higher activity and risk density.
+Semi Urban – Referred to areas that fall between urban and rural regions, characterized by a mix of urban infrastructure and rural settings, with moderate population density and a combination of residential and commercial areas.
+Trust Score - A score assigned to a user based on the reliability, frequency, and consistency of their submitted hazard reports.
+Agreement Score - A credibility score for a report, calculated from its similarity to other reports nearby in time and location.
+Semantic Similarity - A method for comparing hazard reports using meaning-based matching (e.g., using Sentence-BERT embeddings).
+Prescriptive Routing - A pathfinding approach where routes were generated once using fixed data, not updated dynamically during the run.
+Calorie Estimation - A system feature that provided users with an approximate number of calories burned during a route, based on distance and personal metrics.
+Modified Dijkstra Algorithm - A version of the traditional Dijkstra algorithm adapted to compute the safest—not shortest—route by considering not just distance, but also safety risk scores. In SyncRunize, edge weights were adjusted using hazard risk derived from Trust Scores, Agreement Scores, and crime severity levels. This allowed the algorithm to prioritize lower-risk paths over merely faster or shorter ones.
+
+
+TECHNICAL BACKGROUND
+The project was developed to assist runners in identifying the safest possible route by employing a risk assessment algorithm that prioritized environmental hazards, including real-time geospatial factors, while incorporating crime data as complementary input.
+Software Development Requirements
+Table 6. Software Requirements Table
+
+Table 6 presented the software requirements that were used for developing SyncRunize, a mobile-first Progressive Web Application (PWA) focused on real-time route safety and urban running. The technologies were selected spanned the frontend, backend, and real-time processing components necessary for delivering an interactive and responsive experience.
+For frontend development, Ionic (React.js) was used to build a dynamic, responsive interface. Capacitor was integrated to enable native access to device-level features such as GPS, especially on iOS. The Web Speech API supported voice commands during runs, while the Firebase SDK (Client) managed device token registration and real-time push notifications via Firebase Cloud Messaging (FCM). Google Maps API was implemented primarily for graphical user interface purposes and traffic data, with OpenStreetMap (OSM) serving as our primary source for geographical data and finding the safest paths through edges, nodes, and weights. 
+On the backend, Express.js (Node.js) was implemented to handle API routing and server-side logic, while FastAPI (Python) processed AI-driven functionalities, such as integrating the GPT-5 mini API for NLP to enable voice-assisted alerts and notifications for users. Supabase was also used as our main backend solution to manage our PostgreSQL database for storing user data, run activities, challenges, route information, real-time application features, and essential backend services for authentication.
+The system was deployed via Vercel for fast, scalable frontend hosting. GitHub supported version control, collaborative development, and CI/CD workflows, while Visual Studio Code (VS Code) served as the main integrated development environment for efficient coding and debugging. 
+
+Hardware Development Requirements
+Table 7. Development Hardware and Testing Devices Specifications
+Table 7 provided an overview of the hardware that was used for the development of SyncRunize, detailing the specifications of different laptops that were selected for various development tasks and presented the testing devices that were used to ensure SyncRunize performed optimally across both Android and iOS platforms.
+The ASUS TUF A15 and ASUS TUF F15, both featuring high-performance processors (AMD Ryzen 7 and Intel Core i7) and 16GB of RAM, were suited for tasks requiring significant computational resources. These laptops handled more resource-intensive aspects of the project, such as running machine learning algorithms, and handling real-time data processing. The larger RAM capacity ensured smooth multitasking and efficient processing of complex data sets.
+The MateBook D 14 and HP Laptop 15s, which were equipped with Intel Core i5 processors and 8GB of RAM, provided adequate resources for tasks such as frontend development and basic backend services. These laptops were primarily used for coding and testing the user interface and general application logic, including work with Ionic for the frontend and Express.js and FastAPI for the backend.
+All laptops run on Windows 11, ensuring a uniform development environment across the team. This consistency allowed for seamless collaboration and reduced the likelihood of environment-related issues during development, testing, and deployment.
+For testing, Android phones running Android 10-13, with at least 4GB of RAM and GPS functionality, were used to assess GPS accuracy, offline PWA performance, and voice navigation capabilities. iPhones, specifically iPhone 8-16 running iOS 15-18, were utilized to validate iOS compatibility and the functionality of App Clips, which allowed quick access to the PWA. Desktop systems running Windows 10-11, as well as macOS Mojave or later, were also used for testing purposes. These machines focused on assessing PWA’s performance across larger screen sizes, ensuring that the interface scaled correctly and remained responsive on both operating systems. Additionally, testing on desktop devices verified the functionality and visual consistency of core features, including routing, analytics, and community modules, when accessed through modern desktop browsers.
+
+
+Peopleware
+Table 8. Project Team Roles and Responsibilities
+
+The Table 8 defined the key responsibilities and necessary skills for each role involved in the development. The UI/UX designer a responsible for creating an intuitive and visually appealing interface to enhance user experience. The systems analyst defined project requirements and designed the system architecture. The frontend developer implemented the user interface, ensuring responsiveness and interactivity, while the backend developer managed server-side logic and database integration. The data analyst processed and interpreted data for risk assessment. The QA tester ensured software functionality and reliability, while the technical writer documented the system for clarity. Overseeing the entire process, the project manager ensured coordination and successful execution.
+
+
+Figure 2 presented the system architecture, which was designed to ensure efficient and scalable real-time route safety and navigation for runners. The frontend was developed using the Ionic framework, providing a fast and responsive interface, and was extended with Capacitor.js to enable access to native device features such as GPS tracking and hazard reporting. The frontend captured user inputs such as GPS coordinates and movement data, which were then transmitted to the backend for processing. Express.js functioned as the backend, handling incoming requests from the frontend, validating the data, and routing it to the appropriate services. Requests related to route safety were forwarded to the FastAPI service, which processed them using predefined algorithms to generate the safest route by incorporating hazard data and penalties.
+For data storage, Supabase was utilized to manage user profiles, run logs, and hazard reports, with PostgreSQL serving as the database engine. Supabase Auth handled user authentication, ensuring secure login and session management. The system integrated mapping services such as Google Maps API and OpenStreetMap to provide real-time geolocation data for route visualization and hazard marking. Real-time updates were facilitated through Supabase, which synchronized data across devices to deliver live updates on leaderboard changes, hazard notifications, and run progress. Firebase Cloud Messaging (FCM) managed push notifications, alerting users about hazard warnings or community messages. Furthermore, the GPT-5 mini API will be employed for text-to-speech capabilities, converting written navigation instructions and hazard warnings into audible feedback for the user during active runs. This architecture ensures that SyncRunize delivers safe, optimized, and real-time navigation while maintaining flexibility for future enhancements and scalability.
+
+
+Figure . Network Architecture
+The system architecture illustrated above showed how hazard-aware routing operated in real time. User devices, including mobile phones and personal computers, connected to the backend server through the internet. The backend server processed hazard reports, computed safe routes, and managed interactions with the SQL database. Real-time updates were enabled through Firebase Cloud Messaging, which pushed notifications directly to mobile devices. Meanwhile, personal computers accessed live updates through the backend without requiring FCM. This setup ensured that hazard reports were stored, processed, and delivered efficiently, while users received immediate updates relevant to their safety.
+Sources of Data
+The system primarily relied on geospatial inputs, historical datasets, and crowdsourced hazard reports to support prescriptive route generation and real-time hazard notifications. Google Maps API was used to obtain base map data and road network information for computing running paths. Although the platform provided traffic-related data, this information was only utilized as supplementary input to help runners avoid traffic efficiently; however, it was not considered in the algorithm’s evaluation of route safetyInstead, OpenStreetMap (OSM) served as the primary source for identifying the safest paths, as it provided comprehensive road network information and additional environmental context such as sidewalk width, surface type, street lighting, and elevation. These elements were directly incorporated into the route safety evaluation, while Google Maps was primarily used to supply real-time traffic conditions.
+A significant portion of safety-related data originated from user-submitted hazard reports. These reports are crowdsourced through the application and include details such as GPS coordinates, hazard type, and time of submission. The reports were stored in Supabase and assessed using a Trust Score model, which evaluated the reliability of the reporting user based on their history and behavior, and an Agreement Score model, which measured the degree of corroboration between similar reports submitted by different users based on time, location, and semantic similarity. These two scores are combined to determine the hazard risk weight associated with each report, which in turn influenced the safety evaluation of route segments.
+In addition to user reports, the system integrated historical crime incident records sourced from the Tarlac Police Provincial Office. These crime reports were used as a supplementary dataset to identify areas that have exhibited higher levels of risk over time. Due to the lack of a live data feed or public API access, these crime records were static and used solely for reference in the prescriptive route generation process.
+To compute the safest route, the system implemented a Modified Dijkstra Algorithm. This version of Dijkstra did not simply calculate the shortest path but rather incorporated hazard and crime risk into its edge weight calculation. Each road segment or edge in the network is assigned a cost that reflected not only distance but also safety, with values adjusted using hazard risk derived from the product of Trust and Agreement Scores, along with crime severity weights based on the type of incident. This enabled the system to prioritize safer paths over shorter or faster alternatives.
+While the generated route remained fixed during the run, the system allowed for real-time hazard alerts. If a new hazard report was submitted and determined to have a high Agreement Score, the runner received a notification, but the system did not dynamically reroute or regenerate the path in response.
+For system evaluation, the development adhered to the ISO 25010 software quality model. Usability was assessed based on user feedback, ensuring that features such as report submission and route viewing were intuitive and accessible. Performance efficiency was measured by the responsiveness of the system when generating paths and processing hazard data. Reliability was evaluated through consistent output and stable performance across different devices and conditions. Security was ensured through secure login mechanisms and proper handling of user data. Finally, safety was measured by the system's effectiveness in guiding users through routes that minimize exposure to high-risk areas, based on both community-sourced and historical data.
+
+METHODOLOGY
+Methods in Data Gathering
+The data gathering method described the approaches that were used to collect relevant information for system development and assessment. The following were the methods used by researchers in gathering data:
+Survey Method
+The proponents conducted a survey to gather data about the preferences and needs of potential users of the SyncRunize system, specifically targeting runners in Tarlac City and Tarlac Province. The survey was designed to capture detailed insights into the expected features, usage patterns, and overall user experience desired by the target audience. It was distributed via Google Forms, allowing respondents to complete it online at their convenience. The form included questions regarding demographic information, running habits, and the features that users would prioritize in a running app, such as route tracking, safety alerts, and community engagement tools.
+
+The survey used multiple-choice questions to gauge user preferences, Likert scale questions to measure the importance of specific features, and open-ended questions to capture any additional feedback or concerns. This method was chosen to ensure that data could be collected from a wide pool of respondents while minimizing time constraints for the participants. The feedback that was collected from the survey played a critical role in guiding the development of key features in the SyncRunize system, ensuring that the final product met the expectations of the target users.
+Internet Method
+The proponent utilized the Internet Method to gather the necessary data for developing the Progressive Web Application (PWA). To obtain relevant literature, the proponents referred to Google Scholar for academic articles on PWA development, route optimization, real-time notifications, and gamification in fitness applications. This platform provided access to peer-reviewed research, studies, and papers that were essential for understanding the current landscape of the technologies the system utilized.
+For technical documentation, the proponent consulted the official Ionic Framework documentation to guide the development of the frontend. This included instructions for implementing server-side rendering, optimizing performance, and routing within the PWA. Similarly, the proponents used the Firebase SDK documentation to integrate Firebase Cloud Messaging (FCM) for handling real-time notifications and push messaging. Google Maps API documentation was also referenced to understand the best practices for route management, geospatial data, and integration with other map services.
+The proponents also refer to the Google Maps API documentation for geolocation capabilities, including real-time tracking, route optimization, and integration with OpenStreetMap for additional geospatial data. This was crucial for providing accurate, real-time navigation and personalized route suggestions based on user location, traffic conditions, and hazards.
+The Supabase documentation was used to set up the relational database, manage authentication, and handle data storage needs. The proponents explored how Supabase integrates with other components in the tech stack, ensuring seamless data interaction across the system. Finally, the proponents referred to the documentation of Vercel for deploying the Ionic frontend and AWS EC2 for hosting the backend services. These resources provided the necessary information for efficient and scalable deployment, ensuring that the application operated optimally across various environments.
+Algorithm Data Sources and Testing Rationale
+The algorithms that were used in this system—specifically the Trust Score model, Agreement Score model, and the Modified Dijkstra Algorithm—required structured input data for calibration, testing, and simulation. These datasets were separate from those gathered via surveys or internet-based information searches.
+For the Trust Score model, sample user behavior data was simulated or derived from controlled testing groups, wherein users submitted hazard reports with varying levels of consistency and accuracy. The purpose was to emulate real-world participation patterns in order to evaluate how trust evolves over time based on accuracy and decay functions.
+The Agreement Score model required hazard reports clustered by location, time, and similarity. These were based on crowdsourced data collected from real users of the system during testing and seeded with sample reports. To simulate agreement behavior during initial testing, artificial clusters were generated using patterns observed in platforms such as Strava, where users often report events in similar time/place clusters (e.g., during peak running hours). This grouping rationale helped establish realistic baselines for evaluating agreement score effectiveness.
+For the Modified Dijkstra Algorithm, the necessary road network data was obtained from Google Maps and OpenStreetMap (OSM). Route testing used both manually created hazard scenarios and real hazard reports that were submitted during testing. Historical crime records that were provided by the Tarlac Police Provincial Office supplemented hazard scoring to reflect actual risk distribution within the route network.
+
+All datasets were stored and managed using Supabase during development and evaluation. These data sources and simulation strategies were necessary to ensure each algorithm functions correctly prior to full-scale deployment.
+4.2	Design and Development of SyncRunize: A Web-Based Application for Hazard-Aware Route Planning in Urban Running
+The researchers developed a reasonable design, which described the input, outputs, and procedures all in a format that met the user and system requirements. The following diagram was used: Use Case Diagram (UCD).
+Requirement Analysis and Documentation
+
+4.2.1.1 User Requirements
+
+Figure 4. Use Case Diagram of SyncRunize: A Web-Based Application for Hazard-Aware Route Planning in Urban Running
+	Figure 4 shows the Use Case Diagram of SyncRunize: A Web-Based Application for Hazard-Aware Route Planning in Urban Running. The diagram consisted of one (1) actor, which was the user. It interacts with the different parts of the system to make running safer, more social, and more goal-oriented. The process starts when the user creates an account and logs in to the system. After logging in, the user reaches the Home Page Module, which acts as the main dashboard. Here, the user can view personal records, recent activities, and suggested challenges, giving a quick summary of their running progress. When the user wants to start a run, they go to the Run Tracker Module. This feature allows them to record runs with safety alerts, get hazard or traffic notices, and report any hazards they find while running. The system also provides map route navigation to help guide the user along safe and planned routes. For route planning, the Routing Module lets the user create new routes, search for routes, or use saved and suggested routes. The user can also share their location for safety or social purposes. The User Profile Module shows the user’s personal and social activities. In this part, the user can edit their profile, view their social network, see joined challenges, and share posts. The Stats Overview shows performance data and activity summaries, helping the user track their progress. Through the Community Module, users can view public and group feeds, join groups, and take part in challenges and leaderboards. This feature helps build connections and motivation among runners. The Analytics Module provides details about the user’s weekly activities, best performances, achievements, and active challenges. It helps the user understand their progress and set new goals. Finally, the Settings Module lets users manage their account, adjust privacy settings, change notification preferences, and customize app options. When finished, the user can log out from the system.
+
+
+Figure 5. Use Case Diagram for Mobile Web and Web of SyncRunize: A Web-Based Application for Hazard-Aware Route Planning in Urban Running
+This figure 5 illustrated a Use Case Diagram of SyncRunize: A Web-Based Application for Hazard-Aware Route Planning in Urban Running intended for both mobile web and web platforms, illustrating the main user interactions and system functions. Users can create an account, log in, and access the home page to view personal records, recent activities, and notifications. From the profile module, users can view their stats, milestones, activity recaps, and active challenges. The community module allows engagement through public feeds, leaderboards, and group challenges. The routing module enables route planning by creating, searching, or selecting suggested routes. The Run Tracker Module, originally available in the overall system, was removed in the mobile web and web versions to simplify interaction and enhance performance. Instead, tracking features were integrated into the native mobile application, providing real-time GPS tracking and safety alerts for a more seamless running experience on mobile devices.
+
+4.2.1.2 User Characteristics
+The users needed to create an account to access the application’s features, including route planning, activity tracking, and social engagement. Users were able to plan their runs using safe route generation, track their progress, and participate in challenges within the community. The system also allowed users to share their achievements, set privacy preferences, and customize notifications according to their needs.
+The user will be able to:
+Create an account.
+Log-in/Log-out
+Track and record runs with traffic notice and hazard notice.
+Manage account.
+View Home Page.
+Customize privacy settings.
+Use Map Route Navigation.
+Engage with the community.
+View User Profile.
+View analytics.
+View leaderboards.
+View community feed.
+Track Personal Record.
+View challenges suggestions.
+Search route.
+View suggested route.
+Use Safe Route Generation.
+Report hazard.
+Share their location.
+Create custom challenges.
+Monitor their performance.
+Customize privacy controls.
+View activity summary.
+Customize settings.
+Customize notification preferences.
+Customize application preferences.
+
+
+4.2.1.3 Functional Requirement
+This part discussed the requirements for the User module that included the complexity and priority of SyncRunize: A Web-Based Application for Hazard-Aware Route Planning in Urban Running as presented on Table 9 below.
+Table 9. Functional Requirement for User Module
+
+Non-Functional Requirements
+This part discussed the Non-Functional Requirements & Dependencies description of SyncRunize: A Web-Based Application for Hazard-Aware Route Planning in Urban Running as presented in Table 10 below.
+Table 10.  Non-Functional Requirement of SyncRunize
+
+Design of the System
+The research methodology employed logical design principles to create a detailed representation of the proposed system's information architecture. This approach mapped data flows, processing mechanisms, inputs, and outputs that defined the system's operational framework. The following diagrams were used: Entity Relationship Diagram (ERD) and Functional Decomposition Diagram.
+
+ER Diagram
+
+Figure 6 presented the entity-relationship diagram (ERD) for the proposed system. The schema defined the database structure that supported user authentication, run tracking, routing, hazard reporting, community participation, leaderboard management, and badge acquisition.
+The User entity stored essential user attributes including name, email, password, account type, and profile image. A self-referencing many-to-many relationship was established through the Follow entity, enabling users to follow or unfollow each other. Composite keys in the Follow entity enforced uniqueness in follower-following pairs.
+Each user was able to record multiple runs through the RunActivity entity. RunActivity tracked attributes such as start time, end time, total distance, average pace, and safety alert status. Each run activity was associated with a specific Route, establishing a one-to-many relationship where a single route can contain multiple run activities. The Route entity stored the route name, distance, origin and destination coordinates, and an indicator if the route is system-suggested.
+Users were able to submit HazardReports linked to specific routes. Each hazard report stored a description, geolocation coordinates, and timestamp, providing route-specific safety information.
+Community participation was defined through the Community and Challenge entities. Users were able to join communities via the CommunityMembership entity. Communities could host multiple challenges, recorded in the Challenge entity. Users were able to participate in challenges through the ChallengeParticipant entity. Performance in challenges was recorded through the LeaderboardEntry entity. Each leaderboard was scoped to a specific challenge and visibility was limited to users who are members of the corresponding community.
+The schema also defined the Badge entity, which represented achievements associated with either users or specific challenges. Users were able to earn badges based on defined criteria related to their participation and performance.
+Functional Decomposition Diagram
+
+Figure . Functional Decomposition Diagram
+	This figure 7 illustrated the functional decomposition of SyncRunize: A Web-Based Application for Hazard-Aware Route Planning in Urban Running designed to enhance urban running with real-time route safety and traffic awareness. The flow began with users having the option to create an account and log in before accessing the Home Page. From there, the system branched into several main modules. The app was structured into seven main functional categories: Route Module, Settings Module, Run Tracker Module, Community Module, User Profile Module, Analytics Module and Notifications Module.
+
+
+Figure 8. Functional Decomposition Diagram for Mobile Web and Web
+The figure illustrates a Functional Decomposition Diagram (FDD) for SyncRunize: A Progressive Web Application for Real-Time Route Safety and Traffic-Aware Urban Running. The diagram begins with account creation and login, leading to a home page that branches into six primary modules: User Profile, Route, Community, Notification, Analytics, and Settings.
+The User Profile Module enables users to view profiles, follow/unfollow runners, access social networks, view stats and activity recaps, manage followers, and track badges and active challenges. The Route Module supports manual route creation, viewing suggested routes, route searching, metric unit customization, saved routes, and estimated time/distance calculations. The Community Module facilitates social interaction through community management, feeds, challenges, posts, and leaderboards. The Notification Module manages achievement announcements, customizable notification settings, and general alerts. The Analytics Module provides milestone tracking, performance insights, and performance monitoring. The Settings Module handles account customization, privacy controls, and password/security access.
+Notably, the Tracking Module which would typically provide real-time movement tracking was intentionally excluded from mobile web and web versions due to device and browser limitations. These versions focus on route planning, community features, and analytics without active location tracking during runs.
+
+
+
+
+System Development Method
+
+
+The Scrum framework consisted of three key components: Scrum Roles, Scrum Events, and Scrum Artifacts.
+Scrum Roles
+Product Owner	
+In the context of the SyncRunize project, the role of the Product Owner was shared by the developers and end-users. The development team gathered feedback from potential users and uses this input to define and prioritize items in the Product Backlog. This ensured that the features that were developed—such as route suggestions, community modules, and real-time run tracking—were based on real-world user needs and contributed directly to the application's goal of providing safe, efficient, and enjoyable running experiences.
+Scrum Master
+The Scrum Master role was also fulfilled by members of the development team. Acting in this capacity, they were responsible for guiding the team in adhering to the Scrum framework, resolving impediments that arose during development, and maintaining a smooth and collaborative workflow. Their duties also included ensuring that sprint goals were achievable and that the team consistently follows agile best practices.
+Scrum Team
+The Scrum Team consisted of all members involved in building the SyncRunize application. This included frontend and backend developers, UI/UX designers, and AI integration developers. They were collectively responsible for delivering functional increments of the system in every sprint, including features such as real-time GPS tracking, safe route planning, and run history synchronization. 	
+Scrum Events
+Product Backlog
+The Product Backlog was a comprehensive and evolving list of tasks, features, and enhancements that were planned for the SyncRunize system. While each item was assigned a priority level, the development order was influenced by technical dependencies, team assignments, and overall sprint planning rather than strictly by priority. As a result, certain medium-priority modules, such as the profile and community features, were implemented in earlier sprints to support the foundational user experience. The backlog was managed collaboratively by the development team, with updates made based on project needs and development progress.
+Sprint Planning Meeting
+Sprint Planning was conducted at the beginning of each sprint to determine the set of Product Backlog items that were to be implemented. During this event, the team estimated workloads, assigned tasks, and prepared for the sprint cycle based on priorities and dependencies.
+Sprint (2-4 Weeks)
+Each Sprint spanned two to four weeks and was focused on delivering a specific set of functional features. For SyncRunize, individual sprints included tasks such as interface development, AI module integration, and backend connectivity. Each sprint aimed to produce a potentially shippable product increment.
+Daily Stand-up
+Daily stand-up meetings were brief sessions held by the team to discuss what was accomplished, what was being worked on, and any blockers that might hinder progress. This practice promoted transparency and quick resolution of issues.
+Sprint Review
+At the end of each sprint, a Sprint Review was held to present the completed features to stakeholders or testers. The team demonstrated the functionalities that were added—such as real-time route suggestions or run history—and gathered feedback for further refinement.
+Sprint Retrospective
+The Sprint Retrospective followed the Sprint Review and focused on evaluating the development process. The team reflected on what went well, what challenges were encountered, and identifies improvements for future sprints.
+Finished Work
+Completed features from each sprint were compiled and integrated into the system. For SyncRunize, this included tested modules such as login and sign-up, safe route generation, and user-friendly dashboards, all prepared for deployment and presentation.
+
+Product Backlog
+Table 11. Product Backlog
+Gantt Chart
+
+Figure 10. Gantt Chart
+
+Sprint 
+Table 12. Sprint #1
+	Sprint 1 focused on building the core user interface of the application, including essential screens such as login/sign-up, home page, route planning, and community modules. The frontend was developed based on the team's prototype designs and was optimized for mobile and desktop responsiveness, ensuring a smooth and user-friendly experience across various devices.
+Table 13. Sprint #2
+	This sprint 2 was focused on implementing the Trust and Agreement Score algorithms. These served as the foundation for evaluating the reliability of user-submitted hazard reports. The output was integrated into the app’s backend to inform safer AI-generated route suggestions based on user credibility.
+Table 14. Sprint #3
+Sprint 3 built the intelligent routing engine through a modified Dijkstra’s algorithm. The focus was on prioritizing route paths that consider both distance and calculated safety levels, incorporating hazard-weighted logic to dynamically compute optimal paths based on the Trust and Agreement Scores.
+Table 15. Sprint #4
+Sprint 4 was focused on tracking user runs and saving them into the system. It involved integrating GPS functionality for live tracking, implementing run history visualization, and enabling users to manage saved routes by editing or deleting them. This module was link to route history to user profiles, allowing personalized records to be displayed and enhancing user engagement through detailed performance logs.
+Table 16. Sprint #5
+Sprint 5 was focused on testing and refinement of the system. Unit and functional testing were conducted to ensure all modules work as intended. Bug fixing, usability improvements, and performance tweaks also followed. Feedback gathered during this sprint was to guide final adjustments to deliver a polished and reliable user experience before deployment.
+Table 17. Sprint #6
+Sprint 6 prepared SyncRunize for deployment. It focused on optimizing PWA performance across devices, ensuring responsiveness, offline support, and conducting final tests before launch.
+4.2.5 	Safe Route Pathfinding Algorithm
+This section presented the methods that were used to assess hazard report reliability and compute the safest path through a modified Dijkstra algorithm. The overall process incorporated trust scoring, agreement scoring, semantic similarity, and historical crime severity weighting.
+Trust-Based Hazard Filtering
+To assess the credibility of each user, a Trust Score (Tᵢ) was assigned based on their historical reporting behavior. The score was influenced by:
+Reporting Accuracy (Aᵢ): Proportion of user reports that were supported by others.
+Temporal Consistency: A decay function reduced the impact of older reports to prioritize recent, relevant data.
+Validation Match: Verified or consistently corroborated reports increased the user’s trustworthiness over time.
+This trust score was later used to weigh the influence of each report during hazard scoring.
+
+4.2.5.2 Agreement Score Calculation
+To measure the reliability of individual reports, an Agreement Score (ASⱼ) was computed. This score reflected the extent to which a report was supported by other similar reports within a 7-day (10,080 minutes) and 300-meter window.
+The score was calculated using:
+
+Where:
+Δtⱼₖ: Time difference between reports j and k
+Δdⱼₖ: Distance between reports
+Sⱼₖ: Semantic similarity between hazard types (described below)
+βₜ and β_d: Time and distance decay constants
+This enabled the system to give higher weight to reports that were semantically and spatially supported by others.
+
+Semantic Similarity (Sⱼₖ)
+Semantic similarity was used to assess whether two hazard reports described the same or related incidents. A similarity score Sⱼₖ was assigned:
+Table 18. Semantic Similarity Scoring
+
+Figure 11. Semantic Similarity Computation Flowchart
+The similarity was derived using a combination of keyword matching and semantic embeddings (e.g., Sentence-BERT), which helped match variations like "pothole" and "cracked road."
+
+
+The routing system worked as follows:
+User enter Start Point and Distance or End Point
+Data Collection: Reports are collected from users and official crime data feeds.
+Trust Evaluation:
+Compute Ti per user using reporting history.
+Agreement Assessment:
+For each report j, calculate ASj using nearby reports.
+Hazard Scoring:
+Combine trust and agreement into a risk score:
+​
+Edge Weight Assignment:
+Hazard weight:
+
+Crime weight:
+
+Total safety cost:
+​
+Path Computation:
+Apply modified Dijkstra using:
+​
+The algorithm returned the lowest-risk path under this cost formulation.
+
+
+
+
+Functional Testing Method 
+The Functional Testing Method was employed to validate the system’s behavior based on its functional specifications.
+Several tools were employed to support this process. OpenTest was considered for its customizable automation capabilities across both web and mobile platforms, though it required dedicated devices or servers for execution. For the web interface, Playwright was primarily used to automate functional testing. It simulated real user interactions such as logging in, tracking routes, and receiving notifications ensuring that dynamic elements performed consistently across different browsers and devices. Additionally, Selenium WebDriver, a widely adopted tool for web UI automation, supported regression and compatibility testing across multiple browsers and platforms. 
+For mobile-specific testing, Firebase Test Lab was utilized to validate push notifications and mobile interactions. By running tests on a diverse set of real Android devices, it verified the proper delivery of notifications through FCM and ensured that the mobile version of the system behaved reliably across different devices and screen sizes.
+Test scenarios were documented in Google Sheets, capturing details such as input, expected outcomes, actual results, and pass/fail status for each test case. The method focused on validating that the system’s functionalities met the required standards for both web and mobile interfaces.
+4.3.1 Testing Procedure
+To test the performance of the system by means of Black-box testing:
+Black-box testing is a Type of Software Testing in which the tester is not concerned with the software’s internal knowledge or implementation details but rather focuses on validating the functionality based on the provided specifications or requirements.
+Table . Authentication Module
+
+This table presents the black-box test cases for the Authentication Module. The test scenarios verify that users can create accounts, log in, and recover passwords securely. They ensure proper validation of input fields, restriction of access for invalid credentials, and functionality of the password recovery feature.
+Table . Home Module
+
+This table presents the black-box test cases for the Home Module. The test scenarios verify that the dashboard loads correctly after login, displays accurate user activity summaries, and shows leaderboard information when applicable. They also ensure that new users see an appropriate empty-state prompt and that quick-access buttons function responsively
+Table . Route Module
+
+This table presents the black-box test cases for the Route Module. The test scenarios verify that the system generates safe and optimized routes, displays suggested paths based on user or community data, and properly handles invalid inputs. They also ensure that route generation meets performance requirements and integrates hazard data from the database.
+Table . Run Tracking Module (Mobile Only)
+
+This table presents the black-box test cases for the Run Tracking Module (Mobile Only). The test scenarios verify that users can start, pause, resume, and stop live running sessions while accurately tracking distance, time, and pace. They also confirm that users can submit hazard reports during runs and that access is restricted on desktop browsers to maintain mobile-only functionality.
+Table . Biometric Health Module
+
+This table presents the black-box test cases for the Biometric Health Module. The test scenarios verify that the system accurately calculates calories burned based on user weight, speed, and duration using the defined fitness formulas. They also ensure that users are prompted to provide missing biometric data, such as weight, before calculations proceed.
+Table . Community Module
+
+This table presents the black-box test cases for the Community Module. The test scenarios verify that users can create, join, and leave communities, as well as view accurate leaderboards reflecting member performance. They ensure that community interactions function correctly and that membership data updates properly.
+Table . Progress Analytics Module
+
+This table presents the black-box test cases for the Progress Analytics Module. The test scenarios verify that the system accurately displays user performance summaries, properly handles accounts with no recorded activities, and presents milestones or achievements when specific goals are met.
+Table . User Profile Module
+
+ 	This table presents the black-box test cases for the User Profile Module. The test scenarios verify that users can update personal information and manage social interactions through the follow and unfollow features. They ensure that profile data is saved accurately and that relationship counts update in real time.
+Table . Settings Module
+
+ 	This table presents the black-box test cases for the Settings Module. The test scenarios verify that users can modify notification preferences, change measurement units, and securely delete their accounts. They ensure that personalization settings are applied consistently and that account management actions are processed safely.
+4.3.2 User Groups for System Testing
+To ensure a comprehensive and realistic evaluation of the system’s functionality, the proponents conducted testing with selected user groups who represented both the technical and end-user perspectives of the application. The participants included IT experts, urban runners, semi-urban runners, and faculty advisers. Each group was chosen to assess the system under different conditions and contexts. IT experts provided technical feedback on the system’s interface design, responsiveness, and feature integration, while runners focused on validating real-world usability, route accuracy, and safety notifications during their runs. Faculty advisers supervised the process to ensure that the testing adhered to academic and methodological standards.
+Table 28. User Groups for System Testing
+This table presented the user groups that were involved in system testing, detailing their roles in evaluating key aspects of the application. An IT expert conducted an initial review focused on the UI and UX design as well as basic functionality. Urban and semi-urban runners were included to validate real-world route safety features under different environmental conditions. Urban runners tested the system’s performance in dense and high-traffic settings, while semi-urban runners assessed its effectiveness in moderately populated areas. Faculty advisors provided technical oversight to ensure system compliance with development standards.
+System Evaluation Method
+The system evaluation method for the proposed SyncRunize application adhered to the criteria established by the ISO/IEC 25010 standard for software product quality. The key characteristics that were evaluated were usability, performance efficiency, reliability, security, and safety. Each characteristic was evaluated through structured methods and free/open-source tools to ensure systematic and measurable results.
+Usability was evaluated using a standardized questionnaire distributed via Google Forms, with responses automatically stored in Google Sheets for structured analysis. The assessment measured navigation clarity, task execution efficiency, and user satisfaction, ensuring that the interface supported accessible and effective interactions.
+Performance efficiency was assessed through a combination of browser-based and external testing tools. Chrome DevTools monitored runtime resources and load profiling, while Google Lighthouse provided performance scores, accessibility checks, and optimization insights. To evaluate backend scalability, k6, an open-source load testing tool, simulated stress and load scenarios, identifying latency issues and throughput consistency.
+Reliability was tested by executing repeated system operations to verify uptime, stability, and output consistency. Firebase Crashlytics tracked mobile app crashes, while Sentry monitored web and mobile errors. Automated testing frameworks such as Cypress and Playwright ensured repeatable execution of core flows, confirming consistent results across multiple sessions.
+Security evaluation focused on authentication, access control, and vulnerability scanning. OWASP ZAP and Burp Suite CE were used for dynamic application security testing (DAST). Dependency scanning tools such as Trivy and OWASP Dependency-Check identified risks in backend libraries, while SonarQube CE provided static code analysis for detecting security hotspots.
+Safety evaluation targeted the system’s hazard-related notifications and route guidance. Testing was conducted with peer/volunteer runners to simulate authentic usage. Structured feedback was collected through Google Forms, while the GPS Emulator in Android Studio was used to simulate routes and trigger hazard alerts in controlled environments, confirming timely and accurate alert delivery.
+All evaluation outcomes were documented and analyzed to confirm system alignment with the selected ISO/IEC 25010 quality characteristics. This structured approach ensured that SyncRunize achieved its intended objectives in terms of usability, performance efficiency, reliability, security, and safety, providing a reliable and user-centered solution for its target users.
+REFERENCES
+[1] World Health Organization, “Physical inactivity: a global public health problem,” Geneva, 2020. [Online]. Available: https://www.who.int/dietphysicalactivity/factsheet_inactivity/en/ 
+  
+[2] Z. Pedisic, N. Shrestha, S. Kovalchik, et al., “Is running associated with a lower risk of all-cause, cardiovascular and cancer mortality, and is the more the better? A systematic review and meta-analysis,” Br. J. Sports Med., vol. 54, pp. 898-905, 2020. 
+  
+[3] World Health Organization, “Global Status Report on Road Safety,” Geneva, 2018. [Online]. Available: https://ww.who.int/ 
+  
+[4] G. S. Tulu, S. Washington, M. J. King, and M. M. Haque, “Why are pedestrian crashes so different in developing countries? A review of relevant factors in relation to their impact in Ethiopia,” Australasian Transport Research Forum Proceedings, 2013. 
+  
+[5] R. D. K. K. E. P. M. C. K. R. S. a. J. R.-M. E. Shore, “Pedestrian Safety Among High School Runners: A Case Series,” 2022. [Online]. Available: https://journals.sagepub.com/doi/10.1177/19417381221123510 
+  
+[6] A. K. N. V. T. Yai, “Analysis of Road Traffic Flow and Traffic Environment in Metro Manila,” 2023. [Online]. Available: https://ncts.upd.edu.ph/tssp/wp-content/uploads/2018/08/Vergel00.pdf 
+
+[7]  Statista, "Number of crime incidents in the Philippines from 2016 to 2022," Statista, [Online]. Available: https://www.statista.com/statistics/1270736/philippines-number-of-crime-incidents/. [Accessed: Apr. 3, 2025]. 
+
+[8] Statista, "Smartphones - Statistics & Facts," Statista, 2023. [Online]. Available: https://www.statista.com/topics/840/smartphones/#topicOverview. [Accessed: 10-Apr-2025].
+
+[9] IBM, “HTML5 , Hybrid or Native Mobile App Development,” White  Paper,  IBM  Corporation,  p. Document Number: WSW14182USEN, 2012
+
+[10]I.  Malavolta,  G.Procaccianti,  P.  Noorland,  and P.  Vukmirovic,  “Assessing  the  Impact  of  Service Workers on the Energy Efficiency of Progressive Web Apps,” in Proceedings -2017  IEEE/ACM  4th International Conference on Mobile Software Engineering and Systems, MOBILESoft 2017, 2017, pp. 35–45
+
+[11]I. Malavolta, “Beyond Native Apps: Web Technologies to the Rescue! (Keynote),” in Mobile! 2016 -Proceedings  of  the  1st  International  Workshop  on  Mobile  Development,  co-located  with  SPLASH 2016, 2016, pp. 1–2
+
+[12] M. Latif, Y. Lakhrissi, E. H. Nfaoui, and N. Es-Sbai, “Cross platform approach for mobile application development: A survey,” 2016 Int. Conf. Inf. Technol. Organ. Dev. IT4OD 2016, pp. 1–5, 2016
+
+[13] A.  I.  Khan,  A.  Al-Badi,  and  M.  Al-Kindi, “Progressive Web Application Assessment Using AHP,” Procedia Comput. Sci., vol. 155, pp. 289–294, 2019  
+
+[14]  N. M. E. B. J. E. T. L. J. M. H. N. J. C. N. M. S. E. S. Y. S. J. C. a. R. P. Daniel Zhang, “The AI Index 2022 Annual Report,” Stanford University, 2022. [Online]. Available: https://aiindex.stanford.edu/wp-content/uploads/2022/03/2022-AI-Index-Report_Master.pdf 
+  
+[15] S. Deterding, D. Dixon, R. Khaled, and L. Nacke, “From game design elements to gamefulness: Defining gamification,” in Proc. 15th Int. Acad. MindTrek Conf.: Envisioning Future Media Environments, 2011, pp. 9–15. 
+  
+[16] J. Koivisto and J. Hamari, “The rise of motivational information systems: A review of gamification research,” Int. J. Inf. Manag., vol. 45, pp. 191–210, 2019. 
+  
+[17] H. Quirk, A. Bullas, S. Haake, et al., “Exploring the benefits of participation in community-based running and walking events: a cross-sectional survey of parkrun participants,” BMC Public Health, vol. 21, p. 1978, 2021. 
+ 
+[18]  A. Khan, Let's Get Physical: Exploring Gamification in Fitness Apps to Sustain User Engagement, Thesis, Toronto Metropolitan University, 2023. Available: https://doi.org/10.32920/23159873.v1.
+
+[19] C. P. Adwinda and S. Pradono, “Developing an Android-Based Running Application,” Journal of Critical Reviews, vol. 7, no. 8, pp. 851–857, Jan. 2020. [Online]. Available: https://www.jcreview.com/index.php?mno=117050. DOI: 10.31838/jcr.07.08.182.
+
+[20] P. Siriaraya, Y. Wang, Y. Zhang, S. Wakamiya, P. Jeszenszky, Y. Kawai, and A. Jatowt, “Beyond the shortest route: A survey on quality-aware route navigation for pedestrians,” IEEE Access, vol. 8, pp. 135569–135587, Aug. 2020, doi: 10.1109/ACCESS.2020.3011924.
+
+[21] A. Muawwal, “The Implementation of PWA (Progressive Web App) Technology in Enhancing Website Performance & Mobile Accessibility,” Bull. Pos dan Telekomunikasi, vol. 22, no. 1, pp. 25–36, 2024.
+
+[22] M.-T. Lin and C.-Y. Lin, "Analysis of the wayfinding strategies of pedestrians using the Google Maps mobile application," Chinese Journal of Psychology, vol. 63, no. 2, pp. 177-202, 2021.
+
+[23] O. Adetunji, C. Ajaegbu, N. Otuneme, and O. J. Omotosho, "Dawning of Progressive Web Applications (PWA): Edging Out the Pitfalls of Traditional Mobile Development," American Scientific Research Journal for Engineering, Technology, and Sciences (ASRJETS), vol. 68, no. 1, pp. 85-99, May 2020.
+
+[24] M. Hamilton, F. Salim, E. Cheng, and S. L. Choy, "Transafe: A crowdsourced mobile platform for crime and safety perception management," ACM SIGCAS Computers and Society, vol. 41, no. 4, pp. 1-7, Dec. 2011. doi: 10.1145/2898272.2896275.
+
+[25] J. Yang, F.-Y. Ju, and Z.-G. Tian, "Sports and Social Interaction: Sports Experiences and Attitudes of the Urban Running Community," Int. J. Environ. Res. Public Health, vol. 19, no. 21, p. 14412, Nov. 2022. doi: 10.3390/ijerph192114412.
+
+[26] K. Koritsoglou, G. Tsoumanis, V. Patras, and I. Fudos, "Shortest Path Algorithms for Pedestrian Navigation Systems," Information, vol. 13, no. 6, p. 269, 2022, doi: 10.3390/info13060269.  
+
+[27] A. Alpkoçak and A. Cetin, "Safe Map Routing Using Heuristic Algorithm Based on Regional Crime Rates," in Artificial Intelligence and Applied Mathematics in Engineering Problems (ICAIAME 2019), vol. 43, D. Hemanth and U. Kose, Eds. Cham: Springer, 2020, pp. 1–12, doi: 10.1007/978-3-030-36178-5_25.
+[28] J. Janot, “Calculating Caloric Expenditure,” IDEA Health & Fitness Journal, vol. 2, pp. 6–8, 2005.
+[29] American College of Sports Medicine, ACSM’s Guidelines for Exercise Testing and Prescription, 10th ed., Wolters Kluwer, 2021.
+[30] Strava Support, “Calorie Calculation,” [Online]. Available: https://support.strava.com/hc/en-us/articles/216917097-Calorie-Calculation
+[31] J. L. Mayhew, J. M. LaMonte, and D. W. McCroskey, “Oxygen cost and energy expenditure of running in trained runners,” British Journal of Sports Medicine, vol. 11, no. 3, pp. 116–121, 1977.
+[32] G. M. Foody, “Assessing the Accuracy of Volunteered Geographic Information Arising from Multiple Contributors to an Internet-Based Collaborative Project,” Transactions in GIS, vol. 17, no. 6, pp. 847–860, 2013. [Online]. Available: https://onlinelibrary.wiley.com/doi/10.1111/tgis.12033
+[33] A. J. Flanagin and M. J. Metzger, “The Credibility of Volunteered Geographic Information,” GeoJournal, vol. 72, no. 3–4, pp. 137–148, 2008. [Online]. Available: https://link.springer.com/article/10.1007/s10708-008-9188-y
+[34] E. W. Dijkstra, “A Note on Two Problems in Connexion with Graphs,” Numerische Mathematik, vol. 1, no. 1, pp. 269–271, 1959. doi: 10.1007/BF01386390
+[35] S. Das and I. Tsapakis, “Developing Artificial Intelligence Driven Safe Navigation Tool,” U.S. Department of Transportation, ROSA P, 2023. [Online]. Available: 
+[36] M. Lozano Domínguez and A. Sanguino, “Walking Secure: Safe Routing Planning Algorithm and Pedestrian’s Crossing Intention Detector,” Sensors, vol. 21, no. 2, p. 529, Jan. 2021. [Online]. Available: https://www.mdpi.com/1424-8220/21/2/529
+
+
+APPENDICES
+
+Appendix A: Data Gathering Documentation
+Survey and Internet Research Materials for SyncRunize Capstone Project
+
+A.1 Survey Instrument
+
+
+Figure 13. Introduction and Consent Statement
+
+
+
+Figure 14. Demographic Section
+
+Figure 15. Screenshot of the Google Form – Running Habits Section
+
+Figure 16. Screenshot of the Google Form – Safety Concerns Section
+   
+Figure 17. Screenshot of the Google Form – Feature Preferences Section
+Table 29. Survey Summary Table
+
+
+A.2 Raw Survey Results
+An anonymized excerpt of the first three responses is shown below. The full set of raw data (all 14 responses and all 18 items) is available online.
+Table 30. Excerpt of Raw Survey Responses (N = 14)
+
+Full dataset (anonymized, N = 14) is accessible at:
+https://docs.google.com/spreadsheets/d/1_r1hRCMLij0WxH9LkiG6qe5ZY4jjnxLgb3z9nKz3f0s/edit?usp=sharing
+
+A.3 Data Analysis Output
+
+
+Figure 18. Distribution of Respondent Ages
+
+Figure 19. Gender Breakdown of Survey Participants
+
+Figure 20. Area Preferences (Urban, Semi-Urban, Both)
+
+Figure 21. Weekly Running Frequency Among Respondents
+
+Figure 22. Duration of Running Experience
+
+Figure 23. Incidence of Safety Concerns While Running (Yes/No)
+ 
+
+Figure 24. Types of Safety Concerns Encountered
+
+Figure 25. Level of Safety Concern (1 = Not at all, …, 5 = Extremely)
+
+Figure 26. Current Safety Measures Used by Runners (Open-ended Themes)
+ 
+Figure 27. Existing Running/Fitness App Usage (Yes/No)
+
+Figure 28. Most Useful Features in Current Running Apps
+
+Figure 29. Importance of Real-Time Hazard Reporting (Likert Scale)
+
+Figure 30. Willingness to Report/View Local Hazards (Yes/No)
+
+Figure 31. Likelihood of Participating in Challenges & Leaderboards (Likert)
+
+A.5 Internet Method Sources
+A.5.1 Technical Documentation
+
+Ionic Documentation: Server-Side Rendering, Routing, and Performance. Retrieved from https://ionic.io/docs
+
+Firebase Cloud Messaging: Web Setup Guide. Retrieved from https://firebase.google.com/docs/cloud-messaging
+
+Google Maps Platform: Maps JavaScript API Overview & Guides. Retrieved from https://developers.google.com/maps/documentation
+
+Supabase: Auth, Database, and Storage Documentation. Retrieved from https://supabase.com/docs
+
+Vercel: Deployment and Optimization Documentation. Retrieved from https://vercel.com/docs
+
+Amazon EC2: User Guide. Retrieved from https://docs.aws.amazon.com/ec2
+Appendix B: Curriculum Vitae Of Team Members
+Name: Jonathan C. Melu
+Address: #038 Sitio Lourdes Talaga, Capas, Tarlac 
+Contact No. 09092958991
+Email: jmelu22@gmail.com
+PERSONAL INFORMATION 
+Age                                   :      20 years old
+Date of Birth                    :       October 22, 2004
+Place of Birth                   :       Tarlac Provincial Hospital 
+Sex                                   :       Male
+Civil Status                      :       Single
+Religion                           :       Roman Catholic
+Language spoken             :      Tagalog, Kapampangan, English
+EDUCATIONAL ATTAINMENT 
+Tertiary Education:
+Tarlac State University, Romulo Blvd. 2300 San Isidro, Philippines (2022 -Present)
+Senior High School:
+Capas National High School, Dolores, Capas, Tarlac (2020–2022)
+Junior High School:
+Capas National High School, Dolores, Capas, Tarlac (2016–2020)
+Elementary School:
+Goshen Christian School, Estrada, Capas, Tarlac (2011–2016)
+Name: Vince Patrick Guillermo
+Address: #639 Brgy. Dolores Capas, TarlacTarlac 
+Contact No. 09513224066
+Email: vincepatrickguillermo9@gmail.com
+PERSONAL INFORMATION 
+Age                                   :      22 years old
+Date of Birth                    :       September 19, 2003
+Place of Birth                   :       Immaculate Concepcion Polyclinic, Concepcion Tarlac
+Sex                                   :       Male
+Civil Status                      :       Single
+Religion                           :       Iglesia Ni Cristo
+Language spoken             :      Tagalog, Kapampangan, English
+EDUCATIONAL ATTAINMENT 
+Tertiary Education:
+Tarlac State University, Romulo Blvd. 2300 San Isidro, Philippines (2022 -Present)
+Senior High School:
+Capas National High School, Dolores, Capas, Tarlac (2020–2022)
+Junior High School:
+Capas National High School, Dolores, Capas, Tarlac (2016–2020)
+Elementary School:
+Montesun Academy of Concepcion Inc., Grace Village Isabel Subdivision, Concepcion, Tarlac (2011–2016)
+Name: Raennier Francis P. Mercado
+Address: Pulis Kalinga Village, San Vicente, Tarlac City, Tarlac
+Contact No. 09928091451
+Email: mercadoraenniergt@gmail.com
+PERSONAL INFORMATION 
+Age                                   :      21 years old
+Date of Birth                    :       March 10, 2004
+Place of Birth                   :       Tarlac Provincial Hospital
+Sex                                   :       Male
+Civil Status                      :       Single
+Religion                           :       Roman Catholic
+Language spoken             :      Tagalog, English
+EDUCATIONAL ATTAINMENT
+Tertiary Education:
+Tarlac State University, Romulo Blvd. 2300 San Isidro, Philippines (2022 -Present)
+Senior High School:
+Golden Olympus Colleges, San Vicente, Tarlac City, Tarlac (2021–2022)
+Don Bosco Technical Institute, Sto. Cristo, Tarlac City, Tarlac (2020–2021)
+Junior High & Elementary School:
+Ecumenical Christian College, Cut-Cut 1st, Tarlac City, Tarlac (2016–2020)
+Ecumenical Christian College, Cut-Cut 1st, Tarlac City, Tarlac (2011–2020)
+Name: Jomari P. Taruc
+Address: #93 V. Pineda St., Brgy. Cub-cub Capas, Tarlac
+Contact No. 09483457888
+Email: tarucjom@gmail.com
+PERSONAL INFORMATION 
+Age                                   :      21 years old
+Date of Birth                    :       December 05, 2003
+Place of Birth                   :       Tarlac  Provincial Hospital
+Sex                                   :       Male
+Civil Status                      :       Single
+Religion                           :       Iglesia Ni Cristo
+Language spoken             :      Tagalog, Kapampangan, English
+EDUCATIONAL ATTAINMENT
+Tertiary Education:
+Tarlac State University, Romulo Blvd. 2300 San Isidro, Philippines (2022 -Present)
+Senior High School:
+Capas National High School, Dolores, Capas, Tarlac (2020–2022)
+Junior High School:
+Capas National High School, Dolores, Capas, Tarlac (2016–2020)
+Elementary School:
+Capas Gabaldon Elementary School, Capas, Tarlac (2011–2016)

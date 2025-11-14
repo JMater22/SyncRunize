@@ -1,0 +1,130 @@
+.security-content {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.security-content ion-card {
+  --background: #0a0a0a;
+  --color: #ffffff;
+  border: 1px solid #2a2a2a;
+  margin: 16px;
+}
+
+.security-content ion-card-header {
+  padding: 16px;
+}
+
+.security-content ion-card-title {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+}
+
+.security-content ion-card-title ion-icon {
+  color: #84cc16;
+  font-size: 20px;
+}
+
+.security-content ion-card-content {
+  padding: 0 16px 16px 16px;
+}
+
+.security-input {
+  --background: #1a1a1a;
+  --color: #ffffff;
+  --border-color: #2a2a2a;
+  --placeholder-color: #666666;
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --inner-padding-end: 0;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border: 1px solid #2a2a2a;
+}
+
+.security-input ion-label {
+  color: #999999;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.security-input ion-input {
+  --color: #ffffff;
+  --placeholder-color: #666666;
+  font-size: 15px;
+  margin-top: 8px;
+}
+
+.security-tip {
+  --background: transparent;
+  --padding-start: 0;
+  --inner-padding-end: 0;
+  --min-height: auto;
+}
+
+.security-tip ion-text p {
+  color: #999999;
+  line-height: 1.6;
+}
+
+.security-content ion-button {
+  --border-radius: 8px;
+  font-weight: 600;
+  text-transform: none;
+  height: 44px;
+}
+
+.security-content ion-button[color="success"] {
+  --background: #84cc16;
+  --background-hover: #9ae622;
+  --background-activated: #75b514;
+  --color: #000000;
+}
+
+.security-content ion-button[disabled] {
+  --background: #333333;
+  --color: #666666;
+}
+
+.security-content ion-list {
+  background: transparent;
+  padding: 0;
+}
+
+.security-content ion-text[color="warning"] {
+  --ion-color-warning: #ffc107;
+}
+
+.security-content ion-text[color="medium"] {
+  --ion-color-medium: #999999;
+}
+
+/* Dark header styling */
+.dark-header ion-toolbar {
+  --background: #000000;
+  --color: #ffffff;
+  --border-color: #2a2a2a;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.dark-header ion-title {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.dark-header ion-back-button {
+  --color: #84cc16;
+}
+
+/* Toast styling */
+ion-toast {
+  --border-radius: 8px;
+  font-weight: 500;
+}
+
+ion-toast::part(message) {
+  font-size: 14px;
+}
