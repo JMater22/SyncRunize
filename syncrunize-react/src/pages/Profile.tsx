@@ -20,24 +20,17 @@ import {
   IonTextarea,
   IonLabel,
   IonAvatar,  
-  IonActionSheet,
+  IonActionSheet, 
   IonToast, 
   IonAlert,
   IonSpinner
 } from "@ionic/react";
 import { settings, trophy, flame, statsChart, close, camera, checkmark, person, logOut, createOutline, trashOutline, heartOutline, chatbubbleEllipses, locationOutline, timeOutline, speedometerOutline, flameOutline as flameIcon, eyeOutline, lockClosedOutline } from "ionicons/icons";
 
-import ProfilePic from "../assets/Profile Picture.png";
+
 import Banner from "../assets/Banner UP.png";
 import MapImage from "../assets/MAP 1.png";
-import Challenges from "../assets/Couch to 5K.jpg";
-import SevenDayStarter from "../assets/The 7-Day Starter.jpg";
-import ThirtyDayStreak from "../assets/30-Day Streak.jpg";
-import FiveKImprover from "../assets/5K Improver.jpg";
-import WeekendLongRun from "../assets/Weekend Long Run.jpg";
-import FiftyKMonth from "../assets/The 50K Month.jpg"; 
-import ThreeTimesAWeek from "../assets/Three Times a Week.jpg"; 
-import TenKBeginner from "../assets/10K Beginner.jpg";
+
 // import BronzeBadge from "../assets/badges/Bronze.png";
 // import SilverBadge from "../assets/badges/Silver.png";
 // import GoldBadge from "../assets/badges/Gold.png";
@@ -1436,7 +1429,6 @@ const handleSaveProfile = async () => {
           <div className="profile-action-buttons-bottom">
             <IonButton
               className="edit-profile-button"
-              fill="clear"
               onClick={() => setIsEditModalOpen(true)}
             >
               <IonIcon icon={createOutline} slot="start" />
@@ -1445,7 +1437,6 @@ const handleSaveProfile = async () => {
 
             <IonButton
               className="settings-button"
-              fill="clear"
               onClick={() => setIsSettingsModalOpen(true)}
             >
               <IonIcon icon={settings} slot="start" />
@@ -1454,7 +1445,6 @@ const handleSaveProfile = async () => {
 
             <IonButton
               className="logout-button"
-              fill="clear"
               onClick={() => setShowLogoutAlert(true)}
             >
               <IonIcon icon={logOut} slot="start" />
@@ -1580,7 +1570,6 @@ const handleSaveProfile = async () => {
                 fill="clear"
                 onClick={handleCancelEdit}
               >
-                <IonIcon icon={close} />
               </IonButton>
             </IonToolbar>
           </IonHeader>
