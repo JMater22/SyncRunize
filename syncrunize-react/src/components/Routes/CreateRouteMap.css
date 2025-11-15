@@ -1019,3 +1019,118 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Accident Warning Banner */
+.accident-warning-banner {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(255, 165, 0, 0.1);
+  border: 1px solid rgba(255, 165, 0, 0.3);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.accident-warning-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.accident-warning-icon {
+  font-size: 20px;
+  color: #ff8c00;
+  flex-shrink: 0;
+}
+
+.accident-warning-title {
+  font-weight: 600;
+  color: #e67e00;
+  font-size: 14px;
+}
+
+.accident-warning-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.accident-warning-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+}
+
+.accident-warning-item.severity-high {
+  border-left: 3px solid #ff6347;
+}
+
+.accident-warning-item.severity-medium {
+  border-left: 3px solid #ff8c00;
+}
+
+.accident-warning-item.severity-low {
+  border-left: 3px solid #ffa500;
+}
+
+.accident-cluster-label {
+  font-weight: 600;
+  color: #2c2c2c;
+  flex-shrink: 0;
+}
+
+.accident-count {
+  color: #666666;
+  flex: 1;
+}
+
+.accident-severity-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.accident-severity-badge.high {
+  background: rgba(255, 99, 71, 0.2);
+  color: #ff6347;
+  border: 1px solid rgba(255, 99, 71, 0.4);
+}
+
+.accident-severity-badge.medium {
+  background: rgba(255, 140, 0, 0.2);
+  color: #ff8c00;
+  border: 1px solid rgba(255, 140, 0, 0.4);
+}
+
+.accident-severity-badge.low {
+  background: rgba(255, 165, 0, 0.2);
+  color: #ffa500;
+  border: 1px solid rgba(255, 165, 0, 0.4);
+}
+
+.accident-warning-more {
+  padding: 6px 10px;
+  text-align: center;
+  color: #666666;
+  font-size: 11px;
+  font-style: italic;
+}
+
+.accident-warning-advice {
+  padding: 10px 12px;
+  background: rgba(255, 140, 0, 0.08);
+  border-radius: 8px;
+  color: #7a4f00;
+  font-size: 12px;
+  font-style: italic;
+  border-left: 3px solid #ff8c00;
+}

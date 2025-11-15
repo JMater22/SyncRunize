@@ -25,11 +25,12 @@ import {
   locationOutline,
   informationCircleOutline,
   mapOutline,
-  listOutline
+  listOutline,
+  warningOutline
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
-import { GoogleMap, LoadScript, Polyline } from '@react-google-maps/api';
-import { MarkerF } from '@react-google-maps/api';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import axios from 'axios';
 import { useHideTabBar } from '../hooks/useHideTabBar';
 import { supabase } from '../lib/supabaseClient';
@@ -37,18 +38,16 @@ import { DEFAULT_AVATAR, kmToMiles } from '../lib/utils';
 import { buildGuidedRoutePayload } from '../lib/routeGuides';
 import '../theme/CreateRouteMap.css';
 
-// Google Maps configuration
-const libraries: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
+// Mapbox configuration
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+
 const mapContainerStyle = {
   width: '100%',
   height: '100%'
 };
 
 // Default center (Tarlac, Philippines)
-const defaultCenter = {
-  lat: 15.4755,
-  lng: 120.5963
-};
+const defaultCenter: [number, number] = [120.5963, 15.4755]; // [lng, lat]
 const ALGO_ENGINE_URL =
   import.meta.env.VITE_ALGO_ENGINE_URL ||
   (import.meta as any)?.env?.VITE_ALGORITHM_ENGINE_URL ||
@@ -111,7 +110,32 @@ interface GeneratedRoute {
   route_status: string;
 }
 
+interface MapboxFeature {
+  id: string;
+  place_name: string;
+  center: [number, number];
+  text: string;
+  place_type: string[];
+}
+
+interface AccidentCluster {
+  cluster_id: number;
+  lat: number;
+  lon: number;
+  count: number;
+  radius_meters: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface AccidentWarning {
+  cluster_id: number;
+  count: number;
+  severity: 'high' | 'medium' | 'low';
+}
+
 const CreateRouteMap = () => {
+  console.log('[CreateRoute] Component rendering...');
   useHideTabBar();
   const history = useHistory();
 
@@ -121,10 +145,10 @@ const CreateRouteMap = () => {
   const [endPoint, setEndPoint] = useState<LatLng | null>(null);
 
   // Map states
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [mapType, setMapType] = useState<'roadmap' | 'satellite' | 'terrain'>('roadmap');
-  const [showTrafficLayer, setShowTrafficLayer] = useState(false);
-  const [trafficLayer, setTrafficLayer] = useState<google.maps.TrafficLayer | null>(null);
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapType, setMapType] = useState<'streets' | 'satellite' | 'outdoors'>('streets');
   const [generatedPath, setGeneratedPath] = useState<LatLng[]>([]);
   const [generatedRoute, setGeneratedRoute] = useState<GeneratedRoute | null>(null);
   const [distanceInfo, setDistanceInfo] = useState<{
@@ -132,14 +156,21 @@ const CreateRouteMap = () => {
     requested_distance_km: number;
     generated_distance_km: number;
   } | null>(null);
-  // Keep an imperative reference to the rendered polyline to force-remove on cancel if needed
-  const polylineRef = useRef<google.maps.Polyline | null>(null);
   const [safetyAnalysis, setSafetyAnalysis] = useState<SafetyAnalysis | null>(null);
+
+  // Marker references
+  const startMarker = useRef<mapboxgl.Marker | null>(null);
+  const endMarker = useRef<mapboxgl.Marker | null>(null);
+  const hazardMarkers = useRef<mapboxgl.Marker[]>([]);
 
   // Hazard states
   const [hazards, setHazards] = useState<HazardReport[]>([]);
   const [selectedHazard, setSelectedHazard] = useState<HazardReport | null>(null);
   const [showHazardModal, setShowHazardModal] = useState(false);
+
+  // Accident cluster states
+  const [accidentClusters, setAccidentClusters] = useState<AccidentCluster[]>([]);
+  const [accidentWarnings, setAccidentWarnings] = useState<AccidentWarning[]>([]);
 
   // Route mode: 'endpoint' or 'distance'
   const [routeMode, setRouteMode] = useState<'endpoint' | 'distance'>('endpoint');
@@ -166,91 +197,78 @@ const CreateRouteMap = () => {
   const [endSearchQuery, setEndSearchQuery] = useState('');
 
   // Autocomplete suggestions
-  const [startSuggestions, setStartSuggestions] = useState<google.maps.places.AutocompleteSuggestion[]>([]);
-  const [endSuggestions, setEndSuggestions] = useState<google.maps.places.AutocompleteSuggestion[]>([]);
+  const [startSuggestions, setStartSuggestions] = useState<MapboxFeature[]>([]);
+  const [endSuggestions, setEndSuggestions] = useState<MapboxFeature[]>([]);
   const [showStartSuggestions, setShowStartSuggestions] = useState(false);
   const [showEndSuggestions, setShowEndSuggestions] = useState(false);
 
-  // Services
-  const geocoder = useRef<google.maps.Geocoder | null>(null);
-
-  /**
-   * BLACK MAP PREVENTION STRATEGY
-   *
-   * This page implements multiple layers of defense against Google Maps black screen issues:
-   *
-   * 1. Map Load Refresh (below): Triggers map resize at 100ms, 300ms, 500ms, and 800ms after map loads
-   * 2. Window Resize Listener: Responds to browser/app resize and orientation changes
-   * 3. View Toggle Refresh: Triggers resize when switching between map/selection view
-   * 4. Tiles Loaded Listener: Confirms map tiles are fully rendered
-   * 5. LoadScript Error Handling: Provides clear error messages if API fails to load
-   * 6. Loading Element: Shows "Loading map..." message during API load
-   * 7. Map Refresh Key: Allows full map remount when needed
-   *
-   * Additional tips for users:
-   * - Clear browser cache with Ctrl+Shift+R (hard refresh)
-   * - Clear Ionic cache: rm -rf node_modules .ionic www && npm install
-   * - Ensure stable internet connection for Google Maps API
-   * - Check API key is valid and has Maps JavaScript API enabled
-   */
-
-  // Initialize Google Maps services when map loads
+  // Initialize Mapbox map
   useEffect(() => {
-    if (map && window.google) {
-      geocoder.current = new google.maps.Geocoder();
+    console.log('[CreateRoute] useEffect triggered');
+    console.log('[CreateRoute] mapContainer.current:', mapContainer.current);
+    console.log('[CreateRoute] map.current:', map.current);
 
-      // Initialize traffic layer
-      const traffic = new google.maps.TrafficLayer();
-      setTrafficLayer(traffic);
+    if (!mapContainer.current || map.current) {
+      console.log('[CreateRoute] Skipping initialization - container null or map exists');
+      return;
+    }
 
-      // Auto-refresh map to fix darkness issue - multiple refreshes for reliability
-      const refreshMap = () => {
-        if (map && window.google) {
-          google.maps.event.trigger(map, 'resize');
-          if (startPoint) {
-            map.panTo(startPoint);
-          }
-        }
-      };
+    console.log('[CreateRoute] Initializing Mapbox map...');
+    console.log('[CreateRoute] Mapbox token:', mapboxgl.accessToken ? 'Set' : 'Missing');
+    console.log('[CreateRoute] Container:', mapContainer.current);
 
-      // More aggressive refresh strategy with multiple intervals
-      const timer1 = setTimeout(refreshMap, 100);
-      const timer2 = setTimeout(refreshMap, 300);
-      const timer3 = setTimeout(refreshMap, 500);
-      const timer4 = setTimeout(refreshMap, 800);
-
-      // Listen for tiles loaded to confirm map rendered
-      const tilesLoadedListener = map.addListener('tilesloaded', () => {
-        console.log('[CreateRoute] Map tiles fully loaded');
-        google.maps.event.removeListener(tilesLoadedListener);
+    try {
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: defaultCenter,
+        zoom: 13,
+        attributionControl: false
       });
 
-      return () => {
-        clearTimeout(timer1);
-        clearTimeout(timer2);
-        clearTimeout(timer3);
-        clearTimeout(timer4);
-      };
+      // Add navigation controls
+      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+      // Handle map load event
+      map.current.on('load', () => {
+        console.log('[CreateRoute] Mapbox map loaded successfully');
+        setMapLoaded(true);
+        // Resize map to fit container properly
+        setTimeout(() => {
+          if (map.current) {
+            map.current.resize();
+            console.log('[CreateRoute] Map resized');
+          }
+        }, 100);
+        fetchHazardsInView();
+        fetchAccidentClusters();
+      });
+
+      // Handle map errors
+      map.current.on('error', (e) => {
+        console.error('[CreateRoute] Mapbox error:', e);
+        setToastMessage('Map loading error. Please refresh.');
+        setShowToast(true);
+      });
+
+      // Fetch hazards when map is moved
+      map.current.on('idle', fetchHazardsInView);
+
+      console.log('[CreateRoute] Map initialization started');
+    } catch (error) {
+      console.error('[CreateRoute] Failed to initialize map:', error);
+      setToastMessage('Map initialization failed. Check console.');
+      setShowToast(true);
     }
-  }, [map, startPoint]);
-
-  // Add window resize listener to handle orientation changes and app resizing
-  useEffect(() => {
-    const handleResize = () => {
-      if (map && window.google) {
-        google.maps.event.trigger(map, 'resize');
-        console.log('[CreateRoute] Map refreshed on window resize');
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('orientationchange', handleResize);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('orientationchange', handleResize);
+      if (map.current) {
+        console.log('[CreateRoute] Cleaning up map');
+        map.current.remove();
+        map.current = null;
+      }
     };
-  }, [map]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load user unit preference (km/mi) and map to component units (km/miles)
   useEffect(() => {
@@ -267,93 +285,106 @@ const CreateRouteMap = () => {
     })();
   }, []);
 
-  // Toggle traffic layer visibility
+  // Update map style when mapType changes
   useEffect(() => {
-    if (trafficLayer && map) {
-      if (showTrafficLayer) {
-        trafficLayer.setMap(map);
-      } else {
-        trafficLayer.setMap(null);
-      }
-    }
-  }, [showTrafficLayer, trafficLayer, map]);
+    if (!map.current || !mapLoaded) return;
 
-  // Enrich hazard with establishment info using Places API
-  // Temporarily disabled due to Places API compatibility issues
-  const enrichWithEstablishment = async (hazard: HazardReport): Promise<HazardReport> => {
-    return hazard;
-  };
+    const styleMap: Record<string, string> = {
+      streets: 'mapbox://styles/mapbox/streets-v12',
+      satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
+      outdoors: 'mapbox://styles/mapbox/outdoors-v12'
+    };
 
-  // Get appropriate marker icon based on hazard type
-  const getMarkerIcon = (hazard: HazardReport) => {
-    const baseSize = new google.maps.Size(32, 32);
-    const anchor = new google.maps.Point(16, 32);
+    map.current.setStyle(styleMap[mapType]);
+  }, [mapType, mapLoaded]);
 
-    if (hazard.establishment) {
-      // Use building/establishment icon for hazards at establishments
-      return {
-        url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-        scaledSize: baseSize,
-        anchor: anchor
-      };
-    } else {
-      // Use warning icon for general hazards
-      return {
-        url: 'http://maps.google.com/mapfiles/ms/icons/orange-dot.png',
-        scaledSize: baseSize,
-        anchor: anchor
-      };
-    }
-  };
-
-  // Fetch all active hazards (no radius filtering for web version)
+  // Fetch all active hazards
   const fetchHazardsInView = useCallback(async () => {
-    if (!map) return;
+    if (!map.current) return;
 
     try {
-      // For web version, fetch ALL active hazards without radius filtering
-      // Pass a very large radius to get all hazards in the region
+      const center = map.current.getCenter();
       const response = await axios.get<{ hazards: HazardReport[] }>(
         `${import.meta.env.VITE_API_URL}/hazards/nearby`,
         {
           params: {
-            lat: map.getCenter()?.lat(),
-            lng: map.getCenter()?.lng(),
-            radius: 1000 // 1000km radius to effectively get all hazards
+            lat: center.lat,
+            lng: center.lng,
+            radius: 1000 // 1000km radius to get all hazards
           }
         }
       );
 
       const fetchedHazards = response.data.hazards || [];
+      setHazards(fetchedHazards);
 
-      // Enrich hazards with establishment information
-      const enrichedHazards = await Promise.all(
-        fetchedHazards.map((hazard: HazardReport) => enrichWithEstablishment(hazard))
-      );
+      // Clear existing hazard markers
+      hazardMarkers.current.forEach(marker => marker.remove());
+      hazardMarkers.current = [];
 
-      setHazards(enrichedHazards);
+      // Add new hazard markers
+      fetchedHazards.forEach((hazard) => {
+        const el = document.createElement('div');
+        el.className = 'hazard-marker';
+        el.style.width = '24px';
+        el.style.height = '24px';
+        el.style.borderRadius = '50%';
+        el.style.backgroundColor = '#ff6b35';
+        el.style.border = '2px solid white';
+        el.style.cursor = 'pointer';
+        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+
+        el.addEventListener('click', () => {
+          setSelectedHazard(hazard);
+          setShowHazardModal(true);
+        });
+
+        const marker = new mapboxgl.Marker(el)
+          .setLngLat([hazard.lng, hazard.lat])
+          .addTo(map.current!);
+
+        hazardMarkers.current.push(marker);
+      });
     } catch (error) {
       console.error('Failed to fetch hazards:', error);
     }
-  }, [map]);
+  }, []);
 
-  // Fetch hazards when map is loaded or moved
-  useEffect(() => {
-    if (map) {
-      fetchHazardsInView();
+  // Fetch accident clusters from Supabase
+  const fetchAccidentClusters = useCallback(async () => {
+    try {
+      console.log('[CreateRoute] Fetching accident clusters...');
+      const { data, error } = await supabase
+        .from('accident_clusters')
+        .select('cluster_id, lat, lon, count, radius_meters');
 
-      // Listen to map idle event (after pan/zoom)
-      const listener = map.addListener('idle', fetchHazardsInView);
+      if (error) {
+        console.error('[CreateRoute] Supabase error fetching accident clusters:', error);
+        console.error('[CreateRoute] Error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        return;
+      }
 
-      return () => {
-        google.maps.event.removeListener(listener);
-      };
+      const clusters = data || [];
+      console.log(`[CreateRoute] Fetched ${clusters.length} accident clusters`);
+      if (clusters.length > 0) {
+        console.log('[CreateRoute] Sample cluster:', clusters[0]);
+      } else {
+        console.warn('[CreateRoute] No accident clusters found in database!');
+      }
+      setAccidentClusters(clusters);
+    } catch (error) {
+      console.error('[CreateRoute] Exception fetching accident clusters:', error);
     }
-  }, [map, fetchHazardsInView]);
+  }, []);
 
-  // Fetch autocomplete suggestions using new AutocompleteSuggestion API
+  // Fetch autocomplete suggestions using Mapbox Geocoding API
   const fetchSuggestions = useCallback(async (query: string, type: 'start' | 'end') => {
-    if (!query || query.length < 1 || !window.google) {
+    if (!query || query.length < 2) {
       if (type === 'start') {
         setStartSuggestions([]);
         setShowStartSuggestions(false);
@@ -365,29 +396,26 @@ const CreateRouteMap = () => {
     }
 
     try {
-      const request = {
-        input: query,
-        includedRegionCodes: ['PH'],
-      };
-
-      const { suggestions } = await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
-
-      if (suggestions && suggestions.length > 0) {
-        if (type === 'start') {
-          setStartSuggestions(suggestions);
-          setShowStartSuggestions(true);
-        } else {
-          setEndSuggestions(suggestions);
-          setShowEndSuggestions(true);
+      const response = await axios.get(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`,
+        {
+          params: {
+            access_token: mapboxgl.accessToken,
+            country: 'PH',
+            limit: 5,
+            types: 'place,locality,neighborhood,address,poi'
+          }
         }
+      );
+
+      const features = response.data.features || [];
+
+      if (type === 'start') {
+        setStartSuggestions(features);
+        setShowStartSuggestions(features.length > 0);
       } else {
-        if (type === 'start') {
-          setStartSuggestions([]);
-          setShowStartSuggestions(false);
-        } else {
-          setEndSuggestions([]);
-          setShowEndSuggestions(false);
-        }
+        setEndSuggestions(features);
+        setShowEndSuggestions(features.length > 0);
       }
     } catch (error) {
       console.error('Autocomplete suggestions failed:', error);
@@ -401,83 +429,172 @@ const CreateRouteMap = () => {
     }
   }, []);
 
-  // Select suggestion and get coordinates using new Place API
-  const selectSuggestion = useCallback(async (placePrediction: google.maps.places.PlacePrediction, description: string, type: 'start' | 'end') => {
-    if (!map) return;
+  // Select suggestion from autocomplete
+  const selectSuggestion = useCallback((feature: MapboxFeature, type: 'start' | 'end') => {
+    if (!map.current) return;
 
-    try {
-      // Use the new Place API to fetch place details
-      const place = placePrediction.toPlace();
-      await place.fetchFields({ fields: ['location', 'displayName'] });
+    const [lng, lat] = feature.center;
+    const point = { lat, lng };
 
-      const location = place.location;
-      if (!location) {
-        throw new Error('No location found for this place');
-      }
+    if (type === 'start') {
+      setStartPoint(point);
+      setStartSearchQuery(feature.place_name);
+      setShowStartSuggestions(false);
+      setToastMessage(`✓ Start: ${feature.place_name}`);
 
-      const point = {
-        lat: location.lat(),
-        lng: location.lng()
-      };
-
-      if (type === 'start') {
-        setStartPoint(point);
-        setStartSearchQuery(description);
-        setShowStartSuggestions(false);
-        setToastMessage(`Start pinned: ${description}`);
+      // Update or create start marker
+      if (startMarker.current) {
+        startMarker.current.setLngLat([lng, lat]);
       } else {
-        setEndPoint(point);
-        setEndSearchQuery(description);
-        setShowEndSuggestions(false);
-        setToastMessage(`End pinned: ${description}`);
-      }
+        const el = document.createElement('div');
+        el.className = 'custom-marker';
+        el.style.width = '30px';
+        el.style.height = '30px';
+        el.style.borderRadius = '50%';
+        el.style.backgroundColor = '#10b981';
+        el.style.border = '3px solid white';
+        el.style.display = 'flex';
+        el.style.alignItems = 'center';
+        el.style.justifyContent = 'center';
+        el.style.color = 'white';
+        el.style.fontWeight = 'bold';
+        el.style.fontSize = '14px';
+        el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+        el.textContent = 'S';
 
-      setShowToast(true);
-      map.panTo(point);
-      map.setZoom(15);
-    } catch (error) {
-      console.error('Place selection failed:', error);
-      setToastMessage('Failed to select location');
-      setShowToast(true);
+        startMarker.current = new mapboxgl.Marker(el)
+          .setLngLat([lng, lat])
+          .addTo(map.current);
+      }
+    } else {
+      setEndPoint(point);
+      setEndSearchQuery(feature.place_name);
+      setShowEndSuggestions(false);
+      setToastMessage(`✓ End: ${feature.place_name}`);
+
+      // Update or create end marker
+      if (endMarker.current) {
+        endMarker.current.setLngLat([lng, lat]);
+      } else {
+        const el = document.createElement('div');
+        el.className = 'custom-marker';
+        el.style.width = '30px';
+        el.style.height = '30px';
+        el.style.borderRadius = '50%';
+        el.style.backgroundColor = '#ef4444';
+        el.style.border = '3px solid white';
+        el.style.display = 'flex';
+        el.style.alignItems = 'center';
+        el.style.justifyContent = 'center';
+        el.style.color = 'white';
+        el.style.fontWeight = 'bold';
+        el.style.fontSize = '14px';
+        el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+        el.textContent = 'E';
+
+        endMarker.current = new mapboxgl.Marker(el)
+          .setLngLat([lng, lat])
+          .addTo(map.current);
+      }
     }
-  }, [map]);
+
+    setShowToast(true);
+    map.current.flyTo({ center: [lng, lat], zoom: 15 });
+  }, []);
 
   // Handle map click for pinning locations
-  const handleMapClick = useCallback(async (e: google.maps.MapMouseEvent) => {
-    if (!e.latLng || !geocoder.current) return;
+  const handleMapClick = useCallback(async (e: mapboxgl.MapMouseEvent) => {
+    if (!pinMode || !map.current) return;
 
-    const clickedPoint = {
-      lat: e.latLng.lat(),
-      lng: e.latLng.lng()
-    };
+    const { lng, lat } = e.lngLat;
+    const clickedPoint = { lat, lng };
 
     // Reverse geocode to get place name
     try {
-      const result = await geocoder.current.geocode({ location: clickedPoint });
-      const placeName = result.results[0]?.formatted_address || `${clickedPoint.lat.toFixed(4)}, ${clickedPoint.lng.toFixed(4)}`;
+      const response = await axios.get(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json`,
+        {
+          params: {
+            access_token: mapboxgl.accessToken,
+            limit: 1
+          }
+        }
+      );
+
+      const placeName = response.data.features[0]?.place_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 
       if (pinMode === 'start') {
         setStartPoint(clickedPoint);
         setStartSearchQuery(placeName);
         setPinMode(null);
-        setToastMessage(`Start pinned: ${placeName}`);
-        setShowToast(true);
+        setToastMessage(`✓ Start: ${placeName}`);
+
+        // Update or create start marker
+        if (startMarker.current) {
+          startMarker.current.setLngLat([lng, lat]);
+        } else {
+          const el = document.createElement('div');
+          el.className = 'custom-marker';
+          el.style.width = '30px';
+          el.style.height = '30px';
+          el.style.borderRadius = '50%';
+          el.style.backgroundColor = '#10b981';
+          el.style.border = '3px solid white';
+          el.style.display = 'flex';
+          el.style.alignItems = 'center';
+          el.style.justifyContent = 'center';
+          el.style.color = 'white';
+          el.style.fontWeight = 'bold';
+          el.style.fontSize = '14px';
+          el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+          el.textContent = 'S';
+
+          startMarker.current = new mapboxgl.Marker(el)
+            .setLngLat([lng, lat])
+            .addTo(map.current!);
+        }
       } else if (pinMode === 'end' && routeMode === 'endpoint') {
         setEndPoint(clickedPoint);
         setEndSearchQuery(placeName);
         setPinMode(null);
-        setToastMessage(`End pinned: ${placeName}`);
-        setShowToast(true);
+        setToastMessage(`✓ End: ${placeName}`);
+
+        // Update or create end marker
+        if (endMarker.current) {
+          endMarker.current.setLngLat([lng, lat]);
+        } else {
+          const el = document.createElement('div');
+          el.className = 'custom-marker';
+          el.style.width = '30px';
+          el.style.height = '30px';
+          el.style.borderRadius = '50%';
+          el.style.backgroundColor = '#ef4444';
+          el.style.border = '3px solid white';
+          el.style.display = 'flex';
+          el.style.alignItems = 'center';
+          el.style.justifyContent = 'center';
+          el.style.color = 'white';
+          el.style.fontWeight = 'bold';
+          el.style.fontSize = '14px';
+          el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+          el.textContent = 'E';
+
+          endMarker.current = new mapboxgl.Marker(el)
+            .setLngLat([lng, lat])
+            .addTo(map.current!);
+        }
       }
+
+      setShowToast(true);
     } catch (error) {
       console.error('Reverse geocoding failed:', error);
       if (pinMode === 'start') {
         setStartPoint(clickedPoint);
-        setStartSearchQuery(`${clickedPoint.lat.toFixed(4)}, ${clickedPoint.lng.toFixed(4)}`);
+        setStartSearchQuery(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
         setPinMode(null);
       } else if (pinMode === 'end' && routeMode === 'endpoint') {
         setEndPoint(clickedPoint);
-        setEndSearchQuery(`${clickedPoint.lat.toFixed(4)}, ${clickedPoint.lng.toFixed(4)}`);
+        setEndSearchQuery(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
         setPinMode(null);
       }
       setToastMessage('Point set!');
@@ -485,64 +602,230 @@ const CreateRouteMap = () => {
     }
   }, [pinMode, routeMode]);
 
-  // Search for location using Geocoding API
-  const searchLocation = async (query: string, type: 'start' | 'end') => {
-    if (!query || !geocoder.current) {
-      setToastMessage('Please enter a location to search');
-      setShowToast(true);
-      return;
-    }
+  // Attach map click handler with proper dependencies
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
 
-    if (!map) {
-      setToastMessage('Map not ready. Please wait a moment.');
-      setShowToast(true);
-      return;
-    }
+    const clickHandler = (e: mapboxgl.MapMouseEvent) => {
+      handleMapClick(e);
+    };
+
+    map.current.on('click', clickHandler);
+
+    return () => {
+      if (map.current) {
+        map.current.off('click', clickHandler);
+      }
+    };
+  }, [mapLoaded, handleMapClick]);
+
+  // Update polyline on map
+  const updatePolyline = useCallback((path: LatLng[]) => {
+    if (!map.current || !mapLoaded) return;
 
     try {
-      setToastMessage(`Searching for ${query}...`);
-      setShowToast(true);
+      const coordinates: [number, number][] = path.map(p => [p.lng, p.lat]);
 
-      const result = await geocoder.current.geocode({
-        address: query,
-        region: 'PH', // Bias to Philippines
-        componentRestrictions: { country: 'PH' }
+      // Remove existing route layer and source safely
+      try {
+        if (map.current.getLayer('route')) {
+          map.current.removeLayer('route');
+        }
+      } catch (e) {
+        console.warn('Failed to remove route layer:', e);
+      }
+
+      try {
+        if (map.current.getSource('route')) {
+          map.current.removeSource('route');
+        }
+      } catch (e) {
+        console.warn('Failed to remove route source:', e);
+      }
+
+      if (coordinates.length === 0) return;
+
+      // Add new route layer
+      map.current.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: coordinates
+          }
+        }
       });
 
-      if (result.results && result.results.length > 0) {
-        const location = result.results[0].geometry.location;
-        const point = {
-          lat: location.lat(),
-          lng: location.lng()
-        };
-
-        const placeName = result.results[0].formatted_address;
-
-        if (type === 'start') {
-          setStartPoint(point);
-          setStartSearchQuery(placeName);
-          setToastMessage(`Start pinned: ${placeName}`);
-        } else {
-          setEndPoint(point);
-          setEndSearchQuery(placeName);
-          setToastMessage(`End pinned: ${placeName}`);
+      map.current.addLayer({
+        id: 'route',
+        type: 'line',
+        source: 'route',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': '#92C628',
+          'line-width': 5,
+          'line-opacity': 0.8
         }
+      });
 
-        setShowToast(true);
+      // Fit map to route bounds
+      if (coordinates.length > 1) {
+        const bounds = coordinates.reduce((bounds, coord) => {
+          return bounds.extend(coord as [number, number]);
+        }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
 
-        // Pan and zoom to location
-        map.panTo(point);
-        map.setZoom(15);
-      } else {
-        setToastMessage(`No location found for "${query}". Try adding city or landmark.`);
-        setShowToast(true);
+        map.current.fitBounds(bounds, { padding: 50 });
       }
-    } catch (error: any) {
-      console.error('Geocoding failed:', error);
-      setToastMessage(`Search failed: ${error.message || 'Unknown error'}`);
-      setShowToast(true);
+    } catch (error) {
+      console.error('Error updating polyline:', error);
     }
-  };
+  }, [mapLoaded]);
+
+  // Update polyline when generatedPath changes
+  useEffect(() => {
+    updatePolyline(generatedPath);
+  }, [generatedPath, updatePolyline]);
+
+  // Display accident clusters on map
+  useEffect(() => {
+    if (!map.current || !mapLoaded || accidentClusters.length === 0) return;
+
+    try {
+      console.log(`[CreateRoute] Displaying ${accidentClusters.length} accident clusters on map`);
+
+      // Remove existing accident cluster layers and sources
+      try {
+        if (map.current.getLayer('accident-cluster-circles')) {
+          map.current.removeLayer('accident-cluster-circles');
+        }
+      } catch (e) {
+        console.warn('Failed to remove accident cluster circles layer:', e);
+      }
+
+      try {
+        if (map.current.getSource('accident-clusters')) {
+          map.current.removeSource('accident-clusters');
+        }
+      } catch (e) {
+        console.warn('Failed to remove accident clusters source:', e);
+      }
+
+      // Create GeoJSON features from accident clusters
+      const features = accidentClusters.map(cluster => ({
+        type: 'Feature' as const,
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [cluster.lon, cluster.lat]
+        },
+        properties: {
+          cluster_id: cluster.cluster_id,
+          count: cluster.count,
+          radius_meters: cluster.radius_meters
+        }
+      }));
+
+      // Add source
+      map.current.addSource('accident-clusters', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: features
+        }
+      });
+
+      // Add circle layer with color-coded severity
+      map.current.addLayer({
+        id: 'accident-cluster-circles',
+        type: 'circle',
+        source: 'accident-clusters',
+        paint: {
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            10, 8,  // At zoom 10, radius is 8px (increased from 5px)
+            15, 25  // At zoom 15, radius is 25px (increased from 15px)
+          ],
+          'circle-color': [
+            'step',
+            ['get', 'count'],
+            '#FFA500', // Yellow for count < 15
+            15, '#FF8C00', // Orange for count 15-29
+            30, '#FF6347'  // Red-orange for count >= 30
+          ],
+          'circle-opacity': 0.3,  // Increased from 0.15 to make more visible
+          'circle-stroke-width': 2,  // Increased from 1
+          'circle-stroke-color': [
+            'step',
+            ['get', 'count'],
+            '#FFA500',
+            15, '#FF8C00',
+            30, '#FF6347'
+          ],
+          'circle-stroke-opacity': 0.6  // Increased from 0.4
+        }
+      });
+
+      console.log('[CreateRoute] Accident clusters displayed successfully');
+    } catch (error) {
+      console.error('[CreateRoute] Error displaying accident clusters:', error);
+    }
+  }, [accidentClusters, mapLoaded]);
+
+  // Check if route passes near accident clusters
+  const checkRouteProximityToAccidentClusters = useCallback((routePath: LatLng[], clusters: AccidentCluster[]): AccidentWarning[] => {
+    const warnings: AccidentWarning[] = [];
+
+    // Haversine distance formula (in meters)
+    const calculateDistance = (point1: LatLng, point2: { lat: number; lon: number }): number => {
+      const R = 6371000; // Earth's radius in meters
+      const toRad = (deg: number) => deg * Math.PI / 180;
+
+      const dLat = toRad(point2.lat - point1.lat);
+      const dLon = toRad(point2.lon - point1.lng);
+
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(point1.lat)) * Math.cos(toRad(point2.lat)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c; // Distance in meters
+    };
+
+    // Check each cluster
+    for (const cluster of clusters) {
+      let isNearCluster = false;
+
+      // Check if any point on the route is within the cluster radius
+      for (const point of routePath) {
+        const distance = calculateDistance(point, { lat: cluster.lat, lon: cluster.lon });
+
+        if (distance <= cluster.radius_meters) {
+          isNearCluster = true;
+          break;
+        }
+      }
+
+      if (isNearCluster) {
+        const severity: 'high' | 'medium' | 'low' =
+          cluster.count >= 30 ? 'high' :
+          cluster.count >= 15 ? 'medium' : 'low';
+
+        warnings.push({
+          cluster_id: cluster.cluster_id,
+          count: cluster.count,
+          severity
+        });
+      }
+    }
+
+    return warnings;
+  }, []);
 
   // Generate route using algorithm engine
   const handleGenerateRoute = async () => {
@@ -709,6 +992,13 @@ const CreateRouteMap = () => {
 
       // Do not render the interim path; render the saved path returned by backend below
 
+      // Check for accident cluster proximity
+      const clusterWarnings = checkRouteProximityToAccidentClusters(pathPoints, accidentClusters);
+      setAccidentWarnings(clusterWarnings);
+      if (clusterWarnings.length > 0) {
+        console.log(`[CreateRoute] Route passes through ${clusterWarnings.length} accident-prone area(s)`);
+      }
+
       // Step 2: Save route to backend with status 'generated'
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
@@ -791,15 +1081,7 @@ const CreateRouteMap = () => {
       }
       setShowActions(true);
 
-      // Fit map to show the route (saved path preferred)
-      if (map) {
-        const bounds = new google.maps.LatLngBounds();
-        const pts = (drawingPoints && drawingPoints.length > 0) ? drawingPoints : pathPoints;
-        if (pts.length > 0) {
-          pts.forEach(point => bounds.extend(point));
-          map.fitBounds(bounds);
-        }
-      }
+      // Polyline rendering and fitBounds are handled automatically by updatePolyline()
 
       setToastMessage(`Route generated! Distance: ${distanceKm.toFixed(2)} km`);
       setShowToast(true);
@@ -887,11 +1169,6 @@ const CreateRouteMap = () => {
 
   // Cancel route creation
   const handleCancel = () => {
-    // Force-remove polyline from map in case the library keeps it mounted
-    if (polylineRef.current) {
-      try { polylineRef.current.setMap(null); } catch {}
-      polylineRef.current = null;
-    }
     // Clear all route-related state
     setGeneratedPath([]);
     setGeneratedRoute(null);
@@ -899,7 +1176,16 @@ const CreateRouteMap = () => {
     setShowActions(false);
     setDistanceInfo(null);
 
-    // Clear markers - reset to selection stage
+    // Clear markers
+    if (startMarker.current) {
+      startMarker.current.remove();
+      startMarker.current = null;
+    }
+    if (endMarker.current) {
+      endMarker.current.remove();
+      endMarker.current = null;
+    }
+
     setStartPoint(null);
     setEndPoint(null);
 
@@ -911,13 +1197,22 @@ const CreateRouteMap = () => {
     // Reset pin mode
     setPinMode(null);
 
+    // Clear route layer from map
+    if (map.current) {
+      try {
+        if (map.current.getLayer('route')) {
+          map.current.removeLayer('route');
+        }
+        if (map.current.getSource('route')) {
+          map.current.removeSource('route');
+        }
+      } catch (e) {
+        console.warn('Failed to clear route layer:', e);
+      }
+    }
+
     setToastMessage('Route cancelled');
     setShowToast(true);
-
-    // Full refresh to ensure all map overlays and markers reset cleanly
-    setTimeout(() => {
-      try { window.location.reload(); } catch {}
-    }, 300);
   };
 
   const formatDisplayDistance = (valueKm: number) => {
@@ -954,12 +1249,10 @@ const CreateRouteMap = () => {
               setViewMode(newMode);
 
               // Refresh map when switching to map view to prevent black screen
-              if (newMode === 'map') {
+              if (newMode === 'map' && map.current) {
                 setTimeout(() => {
-                  if (map && window.google) {
-                    google.maps.event.trigger(map, 'resize');
-                    console.log('[CreateRoute] Map refreshed on view toggle');
-                  }
+                  console.log('[CreateRoute] Resizing map on view toggle');
+                  map.current?.resize();
                 }, 100);
               }
             }}
@@ -1048,31 +1341,17 @@ const CreateRouteMap = () => {
                         <IonIcon icon={closeCircleOutline} />
                       </IonButton>
                     </div>
-                    {startSuggestions.map((suggestion, index) => {
-                      const placePrediction = suggestion.placePrediction;
-                      if (!placePrediction) return null;
-
-                      // Helper to extract string from FormattableText or string
-                      const getText = (value: any): string => {
-                        if (typeof value === 'string') return value;
-                        if (value?.text) return typeof value.text === 'string' ? value.text : '';
-                        return '';
-                      };
-
-                      const mainText: string = getText(placePrediction.mainText) || getText(placePrediction.text) || '';
-                      const secondaryText: string = getText(placePrediction.secondaryText);
-                      const fullText: string = getText(placePrediction.text) || `${mainText} ${secondaryText}`.trim();
-
+                    {startSuggestions.map((feature, index) => {
                       return (
                         <div
                           key={`start-${index}`}
                           className="suggestion-item"
-                          onClick={() => selectSuggestion(placePrediction, fullText, 'start')}
+                          onClick={() => selectSuggestion(feature, 'start')}
                         >
                           <IonIcon icon={locationOutline} className="suggestion-icon" />
                           <div className="suggestion-text">
-                            <div className="suggestion-main">{mainText}</div>
-                            <div className="suggestion-secondary">{secondaryText}</div>
+                            <div className="suggestion-main">{feature.text}</div>
+                            <div className="suggestion-secondary">{feature.place_name}</div>
                           </div>
                         </div>
                       );
@@ -1236,31 +1515,17 @@ const CreateRouteMap = () => {
                           <IonIcon icon={closeCircleOutline} />
                         </IonButton>
                       </div>
-                      {endSuggestions.map((suggestion, index) => {
-                        const placePrediction = suggestion.placePrediction;
-                        if (!placePrediction) return null;
-
-                        // Helper to extract string from FormattableText or string
-                        const getText = (value: any): string => {
-                          if (typeof value === 'string') return value;
-                          if (value?.text) return typeof value.text === 'string' ? value.text : '';
-                          return '';
-                        };
-
-                        const mainText: string = getText(placePrediction.mainText) || getText(placePrediction.text) || '';
-                        const secondaryText: string = getText(placePrediction.secondaryText);
-                        const fullText: string = getText(placePrediction.text) || `${mainText} ${secondaryText}`.trim();
-
+                      {endSuggestions.map((feature, index) => {
                         return (
                           <div
                             key={`end-${index}`}
                             className="suggestion-item"
-                            onClick={() => selectSuggestion(placePrediction, fullText, 'end')}
+                            onClick={() => selectSuggestion(feature, 'end')}
                           >
                             <IonIcon icon={locationOutline} className="suggestion-icon" />
                             <div className="suggestion-text">
-                              <div className="suggestion-main">{mainText}</div>
-                              <div className="suggestion-secondary">{secondaryText}</div>
+                              <div className="suggestion-main">{feature.text}</div>
+                              <div className="suggestion-secondary">{feature.place_name}</div>
                             </div>
                           </div>
                         );
@@ -1365,6 +1630,40 @@ const CreateRouteMap = () => {
                 </div>
               )}
 
+              {/* Accident Cluster Warnings */}
+              {accidentWarnings.length > 0 && (
+                <div className="accident-warning-banner">
+                  <div className="accident-warning-header">
+                    <IonIcon icon={warningOutline} className="accident-warning-icon" />
+                    <span className="accident-warning-title">
+                      Route passes through {accidentWarnings.length} accident-prone area{accidentWarnings.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="accident-warning-details">
+                    {accidentWarnings
+                      .sort((a, b) => b.count - a.count)
+                      .slice(0, 3)
+                      .map((warning, index) => (
+                        <div key={warning.cluster_id} className={`accident-warning-item severity-${warning.severity}`}>
+                          <span className="accident-cluster-label">Cluster #{warning.cluster_id}</span>
+                          <span className="accident-count">{warning.count} recorded accidents</span>
+                          <span className={`accident-severity-badge ${warning.severity}`}>
+                            {warning.severity === 'high' ? 'High Risk' : warning.severity === 'medium' ? 'Medium Risk' : 'Low Risk'}
+                          </span>
+                        </div>
+                      ))}
+                    {accidentWarnings.length > 3 && (
+                      <div className="accident-warning-more">
+                        +{accidentWarnings.length - 3} more area{accidentWarnings.length - 3 > 1 ? 's' : ''}
+                      </div>
+                    )}
+                  </div>
+                  <div className="accident-warning-advice">
+                    Stay extra vigilant in these zones. Historical accident data indicates higher risk areas.
+                  </div>
+                </div>
+              )}
+
                 {/* Safety Warnings Card */}
                 {safetyAnalysis && safetyAnalysis.warnings.length > 0 && (
                   <IonCard className="safety-warnings-card">
@@ -1413,11 +1712,11 @@ const CreateRouteMap = () => {
           </div>
 
           {/* Map Container */}
-          <div className="map-container">
+          <div className={`map-container ${pinMode ? 'pin-mode-active' : ''}`}>
             <div className="map-tabs">
               <button
-                className={`map-tab ${mapType === 'roadmap' ? 'active' : ''}`}
-                onClick={() => setMapType('roadmap')}
+                className={`map-tab ${mapType === 'streets' ? 'active' : ''}`}
+                onClick={() => setMapType('streets')}
               >
                 Map
               </button>
@@ -1428,99 +1727,15 @@ const CreateRouteMap = () => {
                 Satellite
               </button>
               <button
-                className={`map-tab ${mapType === 'terrain' ? 'active' : ''}`}
-                onClick={() => setMapType('terrain')}
+                className={`map-tab ${mapType === 'outdoors' ? 'active' : ''}`}
+                onClick={() => setMapType('outdoors')}
               >
-                Terrain
-              </button>
-              <button
-                className={`map-tab ${showTrafficLayer ? 'active' : ''}`}
-                onClick={() => setShowTrafficLayer(!showTrafficLayer)}
-              >
-                Traffic {showTrafficLayer ? '(on)' : ''}
+                Outdoors
               </button>
             </div>
 
-            <LoadScript
-              googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
-              libraries={libraries}
-              loadingElement={<div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading map...</div>}
-              onLoad={() => console.log('[CreateRoute] Google Maps API loaded successfully')}
-              onError={(error) => {
-                console.error('[CreateRoute] LoadScript error:', error);
-                setToastMessage('Failed to load Google Maps. Please check your connection.');
-                setShowToast(true);
-              }}
-              preventGoogleFontsLoading={false}
-            >
-              <GoogleMap
-                key={`map-${mapRefreshKey}`}
-                mapContainerStyle={mapContainerStyle}
-                center={startPoint || defaultCenter}
-                zoom={13}
-                mapTypeId={mapType}
-                onClick={handleMapClick}
-                onLoad={setMap}
-                options={{
-                  streetViewControl: false,
-                  mapTypeControl: false,
-                  fullscreenControl: true,
-                }}
-              >
-                {/* Start Point Marker */}
-                {startPoint && (
-                  <MarkerF
-                    key={`start-${startPoint.lat}-${startPoint.lng}`}
-                    position={startPoint}
-                    label="S"
-                    icon={{
-                      url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
-                    }}
-                  />
-                )}
-
-                {/* End Point Marker */}
-                {endPoint && (
-                  <MarkerF
-                    key={`end-${endPoint.lat}-${endPoint.lng}`}
-                    position={endPoint}
-                    label="E"
-                    icon={{
-                      url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
-                    }}
-                  />
-                )}
-
-                {/* Generated Route Path */}
-                {generatedPath.length > 0 && (
-                  <Polyline
-                    key={`route-${generatedPath[0].lat}-${generatedPath[generatedPath.length-1].lng}`}
-                    path={generatedPath}
-                    onLoad={(poly) => { polylineRef.current = poly; }}
-                    onUnmount={() => { polylineRef.current = null; }}
-                    options={{
-                      strokeColor: '#92C628',
-                      strokeOpacity: 0.8,
-                      strokeWeight: 5,
-                    }}
-                  />
-                )}
-
-                {/* Hazard Markers */}
-                {hazards.map((hazard) => (
-                  <MarkerF
-                    key={hazard.report_id}
-                    position={{ lat: hazard.lat, lng: hazard.lng }}
-                    icon={getMarkerIcon(hazard)}
-                    title={hazard.establishment ? hazard.establishment.displayName : hazard.title}
-                    onClick={() => {
-                      setSelectedHazard(hazard);
-                      setShowHazardModal(true);
-                    }}
-                  />
-                ))}
-              </GoogleMap>
-            </LoadScript>
+            {/* Mapbox Map Container */}
+            <div ref={mapContainer} style={mapContainerStyle} />
 
             {/* Pin Mode Indicator */}
             {pinMode && (

@@ -23,7 +23,8 @@ import {
   saveOutline,
   pinOutline,
   locationOutline,
-  informationCircleOutline
+  informationCircleOutline,
+  warningOutline
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import mapboxgl from 'mapbox-gl';
@@ -103,7 +104,24 @@ interface MapboxFeature {
   place_type: string[];
 }
 
+interface AccidentCluster {
+  cluster_id: number;
+  lat: number;
+  lon: number;
+  count: number;
+  radius_meters: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface AccidentWarning {
+  cluster_id: number;
+  count: number;
+  severity: 'high' | 'medium' | 'low';
+}
+
 const CreateRouteMap = () => {
+  console.log('[CreateRoute Web] Component rendering...');
   const history = useHistory();
 
   // Form states
@@ -134,6 +152,10 @@ const CreateRouteMap = () => {
   const [hazards, setHazards] = useState<HazardReport[]>([]);
   const [selectedHazard, setSelectedHazard] = useState<HazardReport | null>(null);
   const [showHazardModal, setShowHazardModal] = useState(false);
+
+  // Accident cluster states
+  const [accidentClusters, setAccidentClusters] = useState<AccidentCluster[]>([]);
+  const [accidentWarnings, setAccidentWarnings] = useState<AccidentWarning[]>([]);
 
   // Route mode: 'endpoint' or 'distance'
   const [routeMode, setRouteMode] = useState<'endpoint' | 'distance'>('endpoint');
@@ -175,6 +197,7 @@ const CreateRouteMap = () => {
 
     // Fetch hazards when map is loaded
     map.current.on('load', () => {
+      console.log('[CreateRoute Web] Map loaded successfully');
       setMapLoaded(true);
       // Resize map to fit container properly
       setTimeout(() => {
@@ -183,6 +206,7 @@ const CreateRouteMap = () => {
         }
       }, 100);
       fetchHazardsInView();
+      fetchAccidentClusters();
     });
 
     // Fetch hazards when map is moved
@@ -273,6 +297,38 @@ const CreateRouteMap = () => {
       });
     } catch (error) {
       console.error('Failed to fetch hazards:', error);
+    }
+  }, []);
+
+  // Fetch accident clusters from Supabase
+  const fetchAccidentClusters = useCallback(async () => {
+    try {
+      console.log('[CreateRoute Web] Fetching accident clusters...');
+      const { data, error } = await supabase
+        .from('accident_clusters')
+        .select('cluster_id, lat, lon, count, radius_meters');
+
+      if (error) {
+        console.error('[CreateRoute Web] Supabase error fetching accident clusters:', error);
+        console.error('[CreateRoute Web] Error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        return;
+      }
+
+      const clusters = data || [];
+      console.log(`[CreateRoute Web] ✅ Fetched ${clusters.length} accident clusters`);
+      if (clusters.length > 0) {
+        console.log('[CreateRoute Web] Sample cluster:', clusters[0]);
+      } else {
+        console.warn('[CreateRoute Web] No accident clusters found in database!');
+      }
+      setAccidentClusters(clusters);
+    } catch (error) {
+      console.error('[CreateRoute Web] Exception fetching accident clusters:', error);
     }
   }, []);
 
@@ -585,6 +641,156 @@ const CreateRouteMap = () => {
     updatePolyline(generatedPath);
   }, [generatedPath, updatePolyline]);
 
+  // Display accident clusters on map
+  useEffect(() => {
+    console.log('[CreateRoute Web] Display clusters useEffect triggered', {
+      hasMap: !!map.current,
+      mapLoaded,
+      clusterCount: accidentClusters.length
+    });
+
+    if (!map.current || !mapLoaded || accidentClusters.length === 0) {
+      console.log('[CreateRoute Web] Skipping cluster display:', {
+        hasMap: !!map.current,
+        mapLoaded,
+        clusterCount: accidentClusters.length
+      });
+      return;
+    }
+
+    try {
+      console.log(`[CreateRoute Web] ✅ Displaying ${accidentClusters.length} accident clusters on map`);
+      console.log('[CreateRoute Web] First cluster:', accidentClusters[0]);
+
+      // Remove existing accident cluster layers and sources
+      try {
+        if (map.current.getLayer('accident-cluster-circles')) {
+          map.current.removeLayer('accident-cluster-circles');
+        }
+      } catch (e) {
+        console.warn('Failed to remove accident cluster circles layer:', e);
+      }
+
+      try {
+        if (map.current.getSource('accident-clusters')) {
+          map.current.removeSource('accident-clusters');
+        }
+      } catch (e) {
+        console.warn('Failed to remove accident clusters source:', e);
+      }
+
+      // Create GeoJSON features from accident clusters
+      const features = accidentClusters.map(cluster => ({
+        type: 'Feature' as const,
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [cluster.lon, cluster.lat]
+        },
+        properties: {
+          cluster_id: cluster.cluster_id,
+          count: cluster.count,
+          radius_meters: cluster.radius_meters
+        }
+      }));
+
+      // Add source
+      map.current.addSource('accident-clusters', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: features
+        }
+      });
+
+      // Add circle layer with color-coded severity
+      map.current.addLayer({
+        id: 'accident-cluster-circles',
+        type: 'circle',
+        source: 'accident-clusters',
+        paint: {
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            10, 8,  // At zoom 10, radius is 8px
+            15, 25  // At zoom 15, radius is 25px
+          ],
+          'circle-color': [
+            'step',
+            ['get', 'count'],
+            '#FFA500', // Yellow for count < 15
+            15, '#FF8C00', // Orange for count 15-29
+            30, '#FF6347'  // Red-orange for count >= 30
+          ],
+          'circle-opacity': 0.3,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': [
+            'step',
+            ['get', 'count'],
+            '#FFA500',
+            15, '#FF8C00',
+            30, '#FF6347'
+          ],
+          'circle-stroke-opacity': 0.6
+        }
+      });
+
+      console.log('[CreateRoute Web] Accident clusters displayed successfully');
+    } catch (error) {
+      console.error('[CreateRoute Web] Error displaying accident clusters:', error);
+    }
+  }, [accidentClusters, mapLoaded]);
+
+  // Check if route passes near accident clusters
+  const checkRouteProximityToAccidentClusters = useCallback((routePath: LatLng[], clusters: AccidentCluster[]): AccidentWarning[] => {
+    const warnings: AccidentWarning[] = [];
+
+    // Haversine distance formula (in meters)
+    const calculateDistance = (point1: LatLng, point2: { lat: number; lon: number }): number => {
+      const R = 6371000; // Earth's radius in meters
+      const toRad = (deg: number) => deg * Math.PI / 180;
+
+      const dLat = toRad(point2.lat - point1.lat);
+      const dLon = toRad(point2.lon - point1.lng);
+
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(point1.lat)) * Math.cos(toRad(point2.lat)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c; // Distance in meters
+    };
+
+    // Check each cluster
+    for (const cluster of clusters) {
+      let isNearCluster = false;
+
+      // Check if any point on the route is within the cluster radius
+      for (const point of routePath) {
+        const distance = calculateDistance(point, { lat: cluster.lat, lon: cluster.lon });
+
+        if (distance <= cluster.radius_meters) {
+          isNearCluster = true;
+          break;
+        }
+      }
+
+      if (isNearCluster) {
+        const severity: 'high' | 'medium' | 'low' =
+          cluster.count >= 30 ? 'high' :
+          cluster.count >= 15 ? 'medium' : 'low';
+
+        warnings.push({
+          cluster_id: cluster.cluster_id,
+          count: cluster.count,
+          severity
+        });
+      }
+    }
+
+    return warnings;
+  }, []);
+
   // Generate route using algorithm engine
   const handleGenerateRoute = async () => {
     // Validation based on route mode
@@ -696,6 +902,13 @@ const CreateRouteMap = () => {
         .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
 
       console.log('Converted to', pathPoints.length, 'path points');
+
+      // Check for accident cluster proximity
+      const clusterWarnings = checkRouteProximityToAccidentClusters(pathPoints, accidentClusters);
+      setAccidentWarnings(clusterWarnings);
+      if (clusterWarnings.length > 0) {
+        console.log(`[CreateRoute Web] Route passes through ${clusterWarnings.length} accident-prone area(s)`);
+      }
 
       // Choose an endpoint for saving/display
       let chosenEnd: LatLng | null = null;
@@ -1338,6 +1551,40 @@ const CreateRouteMap = () => {
                         streets nearby.
                       </>
                     )}
+                  </div>
+                )}
+
+                {/* Accident Cluster Warnings */}
+                {accidentWarnings.length > 0 && (
+                  <div className="accident-warning-banner">
+                    <div className="accident-warning-header">
+                      <IonIcon icon={warningOutline} className="accident-warning-icon" />
+                      <span className="accident-warning-title">
+                        Route passes through {accidentWarnings.length} accident-prone area{accidentWarnings.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <div className="accident-warning-details">
+                      {accidentWarnings
+                        .sort((a, b) => b.count - a.count)
+                        .slice(0, 3)
+                        .map((warning) => (
+                          <div key={warning.cluster_id} className={`accident-warning-item severity-${warning.severity}`}>
+                            <span className="accident-cluster-label">Cluster #{warning.cluster_id}</span>
+                            <span className="accident-count">{warning.count} recorded accidents</span>
+                            <span className={`accident-severity-badge ${warning.severity}`}>
+                              {warning.severity === 'high' ? 'High Risk' : warning.severity === 'medium' ? 'Medium Risk' : 'Low Risk'}
+                            </span>
+                          </div>
+                        ))}
+                      {accidentWarnings.length > 3 && (
+                        <div className="accident-warning-more">
+                          +{accidentWarnings.length - 3} more area{accidentWarnings.length - 3 > 1 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
+                    <div className="accident-warning-advice">
+                      Stay extra vigilant in these zones. Historical accident data indicates higher risk areas.
+                    </div>
                   </div>
                 )}
 
