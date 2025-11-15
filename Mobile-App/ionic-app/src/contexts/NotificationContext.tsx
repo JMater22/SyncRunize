@@ -33,8 +33,16 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       const data = await NotificationsApi.getAllNotifications(currentUser.user_id);
       console.log('📥 [NotificationContext] Fetched notifications:', data);
       console.log('📥 [NotificationContext] First notification actor:', data[0]?.actor);
-      // Ensure data is always an array
-      setNotifications(Array.isArray(data) ? data : []);
+
+      // ✅ Filter out alerts - they're ephemeral push notifications only
+      // Only show social notifications in the notification center
+      const alertTypes = ['hazard_alert', 'traffic_alert', 'batch_alert'];
+      const socialNotifications = Array.isArray(data)
+        ? data.filter(notif => !alertTypes.includes(notif.type))
+        : [];
+
+      console.log(`📥 [NotificationContext] Filtered ${data?.length || 0} → ${socialNotifications.length} social notifications`);
+      setNotifications(socialNotifications);
     } catch (err: any) {
       console.error('Failed to fetch notifications:', err);
       setError(err.message || 'Failed to fetch notifications');
@@ -97,6 +105,14 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         },
         async (payload) => {
           console.log('New notification received:', payload);
+
+          // ✅ Filter out alerts - they're sent as push notifications only
+          // Only social notifications (likes, comments, follows, etc.) appear in notification center
+          const alertTypes = ['hazard_alert', 'traffic_alert', 'batch_alert'];
+          if (alertTypes.includes(payload.new.type)) {
+            console.log('[Notifications] ⚠️ Skipping alert notification (sent as push banner):', payload.new.type);
+            return;
+          }
 
           // Fetch full notification with actor details
           const { data: newNotification, error } = await supabase

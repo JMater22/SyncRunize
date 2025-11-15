@@ -135,6 +135,67 @@ Output a single paragraph.`;
   }
 };
 
+export const summarizeBatchAlerts = async (hazards = [], clusters = []) => {
+  const totalAlerts = hazards.length + clusters.length;
+  if (totalAlerts === 0) {
+    return null;
+  }
+
+  try {
+    // Format hazards
+    const hazardsList = hazards
+      .map((h, idx) => {
+        const type = h.incident_type || h.type || "Unknown hazard";
+        const desc = h.description || "";
+        const distance = h.distance_km ? ` (${(h.distance_km * 1000).toFixed(0)}m away)` : "";
+        return `${idx + 1}. ${type}${desc ? `: ${desc}` : ""}${distance}`;
+      })
+      .join("\n");
+
+    // Format accident clusters
+    const clustersList = clusters
+      .map((c, idx) => {
+        const count = c.count || 0;
+        const distance = c.distance_km ? ` (${(c.distance_km * 1000).toFixed(0)}m away)` : "";
+        return `${hazards.length + idx + 1}. High-accident zone: ${count} incidents recorded${distance}`;
+      })
+      .join("\n");
+
+    const alertsText = [hazardsList, clustersList].filter(Boolean).join("\n");
+
+    const prompt = `You are a running safety assistant generating brief voice alerts for joggers.
+
+Multiple safety alerts have been detected near the runner's current location.
+Create ONE concise summary sentence (or two at most) that combines all these alerts.
+This will be spoken out loud while running, so make it natural and easy to understand.
+
+RULES:
+- Maximum 25 words total
+- Use simple, conversational language
+- DO NOT include exact distances, coordinates, or technical data
+- DO NOT give advice or instructions
+- DO NOT use markdown, emojis, or special characters
+- Prioritize the most critical alerts
+- Use phrases like "ahead", "nearby", "on your route" instead of specific distances
+
+Detected Alerts:
+${alertsText}
+
+Example good summaries:
+- "3 hazards detected: broken glass, pothole, and wet surface ahead"
+- "Approaching high-accident area with pothole and construction nearby"
+- "Heavy traffic and broken glass on your route"
+
+Generate the alert summary now:`;
+
+    const summary = await callOpenAI(prompt, { maxTokens: 80, temperature: 0.6 });
+    return summary || `${totalAlerts} alert${totalAlerts > 1 ? "s" : ""} detected on your route.`;
+  } catch (error) {
+    console.error("AI batch alert summary error:", error.response?.data || error.message);
+    return `${totalAlerts} alert${totalAlerts > 1 ? "s" : ""} detected on your route.`;
+  }
+};
+
 export const generateRouteSafetyWarnings = async (safetyAnalysis) => {
   try {
     const { warnings = [], stats = {} } = safetyAnalysis || {};

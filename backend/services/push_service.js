@@ -62,9 +62,11 @@ export const sendPushNotification = async ({ userId, title, body, data, priority
 
   const tokens = await DeviceTokens.getActiveTokensForUser(userId);
   if (!tokens || tokens.length === 0) {
-    console.log(`[Push] No device tokens found for user ${userId}`);
+    console.log(`[Push] ⚠️  No device tokens found for user ${userId}`);
     return { sent: 0, failed: 0 };
   }
+
+  console.log(`[Push] 📱 Found ${tokens.length} device token(s) for user ${userId}`);
 
   let sentCount = 0;
   let failedCount = 0;
@@ -103,6 +105,7 @@ export const sendPushNotification = async ({ userId, title, body, data, priority
         const response = await admin.messaging().send(message);
         sentCount++;
         console.log(`[Push] ✅ Sent to user ${userId} (${platform}):`, response);
+        console.log(`[Push] 📨 Notification: "${title}" - "${body.substring(0, 100)}${body.length > 100 ? '...' : ''}"`);
       } catch (error) {
         failedCount++;
         console.error(`[Push] ❌ Failed to send to user ${userId} (${platform}):`, error.message);
@@ -123,16 +126,33 @@ export const sendPushNotification = async ({ userId, title, body, data, priority
   return { sent: sentCount, failed: failedCount };
 };
 
-export const sendAlertPush = async ({ userId, summary, type, notification }) => {
+export const sendAlertPush = async ({ userId, summary, type, metadata = {} }) => {
+  // ✅ Determine notification title based on alert type
+  let title;
+  switch (type) {
+    case "traffic_alert":
+      title = "Traffic Alert";
+      break;
+    case "batch_alert":
+      title = "Multiple Alerts Nearby"; // ✅ Batch alerts have dedicated title
+      break;
+    case "hazard_alert":
+    default:
+      title = "Hazard Nearby";
+      break;
+  }
+
+  // ✅ Alerts sent as ephemeral push notifications (no database storage)
+  // Only social notifications persist in the database for notification center
   await sendPushNotification({
     userId,
-    title: type === "traffic_alert" ? "Traffic alert" : "Hazard nearby",
+    title,
     body: summary,
     data: {
       type,
-      notification_id: notification?.notification_id ?? null,
-      report_id: notification?.report_id ?? null,
-      distance_km: notification?.distance_km ?? null,
+      alert_count: metadata.alert_count ?? null,
+      distance_km: metadata.distance_km ?? null,
+      timestamp: new Date().toISOString(),
     },
   });
 };
