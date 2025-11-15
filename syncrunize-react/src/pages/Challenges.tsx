@@ -17,7 +17,7 @@ import axios from "axios";
 import { supabase } from "../supabaseClient";
 import "../components/Challenges/Challenge.css";
 
-interface Challenge {
+interface Challenge { 
   challenge_id: string;
   name: string;
   description: string;
@@ -153,7 +153,7 @@ const renderButton = (challenge: Challenge) => {
     return (
       <div className="completed-section">
         <IonButton expand="block" color="success" disabled>
-          🎉 Challenge Completed
+           Challenge Completed
         </IonButton>
       </div>
     );
@@ -227,13 +227,13 @@ const renderButton = (challenge: Challenge) => {
         <IonGrid>
           <IonRow>
             <IonCol size="12">
-              <h3 className="suggested-header">All Challenges</h3>
+              <h3 className="suggested-header">Suggested Challenges</h3>
             </IonCol>
           </IonRow>
 
           <IonRow className="suggested-row">
             {challenges.map((ch) => (
-              <IonCol size="12" sizeMd="6" sizeLg="3" key={ch.challenge_id}>
+              <IonCol size="12" sizeMd="6" sizeLg="2.5" key={ch.challenge_id}>
                 <IonCard className="suggested-card">
                   <IonImg src={ch.image_url} alt={ch.name} />
                   <IonCardHeader>
