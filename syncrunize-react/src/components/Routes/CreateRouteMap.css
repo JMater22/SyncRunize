@@ -1134,3 +1134,256 @@
   font-style: italic;
   border-left: 3px solid #ff8c00;
 }
+
+/* Map Legend Panel */
+.map-tabs {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  border-radius: 12px 12px 0 0;
+  padding: 12px 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.map-tabs-left {
+  display: flex;
+  gap: 8px;
+}
+
+.legend-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 36px;
+  border: none;
+  background: rgba(146, 198, 40, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 22px;
+  color: #92C628;
+}
+
+.legend-toggle-btn:hover {
+  background: rgba(146, 198, 40, 0.2);
+  transform: scale(1.05);
+}
+
+.legend-toggle-btn.active {
+  background: #92C628;
+  color: white;
+}
+
+.map-legend-panel {
+  position: fixed;
+  top: 0;
+  right: -350px;
+  width: 320px;
+  height: 100vh;
+  background: white;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  transition: right 0.3s ease;
+  overflow-y: auto;
+}
+
+.map-legend-panel.visible {
+  right: 0;
+}
+
+.legend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 2px solid #f0f0f0;
+  background: linear-gradient(135deg, #92C628 0%, #7ab01f 100%);
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.legend-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.legend-close-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 24px;
+  color: white;
+}
+
+.legend-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+.legend-content {
+  padding: 20px;
+}
+
+.legend-section {
+  margin-bottom: 24px;
+}
+
+.legend-section:last-child {
+  margin-bottom: 0;
+}
+
+.legend-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333333;
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: #f9f9f9;
+  transition: all 0.2s ease;
+}
+
+.legend-item:hover {
+  background: #f0f0f0;
+  transform: translateX(4px);
+}
+
+.legend-item:last-child {
+  margin-bottom: 0;
+}
+
+.legend-color-sample {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.legend-color-sample.hazard-sample {
+  background-color: #DC143C;
+}
+
+.legend-color-sample.cluster-low {
+  background-color: #FFA500;
+}
+
+.legend-color-sample.cluster-medium {
+  background-color: #FF8C00;
+}
+
+.legend-color-sample.cluster-high {
+  background-color: #FF6500;
+}
+
+.legend-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.legend-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333333;
+}
+
+.legend-item-desc {
+  font-size: 12px;
+  color: #666666;
+}
+
+/* Desktop: Always visible sidebar - overlays map */
+@media (min-width: 1024px) {
+  .map-legend-panel {
+    right: 20px;
+    width: 320px;
+    height: auto;
+    max-height: calc(100vh - 160px);
+    position: absolute;
+    top: 70px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    border-radius: 12px;
+  }
+
+  .map-legend-panel.visible {
+    right: 20px;
+  }
+
+  .legend-header {
+    border-radius: 12px 12px 0 0;
+  }
+
+  .legend-close-btn {
+    display: none !important;
+  }
+
+  .map-container {
+    position: relative;
+  }
+
+  .legend-content {
+    max-height: calc(100vh - 240px);
+    overflow-y: auto;
+  }
+}
+
+/* Mobile/Tablet: Sliding panel with backdrop */
+@media (max-width: 1023px) {
+  .map-legend-panel::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: -1;
+  }
+
+  .map-legend-panel.visible::before {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .legend-close-btn {
+    display: flex;
+  }
+
+  .map-legend-panel {
+    width: 90%;
+    max-width: 360px;
+    right: -100%;
+  }
+
+  .map-legend-panel.visible {
+    right: 0;
+  }
+}

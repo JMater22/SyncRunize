@@ -192,6 +192,9 @@ const CreateRouteMap = () => {
   // Map refresh key for forcing complete map remount
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
 
+  // Legend modal state
+  const [showLegendModal, setShowLegendModal] = useState(false);
+
   // Search input states
   const [startSearchQuery, setStartSearchQuery] = useState('');
   const [endSearchQuery, setEndSearchQuery] = useState('');
@@ -329,7 +332,7 @@ const CreateRouteMap = () => {
         el.style.width = '24px';
         el.style.height = '24px';
         el.style.borderRadius = '50%';
-        el.style.backgroundColor = '#ff6b35';
+        el.style.backgroundColor = '#DC143C';
         el.style.border = '2px solid white';
         el.style.cursor = 'pointer';
         el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
@@ -748,15 +751,15 @@ const CreateRouteMap = () => {
             'interpolate',
             ['linear'],
             ['zoom'],
-            10, 8,  // At zoom 10, radius is 8px (increased from 5px)
-            15, 25  // At zoom 15, radius is 25px (increased from 15px)
+            10, 10,  // At zoom 10, radius is 10px (enhanced visibility)
+            15, 30   // At zoom 15, radius is 30px (enhanced visibility)
           ],
           'circle-color': [
             'step',
             ['get', 'count'],
-            '#FFA500', // Yellow for count < 15
-            15, '#FF8C00', // Orange for count 15-29
-            30, '#FF6347'  // Red-orange for count >= 30
+            '#FFA500', // Yellow-Orange for count < 15
+            15, '#FF8C00', // Dark Orange for count 15-29
+            30, '#FF6500'  // Vivid Orange for count >= 30
           ],
           'circle-opacity': 0.3,  // Increased from 0.15 to make more visible
           'circle-stroke-width': 2,  // Increased from 1
@@ -765,7 +768,7 @@ const CreateRouteMap = () => {
             ['get', 'count'],
             '#FFA500',
             15, '#FF8C00',
-            30, '#FF6347'
+            30, '#FF6500'
           ],
           'circle-stroke-opacity': 0.6  // Increased from 0.4
         }
@@ -1714,23 +1717,32 @@ const CreateRouteMap = () => {
           {/* Map Container */}
           <div className={`map-container ${pinMode ? 'pin-mode-active' : ''}`}>
             <div className="map-tabs">
+              <div className="map-tabs-left">
+                <button
+                  className={`map-tab ${mapType === 'streets' ? 'active' : ''}`}
+                  onClick={() => setMapType('streets')}
+                >
+                  Map
+                </button>
+                <button
+                  className={`map-tab ${mapType === 'satellite' ? 'active' : ''}`}
+                  onClick={() => setMapType('satellite')}
+                >
+                  Satellite
+                </button>
+                <button
+                  className={`map-tab ${mapType === 'outdoors' ? 'active' : ''}`}
+                  onClick={() => setMapType('outdoors')}
+                >
+                  Outdoors
+                </button>
+              </div>
               <button
-                className={`map-tab ${mapType === 'streets' ? 'active' : ''}`}
-                onClick={() => setMapType('streets')}
+                className="legend-toggle-btn"
+                onClick={() => setShowLegendModal(true)}
+                title="Map Legend"
               >
-                Map
-              </button>
-              <button
-                className={`map-tab ${mapType === 'satellite' ? 'active' : ''}`}
-                onClick={() => setMapType('satellite')}
-              >
-                Satellite
-              </button>
-              <button
-                className={`map-tab ${mapType === 'outdoors' ? 'active' : ''}`}
-                onClick={() => setMapType('outdoors')}
-              >
-                Outdoors
+                <IonIcon icon={informationCircleOutline} />
               </button>
             </div>
 
@@ -1850,6 +1862,71 @@ const CreateRouteMap = () => {
                 </div>
               </div>
             )}
+          </IonContent>
+        </IonModal>
+
+        {/* Map Legend Modal */}
+        <IonModal
+          isOpen={showLegendModal}
+          onDidDismiss={() => setShowLegendModal(false)}
+          className="legend-modal"
+          breakpoints={[0, 0.5, 0.75]}
+          initialBreakpoint={0.75}
+        >
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Map Legend</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setShowLegendModal(false)}>
+                  <IonIcon icon={closeCircleOutline} />
+                </IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+
+          <IonContent className="legend-modal-content">
+            <div className="legend-content-wrapper">
+              {/* User-Reported Hazards */}
+              <div className="legend-section">
+                <h4 className="legend-section-title">User-Reported Hazards</h4>
+                <div className="legend-item">
+                  <div className="legend-color-sample hazard-sample"></div>
+                  <div className="legend-item-text">
+                    <span className="legend-item-name">Active Hazard</span>
+                    <span className="legend-item-desc">Crimson Red</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Accident Clusters */}
+              <div className="legend-section">
+                <h4 className="legend-section-title">Accident Clusters (Historical Data)</h4>
+
+                <div className="legend-item">
+                  <div className="legend-color-sample cluster-low"></div>
+                  <div className="legend-item-text">
+                    <span className="legend-item-name">Low Severity</span>
+                    <span className="legend-item-desc">Yellow-Orange • &lt; 15 accidents</span>
+                  </div>
+                </div>
+
+                <div className="legend-item">
+                  <div className="legend-color-sample cluster-medium"></div>
+                  <div className="legend-item-text">
+                    <span className="legend-item-name">Medium Severity</span>
+                    <span className="legend-item-desc">Dark Orange • 15-29 accidents</span>
+                  </div>
+                </div>
+
+                <div className="legend-item">
+                  <div className="legend-color-sample cluster-high"></div>
+                  <div className="legend-item-text">
+                    <span className="legend-item-name">High Severity</span>
+                    <span className="legend-item-desc">Vivid Orange • ≥ 30 accidents</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </IonContent>
         </IonModal>
       </IonContent>

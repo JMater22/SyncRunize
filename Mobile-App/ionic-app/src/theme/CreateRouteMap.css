@@ -2022,3 +2022,169 @@
     border-radius: 28px;
   }
 }
+
+/* Map Legend Styles */
+.map-tabs {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-tabs-left {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.legend-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 36px;
+  border: none;
+  background: rgba(146, 198, 40, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 22px;
+  color: #92C628;
+  flex-shrink: 0;
+}
+
+.legend-toggle-btn:active {
+  background: rgba(146, 198, 40, 0.3);
+  transform: scale(0.95);
+}
+
+/* Legend Modal Content */
+.legend-modal-content {
+  --background: #f5f5f5;
+}
+
+.legend-content-wrapper {
+  padding: 16px;
+}
+
+.legend-section {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.legend-section:last-child {
+  margin-bottom: 0;
+}
+
+.legend-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #92C628;
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  background: #f9f9f9;
+  transition: all 0.2s ease;
+}
+
+.legend-item:active {
+  background: #f0f0f0;
+  transform: scale(0.98);
+}
+
+.legend-item:last-child {
+  margin-bottom: 0;
+}
+
+.legend-color-sample {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 3px solid white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.legend-color-sample.hazard-sample {
+  background-color: #DC143C;
+}
+
+.legend-color-sample.cluster-low {
+  background-color: #FFA500;
+}
+
+.legend-color-sample.cluster-medium {
+  background-color: #FF8C00;
+}
+
+.legend-color-sample.cluster-high {
+  background-color: #FF6500;
+}
+
+.legend-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.legend-item-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333333;
+  line-height: 1.3;
+}
+
+.legend-item-desc {
+  font-size: 13px;
+  color: #666666;
+  line-height: 1.4;
+}
+
+/* Tablet and larger screens */
+@media (min-width: 768px) {
+  .legend-content-wrapper {
+    padding: 24px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .legend-section {
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .legend-section-title {
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+
+  .legend-item {
+    padding: 14px 16px;
+  }
+
+  .legend-color-sample {
+    width: 32px;
+    height: 32px;
+  }
+
+  .legend-item-name {
+    font-size: 16px;
+  }
+
+  .legend-item-desc {
+    font-size: 14px;
+  }
+}
