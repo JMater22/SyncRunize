@@ -9,7 +9,7 @@ import {
   IonCol,
   IonCardHeader,
   IonCardTitle,
-  IonCardContent,
+  IonCardContent, 
   IonImg,
   IonSpinner,
   IonModal,
@@ -22,7 +22,7 @@ import { supabase } from "../supabaseClient";
 import { close } from "ionicons/icons";
 
 const RoutesPage: React.FC = () => {
-  const history = useHistory();
+  const history = useHistory(); 
   const [routes, setRoutes] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState("");
@@ -159,32 +159,38 @@ const RoutesPage: React.FC = () => {
     <IonPage>
       <IonContent>
         {/* Header Title */}
-        <IonRow className="routes-header ion-align-items-center">
-          <IonCol size="12">
-            <h1 className="my-routes-title">Public Routes</h1>
-          </IonCol>
-        </IonRow>
+      <IonRow className="routes-header ion-align-items-center">
+        <IonCol size="12">
+          <h1 className="my-routes-title">Public Routes</h1> 
+        </IonCol>
+      </IonRow>
 
-        {/* Search and Buttons */}
-        <IonRow className="ion-align-items-center ion-justify-content-between">
-          <IonCol className="searchbar-container">
-            <IonSearchbar
-              className="custom-searchbar"
-              value={search}
-              onIonChange={(e) => setSearch(e.detail.value!)}
-              placeholder="Search public routes..."
-            />
-          </IonCol>
+      {/* Search and Buttons */}
+      <IonRow className="search-and-buttons-row ion-align-items-center ion-justify-content-between">
+        <IonCol size="12" sizeMd="8" className="searchbar-container">
+          <IonSearchbar
+            className="custom-searchbar"
+            value={search}
+            onIonChange={(e) => setSearch(e.detail.value!)}
+            placeholder="Search routes..."
+          />
+        </IonCol>
 
-          <IonCol size="4" className="button-col ion-text-right">
-            <IonButton expand="block" onClick={handleSavedRoutes} className="saved-routes-btn">
-              Saved Routes
-            </IonButton>
-            <IonButton expand="block" onClick={handleCreateRoute} className="create-route-btn">
-              Create New Route
-            </IonButton>
-          </IonCol>
-        </IonRow>
+        <IonCol size="12" sizeMd="4" className="button-col ion-text-right">
+          <IonButton expand="block" onClick={handleSavedRoutes} className="save-routes-btn">
+            Saved Routes
+          </IonButton>
+          <IonButton 
+            expand="block" 
+            onClick={handleCreateRoute} 
+            className="create-route-btn"
+          >
+            <div>
+              Create<br/>New Route
+            </div>
+          </IonButton>
+        </IonCol>
+      </IonRow>
 
         {/* Routes Grid */}
         <IonGrid className="routes-container">
@@ -266,108 +272,86 @@ const RoutesPage: React.FC = () => {
                 className="route-modal-content"
                 onClick={(e) => e.stopPropagation()}
               >
-                <button
-                  className="route-modal-close"
-                  onClick={handleCloseModal}
-                  aria-label="Close preview"
-                >
-                  <IonIcon icon={close} />
-                </button>
-                <div className="route-preview-grid">
-                  <div className="route-preview-image">
-                    <img
-                      src={selectedRoute.snapshot_url || "/placeholder-map.png"}
-                      alt={selectedRoute.route_name || "Route preview"}
-                      className="route-modal-image"
-                    />
-                    <div className="route-image-overlay">
-                      <span>{formatDate(selectedRoute.created_at)}</span>
-                    </div>
+                {/* HEADER SECTION - Title + Timestamp */}
+                <div className="route-preview-header">
+                  <div className="route-preview-tags">
+                    {selectedRoute.route_type && (
+                      <span className="route-tag">
+                        {selectedRoute.route_type}
+                      </span>
+                    )}
+                    <span className="route-tag">Public</span>
                   </div>
-                  <div className="route-preview-details">
-                    <div className="route-preview-header">
-                      <div className="route-preview-tags">
-                        {selectedRoute.route_type && (
-                          <span className="route-tag">
-                            {selectedRoute.route_type}
-                          </span>
-                        )}
-                        <span className="route-tag">Public</span>
-                      </div>
-                      <h2>{selectedRoute.route_name || "Untitled Route"}</h2>
-                      <p className="route-preview-subtitle">
-                        Ready-made course you can duplicate to your saved
-                        routes. Review stats before you claim it.
-                      </p>
-                    </div>
+                  <h2>{selectedRoute.route_name || "Untitled Route"}</h2>
+                  <p className="route-timestamp">{formatDate(selectedRoute.created_at)}</p>
+                </div>
 
-                    <div className="route-preview-stats">
-                      <div className="route-stat-card">
-                        <span>Distance</span>
-                        <strong>
-                          {selectedRoute.distance_km
-                            ? `${selectedRoute.distance_km.toFixed(2)} km`
-                            : "N/A"}
-                        </strong>
-                      </div>
-                      <div className="route-stat-card">
-                        <span>Est. Time</span>
-                        <strong>{formatDuration(selectedRoute.duration_seconds)}</strong>
-                      </div>
-                      <div className="route-stat-card">
-                        <span>Avg Pace</span>
-                        <strong>{formatPace(selectedRoute)}</strong>
-                      </div>
-                      <div className="route-stat-card">
-                        <span>Calories</span>
-                        <strong>
-                          {selectedRoute.estimated_calories
-                            ? `${Math.round(selectedRoute.estimated_calories)} kcal`
-                            : "N/A"}
-                        </strong>
-                      </div>
-                    </div>
-
-                    <div className="route-preview-description">
-                      <h4>Route summary</h4>
-                      <p>
-                        {selectedRoute.description ||
-                          "This creator has not added extra notes for the route. You can still preview the path and duplicate it into your own library."}
-                      </p>
-                    </div>
-
-                    <div className="route-preview-actions">
-                      <IonButton
-                        color="success"
-                        onClick={handleSaveRoute}
-                        disabled={saving}
-                        className="route-action-primary"
-                        expand="block"
-                      >
-                        {saving ? (
-                          <>
-                            <IonSpinner name="crescent" slot="start" />
-                            Saving…
-                          </>
-                        ) : (
-                          "Save to My Routes"
-                        )}
-                      </IonButton>
-                      <IonButton
-                        fill="clear"
-                        color="medium"
-                        onClick={handleCloseModal}
-                        className="route-action-secondary"
-                      >
-                        Close
-                      </IonButton>
-                    </div>
+                {/* STATS GRID - 2x2 Grid */}
+                <div className="route-preview-stats">
+                  <div className="route-stat-card">
+                    <span>Distance</span>
+                    <strong>
+                      {selectedRoute.distance_km
+                        ? `${selectedRoute.distance_km.toFixed(2)} km`
+                        : "N/A"}
+                    </strong>
                   </div>
+                  <div className="route-stat-card">
+                    <span>Est. Time</span>
+                    <strong>{formatDuration(selectedRoute.duration_seconds)}</strong>
+                  </div>
+                  <div className="route-stat-card">
+                    <span>Avg Pace</span>
+                    <strong>{formatPace(selectedRoute)}</strong>
+                  </div>
+                  <div className="route-stat-card">
+                    <span>Calories</span>
+                    <strong>
+                      {selectedRoute.estimated_calories
+                        ? `${Math.round(selectedRoute.estimated_calories)} kcal`
+                        : "N/A"}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* MAP IMAGE - Bottom, no overlay */}
+                <div className="route-preview-image">
+                  <img
+                    src={selectedRoute.snapshot_url || "/placeholder-map.png"}
+                    alt={selectedRoute.route_name || "Route preview"}
+                    className="route-modal-image"
+                  />
+                </div>
+
+                {/* ACTION BUTTONS - Above the map */}
+                <div className="route-preview-actions">
+                  <IonButton
+                    onClick={handleSaveRoute}
+                    disabled={saving}
+                    className="route-action-primary"
+                    expand="block"
+                  >
+                    {saving ? (
+                      <>
+                        <IonSpinner name="crescent" slot="start" />
+                        Saving…
+                      </>
+                    ) : (
+                      "Save to My Routes"
+                    )}
+                  </IonButton>
+                  <IonButton
+                    onClick={handleCloseModal}
+                    className="route-action-secondary"
+                    expand="block"
+                  >
+                    Close
+                  </IonButton>
                 </div>
               </div>
             </div>
           )}
-        </IonModal>
+        </IonModal> 
       </IonContent>
     </IonPage>
   );
