@@ -1,39 +1,47 @@
 /* Title */
-.my-routes-title {
+h1.my-routes-title {
   font-size: 32px;
   font-weight: bold;
   color: #2c3e50;
-  margin-left: 260px; /* desktop */
+  margin-top: 2%;
+  margin-bottom: -500px;
 }
 
+
 /* Row layout */
-.search-row {
+.search-and-buttons-row {
   display: flex;
   align-items: center;
-  justify-content: space-between; 
+  justify-content: flex-start; 
   margin: 20px 0;
   gap: 16px;
-  flex-wrap: wrap; /* allow wrapping */
+  flex-wrap: nowrap; 
+  padding: 0 20px;
+  max-width: 1400px;
+  margin-top: 2%;
+  margin-left: 170px;
+  margin-right: auto;
 }
 
 /* Searchbar container */
 .searchbar-container {
   margin-top: 20px;
-  margin-left: 240px; /* desktop */
-  flex: 1; 
+  flex: 0 1 auto; /* Don't grow, allow shrink */
+  max-width: 600px;
+  margin-left: 30px; /* Remove left margin */
 } 
 
 /* Button column */
 .button-col {
   margin-top: 20px;
-  margin-right: 240px; /* desktop */
   display: flex;
   gap: 12px;
   justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 /* Create Route Button */
-ion-button.create-route-btn {
+ion-button.create-route-btn { 
   --background: #92C628;
   --background-hover: #7ba622;
   --background-activated: #6a9220;
@@ -44,6 +52,8 @@ ion-button.create-route-btn {
   text-transform: none;
   height: 44px;
   --box-shadow: 0 2px 4px rgba(146, 198, 40, 0.2);
+  width: auto;
+  white-space: nowrap;
 }
 
 .create-route-btn:hover {
@@ -51,11 +61,11 @@ ion-button.create-route-btn {
 }
 
 /* Saved Routes Button */
-ion-button.saved-routes-btn {
-  --background: #ffffff;
-  --background-hover: #f8f9fa;
-  --background-activated: #e9ecef;
-  --color: #050505;
+ion-button.save-routes-btn {
+  --background: #c99300;
+  --background-hover: #b38600;
+  --background-activated: #9a7300;
+  --color: #ffffff;
   --border-radius: 8px;
   --border-color: #e4e6eb;
   --border-style: solid;
@@ -65,9 +75,11 @@ ion-button.saved-routes-btn {
   text-transform: none;
   height: 44px;
   --box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  width: auto;
+  white-space: nowrap;
 }
 
-.saved-routes-btn:hover {
+.save-routes-btn:hover {
   --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -80,7 +92,7 @@ ion-button.saved-routes-btn {
   margin-bottom: 60px;
 }
 
-/* Searchbar styling (Facebook-inspired) */
+/* Searchbar styling */
 .ion-align-items-center.ion-justify-content-between ion-searchbar.sc-ion-searchbar-md-h {
   --background: #f0f2f5;
   --color: #050505;
@@ -189,315 +201,265 @@ ion-button.saved-routes-btn {
 
 /* ✅ Mobile */
 @media (max-width: 768px) {
-  .my-routes-title {
-    font-size: 100px;
-    text-align: left;
+  h1.my-routes-title {
+    text-align: center;
+    margin-left: 0;
+    margin-top: 20px;
+    margin-bottom: -15px;
+    font-size: 28px;
   }
-
-  .search-row {
-    gap: 12px;
-  }
-
+  
   .searchbar-container {
-    margin-top: 0px;
-    padding: 0 16px;
+    margin-left: 0;
+    margin-top: -10px;
   }
-
+  
   .button-col {
-    margin-top: 10px;
+    margin-top: 16px;
+    margin-right: 0;
+    display: flex;
+    justify-content: space-between;
+    flex-direction: row;
+    width: 100%;
     padding: 0 16px;
-    flex-direction: column;
-    gap: 8px;
+    gap: 12px; /* Add gap between buttons */
   }
-
-  .routes-container {
-    margin-left: 10px;
-    margin-right: 10px;
-    padding: 0;
-  }
-
+  
   ion-button.create-route-btn,
-  ion-button.saved-routes-btn {
-    width: 100%; 
-    border-radius: 12px;
-    margin: 0;
+  ion-button.save-routes-btn {
+    width: 48%;
+    font-size: 14px;
+    font-weight: 600;
+    flex: 1; /* Make buttons share space equally */
+    --padding-start: 8px; /* Reduce internal padding if needed */
+    --padding-e: 8px;
+  }
+  
+  .routes-container {
+    margin-left: 0;
+    margin-right: 0;
   }
 
   .ion-align-items-center.ion-justify-content-between ion-searchbar.sc-ion-searchbar-md-h {
     max-width: 100%;
   }
+  
+  /* Override the desktop flex layout for mobile */
+  .search-and-buttons-row {
+    margin-left: 0;
+    margin-right: 0;
+    padding: 0;
+    flex-wrap: wrap; /* Allow wrapping */
+  }
 }
 
+ion-modal.route-preview-modal::part(backdrop) {
+  background: transparent !important;
+  opacity: 0 !important;
+}
 
-
-/* Route preview modal (Facebook-inspired) */
-.route-preview-modal::part(backdrop) {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+ion-modal.route-preview-modal::part(content) {
+  --background: transparent !important;
+  box-shadow: none !important;   /* optional */
 }
 
 .route-modal-container {
   position: relative;
   width: 100%;
-  height: 100%;
-  padding: 24px;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
   background-color: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow-y: auto;
 }
 
 .route-modal-content {
-  width: min(1280px, 95%);
-  max-height: 90vh;
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 32px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  position: relative;
-  overflow-y: auto;
-}
-
-.route-modal-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: #f0f2f5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.route-modal-close ion-icon {
-  font-size: 22px;
-  color: #65676b;
-}
-
-.route-modal-close:hover {
-  background: #e4e6eb;
-  transform: scale(1.05);
-}
-
-.route-preview-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 32px;
-  align-items: start;
-  min-height: 500px;
-}
-
-.route-preview-image {
-  position: relative;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #000000;
-  height: 100%;
-  min-height: 500px;
-  border: 1px solid #e4e6eb;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-}
-
-.route-modal-image {
   width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
-.route-image-overlay {
-  position: absolute;
-  left: 16px;
-  bottom: 16px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #ffffff;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  backdrop-filter: blur(4px);
-}
-
-.route-preview-details {
+  max-width: 500px;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 20px 20px rgba(0, 0, 0, 0.2);
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
   overflow-y: auto;
-  max-height: 500px;
-  padding-right: 8px;
 }
 
-.route-preview-details::-webkit-scrollbar {
-  width: 6px;
+/* Remove old grid styles - no longer needed */
+.route-preview-grid {
+  display: none;
 }
 
-.route-preview-details::-webkit-scrollbar-track {
-  background: #f0f2f5;
-  border-radius: 3px;
-}
-
-.route-preview-details::-webkit-scrollbar-thumb {
-  background: #cbd5e0;
-  border-radius: 3px;
-}
-
-.route-preview-details::-webkit-scrollbar-thumb:hover {
-  background: #a0aec0;
+.route-preview-header {
+  flex-shrink: 0;
 }
 
 .route-preview-header h2 {
-  font-size: 26px;
-  margin: 0 0 8px;
-  color: #050505;
+  font-size: 28px;
+  margin: 8px 0 4px;
+  color: #1a1a1a;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
-.route-preview-subtitle {
-  color: #65676b;
-  margin: 0;
+.route-timestamp {
   font-size: 14px;
-  line-height: 1.5;
+  color: #666666;
+  margin: 0;
+  font-weight: 400;
 }
 
 .route-preview-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
   margin-bottom: 8px;
 }
 
 .route-tag {
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 4px 10px;
-  border-radius: 4px;
-  background: rgba(146, 198, 40, 0.1);
+  letter-spacing: 0.5px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: rgba(146, 198, 40, 0.15);
   color: #92C628;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .route-preview-stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .route-stat-card {
-  background: #f7f8fa;
-  border-radius: 10px;
-  padding: 16px;
-  border: 1px solid #e4e6eb;
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 16px 12px;
   text-align: center;
   transition: all 0.2s ease;
-}
-
-.route-stat-card:hover {
-  background: #f0f2f5;
-  transform: translateY(-2px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .route-stat-card span {
   display: block;
   font-size: 11px;
   text-transform: uppercase;
-  color: #65676b;
-  letter-spacing: 0.5px;
+  color: #888888;
+  letter-spacing: 0.8px;
   margin-bottom: 6px;
   font-weight: 600;
 }
 
 .route-stat-card strong {
-  font-size: 20px;
-  color: #050505;
+  font-size: 24px;
+  color: #1a1a1a;
   font-weight: 700;
-}
-
-.route-preview-description {
-  background: #ffffff;
-  border: 1px solid #e4e6eb;
-  border-radius: 12px;
-  padding: 16px;
-}
-
-.route-preview-description h4 {
-  margin: 0 0 8px;
-  font-size: 15px;
-  text-transform: none;
-  letter-spacing: 0;
-  color: #050505;
-  font-weight: 600;
-}
-
-.route-preview-description p {
-  margin: 0;
-  color: #65676b;
-  line-height: 1.5;
-  font-size: 15px;
+  line-height: 1;
 }
 
 .route-preview-actions {
   display: flex;
-  flex-direction: column;
   gap: 12px;
-  margin-top: 12px;
+  flex-shrink: 0;
 }
 
 .route-action-primary {
   --background: #92C628;
-  --background-hover: #7ba622;
-  --background-activated: #6a9220;
+  --background-hover: #7db01e;
+  --background-activated: #6a9918;
   --color: #ffffff;
-  --border-radius: 8px;
+  --border-radius: 12px;
   font-weight: 600;
   font-size: 15px;
   text-transform: none;
-  height: 44px;
-  --box-shadow: 0 2px 4px rgba(146, 198, 40, 0.2);
-}
-
-.route-action-primary:hover {
-  --box-shadow: 0 4px 8px rgba(146, 198, 40, 0.3);
+  height: 48px;
+  flex: 1;
+  --box-shadow: 0 2px 8px rgba(146, 198, 40, 0.3);
 }
 
 .route-action-secondary {
-  --color: #65676b;
-  font-weight: 500;
+  --color: #ffffff;
+  --background: #c94000;
+  --background-hover: #b33800;
+  --border-radius: 12px;
+  font-weight: 600;
   font-size: 15px;
   text-transform: none;
-  align-self: center;
+  height: 48px;
+  flex: 1;
 }
 
-@media (max-width: 1024px) {
-  .route-preview-grid {
-    grid-template-columns: 1fr;
-    gap: 24px;
-    min-height: auto;
-  }
+.route-preview-image {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #e8e8e8;
+  width: 100%;
+  height: 120px;
+  flex-shrink: 0;
+}
 
-  .route-preview-image {
-    min-height: 400px;
-    height: auto;
-  }
+.route-modal-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 
-  .route-preview-details {
-    max-height: none;
-  }
+/* Scrollbar styling for modal content */
+.route-modal-content::-webkit-scrollbar {
+  width: 8px;
+}
 
+.route-modal-content::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 12px 0;
+}
+
+.route-modal-content::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+}
+
+.route-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
   .route-modal-container {
     padding: 16px;
+    margin-top: 120px;
   }
 
   .route-modal-content {
     padding: 24px;
-    width: 95%;
+    gap: 20px;
+  }
+  
+  .route-preview-header h2 {
+    font-size: 24px;
+  }
+  
+  .route-stat-card strong {
+    font-size: 20px;
+  }
+  
+  .route-preview-image {
+    height: 250px;
+  }
+
+  .route-preview-actions {
+    flex-direction: column;
+  }
+
+  .route-action-secondary {
+    width: 100%;
   }
 }

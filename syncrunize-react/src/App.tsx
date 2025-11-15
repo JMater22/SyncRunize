@@ -17,6 +17,7 @@ import {
   IonList,
   IonItem,
   setupIonicReact,
+  IonFooter
 } from "@ionic/react";
 import { IonReactRouter } from "@ionic/react-router";
 
@@ -26,7 +27,6 @@ import Challenges from "./pages/Challenges";
 import RunTracking from "./pages/RunTracking";
 import RoutesPage from "./pages/RoutesPage";
 import SavedRoutesPage from "./components/Routes/SavedRoutesPage";
-import Activities from "./pages/Activities";
 import Profile from "./pages/Profile";
 import ViewProfile from "./pages/ViewProfile";
 import ViewPost from "./pages/ViewPost";
@@ -93,9 +93,6 @@ const AppContent: React.FC<{ session: any; userData: any; loading: boolean }> = 
             </IonItem>
             <IonItem button routerLink="/run-tracking" routerDirection="none">
               <IonLabel>Run Tracking</IonLabel>
-            </IonItem>
-            <IonItem button routerLink="/activities" routerDirection="none">
-              <IonLabel>Activities</IonLabel>
             </IonItem>
             <IonItem button routerLink="/community" routerDirection="none">
               <IonLabel>Community</IonLabel>
@@ -181,11 +178,6 @@ const AppContent: React.FC<{ session: any; userData: any; loading: boolean }> = 
               } />
             <Route
               exact
-              path="/activities"
-              render={() => (session ? <Activities /> : <Redirect to="/login" />)}
-            />
-            <Route
-              exact
               path="/profile"
               render={() => (session ? <Profile /> : <Redirect to="/login" />)}
             />
@@ -233,9 +225,6 @@ const AppContent: React.FC<{ session: any; userData: any; loading: boolean }> = 
                 <IonTabButton tab="run-tracking" href="/run-tracking">
                   <IonLabel>Run Tracking</IonLabel>
                 </IonTabButton>
-                <IonTabButton tab="activities" href="/activities">
-                  <IonLabel>Activities</IonLabel>
-                </IonTabButton>
                 <IonTabButton tab="community" href="/community">
                   <IonLabel>Community</IonLabel>
                 </IonTabButton>
@@ -249,6 +238,15 @@ const AppContent: React.FC<{ session: any; userData: any; loading: boolean }> = 
             </div>
           </IonHeader>
         </IonTabs>
+        
+        {/* Footer - visible on both mobile and desktop - MOVED OUTSIDE OF TABS */}
+        <IonFooter className="app-footer">
+          <IonToolbar>
+            <div className="footer-content">
+              <p>© 2025 SyncRunize. All rights reserved.</p>
+            </div>
+          </IonToolbar>
+        </IonFooter>
       </IonPage>
     </IonReactRouter>
   );

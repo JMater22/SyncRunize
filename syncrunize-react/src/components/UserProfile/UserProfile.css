@@ -16,24 +16,6 @@
   z-index: 10;
 }
 
-.profile-action-buttons-bottom .edit-profile-button {
-  background: #8bc34a;
-  --color: #ffffff;
-  --border-color: transparent;
-  border-radius: 12px; 
-  font-weight: 600;
-  padding: 12px 24px;
-}
-
-.profile-action-buttons-bottom .logout-button {
-  --color:#ffffff;
-  background: #ef4444;
-  --border-color: transparent; 
-  font-weight: 600;
-  border-radius: 12px;
-  padding: 12px 24px;
-}
-
 /* ====== Enhanced Profile Header ====== */
 .profile-header-section {
   position: relative;
@@ -208,8 +190,9 @@
 }
 
 .logout-button {
-  --color: #ef4444;
-  font-weight: 500;
+  --background: #e22006;
+  --color: #ffffff;
+  font-weight: 600;
   border-radius: 12px;
   padding: 10px 16px;
   transition: all 0.3s ease;
@@ -267,7 +250,16 @@
   color: #ff3b30;
 }
 
-
+.settings-button{
+  --background: #e2af06;
+  --color: #ffffff;
+  --border-color: transparent;
+  border-radius: 12px;
+  font-weight: 600;
+  padding: 10px 16px;
+  transition: all 0.3s ease;
+  position: relative;
+}
 
 .edit-profile-button {
   --background: #8bc34a;
@@ -1026,7 +1018,8 @@ p.challenge-target {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 32px;
+  margin-bottom: 20px;
+  margin-top: -50px;
   padding: 20px;
   background: #ffffff;
   border-radius: 16px;
@@ -1563,5 +1556,42 @@ p.challenge-target {
   
   .load-more-section {
     padding: 12px 20px 20px 20px;
+  }
+
+  .profile-action-buttons-bottom {
+    display: flex;
+    gap: 8px;
+    padding: 0 12px;
+    margin-bottom: 20px;
+  }
+
+  .settings-button,
+  .edit-profile-button,
+  .logout-button {
+    flex: 1;
+    font-size: 13px;
+    padding: 10px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    position: relative;
+    min-width: 0;
+  }
+
+  .settings-button {
+    --background: #e2af06;
+    --color: #ffffff;
+    --border-color: transparent;
+  }
+
+  .edit-profile-button {
+    --background: #8bc34a;
+    --color: #ffffff;
+    --border-color: transparent;
+  }
+
+  .logout-button {
+    --background: #e22006;
+    --color: #ffffff;
   }
 }

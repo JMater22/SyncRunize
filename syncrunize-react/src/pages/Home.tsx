@@ -23,8 +23,8 @@ import {
   IonButtons,
   IonList,
 } from "@ionic/react";
-import {
-  chatbubbleEllipses,
+import { 
+  chatbubbleEllipses, 
   peopleOutline,
   flagOutline,
   createOutline,
