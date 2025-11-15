@@ -72,6 +72,7 @@ import "./theme/variables.css";
 import "./theme/global.css";
 import { RunTrackerProvider } from "./state/runTrackerContext";
 import { RunTrackerController } from "./hooks/useRunTracker";
+import { PushNotificationInitializer } from "./components/PushNotificationInitializer";
 
 setupIonicReact();
 
@@ -116,6 +117,7 @@ const App: React.FC = () => {
           <ChallengesProvider>
             <RunTrackerProvider>
               <RunTrackerController />
+              <PushNotificationInitializer />
               <IonReactRouter>
               <IonTabs>
                 <IonRouterOutlet>

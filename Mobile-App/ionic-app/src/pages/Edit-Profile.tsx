@@ -211,7 +211,7 @@ const EditProfile: React.FC = () => {
                 onIonError={(e) => {
                   console.warn('[EditProfile] Image failed to load, using fallback');
                   // Fallback to default avatar if image fails to load
-                  const target = e.target as HTMLImageElement;
+                  const target = e.target as unknown as HTMLImageElement;
                   target.src = 'https://ionicframework.com/docs/img/demos/avatar.svg';
                 }}
               />

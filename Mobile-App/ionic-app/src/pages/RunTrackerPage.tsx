@@ -31,7 +31,8 @@ const RunTrackerPage: React.FC = () => {
   useHideTabBar();
   const history = useHistory();
   const location = useLocation<{ guidedRoute?: GuidedRoutePayload }>();
-  const { session, startRun, pauseRun, resumeRun, finishRun, discardRun, recordRun, isRecording, error } = useRunTracker();
+
+  // ✅ State declarations must come before useRunTracker
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -43,6 +44,9 @@ const RunTrackerPage: React.FC = () => {
   const [hazardActionLoading, setHazardActionLoading] = useState(false);
   const [guidedRoute, setGuidedRoute] = useState<GuidedRoutePayload | null>(null);
   const [accidentClusters, setAccidentClusters] = useState<AccidentCluster[]>([]);
+
+  // ✅ Now we can pass accidentClusters to useRunTracker
+  const { session, startRun, pauseRun, resumeRun, finishRun, discardRun, recordRun, isRecording, error } = useRunTracker({ accidentClusters });
   const [mapType, setMapType] = useState<'streets' | 'satellite' | 'outdoors'>('streets');
   const [showLegendModal, setShowLegendModal] = useState(false);
   const mapHandleRef = useRef<RunTrackerMapHandle | null>(null);

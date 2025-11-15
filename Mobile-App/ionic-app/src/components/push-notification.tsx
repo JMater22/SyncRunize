@@ -6,6 +6,7 @@ import {
   PushNotificationSchema,
 } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { DevicesApi, type DevicePlatform } from '../services/devices';
 
 let hasLoggedWebWarning = false;
@@ -42,16 +43,21 @@ export const usePushNotifications = ({
       try {
         console.log('[Push] Checking notification permissions...');
         const permStatus = await PushNotifications.checkPermissions();
+        console.log('[Push] Current permission status:', JSON.stringify(permStatus));
 
         if (permStatus.receive !== 'granted') {
+          console.log('[Push] Requesting notification permissions...');
           const requestStatus = await PushNotifications.requestPermissions();
+          console.log('[Push] Permission request result:', JSON.stringify(requestStatus));
+
           if (requestStatus.receive !== 'granted') {
-            console.warn('[Push] Push notification permission denied.');
+            console.warn('[Push] ❌ Push notification permission denied by user');
+            alert('Please enable notifications in Settings → Apps → SyncRunize → Notifications to receive safety alerts while running.');
             return;
           }
         }
 
-        console.log('[Push] Registering for push notifications...');
+        console.log('[Push] ✅ Permission granted. Registering for push notifications...');
         await PushNotifications.register();
 
         // ✅ Listeners
@@ -80,8 +86,19 @@ export const usePushNotifications = ({
 
         const receivedListener = await PushNotifications.addListener(
           'pushNotificationReceived',
-          (notification: PushNotificationSchema) => {
-            console.log('[Push] Notification received:', notification);
+          async (notification: PushNotificationSchema) => {
+            // Check if app is in foreground or background
+            const appState = await App.getState();
+            const isActive = appState.isActive;
+
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log(`[Push] 📨 Notification received!`);
+            console.log(`[Push] 🎯 App State: ${isActive ? '🟢 FOREGROUND' : '⚫ BACKGROUND'}`);
+            console.log(`[Push] 📋 Title: "${notification.title}"`);
+            console.log(`[Push] 💬 Body: "${notification.body}"`);
+            console.log(`[Push] 📦 Data:`, notification.data);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
             onNotificationReceived?.(notification);
           }
         );

@@ -6,22 +6,17 @@ import type { GpsSample } from '../state/runTrackerContext';
 import { createRoute, withRetry, type CreateRouteRequest, type CreateRouteResponse } from '../services/api';
 import { normalizeRoutePath } from '../lib/routeGuides';
 import { HazardsApi, type HazardReport } from '../services/hazards';
-import AlertsApi from '../services/alerts';
+import AlertsApi, { type AccidentCluster } from '../services/alerts';
 import { speakText } from '../services/tts';
-import { TrafficApi, type TrafficIncident } from '../services/traffic';
 import { useUser } from '../contexts/UserContext';
 import { DEFAULT_WEIGHT_KG } from '../services/met';
 import { kalmanLikeFilter, createSmoothingState, type SmoothingState } from '../lib/advancedGpsSmoothing';
 import { analyzeRunPath, getElevationCalorieMultiplier, type PathWithElevation } from '../services/mapbox';
 
 const STORAGE_KEY = 'syncrunize-run-tracker-v1';
-const HAZARD_POLL_INTERVAL_MS = 45_000;
-const TRAFFIC_POLL_INTERVAL_MS = 60_000;
+const HAZARD_POLL_INTERVAL_MS = 15_000; // ✅ Reduced from 45s to 15s for faster detection
 const ALERT_COOLDOWN_MS = 15 * 60_000;
 const HAZARD_ALERT_RADIUS_KM = 0.35;
-const TRAFFIC_ALERT_RADIUS_KM = 1.2;
-const TRAFFIC_LOOKBACK_HOURS = 3;
-const MAX_ALERTS_PER_POLL = 2;
 
 type AlertCache = Map<string, number>;
 
@@ -53,8 +48,22 @@ const extractAlertSummary = (payload: any): string | null =>
   payload?.message ??
   null;
 
+// Haversine formula for calculating distance between two GPS points
+const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+};
+
 interface UseRunTrackerOptions {
   attachController?: boolean;
+  accidentClusters?: AccidentCluster[];
 }
 
 export interface RecordMeta {
@@ -78,6 +87,7 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
   const { session, dispatch, hydrateSession, resetSession } = useContext(RunTrackerContext);
   const { currentUser } = useUser();
   const isController = options.attachController ?? false;
+  const accidentClusters = options.accidentClusters ?? [];
 
   const samplerRef = useRef<SamplerHandle | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -97,6 +107,10 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     pending: false,
     cache: new Map(),
   });
+
+  // ✅ Per-run session cache: Tracks notified hazards/clusters for current run only
+  // Prevents duplicate notifications within same run, resets on new run
+  const runSessionAlertCache = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const parsedWeight = Number(currentUser?.weight_kg);
@@ -147,13 +161,18 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     dispatch({ type: 'ADD_SAMPLES', samples: smoothed });
   }, [dispatch]);
 
-  const handleHazardAlerts = useCallback(async (hazards: HazardReport[]) => {
-    if (!hazards?.length) return;
+  // ✅ Unified batch alert handler: Collects hazards and clusters, sends single notification
+  const handleBatchAlerts = useCallback(async (
+    hazards: HazardReport[],
+    clusters: AccidentCluster[],
+    currentLocation: { lat: number; lng: number }
+  ) => {
     const now = Date.now();
-    const state = hazardAlertState.current;
-    pruneExpiredEntries(state.cache, now);
+    const hazardState = hazardAlertState.current;
+    pruneExpiredEntries(hazardState.cache, now);
 
-    const candidates = hazards
+    // Filter nearby hazards
+    const nearbyHazards = (hazards || [])
       .filter((hazard) => {
         if (typeof hazard.distance_km === 'number') {
           return hazard.distance_km <= HAZARD_ALERT_RADIUS_KM;
@@ -161,76 +180,84 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
         return true;
       })
       .map((hazard) => ({
-        hazard,
-        key: buildAlertCacheKey(hazard.report_id, hazard.lat, hazard.lng),
-      }))
-      .filter(({ key }) => {
-        const last = state.cache.get(key);
-        return !last || now - last > ALERT_COOLDOWN_MS;
-      })
-      .slice(0, MAX_ALERTS_PER_POLL);
+        ...hazard,
+        distance_m: typeof hazard.distance_km === 'number' ? hazard.distance_km * 1000 : undefined,
+      }));
 
-    for (const { hazard, key } of candidates) {
-      state.cache.set(key, now);
-      try {
-        const resp = await AlertsApi.sendHazardAlert(
-          hazard,
-          typeof hazard.distance_km === 'number' ? hazard.distance_km * 1000 : undefined,
+    // ✅ Detect nearby accident clusters
+    const nearbyClusters = (clusters || [])
+      .map((cluster) => {
+        const distanceKm = calculateDistance(
+          currentLocation.lat,
+          currentLocation.lng,
+          cluster.lat,
+          cluster.lon
         );
-        const summary = extractAlertSummary(resp);
-        if (summary) {
-          await speakText(summary);
-        }
-      } catch (err) {
-        console.warn('[RunTracker] Failed to dispatch hazard alert', err);
-      }
+        return {
+          ...cluster,
+          distance_km: distanceKm,
+          distance_m: distanceKm * 1000,
+        };
+      })
+      .filter((cluster) => {
+        // Runner is within cluster radius
+        const radiusKm = cluster.radius_meters / 1000;
+        return cluster.distance_km <= radiusKm;
+      });
+
+    // ✅ Filter out already-notified items using per-run session cache
+    const newHazards = nearbyHazards.filter((hazard) => {
+      const key = buildAlertCacheKey(hazard.report_id, hazard.lat, hazard.lng);
+      // Check both session cache (per-run) and global cache (15-min cooldown)
+      if (runSessionAlertCache.current.has(key)) return false;
+      const last = hazardState.cache.get(key);
+      if (last && now - last <= ALERT_COOLDOWN_MS) return false;
+      return true;
+    });
+
+    const newClusters = nearbyClusters.filter((cluster) => {
+      const key = `cluster:${cluster.cluster_id}`;
+      // Check both session cache (per-run) and global cache (15-min cooldown)
+      if (runSessionAlertCache.current.has(key)) return false;
+      const last = hazardState.cache.get(key);
+      if (last && now - last <= ALERT_COOLDOWN_MS) return false;
+      return true;
+    });
+
+    // ✅ If no new alerts, skip
+    if (newHazards.length === 0 && newClusters.length === 0) {
+      return;
     }
-  }, []);
 
-  const handleTrafficAlerts = useCallback(async (incidents: TrafficIncident[]) => {
-    if (!incidents?.length) return;
-    const now = Date.now();
-    const state = trafficAlertState.current;
-    pruneExpiredEntries(state.cache, now);
+    console.log(`[RunTracker] Batch alert: ${newHazards.length} hazards, ${newClusters.length} clusters`);
 
-    const candidates = incidents
-      .filter((incident) => {
-        if (typeof incident.distance_km === 'number') {
-          return incident.distance_km <= TRAFFIC_ALERT_RADIUS_KM;
-        }
-        return true;
-      })
-      .map((incident) => ({
-        incident,
-        key: buildAlertCacheKey(incident.incident_id, incident.lat, incident.lng),
-      }))
-      .filter(({ key }) => {
-        const last = state.cache.get(key);
-        return !last || now - last > ALERT_COOLDOWN_MS;
-      })
-      .slice(0, MAX_ALERTS_PER_POLL);
+    // ✅ Send batch alert with GPT summarization
+    try {
+      const resp = await AlertsApi.sendBatchAlert({
+        hazards: newHazards,
+        clusters: newClusters,
+      });
 
-    for (const { incident, key } of candidates) {
-      state.cache.set(key, now);
-      try {
-        const resp = await AlertsApi.sendTrafficAlert({
-          traffic: {
-            lat: incident.lat,
-            lng: incident.lng,
-            condition: incident.incident_type,
-            description: incident.description ?? null,
-            severity: incident.severity_weight ?? null,
-            report_id: incident.incident_id ?? null,
-          },
-          distance_m: typeof incident.distance_km === 'number' ? incident.distance_km * 1000 : undefined,
-        });
-        const summary = extractAlertSummary(resp);
-        if (summary) {
-          await speakText(summary);
-        }
-      } catch (err) {
-        console.warn('[RunTracker] Failed to dispatch traffic alert', err);
+      // Mark all as notified in both caches
+      newHazards.forEach((hazard) => {
+        const key = buildAlertCacheKey(hazard.report_id, hazard.lat, hazard.lng);
+        runSessionAlertCache.current.add(key);
+        hazardState.cache.set(key, now);
+      });
+
+      newClusters.forEach((cluster) => {
+        const key = `cluster:${cluster.cluster_id}`;
+        runSessionAlertCache.current.add(key);
+        hazardState.cache.set(key, now);
+      });
+
+      // ✅ Speak the batch summary via TTS
+      const summary = extractAlertSummary(resp);
+      if (summary) {
+        await speakText(summary);
       }
+    } catch (err) {
+      console.warn('[RunTracker] Failed to dispatch batch alert', err);
     }
   }, []);
 
@@ -351,6 +378,7 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     };
   }, [isController, stopSampler, clearTimer]);
 
+  // ✅ Unified polling effect: Checks hazards and clusters together, sends batch notification
   useEffect(() => {
     if (!isController) return;
     if (session.status !== 'RUNNING') return;
@@ -366,53 +394,31 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     state.pending = true;
     state.lastPoll = now;
 
+    // Fetch hazards from API
     HazardsApi.getHazardsNear(
       lastSample.lat,
       lastSample.lng,
       HAZARD_ALERT_RADIUS_KM + 0.2,
     )
-      .then((hazards) => handleHazardAlerts(hazards))
+      .then((hazards) => {
+        // Process hazards and clusters together in batch
+        handleBatchAlerts(hazards, accidentClusters, {
+          lat: lastSample.lat,
+          lng: lastSample.lng,
+        });
+      })
       .catch((err) => {
-        console.warn('[RunTracker] Hazard polling failed', err);
+        console.warn('[RunTracker] Batch alert polling failed', err);
       })
       .finally(() => {
         state.pending = false;
       });
-  }, [session.samples, session.status, isController, handleHazardAlerts]);
-
-  useEffect(() => {
-    if (!isController) return;
-    if (session.status !== 'RUNNING') return;
-    const lastSample = session.samples[session.samples.length - 1];
-    if (!lastSample) return;
-
-    const state = trafficAlertState.current;
-    const now = Date.now();
-    if (state.pending || now - state.lastPoll < TRAFFIC_POLL_INTERVAL_MS) {
-      return;
-    }
-
-    state.pending = true;
-    state.lastPoll = now;
-
-    TrafficApi.getIncidentsNear(
-      lastSample.lat,
-      lastSample.lng,
-      TRAFFIC_ALERT_RADIUS_KM + 0.3,
-      TRAFFIC_LOOKBACK_HOURS,
-    )
-      .then((incidents) => handleTrafficAlerts(incidents))
-      .catch((err) => {
-        console.warn('[RunTracker] Traffic polling failed', err);
-      })
-      .finally(() => {
-        state.pending = false;
-      });
-  }, [session.samples, session.status, isController, handleTrafficAlerts]);
+  }, [session.samples, session.status, isController, handleBatchAlerts, accidentClusters]);
 
   const startRun = useCallback(() => {
     setError(null);
     smoothingStateRef.current = createSmoothingState(); // Reset Kalman filter state
+    runSessionAlertCache.current.clear(); // ✅ Clear per-run alert cache
     dispatch({ type: 'START' });
     // ✅ TTS: Notify user that run tracking has started
     speakText('Run tracking started. Stay safe!').catch(() => undefined);
@@ -434,6 +440,7 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
 
   const finishRun = useCallback(() => {
     if (session.status === 'RUNNING' || session.status === 'PAUSED') {
+      console.log('🏃 [RunTracker] 🔴 Run state: FINISHED');
       dispatch({ type: 'FINISH', at: Date.now() });
     }
   }, [dispatch, session.status]);
@@ -448,6 +455,7 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     // ✅ FIX: Clear alert caches to prevent memory leak
     hazardAlertState.current.cache.clear();
     trafficAlertState.current.cache.clear();
+    runSessionAlertCache.current.clear(); // ✅ Clear per-run alert cache
   }, [resetSession, stopSampler, clearTimer, clearStorage]);
 
   const recordRun = useCallback(async (
@@ -520,6 +528,7 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
       // ✅ FIX: Clear alert caches after successful recording to prevent memory leak
       hazardAlertState.current.cache.clear();
       trafficAlertState.current.cache.clear();
+      runSessionAlertCache.current.clear(); // ✅ Clear per-run alert cache
 
       return {
         routeId: route.route_id,

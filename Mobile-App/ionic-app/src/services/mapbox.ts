@@ -5,8 +5,11 @@
  * Used by: Strava, Nike Run Club, Garmin Connect
  */
 
+// @ts-ignore - No type definitions available for @mapbox/mapbox-sdk
 import mbxClient from '@mapbox/mapbox-sdk';
+// @ts-ignore - No type definitions available for @mapbox/mapbox-sdk/services/directions
 import mbxDirections from '@mapbox/mapbox-sdk/services/directions';
+// @ts-ignore - No type definitions available for @mapbox/mapbox-sdk/services/tilequery
 import mbxTilequery from '@mapbox/mapbox-sdk/services/tilequery';
 import type { GpsSample } from '../state/runTrackerContext';
 
