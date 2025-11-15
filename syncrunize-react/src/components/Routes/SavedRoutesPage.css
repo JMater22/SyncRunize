@@ -1,45 +1,41 @@
-/* Title */
-.my-routes-title {
+/* Header row */
+.routes-header {
+  padding: 20px 240px;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* Title column */
+.title-col {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Title - centered and flexible */
+.my-saved-title {
   font-size: 32px;
   font-weight: bold;
   color: #2c3e50;
-  margin-left: 260px;
-  margin-top: 10px;
-}
-
-/* Back Button */
-.back-btn {
-  --background: #92C628;
-  --background-hover: #7ba622;
-  --color: #ffffff;
-  --border-radius: 20px;
-  --padding-start: 20px;
-  --padding-end: 20px;
-  font-size: 16px;
-  font-weight: 600;
-  margin-left: 240px;
-  margin-top: 20px;
-  text-transform: none;
+  margin: 0;
+  text-align: left;
 }
 
 /* Searchbar container */
-.searchbar-container {
-  margin-top: 20px;
-  margin-left: 240px;
-  flex: 1; 
+.searchbar-container-pub {
+  display: flex;
+  align-items: center;
 }
 
 /* Routes grid container */
 .routes-container {
   padding: 0 16px;
-  margin-top: 20px;
-  margin-left: 150px;
-  margin-right: 150px;
-  margin-bottom: 60px;
+  margin: 20px 150px 60px;
 }
 
 /* Searchbar styling */
-.ion-align-items-center.ion-justify-content-between ion-searchbar.sc-ion-searchbar-md-h {
+.searchbar-container ion-searchbar {
   --background: #ffffff;
   --color: #000000;
   --placeholder-color: #757070;
@@ -49,9 +45,8 @@
   --border-color: #000000;
   --border-width: 1px;
   --border-style: solid;
-  width: 100%;
-  min-width: auto;
-  max-width: 380px;
+  width: 380px;
+  margin: 0;
 }
 
 /* Card image wrapper for positioning delete button */
@@ -136,31 +131,41 @@
 
 /* ✅ Mobile */
 @media (max-width: 768px) {
-  .my-routes-title {
-    font-size: 30px;
-    text-align: left;
-    margin: 30px 30px;
-    margin-bottom: 0px;
+  .routes-header {
+    padding: 15px 20px;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 12px;
   }
 
-  .back-btn {
-    margin-left: 20px;
-    margin-top: 30px;
+  .routes-header ion-col {
+    width: 100%;
+    max-width: 100%;
+    flex: none;
+  }
+
+  .title-col {
+    display: block;
+  }
+
+  .my-saved-title {
+    text-align: center;
+    font-size: 24px;
+    display: block;
   }
 
   .searchbar-container {
-    margin-top: 10px;
-    padding: 0 16px;
+    width: 100%;
+  }
+
+  .searchbar-container ion-searchbar {
+    width: 100%;
+    max-width: 100%;
   }
 
   .routes-container {
-    margin-left: 10px;
-    margin-right: 10px;
+    margin: 15px 20px 40px;
     padding: 0;
-  }
-
-  .ion-align-items-center.ion-justify-content-between ion-searchbar.sc-ion-searchbar-md-h {
-    max-width: 100%;
   }
 
   /* Slightly smaller button on mobile */
@@ -173,5 +178,16 @@
 
   .remove-icon-btn ion-icon {
     font-size: 18px;
+  }
+
+  /* Route cards full width on mobile */
+  .route-card {
+    margin-bottom: 16px;
+  }
+
+  /* Adjust map image height on mobile */
+  .route-card img {
+    max-height: 200px;
+    object-fit: cover;
   }
 }
