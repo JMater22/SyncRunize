@@ -93,9 +93,6 @@ const AppContent: React.FC<{ session: any; userData: any; loading: boolean }> = 
             <IonItem button routerLink="/run-tracking" routerDirection="none">
               <IonLabel>Run Tracking</IonLabel>
             </IonItem>
-            <IonItem button routerLink="/activities" routerDirection="none">
-              <IonLabel>Activities</IonLabel>
-            </IonItem>
             <IonItem button routerLink="/community" routerDirection="none">
               <IonLabel>Community</IonLabel>
             </IonItem>
