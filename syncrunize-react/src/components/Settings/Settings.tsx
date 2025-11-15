@@ -59,7 +59,7 @@ const Settings: React.FC<SettingsProps> = ({
       setActivitiesVisibility(currentUser.activities_visibility || "public");
       setName(currentUser.name || "");
       setWeight(currentUser.weight_kg?.toString() || "");
-      setGender(currentUser.gender || "");
+      setGender(currentUser.gender || ""); 
       setLocation(currentUser.location || "");
     }
   }, [currentUser]);

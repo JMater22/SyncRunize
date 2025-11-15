@@ -15,8 +15,8 @@
   align-items: start;
   min-height: 100vh;
 }
- 
-/* ================= Enhanced Left Sidebar ================= */
+  
+
 .left-sidebar {
   position: sticky;
   top: 24px;
@@ -205,7 +205,7 @@ h2.profile-name {
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e4e6eb;
+  border: 2px solid #d8d8d8;
   overflow: hidden;
   margin: 0;
   transition: box-shadow 0.2s ease;
@@ -324,9 +324,9 @@ span.activity-handle {
   grid-template-columns: repeat(4, 1fr);
   gap: 0;
   padding: 12px 16px;
-  background: #f7f8fa;
-  border-top: 1px solid #e4e6eb;
-  border-bottom: 1px solid #e4e6eb;
+  background: #f5f5f5;
+  border-top: 1px solid #92C628;
+  border-bottom: 1px solid #92C628;
 }
 
 .stat-card {
@@ -338,10 +338,6 @@ span.activity-handle {
   transition: opacity 0.2s ease;
   text-align: center;
   justify-content: center;
-  border-right: none;
-}
-
-.stat-card:last-child {
   border-right: none;
 }
 
@@ -378,7 +374,7 @@ span.activity-handle {
 .activity-map-container {
   position: relative;
   padding: 0;
-  background: #000000;
+  background: transparent;
   width: 100%;
   aspect-ratio: 4 / 3;
   overflow: hidden;
@@ -588,7 +584,7 @@ span.activity-handle {
   border-radius: 18px;
 }
 
-/* ================= Enhanced Right Sidebar ================= */
+
 /* ================= Enhanced Right Sidebar ================= */
 .right-sidebar {
   position: sticky;
@@ -1062,7 +1058,7 @@ h4.challenge-title {
   border-radius: 50%;
   background-color: #ff0202;
   flex-shrink: 0;
-  margin-left: 20dddddddddddddddddddddddddpx;
+  margin-left: 20px;
   animation: pulse-dot 2s infinite;
 }
 
@@ -1081,7 +1077,13 @@ h4.challenge-title {
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  z-index: 10;
+  z-index: 1000;
+}
+
+/* Notification FAB Button - Fixed Position */
+ion-fab[vertical="bottom"][horizontal="end"] {
+  bottom: 70px !important; /* Move up from footer */
+  right: 30px;
 }
 
 /* Empty State (if needed) */
@@ -1135,7 +1137,7 @@ h4.challenge-title {
     order: 1;
     position: static;
     width: 100%;
-      margin: 80px auto 16px;
+    margin: 40px auto 16px;
   }
 
   .feed-column-enhanced {
@@ -1151,6 +1153,8 @@ h4.challenge-title {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    margin-top: 20px;
+    margin-bottom: 20px;
   }
 
   .activity-header-enhanced {

@@ -25,7 +25,7 @@ interface Group {
   description: string;
   location?: string;
   group_picture: string;
-  privacy: boolean;
+  privacy: boolean; 
   member_count?: number;
 }
 

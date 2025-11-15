@@ -11,7 +11,7 @@ import {
   IonItem,
   IonGrid,
   IonRow,
-  IonCol,
+  IonCol, 
   IonCard,
   IonCardContent,
   IonIcon,

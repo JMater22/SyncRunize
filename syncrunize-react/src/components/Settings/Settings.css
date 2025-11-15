@@ -3,12 +3,7 @@
   --max-width: 600px;
   --height: 90%;
   --border-radius: 16px;
-}
-
-@media (min-width: 768px) {
-  .settings-modal {
-    --width: 600px;
-  }
+  text-align: center;
 }
 
 .settings-content {
@@ -19,6 +14,7 @@
   padding: 16px;
   max-width: 600px;
   margin: 0 auto;
+  margin-top: -40px;
 }
 
 .settings-section {
@@ -39,6 +35,11 @@
   --padding-start: 16px;
   --padding-end: 16px;
   --min-height: 56px;
+  --highlight-background: transparent;
+  --highlight-color-focused: transparent;
+  --highlight-color-valid: transparent;
+  --highlight-color-invalid: transparent;
+  --highlight-height: 0px;
 }
 
 .settings-section ion-item ion-label h3 {
@@ -54,13 +55,19 @@
 
 .settings-button-group {
   margin-top: 16px;
-  padding: 0 0 16px 0;
+  padding: 0 16px 16px 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .settings-button-group ion-button {
   --border-radius: 8px;
   height: 48px;
-  font-weight: 500;
+  font-weight: 600;
+  --background: #92C628;
+  max-width: 300px;
+  width: 100%;
 }
 
 /* Improved toggle styling */
@@ -69,16 +76,38 @@ ion-toggle {
   --handle-height: 24px;
 }
 
-/* Better input styling */
-ion-input {
+/* Better input styling - remove blue border/highlight */
+.settings-section ion-input {
   --padding-start: 12px;
   --padding-end: 12px;
+  --highlight-color-focused: transparent !important;
+  --highlight-color-valid: transparent !important;
+  --highlight-color-invalid: transparent !important;
+  --highlight-background: transparent !important;
+  --highlight-height: 0 !important;
 }
 
-/* Select styling */
-ion-select {
+.settings-section ion-input::part(native) {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.settings-section ion-input.has-focus {
+  --highlight-color-focused: transparent !important;
+}
+
+/* Select styling - remove blue border/highlight */
+.settings-section ion-select {
   --padding-start: 12px;
   --padding-end: 12px;
+  --highlight-color-focused: transparent !important;
+  --highlight-background: transparent !important;
+  --highlight-height: 0 !important;
+}
+
+.settings-section ion-select::part(native) {
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* Info icon styling */
@@ -91,4 +120,122 @@ ion-select {
 .settings-section ion-list-header ion-icon:hover {
   opacity: 1;
   color: var(--ion-color-primary);
+}
+
+/* Desktop styles */
+@media (min-width: 768px) {
+  .settings-modal {
+    --width: 600px;
+    --height: 85%;
+    --max-height: 800px;
+  }
+
+  .settings-content {
+    margin-top: 0;
+  }
+
+  .settings-container {
+    padding: 24px;
+  }
+
+  .settings-section {
+    margin-bottom: 32px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.3s ease;
+  }
+
+  .settings-section:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  }
+
+  .settings-section ion-list-header {
+    font-size: 18px;
+    padding: 20px 20px 12px;
+  }
+
+  .settings-section ion-item {
+    --padding-start: 20px;
+    --padding-end: 20px;
+    --min-height: 64px;
+  }
+
+  .settings-section ion-item ion-label h3 {
+    font-size: 16px;
+  }
+
+  .settings-section ion-item ion-label p {
+    font-size: 14px;
+  }
+
+  .settings-button-group {
+    padding: 0 20px 20px 20px;
+    margin-top: 20px;
+  }
+
+  .settings-button-group ion-button {
+    height: 52px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .settings-button-group ion-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .settings-button-group ion-button:active {
+    transform: translateY(0);
+  }
+
+  /* Enhanced input styling for desktop */
+  .settings-section ion-input,
+  .settings-section ion-select {
+    --padding-start: 16px;
+    --padding-end: 16px;
+    font-size: 15px;
+  }
+
+  .settings-section ion-input:focus-within,
+  .settings-section ion-select:focus-within {
+    --background: #fafafa;
+  }
+
+  /* Better toggle for desktop */
+  ion-toggle {
+    --handle-width: 26px;
+    --handle-height: 26px;
+    cursor: pointer;
+  }
+
+  /* Info icon enhanced for desktop */
+  .settings-section ion-list-header ion-icon {
+    font-size: 20px;
+    --color: #92c628;
+  }
+}
+
+/* Large desktop styles */
+@media (min-width: 1024px) {
+  .settings-modal {
+    --width: 650px;
+  }
+
+  .settings-container {
+    padding: 32px;
+  }
+
+  .settings-section ion-list-header {
+    font-size: 19px;
+    padding: 24px 24px 16px;
+  }
+
+  .settings-section ion-item {
+    --padding-start: 24px;
+    --padding-end: 24px;
+  }
+
+  .settings-button-group {
+    padding: 0 24px 24px 24px;
+  }
 }

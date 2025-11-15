@@ -20,7 +20,7 @@ import CustomCard from "./CustomCard";
 import { useHistory } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import axios from "axios";
-
+ 
 interface SavedRoute {
   route_id: number;
   saved_at: string;
@@ -127,18 +127,13 @@ const SavedRoutesPage: React.FC = () => {
     <IonPage>
       <IonContent>
         {/* Header */}
-        <IonRow className="routes-header ion-align-items-center">
-          <IonCol size="12">
-            <IonButton className="back-btn" onClick={handleBack}>
-              Back
-            </IonButton>
-            <h1 className="my-routes-title">Saved Routes</h1>
+        <IonRow className="routes-header ion-align-items-center ion-justify-content-between">
+          <IonCol size="auto">
           </IonCol>
-        </IonRow>
-
-        {/* Searchbar */}
-        <IonRow className="ion-align-items-center ion-justify-content-between">
-          <IonCol className="searchbar-container">
+          <IonCol>
+            <h1 className="my-saved-title">Saved Routes</h1>
+          </IonCol>
+          <IonCol size="auto" className="searchbar-container-pub">
             <IonSearchbar
               placeholder="Search saved routes"
               className="custom-searchbar"

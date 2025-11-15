@@ -195,11 +195,8 @@ const NotificationMenu: React.FC = () => {
   return (
     <IonContent className="notification-menu">
       <div className="notification-header">
-        <IonText>
-          <h2>Notifications</h2>
-        </IonText>
         {notifications.length > 0 && (
-          <IonButton fill="clear" size="small" onClick={clearAll}>
+          <IonButton fill="clear" size="small"onClick={clearAll}>
             Clear All
           </IonButton>
         )}
