@@ -190,7 +190,7 @@ const Settings: React.FC<SettingsProps> = ({
   return (
     <>
       <IonModal isOpen={isOpen} onDidDismiss={onDidDismiss} className="settings-modal">
-        <IonHeader>
+        <IonHeader> 
           <IonToolbar>
             <IonTitle>Settings</IonTitle>
             <IonButton slot="end" fill="clear" onClick={onDidDismiss}>
@@ -202,7 +202,7 @@ const Settings: React.FC<SettingsProps> = ({
         <IonContent className="settings-content">
           <div className="settings-container">
             {/* Account Settings */}
-            <IonList className="settings-section">
+            <IonList className="settings-section-account">
               <IonListHeader>
                 <IonLabel>Account Settings</IonLabel>
               </IonListHeader>
@@ -245,7 +245,7 @@ const Settings: React.FC<SettingsProps> = ({
               </IonItem>
 
               <div className="settings-button-group">
-                <IonButton expand="block" color="primary" onClick={handleSaveAccountSettings}>
+                <IonButton expand="block"  onClick={handleSaveAccountSettings}>
                   <IonIcon icon={saveOutline} slot="start" />
                   Save Account Settings
                 </IonButton>
@@ -253,7 +253,7 @@ const Settings: React.FC<SettingsProps> = ({
             </IonList>
 
             {/* Privacy Controls */}
-            <IonList className="settings-section">
+            <IonList className="settings-section-privacy">
               <IonListHeader>
                 <IonLabel>
                   Privacy Controls
@@ -277,7 +277,7 @@ const Settings: React.FC<SettingsProps> = ({
                 />
               </IonItem>
             </IonList>
-            <IonList className="settings-section">
+            <IonList className="settings-section-password">
               <IonListHeader>
                 <IonLabel>Password & Security</IonLabel>
               </IonListHeader>

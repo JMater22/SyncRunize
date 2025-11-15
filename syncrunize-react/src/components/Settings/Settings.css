@@ -2,6 +2,7 @@
   --width: 90%;
   --max-width: 600px;
   --height: 90%;
+  --max-height: 90vh;
   --border-radius: 16px;
   text-align: center;
 }
@@ -11,27 +12,53 @@
 }
 
 .settings-container {
-  padding: 16px;
+  padding: 16px 16px 120px 16px;
   max-width: 600px;
   margin: 0 auto;
-  margin-top: -40px;
 }
 
-.settings-section {
+/* Common section styling */
+.settings-section-account{
+  margin-top: -30px;
   margin-bottom: 24px;
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.settings-section ion-list-header {
+.settings-section-privacy {
+  margin-top: 24px;
+  margin-bottom: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+ion-list.settings-section-password  {
+  margin-bottom: 100px;
+  background: rgb(255, 255, 255);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.settings-section-password ion-list{
+  margin-bottom: 60px;
+}
+
+/* Section headers */
+.settings-section-account ion-list-header,
+.settings-section-privacy ion-list-header,
+.settings-section-password ion-list-header { 
   font-weight: 600;
   font-size: 16px;
   color: #333;
   padding: 16px 16px 8px;
 }
 
-.settings-section ion-item {
+/* Section items */
+.settings-section-account ion-item,
+.settings-section-privacy ion-item,
+.settings-section-password ion-item {
   --padding-start: 16px;
   --padding-end: 16px;
   --min-height: 56px;
@@ -40,22 +67,29 @@
   --highlight-color-valid: transparent;
   --highlight-color-invalid: transparent;
   --highlight-height: 0px;
+  --background: white;
+  --background-focused: white;
+  --background-hover: white;
 }
 
-.settings-section ion-item ion-label h3 {
+.settings-section-account ion-item ion-label h3,
+.settings-section-privacy ion-item ion-label h3,
+.settings-section-password ion-item ion-label h3 {
   font-weight: 500;
   font-size: 15px;
   margin-bottom: 4px;
 }
 
-.settings-section ion-item ion-label p {
+.settings-section-account ion-item ion-label p,
+.settings-section-privacy ion-item ion-label p,
+.settings-section-password ion-item ion-label p {
   font-size: 13px;
   color: #666;
 }
 
 .settings-button-group {
   margin-top: 16px;
-  padding: 0 16px 16px 16px;
+  padding: 0 16px 24px 16px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -76,48 +110,93 @@ ion-toggle {
   --handle-height: 24px;
 }
 
-/* Better input styling - remove blue border/highlight */
-.settings-section ion-input {
+/* Input styling for Account section */
+.settings-section-account ion-input {
   --padding-start: 12px;
   --padding-end: 12px;
+  --padding-top: 8px;
+  --padding-bottom: 8px;
   --highlight-color-focused: transparent !important;
   --highlight-color-valid: transparent !important;
   --highlight-color-invalid: transparent !important;
   --highlight-background: transparent !important;
   --highlight-height: 0 !important;
+  --background: transparent;
+  --background-focused: transparent;
+  --border-width: 0 !important;
+  --border-color: transparent !important;
 }
 
-.settings-section ion-input::part(native) {
+.settings-section-account ion-input::part(native) {
   border: none !important;
   box-shadow: none !important;
+  background: transparent !important;
 }
 
-.settings-section ion-input.has-focus {
-  --highlight-color-focused: transparent !important;
+.settings-section-account ion-input.has-focus::part(native) {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
-/* Select styling - remove blue border/highlight */
-.settings-section ion-select {
+/* Select styling for Account section */
+.settings-section-account ion-select {
   --padding-start: 12px;
   --padding-end: 12px;
+  --padding-top: 8px;
+  --padding-bottom: 8px;
   --highlight-color-focused: transparent !important;
   --highlight-background: transparent !important;
   --highlight-height: 0 !important;
+  --background: transparent;
+  --background-focused: transparent;
+  --border-width: 0 !important;
+  --border-color: transparent !important;
 }
 
-.settings-section ion-select::part(native) {
+.settings-section-account ion-select::part(native) {
   border: none !important;
   box-shadow: none !important;
+  background: transparent !important;
+}
+
+/* Input styling for Password section */
+.settings-section-password ion-input {
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --padding-top: 8px;
+  --padding-bottom: 8px;
+  --highlight-color-focused: transparent !important;
+  --highlight-color-valid: transparent !important;
+  --highlight-color-invalid: transparent !important;
+  --highlight-background: transparent !important;
+  --highlight-height: 0 !important;
+  --background: transparent;
+  --background-focused: transparent;
+  --border-width: 0 !important;
+  --border-color: transparent !important;
+}
+
+.settings-section-password ion-input::part(native) {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.settings-section-password ion-input.has-focus::part(native) {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 /* Info icon styling */
-.settings-section ion-list-header ion-icon {
+.settings-section-privacy ion-list-header ion-icon {
   vertical-align: middle;
   opacity: 0.6;
   transition: opacity 0.2s ease;
 }
 
-.settings-section ion-list-header ion-icon:hover {
+.settings-section-privacy ion-list-header ion-icon:hover {
   opacity: 1;
   color: var(--ion-color-primary);
 }
@@ -135,35 +214,47 @@ ion-toggle {
   }
 
   .settings-container {
-    padding: 24px;
+    padding: 24px 24px 24px 24px;
   }
 
-  .settings-section {
-    margin-bottom: 32px;
+  .settings-section-account,
+  .settings-section-privacy,
+  .settings-section-password {
+    margin-bottom: 24px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     transition: box-shadow 0.3s ease;
   }
 
-  .settings-section:hover {
+  .settings-section-account:hover,
+  .settings-section-privacy:hover,
+  .settings-section-password:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
   }
 
-  .settings-section ion-list-header {
+  .settings-section-account ion-list-header,
+  .settings-section-privacy ion-list-header,
+  .settings-section-password ion-list-header {
     font-size: 18px;
     padding: 20px 20px 12px;
   }
 
-  .settings-section ion-item {
+  .settings-section-account ion-item,
+  .settings-section-privacy ion-item,
+  .settings-section-password ion-item {
     --padding-start: 20px;
     --padding-end: 20px;
     --min-height: 64px;
   }
 
-  .settings-section ion-item ion-label h3 {
+  .settings-section-account ion-item ion-label h3,
+  .settings-section-privacy ion-item ion-label h3,
+  .settings-section-password ion-item ion-label h3 {
     font-size: 16px;
   }
 
-  .settings-section ion-item ion-label p {
+  .settings-section-account ion-item ion-label p,
+  .settings-section-privacy ion-item ion-label p,
+  .settings-section-password ion-item ion-label p {
     font-size: 14px;
   }
 
@@ -189,16 +280,12 @@ ion-toggle {
   }
 
   /* Enhanced input styling for desktop */
-  .settings-section ion-input,
-  .settings-section ion-select {
+  .settings-section-account ion-input,
+  .settings-section-account ion-select,
+  .settings-section-password ion-input {
     --padding-start: 16px;
     --padding-end: 16px;
     font-size: 15px;
-  }
-
-  .settings-section ion-input:focus-within,
-  .settings-section ion-select:focus-within {
-    --background: #fafafa;
   }
 
   /* Better toggle for desktop */
@@ -209,7 +296,7 @@ ion-toggle {
   }
 
   /* Info icon enhanced for desktop */
-  .settings-section ion-list-header ion-icon {
+  .settings-section-privacy ion-list-header ion-icon {
     font-size: 20px;
     --color: #92c628;
   }
@@ -222,15 +309,19 @@ ion-toggle {
   }
 
   .settings-container {
-    padding: 32px;
+    padding: 32px 32px 120px 32px;
   }
 
-  .settings-section ion-list-header {
+  .settings-section-account ion-list-header,
+  .settings-section-privacy ion-list-header,
+  .settings-section-password ion-list-header {
     font-size: 19px;
     padding: 24px 24px 16px;
   }
 
-  .settings-section ion-item {
+  .settings-section-account ion-item,
+  .settings-section-privacy ion-item,
+  .settings-section-password ion-item {
     --padding-start: 24px;
     --padding-end: 24px;
   }
