@@ -15,8 +15,8 @@
   align-items: start;
   min-height: 100vh;
 }
- 
-/* ================= Enhanced Left Sidebar ================= */
+  
+
 .left-sidebar {
   position: sticky;
   top: 24px;
@@ -205,7 +205,7 @@ h2.profile-name {
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e4e6eb;
+  border: 2px solid #d8d8d8;
   overflow: hidden;
   margin: 0;
   transition: box-shadow 0.2s ease;
@@ -324,9 +324,9 @@ span.activity-handle {
   grid-template-columns: repeat(4, 1fr);
   gap: 0;
   padding: 12px 16px;
-  background: #f7f8fa;
-  border-top: 1px solid #e4e6eb;
-  border-bottom: 1px solid #e4e6eb;
+  background: #f5f5f5;
+  border-top: 1px solid #92C628;
+  border-bottom: 1px solid #92C628;
 }
 
 .stat-card {
@@ -338,10 +338,6 @@ span.activity-handle {
   transition: opacity 0.2s ease;
   text-align: center;
   justify-content: center;
-  border-right: none;
-}
-
-.stat-card:last-child {
   border-right: none;
 }
 
@@ -378,7 +374,7 @@ span.activity-handle {
 .activity-map-container {
   position: relative;
   padding: 0;
-  background: #000000;
+  background: transparent;
   width: 100%;
   aspect-ratio: 4 / 3;
   overflow: hidden;
