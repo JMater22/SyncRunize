@@ -11,7 +11,7 @@
   justify-content: center;
   gap: 16px; 
   padding: 16px 20px;
-  margin-bottom: 50px; /* Move WAY up - negative margin */
+  margin-bottom: 50px; /* Move WAY up - negative margin */ 
   position: relative;
   z-index: 10;
 }
@@ -981,8 +981,18 @@ p.challenge-target {
 /* ====== Edit Profile Modal ====== */
 .edit-profile-modal {
   --max-width: 500px;
-  --max-height: 90vh;
+  --height: 90vh;
   --border-radius: 20px;
+}
+
+.edit-profile-modal .modal-wrapper {
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+ion-header {
+  flex-shrink: 0;
 }
 
 .edit-profile-modal ion-header {
@@ -1004,11 +1014,14 @@ p.challenge-target {
 
 .edit-modal-content {
   --background: #f8f9fa;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 /* ====== Edit Form Container ====== */
 .edit-form-container {
-  padding: 24px;
+  padding: 24px 24px 40px 24px;
   max-width: 100%;
   margin: 0 auto;
 }
@@ -1021,7 +1034,7 @@ p.challenge-target {
   margin-bottom: 20px;
   margin-top: -50px;
   padding: 20px;
-  background: #ffffff;
+  background: #ebebeb;
   border-radius: 16px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
 }
@@ -1040,8 +1053,8 @@ p.challenge-target {
 }
 
 .change-photo-btn {
-  --border-color: #007AFF;
-  --color: #007AFF;
+  --border-color: #92c628;
+  --color: #ffffff;
   --border-radius: 20px;
   font-size: 14px;
   font-weight: 500;
@@ -1110,40 +1123,46 @@ p.challenge-target {
   flex-direction: column;
   gap: 12px;
   margin-top: 24px;
+  padding-bottom: 20px;
 }
 
 .save-profile-btn {
   --background: #8bc34a;
-  --background-hover: #0056CC;
-  --background-activated: #004499;
-  --color: white;
+  --background-hover: #7cb342;
+  --background-activated: #689f38;
+  --color: #ffffff;
   --border-radius: 12px;
   height: 50px;
   font-size: 16px;
   font-weight: 600;
-  --box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+  --box-shadow: 0 4px 16px rgba(139, 195, 74, 0.4);
   margin: 0;
+  text-transform: none;
 }
 
 .save-profile-btn:hover {
-  --box-shadow: 0 6px 20px rgba(0, 122, 255, 0.4);
+  --box-shadow: 0 6px 20px rgba(139, 195, 74, 0.5);
   transform: translateY(-1px);
+  transition: all 0.2s ease;
 }
 
 .cancel-profile-btn {
-  --border-color: #ccc;
-  --color: #666;
-  --background: transparent;
+  --border-color: #000000;
+  --border-width: 2px;
+  --color: #ffffff;
+  --background: #f80707;
   --border-radius: 12px;
   height: 50px;
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
   margin: 0;
+  text-transform: none;
 }
 
 .cancel-profile-btn:hover {
-  --background: #f5f5f5;
-  --color: #333;
+  --background: #ffebee;
+  --color: #c62828;
+  transition: all 0.2s ease;
 }
 
 /* ====== Profile Location Display ====== */
