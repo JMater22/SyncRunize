@@ -118,7 +118,7 @@ const PrePostPage: React.FC = () => {
   }
 
   return (
-    <IonPage>
+    <IonPage className="pre-post-page">
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
@@ -132,7 +132,7 @@ const PrePostPage: React.FC = () => {
           </IonButtons>
         </IonToolbar>
       </IonHeader>
-      <IonContent className="ion-padding">
+      <IonContent className="ion-padding pre-post-content">
         {loadingRoute ? (
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20vh' }}>
             <IonSpinner name="crescent" />

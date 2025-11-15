@@ -134,6 +134,7 @@ const CreateRouteMap = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapType, setMapType] = useState<'streets' | 'satellite' | 'outdoors'>('streets');
+  const [styleVersion, setStyleVersion] = useState(0); // Track style changes to re-render layers
   const [generatedPath, setGeneratedPath] = useState<LatLng[]>([]);
   const [generatedRoute, setGeneratedRoute] = useState<GeneratedRoute | null>(null);
   const [distanceInfo, setDistanceInfo] = useState<{
@@ -248,7 +249,14 @@ const CreateRouteMap = () => {
       outdoors: 'mapbox://styles/mapbox/outdoors-v12'
     };
 
+    console.log('[CreateRoute Web] Changing map style to:', mapType);
     map.current.setStyle(styleMap[mapType]);
+
+    // Re-render layers after style loads
+    map.current.once('style.load', () => {
+      console.log('[CreateRoute Web] Style loaded, incrementing styleVersion to re-render layers');
+      setStyleVersion(prev => prev + 1);
+    });
   }, [mapType, mapLoaded]);
 
   // Fetch all active hazards
@@ -639,10 +647,10 @@ const CreateRouteMap = () => {
     }
   }, [mapLoaded]);
 
-  // Update polyline when generatedPath changes
+  // Update polyline when generatedPath changes or style changes
   useEffect(() => {
     updatePolyline(generatedPath);
-  }, [generatedPath, updatePolyline]);
+  }, [generatedPath, updatePolyline, styleVersion]);
 
   // Display accident clusters on map
   useEffect(() => {
@@ -742,7 +750,7 @@ const CreateRouteMap = () => {
     } catch (error) {
       console.error('[CreateRoute Web] Error displaying accident clusters:', error);
     }
-  }, [accidentClusters, mapLoaded]);
+  }, [accidentClusters, mapLoaded, styleVersion]);
 
   // Check if route passes near accident clusters
   const checkRouteProximityToAccidentClusters = useCallback((routePath: LatLng[], clusters: AccidentCluster[]): AccidentWarning[] => {
@@ -1681,6 +1689,12 @@ const CreateRouteMap = () => {
             )}
 
             {/* Map Legend Panel */}
+            {showLegend && (
+              <div
+                className="legend-backdrop"
+                onClick={() => setShowLegend(false)}
+              />
+            )}
             <div className={`map-legend-panel ${showLegend ? 'visible' : ''}`}>
               <div className="legend-header">
                 <h3>Map Legend</h3>
@@ -1771,11 +1785,19 @@ const CreateRouteMap = () => {
             {selectedHazard && (
               <div className="hazard-detail-container">
                 {selectedHazard.image_url && selectedHazard.image_url.trim() !== '' && (
-                  <div className="hazard-image-container">
+                  <div className="hazard-image-container" id={`hazard-img-container-${selectedHazard.report_id}`}>
                     <img
-                      src={`${import.meta.env.VITE_API_URL}${selectedHazard.image_url}`}
+                      src={selectedHazard.image_url}
                       alt={selectedHazard.title}
                       className="hazard-image"
+                      onError={() => {
+                        console.warn('[CreateRoute Web] Hazard image failed to load:', selectedHazard.image_url);
+                        // Hide the entire image container, not just the img
+                        const container = document.getElementById(`hazard-img-container-${selectedHazard.report_id}`);
+                        if (container) {
+                          container.style.display = 'none';
+                        }
+                      }}
                     />
                   </div>
                 )}

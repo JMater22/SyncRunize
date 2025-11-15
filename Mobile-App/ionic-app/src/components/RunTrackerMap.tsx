@@ -24,7 +24,16 @@ export type LatLngLiteral = { lat: number; lng: number };
 export type RunTrackerMapHandle = {
   recenter: (target?: LatLngLiteral | null) => void;
   resize: () => void;
+  getCenter: () => LatLngLiteral | null;
 };
+
+interface AccidentCluster {
+  cluster_id: number;
+  lat: number;
+  lon: number;
+  count: number;
+  radius_meters: number;
+}
 
 type RunTrackerMapProps = {
   pathCoords: LatLngLiteral[];
@@ -34,6 +43,8 @@ type RunTrackerMapProps = {
   hazards: HazardReport[];
   selectedHazardId?: number | string | null;
   hazardRadiusMeters: number;
+  accidentClusters: AccidentCluster[];
+  mapType: 'streets' | 'satellite' | 'outdoors';
   mapOnlyView: boolean;
   mapboxToken?: string;
   onMapReadyChange?: (ready: boolean) => void;
@@ -49,6 +60,12 @@ const resolveStyleUrl = (style: string) => {
     return style;
   }
   return `mapbox://styles/${style}`;
+};
+
+const MAP_STYLES = {
+  streets: 'mapbox://styles/mapbox/streets-v12',
+  satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
+  outdoors: 'mapbox://styles/mapbox/outdoors-v12'
 };
 
 const RUNNER_SOURCE_ID = 'runner-path';
@@ -105,13 +122,6 @@ const hazardKey = (hazard: HazardReport) => {
   return String(hazard.report_id);
 };
 
-const getHazardSeverity = (hazard: HazardReport): 'high' | 'medium' | 'low' => {
-  const severity = Number(hazard.severity_weight ?? 0);
-  if (severity >= 0.7) return 'high';
-  if (severity >= 0.4) return 'medium';
-  return 'low';
-};
-
 const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props, ref) => {
   const {
     pathCoords,
@@ -121,6 +131,8 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
     hazards,
     selectedHazardId,
     hazardRadiusMeters,
+    accidentClusters,
+    mapType,
     mapOnlyView,
     mapboxToken,
     onMapReadyChange,
@@ -134,7 +146,9 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
   const guidedStartMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const guidedEndMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const hazardMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
+  const currentStyleRef = useRef<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [styleVersion, setStyleVersion] = useState(0);
   const [internalError, setInternalError] = useState<string | null>(null);
 
   const reportError = useCallback((message: string | null) => {
@@ -160,6 +174,11 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
     },
     resize() {
       requestAnimationFrame(() => mapRef.current?.resize());
+    },
+    getCenter() {
+      if (!mapRef.current) return null;
+      const center = mapRef.current.getCenter();
+      return { lat: center.lat, lng: center.lng };
     },
   }), [guidedStart, pathCoords]);
 
@@ -309,6 +328,9 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
         ensureBaseLayers(map);
         map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }));
 
+        // Track initial style
+        currentStyleRef.current = MAP_STYLES.streets;
+
         // ✅ FIX: Resize map after load to ensure proper dimensions
         // Without this, map may render at incorrect size until toggle is clicked
         requestAnimationFrame(() => {
@@ -355,6 +377,31 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
     };
   }, []);
 
+  // Change map style when mapType changes
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return;
+
+    const map = mapRef.current;
+    const newStyle = MAP_STYLES[mapType];
+
+    // Check if style is actually changing to avoid unnecessary updates
+    if (currentStyleRef.current === newStyle) {
+      return; // Style already matches, no need to change
+    }
+
+    console.log('[RunTrackerMap] Changing map style to:', mapType);
+    currentStyleRef.current = newStyle;
+    map.setStyle(newStyle);
+
+    // Re-add all custom layers after style loads
+    map.once('style.load', () => {
+      ensureBaseLayers(map);
+      // Increment version to trigger re-render of accident clusters and hazards
+      setStyleVersion(prev => prev + 1);
+      console.log('[RunTrackerMap] Style loaded, base layers restored');
+    });
+  }, [mapType, mapReady, ensureBaseLayers]);
+
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
     const map = mapRef.current;
@@ -399,6 +446,9 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
     const map = mapRef.current;
+
+    console.log('[RunTrackerMap] Rendering hazards:', hazards.length);
+
     const activeKeys = new Set(hazards.map((hazard) => hazardKey(hazard)));
     hazardMarkersRef.current.forEach((marker, key) => {
       if (!activeKeys.has(key)) {
@@ -412,27 +462,116 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
         return;
       }
       const key = hazardKey(hazard);
-      const severity = getHazardSeverity(hazard);
-      const className = `hazard-marker ${severity}${selectedHazardId != null && key === String(selectedHazardId) ? ' selected' : ''}`;
       const lngLat: [number, number] = [Number(hazard.lng), Number(hazard.lat)];
       const existingMarker = hazardMarkersRef.current.get(key);
       if (!existingMarker) {
         const element = document.createElement('div');
-        element.className = className;
-        const hazardTitle = hazard.title || hazard.incident_type || 'Hazard';
-        element.title = hazardTitle;
+        element.className = 'hazard-marker';
+        element.style.width = '24px';
+        element.style.height = '24px';
+        element.style.borderRadius = '50%';
+        element.style.backgroundColor = '#DC143C';
+        element.style.border = '2px solid white';
+        element.style.cursor = 'pointer';
+        element.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+
         element.addEventListener('click', (event) => {
           event.stopPropagation();
           onSelectHazard?.(hazard);
         });
-        const marker = new mapboxgl.Marker({ element, anchor: 'center' }).setLngLat(lngLat).addTo(map);
+
+        const marker = new mapboxgl.Marker(element)
+          .setLngLat(lngLat)
+          .addTo(map);
         hazardMarkersRef.current.set(key, marker);
       } else {
         existingMarker.setLngLat(lngLat);
-        existingMarker.getElement().className = className;
       }
     });
   }, [hazards, mapReady, onSelectHazard, selectedHazardId]);
+
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || accidentClusters.length === 0) return;
+
+    const map = mapRef.current;
+
+    try {
+      // Remove existing accident cluster layers and sources
+      try {
+        if (map.getLayer('accident-cluster-circles')) {
+          map.removeLayer('accident-cluster-circles');
+        }
+      } catch (e) {
+        // Layer doesn't exist, ignore
+      }
+
+      try {
+        if (map.getSource('accident-clusters')) {
+          map.removeSource('accident-clusters');
+        }
+      } catch (e) {
+        // Source doesn't exist, ignore
+      }
+
+      // Create GeoJSON features from accident clusters
+      const features = accidentClusters.map(cluster => ({
+        type: 'Feature' as const,
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [cluster.lon, cluster.lat]
+        },
+        properties: {
+          cluster_id: cluster.cluster_id,
+          count: cluster.count,
+          radius_meters: cluster.radius_meters
+        }
+      }));
+
+      // Add accident clusters source
+      map.addSource('accident-clusters', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: features
+        }
+      });
+
+      // Add circle layer for accident clusters with color based on severity
+      map.addLayer({
+        id: 'accident-cluster-circles',
+        type: 'circle',
+        source: 'accident-clusters',
+        paint: {
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            10, 10,  // At zoom 10, radius is 10px (enhanced visibility)
+            15, 30   // At zoom 15, radius is 30px (enhanced visibility)
+          ],
+          'circle-color': [
+            'step',
+            ['get', 'count'],
+            '#FFA500', // Yellow-Orange for count < 15
+            15, '#FF8C00', // Dark Orange for count 15-29
+            30, '#FF6500'  // Vivid Orange for count >= 30
+          ],
+          'circle-opacity': 0.3,  // Increased from 0.15 to make more visible
+          'circle-stroke-width': 2,  // Increased from 1
+          'circle-stroke-color': [
+            'step',
+            ['get', 'count'],
+            '#FFA500',
+            15, '#FF8C00',
+            30, '#FF6500'
+          ],
+          'circle-stroke-opacity': 0.6  // Increased from 0.4
+        }
+      });
+    } catch (error) {
+      console.error('[RunTrackerMap] Error displaying accident clusters:', error);
+    }
+  }, [accidentClusters, mapReady, styleVersion]);
 
   useEffect(() => {
     if (mapOnlyView) {

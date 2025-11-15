@@ -1793,11 +1793,19 @@ const CreateRouteMap = () => {
               <div className="hazard-detail-container">
                 {/* Hazard Image - only show if image_url exists and is not null/empty */}
                 {selectedHazard.image_url && selectedHazard.image_url.trim() !== '' && (
-                  <div className="hazard-image-container">
+                  <div className="hazard-image-container" id={`hazard-img-container-${selectedHazard.report_id}`}>
                     <img
-                      src={`${import.meta.env.VITE_API_URL}${selectedHazard.image_url}`}
+                      src={selectedHazard.image_url}
                       alt={selectedHazard.title}
                       className="hazard-image"
+                      onError={() => {
+                        console.warn('[CreateRoute Mobile] Hazard image failed to load:', selectedHazard.image_url);
+                        // Hide the entire image container when image fails to load
+                        const container = document.getElementById(`hazard-img-container-${selectedHazard.report_id}`);
+                        if (container) {
+                          container.style.display = 'none';
+                        }
+                      }}
                     />
                   </div>
                 )}
@@ -1870,8 +1878,8 @@ const CreateRouteMap = () => {
           isOpen={showLegendModal}
           onDidDismiss={() => setShowLegendModal(false)}
           className="legend-modal"
-          breakpoints={[0, 0.5, 0.75]}
-          initialBreakpoint={0.75}
+          breakpoints={[0, 0.6, 0.75]}
+          initialBreakpoint={0.6}
         >
           <IonHeader>
             <IonToolbar>

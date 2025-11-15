@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IonPage, IonContent, IonIcon, IonAlert, IonToast, IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton } from '@ionic/react';
-import { arrowBack, pauseOutline, playOutline, stopOutline, mapOutline, warningOutline, checkmarkCircle, banOutline, navigateOutline } from 'ionicons/icons';
+import { arrowBack, pauseOutline, playOutline, stopOutline, mapOutline, warningOutline, checkmarkCircle, banOutline, navigateOutline, informationCircleOutline, closeCircleOutline } from 'ionicons/icons';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useHideTabBar } from '../hooks/useHideTabBar';
 import { useRunTracker } from '../hooks/useRunTracker';
@@ -15,9 +15,17 @@ import RunTrackerMap, { type LatLngLiteral, type RunTrackerMapHandle } from '../
 
 const mapboxDefaultCenter: LatLngLiteral = { lat: 15.4755, lng: 120.5963 };
 
-const HAZARD_RADIUS_KM = 0.8;
+const HAZARD_RADIUS_KM = 1000; // Match create-route: 1000km to get all hazards in Philippines
 const HAZARD_RADIUS_METERS = HAZARD_RADIUS_KM * 1000;
 const HAZARD_REFETCH_MS = 45_000;
+
+interface AccidentCluster {
+  cluster_id: number;
+  lat: number;
+  lon: number;
+  count: number;
+  radius_meters: number;
+}
 
 const RunTrackerPage: React.FC = () => {
   useHideTabBar();
@@ -34,6 +42,9 @@ const RunTrackerPage: React.FC = () => {
   const [selectedHazard, setSelectedHazard] = useState<HazardReport | null>(null);
   const [hazardActionLoading, setHazardActionLoading] = useState(false);
   const [guidedRoute, setGuidedRoute] = useState<GuidedRoutePayload | null>(null);
+  const [accidentClusters, setAccidentClusters] = useState<AccidentCluster[]>([]);
+  const [mapType, setMapType] = useState<'streets' | 'satellite' | 'outdoors'>('streets');
+  const [showLegendModal, setShowLegendModal] = useState(false);
   const mapHandleRef = useRef<RunTrackerMapHandle | null>(null);
   const latestLocationRef = useRef<LatLngLiteral | null>(null);
   const lastHazardFetchRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
@@ -147,11 +158,40 @@ const RunTrackerPage: React.FC = () => {
     }
   }, [logDebug]);
 
+  const fetchAccidentClusters = useCallback(async () => {
+    try {
+      logDebug('Fetching accident clusters...');
+      const { data, error } = await supabase
+        .from('accident_clusters')
+        .select('cluster_id, lat, lon, count, radius_meters');
+
+      if (error) {
+        console.error('[RunTracking] Supabase error fetching accident clusters:', error);
+        return;
+      }
+
+      const clusters = data || [];
+      logDebug(`Fetched ${clusters.length} accident clusters`);
+      setAccidentClusters(clusters);
+    } catch (error) {
+      console.error('[RunTracking] Exception fetching accident clusters:', error);
+    }
+  }, [logDebug]);
+
   useEffect(() => {
     if (!mapboxToken) {
       setMapError('Mapbox access token missing.');
     }
   }, [mapboxToken]);
+
+  useEffect(() => {
+    if (mapLoaded) {
+      fetchAccidentClusters();
+      // Load hazards at current map center (not fixed default center)
+      const center = mapHandleRef.current?.getCenter() ?? mapboxDefaultCenter;
+      loadHazards(center);
+    }
+  }, [mapLoaded, fetchAccidentClusters, loadHazards]);
 
   useEffect(() => {
     if (!pathCoords.length) return;
@@ -343,6 +383,8 @@ const RunTrackerPage: React.FC = () => {
             hazards={hazards}
             selectedHazardId={selectedHazard?.report_id ?? null}
             hazardRadiusMeters={HAZARD_RADIUS_METERS}
+            accidentClusters={accidentClusters}
+            mapType={mapType}
             mapOnlyView={mapOnlyView}
             mapboxToken={mapboxToken}
             onMapReadyChange={setMapLoaded}
@@ -350,17 +392,47 @@ const RunTrackerPage: React.FC = () => {
             onError={setMapError}
           />
 
-          <button
-            className="view-toggle"
-            onClick={() => {
-              setMapOnlyView((prev) => !prev);
-              requestAnimationFrame(() => {
-                mapHandleRef.current?.resize();
-              });
-            }}
-          >
-            <IonIcon icon={mapOutline} /> {mapOnlyView ? 'Show stats' : 'Map only'}
-          </button>
+          <div className="map-controls-top-right">
+            <div className="map-type-tabs">
+              <button
+                className={`map-tab ${mapType === 'streets' ? 'active' : ''}`}
+                onClick={() => setMapType('streets')}
+              >
+                Map
+              </button>
+              <button
+                className={`map-tab ${mapType === 'satellite' ? 'active' : ''}`}
+                onClick={() => setMapType('satellite')}
+              >
+                Satellite
+              </button>
+              <button
+                className={`map-tab ${mapType === 'outdoors' ? 'active' : ''}`}
+                onClick={() => setMapType('outdoors')}
+              >
+                Outdoors
+              </button>
+              <button
+                className="map-tab legend-toggle"
+                onClick={() => setShowLegendModal(true)}
+                title="Map Legend"
+              >
+                <IonIcon icon={informationCircleOutline} />
+              </button>
+            </div>
+
+            <button
+              className="view-toggle"
+              onClick={() => {
+                setMapOnlyView((prev) => !prev);
+                requestAnimationFrame(() => {
+                  mapHandleRef.current?.resize();
+                });
+              }}
+            >
+              <IonIcon icon={mapOutline} /> {mapOnlyView ? 'Show stats' : 'Map only'}
+            </button>
+          </div>
 
           <div className={`stats-panel ${mapOnlyView ? 'hidden' : ''}`}>
             <div className="tracking-overlay">
@@ -475,45 +547,24 @@ const RunTrackerPage: React.FC = () => {
         <IonModal isOpen={!!selectedHazard} onDidDismiss={() => setSelectedHazard(null)} className="hazard-detail-modal">
           <IonHeader>
             <IonToolbar>
-              <IonTitle>Hazard details</IonTitle>
+              <IonTitle>Hazard Details</IonTitle>
               <IonButtons slot="end">
-                <IonButton onClick={() => setSelectedHazard(null)}>Close</IonButton>
+                <IonButton onClick={() => setSelectedHazard(null)}>
+                  <IonIcon icon={closeCircleOutline} />
+                </IonButton>
               </IonButtons>
             </IonToolbar>
           </IonHeader>
-          <IonContent className="hazard-detail-body">
+          <IonContent className="hazard-modal-content">
             {selectedHazard && (
-              <div className="hazard-detail-content">
-                <div className="hazard-detail-header">
-                  <IonIcon icon={warningOutline} />
-                  <div>
-                    <h3>{selectedHazard.title}</h3>
-                    <p className="hazard-meta">
-                      {selectedHazard.incident_type}
-                      {' Ãƒâ€šÃ‚Â· '}
-                      Reported {formatRelativeTime(selectedHazard.reported_at)} by {selectedHazard.users?.username ?? 'runner'}
-                    </p>
-                    {selectedHazardDistance && (
-                      <p className="hazard-meta">Approximately {selectedHazardDistance.toFixed(2)} km away</p>
-                    )}
-                  </div>
-                </div>
-
-                {selectedHazard.description && (
-                  <p className="hazard-detail-description">{selectedHazard.description}</p>
-                )}
-
-                {selectedHazard.image_url && (
-                  <div style={{ marginTop: '16px', marginBottom: '16px' }}>
+              <div className="hazard-detail-container">
+                {/* Hazard Image - only show if image_url exists and is not null/empty */}
+                {selectedHazard.image_url && selectedHazard.image_url.trim() !== '' && (
+                  <div className="hazard-image-container">
                     <img
                       src={selectedHazard.image_url}
                       alt={selectedHazard.title}
-                      style={{
-                        width: '100%',
-                        borderRadius: '8px',
-                        maxHeight: '300px',
-                        objectFit: 'cover'
-                      }}
+                      className="hazard-image"
                       onError={(e) => {
                         console.warn('[RunTracker] Hazard image failed to load:', selectedHazard.image_url);
                         (e.target as HTMLImageElement).style.display = 'none';
@@ -522,24 +573,70 @@ const RunTrackerPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="hazard-detail-actions">
-                  <IonButton
-                    fill="clear"
-                    color="warning"
-                    onClick={() => updateHazardStatus('active')}
-                    disabled={hazardActionLoading}
-                  >
-                    <IonIcon slot="start" icon={checkmarkCircle} />
-                    Still there
-                  </IonButton>
-                  <IonButton
-                    color="success"
-                    onClick={() => updateHazardStatus('resolved')}
-                    disabled={hazardActionLoading}
-                  >
-                    <IonIcon slot="start" icon={banOutline} />
-                    Hazard cleared
-                  </IonButton>
+                {/* Hazard Info */}
+                <div className="hazard-info">
+                  <div className="hazard-header">
+                    <div className="hazard-user-info">
+                      <div className="user-details">
+                        <span className="username">
+                          {selectedHazard.users?.username || 'Anonymous'}
+                        </span>
+                        <span className="report-time">
+                          {formatRelativeTime(selectedHazard.reported_at)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="hazard-severity">
+                      <span className={`severity-badge severity-${Math.round((selectedHazard.severity_weight || 0.5) * 10)}`}>
+                        {selectedHazard.incident_type}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="hazard-content">
+                    <h2 className="hazard-title">{selectedHazard.title}</h2>
+                    <p className="hazard-description">
+                      {selectedHazard.description || 'No additional details provided.'}
+                    </p>
+
+                    {selectedHazardDistance && (
+                      <div className="hazard-stats">
+                        <div className="stat">
+                          <span className="stat-label">Distance</span>
+                          <span className="stat-value">
+                            {selectedHazardDistance.toFixed(2)} km away
+                          </span>
+                        </div>
+                        <div className="stat">
+                          <span className="stat-label">Status</span>
+                          <span className={`stat-value status-${selectedHazard.status}`}>
+                            {selectedHazard.status}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="hazard-detail-actions">
+                    <IonButton
+                      fill="clear"
+                      color="warning"
+                      onClick={() => updateHazardStatus('active')}
+                      disabled={hazardActionLoading}
+                    >
+                      <IonIcon slot="start" icon={checkmarkCircle} />
+                      Still there
+                    </IonButton>
+                    <IonButton
+                      color="success"
+                      onClick={() => updateHazardStatus('resolved')}
+                      disabled={hazardActionLoading}
+                    >
+                      <IonIcon slot="start" icon={banOutline} />
+                      Hazard cleared
+                    </IonButton>
+                  </div>
                 </div>
               </div>
             )}
@@ -569,6 +666,71 @@ const RunTrackerPage: React.FC = () => {
           duration={1500}
           onDidDismiss={() => setToastMessage(null)}
         />
+
+        {/* Map Legend Modal */}
+        <IonModal
+          isOpen={showLegendModal}
+          onDidDismiss={() => setShowLegendModal(false)}
+          className="legend-modal"
+          breakpoints={[0, 0.6, 0.75]}
+          initialBreakpoint={0.6}
+        >
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Map Legend</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setShowLegendModal(false)}>
+                  <IonIcon icon={closeCircleOutline} />
+                </IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+
+          <IonContent className="legend-modal-content">
+            <div className="legend-content-wrapper">
+              {/* User-Reported Hazards */}
+              <div className="legend-section">
+                <h4 className="legend-section-title">User-Reported Hazards</h4>
+                <div className="legend-item">
+                  <div className="legend-color-sample hazard-sample"></div>
+                  <div className="legend-item-text">
+                    <span className="legend-item-name">Active Hazard</span>
+                    <span className="legend-item-desc">Crimson Red</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Accident Clusters */}
+              <div className="legend-section">
+                <h4 className="legend-section-title">Accident Clusters (Historical Data)</h4>
+
+                <div className="legend-item">
+                  <div className="legend-color-sample cluster-low"></div>
+                  <div className="legend-item-text">
+                    <span className="legend-item-name">Low Severity</span>
+                    <span className="legend-item-desc">Yellow-Orange • &lt; 15 accidents</span>
+                  </div>
+                </div>
+
+                <div className="legend-item">
+                  <div className="legend-color-sample cluster-medium"></div>
+                  <div className="legend-item-text">
+                    <span className="legend-item-name">Medium Severity</span>
+                    <span className="legend-item-desc">Dark Orange • 15-29 accidents</span>
+                  </div>
+                </div>
+
+                <div className="legend-item">
+                  <div className="legend-color-sample cluster-high"></div>
+                  <div className="legend-item-text">
+                    <span className="legend-item-name">High Severity</span>
+                    <span className="legend-item-desc">Vivid Orange • ≥ 30 accidents</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </IonContent>
+        </IonModal>
       </IonContent>
     </IonPage>
   );

@@ -1,10 +1,10 @@
 /* Back Button - Icon Only */
 .custom-back-button-icon {
   position: fixed;
-  top: calc(16px + env(safe-area-inset-top));
+  top: calc(56px + env(safe-area-inset-top));
   left: 16px;
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background-color: rgba(163, 163, 163, 0.6);
   border: none;
@@ -17,7 +17,7 @@
 }
 
 .back-icon {
-  font-size: 24px;
+  font-size: 20px;
   color: white;
 }
  
@@ -58,7 +58,7 @@
 
 .guided-map-chip {
   position: fixed;
-  top: calc(72px + env(safe-area-inset-top));
+  top: calc(112px + env(safe-area-inset-top));
   left: 16px;
   display: inline-flex;
   align-items: center;
@@ -222,25 +222,82 @@
   display: none;
 }
 
-.view-toggle {
+/* Map Controls Top Right */
+.map-controls-top-right {
   position: fixed;
-  top: calc(16px + env(safe-area-inset-top));
+  top: calc(56px + env(safe-area-inset-top));
+  left: 64px;
   right: 16px;
   z-index: 12;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Map Type Tabs */
+.map-type-tabs {
+  display: flex;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 999px;
+  padding: 2px;
+  backdrop-filter: blur(10px);
+  flex: 1;
+  max-width: 240px;
+}
+
+.map-tab {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  border: none;
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.map-tab.active {
+  background: rgba(146, 198, 40, 0.9);
+  color: #0c1504;
+  font-weight: 600;
+}
+
+.map-tab:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.map-tab.legend-toggle {
+  padding: 5px 6px;
+}
+
+.view-toggle {
   background: rgba(0, 0, 0, 0.65);
   color: #fff;
   border: none;
   border-radius: 999px;
-  padding: 8px 14px;
+  padding: 6px 12px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 6px;
+  font-size: 11px;
   cursor: pointer;
+  backdrop-filter: blur(10px);
+  white-space: nowrap;
+  height: 32px;
 }
 
 .view-toggle:focus-visible {
   outline: 2px solid #92C628;
+}
+
+.view-toggle ion-icon {
+  font-size: 16px;
 }
 
 .hazard-summary {
@@ -650,47 +707,273 @@
   }
 }
 
-/* Activity summary modal */
+/* Map Legend Modal - Dark Theme */
+.legend-modal-content {
+  --background: #121212;
+  --padding-top: 0;
+  --padding-bottom: 0;
+  --padding-start: 0;
+  --padding-end: 0;
+}
+
+.legend-content-wrapper {
+  padding: 16px 16px 20px 16px;
+  background: #121212;
+  min-height: auto;
+}
+
+.legend-section {
+  background: linear-gradient(145deg, #1e1e1e 0%, #252525 100%);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(146, 198, 40, 0.1);
+}
+
+.legend-section:last-child {
+  margin-bottom: 0;
+}
+
+.legend-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #92C628;
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  text-shadow: 0 0 10px rgba(146, 198, 40, 0.3);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.legend-item:active {
+  background: rgba(146, 198, 40, 0.15);
+  transform: scale(0.98);
+  border-color: rgba(146, 198, 40, 0.3);
+}
+
+.legend-item:last-child {
+  margin-bottom: 0;
+}
+
+.legend-color-sample {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5),
+              0 0 12px rgba(255, 255, 255, 0.1);
+}
+
+.legend-color-sample.hazard-sample {
+  background-color: #DC143C;
+  box-shadow: 0 4px 8px rgba(220, 20, 60, 0.4),
+              0 0 12px rgba(220, 20, 60, 0.3);
+}
+
+.legend-color-sample.cluster-low {
+  background-color: #FFA500;
+  box-shadow: 0 4px 8px rgba(255, 165, 0, 0.4),
+              0 0 12px rgba(255, 165, 0, 0.3);
+}
+
+.legend-color-sample.cluster-medium {
+  background-color: #FF8C00;
+  box-shadow: 0 4px 8px rgba(255, 140, 0, 0.4),
+              0 0 12px rgba(255, 140, 0, 0.3);
+}
+
+.legend-color-sample.cluster-high {
+  background-color: #FF6500;
+  box-shadow: 0 4px 8px rgba(255, 101, 0, 0.4),
+              0 0 12px rgba(255, 101, 0, 0.3);
+}
+
+.legend-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.legend-item-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.3;
+}
+
+.legend-item-desc {
+  font-size: 13px;
+  color: #b0b0b0;
+  line-height: 1.4;
+}
+
+/* Activity Summary Modal - Dark Theme */
+.activity-summary-modal {
+  --background: #121212;
+}
+
+.activity-summary-modal ion-toolbar {
+  --background: #1a1a1a;
+  --color: #ffffff;
+  --border-color: rgba(255, 255, 255, 0.1);
+}
+
+.activity-summary-modal ion-content {
+  --background: #121212;
+  --color: #ffffff;
+}
+
 .activity-summary-modal .summary-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.activity-summary-modal .summary-stats > div {
+  text-align: center;
 }
 
 .activity-summary-modal .summary-stats strong {
-  font-size: 18px;
-}
-
-.activity-summary-modal .summary-stats .label {
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  display: block;
   margin-bottom: 4px;
 }
 
-.activity-summary-modal .visibility-group ion-item {
+.activity-summary-modal .summary-stats .label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Dark theme for ion-list and ion-item */
+.activity-summary-modal ion-list {
+  background: transparent;
+  padding: 16px 0;
+}
+
+.activity-summary-modal ion-item {
+  --background: rgba(255, 255, 255, 0.05);
+  --color: #ffffff;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --inner-padding-end: 0;
+  margin-bottom: 8px;
+  border-radius: 8px;
+}
+
+.activity-summary-modal ion-item ion-label {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.activity-summary-modal ion-item ion-input {
+  --color: #ffffff;
+  --placeholder-color: rgba(255, 255, 255, 0.4);
   --background: transparent;
+  font-size: 15px;
+}
+
+.activity-summary-modal .visibility-group ion-item {
+  --background: rgba(255, 255, 255, 0.03);
+  margin-bottom: 4px;
+}
+
+.activity-summary-modal ion-radio {
+  --color: rgba(255, 255, 255, 0.6);
+  --color-checked: #92c628;
 }
 
 .summary-actions {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 20px;
+  margin-top: 24px;
 }
 
 .summary-actions ion-button {
   flex: 1;
+  --border-radius: 12px;
+  font-weight: 600;
 }
 
-/* Pre-post */
+/* Pre-Post Page - Dark Theme */
+.pre-post-page {
+  --background: #121212;
+}
+
+.pre-post-page ion-toolbar {
+  --background: #1a1a1a;
+  --color: #ffffff;
+  --border-color: rgba(255, 255, 255, 0.1);
+}
+
+.pre-post-content {
+  --background: #121212;
+  --color: #ffffff;
+}
+
+.pre-post-page ion-item {
+  --background: rgba(255, 255, 255, 0.05);
+  --color: #ffffff;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --padding-start: 16px;
+  --padding-end: 16px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+}
+
+.pre-post-page ion-item ion-label {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.pre-post-page ion-item p {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.pre-post-page ion-textarea {
+  --color: #ffffff;
+  --placeholder-color: rgba(255, 255, 255, 0.4);
+  --background: transparent;
+  font-size: 15px;
+  min-height: 120px;
+}
+
 .static-map-wrapper {
   margin: 16px 0;
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .static-map-wrapper img {
@@ -707,4 +990,219 @@
 
 .pre-post-actions ion-button {
   flex: 1;
+  --border-radius: 12px;
+  font-weight: 600;
+}
+
+/* Hazard Detail Modal - Dark Theme */
+.hazard-detail-modal {
+  --background: #121212;
+}
+
+.hazard-detail-modal ion-toolbar {
+  --background: #1a1a1a;
+  --color: #ffffff;
+  --border-color: rgba(255, 255, 255, 0.1);
+}
+
+.hazard-modal-content {
+  --background: #121212;
+  --color: #ffffff;
+}
+
+.hazard-modal-content::part(scroll) {
+  background: #121212 !important;
+}
+
+.hazard-modal-content::part(background) {
+  background: #121212 !important;
+}
+
+.hazard-detail-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: #121212;
+}
+
+.hazard-image-container {
+  width: 100%;
+  max-height: 400px;
+  overflow: hidden;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hazard-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hazard-info {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  background: #121212;
+}
+
+.hazard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hazard-user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.username {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.report-time {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.hazard-severity {
+  display: flex;
+  align-items: center;
+}
+
+.severity-badge {
+  padding: 6px 14px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+/* Severity colors - Dark theme */
+.severity-badge.severity-1,
+.severity-badge.severity-2,
+.severity-badge.severity-3 {
+  background: rgba(76, 175, 80, 0.2);
+  color: #81c784;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.severity-badge.severity-4,
+.severity-badge.severity-5,
+.severity-badge.severity-6 {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ffb74d;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.severity-badge.severity-7,
+.severity-badge.severity-8,
+.severity-badge.severity-9,
+.severity-badge.severity-10 {
+  background: rgba(244, 67, 54, 0.2);
+  color: #ef5350;
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.hazard-content {
+  margin-top: 12px;
+}
+
+.hazard-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 12px 0;
+  line-height: 1.3;
+}
+
+.hazard-description {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.6;
+  margin: 0 0 20px 0;
+  white-space: pre-wrap;
+}
+
+.hazard-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.stat-value.status-active {
+  color: #81c784;
+}
+
+.stat-value.status-resolved {
+  color: #64b5f6;
+}
+
+.stat-value.status-removed {
+  color: #e57373;
+}
+
+.stat-value.status-pending {
+  color: #ffb74d;
+}
+
+.hazard-detail-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hazard-detail-actions ion-button {
+  flex: 1;
+  --border-radius: 12px;
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .hazard-stats {
+    grid-template-columns: 1fr;
+  }
 }
