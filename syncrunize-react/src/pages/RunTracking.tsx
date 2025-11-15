@@ -5,7 +5,7 @@ import {
   IonButton,
 } from "@ionic/react";
 
-import Laptop from "../assets/RT Mobile.png";
+import Laptop from "../assets/RUN-T-PHONE.png";
 import '../components/RunTracking/RunTracking.css';
 
 const RunTracking: React.FC = () => { 
