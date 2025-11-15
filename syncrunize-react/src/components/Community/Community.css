@@ -13,9 +13,10 @@
   font-size: 40px;
   font-weight: bold;
   color: #2c3e50;
+  margin-left: 20px;
 }
  
-.create-group-btn {
+.create-group-btn { 
   --background: #92C628;
   --color: #fff;
   border-radius: 20px;
@@ -28,7 +29,7 @@
 }
 
 .create-group-btn:hover {
-  --background: #c0392b; /* unified hover color */
+  --background: #7ba622;
   transform: scale(1.05);
 }
 
@@ -305,7 +306,7 @@ ion-popover .popover-content {
   /* ✅ Mobile & Small Tablets */
 @media (max-width: 768px) {
   .groups-page-header{
-    margin-top: 70px;
+    margin-top: 20px;
   }
 
 
@@ -322,7 +323,8 @@ ion-popover .popover-content {
   }
 
   .page-title {
-    font-size: 24px; /* smaller for mobile */
+    font-size: 28px; /* smaller for mobile */
+    margin-left: 0px;
   }
 
   .create-group-btn {
