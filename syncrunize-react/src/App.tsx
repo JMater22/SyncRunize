@@ -17,6 +17,7 @@ import {
   IonList,
   IonItem,
   setupIonicReact,
+  IonFooter
 } from "@ionic/react";
 import { IonReactRouter } from "@ionic/react-router";
 
@@ -237,6 +238,15 @@ const AppContent: React.FC<{ session: any; userData: any; loading: boolean }> = 
             </div>
           </IonHeader>
         </IonTabs>
+        
+        {/* Footer - visible on both mobile and desktop - MOVED OUTSIDE OF TABS */}
+        <IonFooter className="app-footer">
+          <IonToolbar>
+            <div className="footer-content">
+              <p>© 2025 SyncRunize. All rights reserved.</p>
+            </div>
+          </IonToolbar>
+        </IonFooter>
       </IonPage>
     </IonReactRouter>
   );

@@ -584,7 +584,7 @@ span.activity-handle {
   border-radius: 18px;
 }
 
-/* ================= Enhanced Right Sidebar ================= */
+
 /* ================= Enhanced Right Sidebar ================= */
 .right-sidebar {
   position: sticky;
@@ -1058,7 +1058,7 @@ h4.challenge-title {
   border-radius: 50%;
   background-color: #ff0202;
   flex-shrink: 0;
-  margin-left: 20dddddddddddddddddddddddddpx;
+  margin-left: 20px;
   animation: pulse-dot 2s infinite;
 }
 
@@ -1077,7 +1077,13 @@ h4.challenge-title {
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  z-index: 10;
+  z-index: 1000;
+}
+
+/* Notification FAB Button - Fixed Position */
+ion-fab[vertical="bottom"][horizontal="end"] {
+  bottom: 70px !important; /* Move up from footer */
+  right: 30px;
 }
 
 /* Empty State (if needed) */
@@ -1131,7 +1137,7 @@ h4.challenge-title {
     order: 1;
     position: static;
     width: 100%;
-      margin: 80px auto 16px;
+    margin: 40px auto 16px;
   }
 
   .feed-column-enhanced {
@@ -1147,6 +1153,8 @@ h4.challenge-title {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    margin-top: 20px;
+    margin-bottom: 20px;
   }
 
   .activity-header-enhanced {
