@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { UsersApi, MeResponse } from '../services/users';
 import { supabase } from '../lib/supabaseClient';
+import { clearSessionCache } from '../lib/api';
 
 interface UserContextType {
   currentUser: MeResponse | null;
@@ -22,32 +23,18 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setLoading(true);
       setError(null);
 
-      // Retry logic for session initialization
-      let session = null;
-      let retries = 3;
-
-      while (retries > 0 && !session) {
-        const { data: { session: s } } = await supabase.auth.getSession();
-        session = s;
-
-        if (!session && retries > 1) {
-          // Wait before retrying
-          await new Promise(resolve => setTimeout(resolve, 200));
-          retries--;
-        } else {
-          break;
-        }
-      }
+      const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
         setCurrentUser(null);
+        setLoading(false);
         return;
       }
 
       const userData = await UsersApi.me();
       setCurrentUser(userData);
     } catch (err: any) {
-      console.error('Failed to fetch user:', err);
+      console.error('[UserContext] Failed to fetch user:', err);
       setError(err.message || 'Failed to fetch user data');
       setCurrentUser(null);
     } finally {
@@ -76,8 +63,12 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_OUT') {
+          console.log('[UserContext] User signed out, clearing session cache');
+          clearSessionCache(); // Clear in-memory session cache
           setCurrentUser(null);
         } else if (event === 'SIGNED_IN' && session) {
+          console.log('[UserContext] User signed in, fetching fresh user data');
+          clearSessionCache(); // Clear old cache and fetch fresh session
           await fetchUser();
         }
       }

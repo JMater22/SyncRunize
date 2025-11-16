@@ -95,16 +95,16 @@ interface Member {
 
 interface Post {
   post_id: number;
-  author: string;
+  author_name: string;
   author_id: number;
-  avatar: string;
-  timestamp: string;
+  author_avatar: string;
+  created_at: string;
   content: string;
   title?: string;
   images?: string[];
-  likes: number;
-  comments: number;
-  isLiked?: boolean;
+  likes_count: number;
+  comments_count: number;
+  is_liked?: boolean;
 }
 
 interface Comment {
@@ -552,57 +552,99 @@ const handleInviteUser = async (userId: number) => {
       return;
     }
 
+    // Generate temporary ID for optimistic post (negative to avoid collisions)
+    const optimisticPostId = -Date.now();
+
+    // ✅ STEP 1: Create optimistic post - show IMMEDIATELY in UI
+    const optimisticPost: any = {
+      post_id: optimisticPostId,
+      author_name: currentUserName,
+      author_id: currentUserId,
+      author_avatar: currentUserAvatar,
+      created_at: new Date().toISOString(),
+      content: postContent.trim(),
+      title: postTitle.trim() || undefined,
+      images: imagePreviews, // Use preview images temporarily
+      likes_count: 0,
+      comments_count: 0,
+      is_liked: false,
+      _optimistic: true, // Flag to show loading indicator
+    };
+
+    // Add to UI immediately - user sees it instantly!
+    setPosts(prev => [optimisticPost as Post, ...prev]);
+
+    // Reset form immediately for better UX
+    const savedTitle = postTitle;
+    const savedContent = postContent;
+    const savedImages = postImages;
+    const savedPreviews = imagePreviews;
+
+    setPostTitle('');
+    setPostContent('');
+    setPostImages([]);
+    setImagePreviews([]);
+    setShowCreatePost(false);
+
     try {
       setIsCreatingPost(true);
 
-      // Upload images to Supabase if any
+      // ✅ STEP 2: Upload images in background
       let imageUrls: string[] = [];
-      if (postImages.length > 0) {
+      if (savedImages.length > 0) {
         setIsUploadingImages(true);
-        imageUrls = await uploadImagesToSupabase(postImages);
+        imageUrls = await uploadImagesToSupabase(savedImages);
         setIsUploadingImages(false);
       }
 
+      // ✅ STEP 3: Create post in backend
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/group-posts/${groupId}`,
         {
           userId: currentUserId,
-          title: postTitle.trim() || null,
-          content: postContent.trim(),
+          title: savedTitle.trim() || null,
+          content: savedContent.trim(),
           images: imageUrls.length > 0 ? imageUrls : null
         },
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
-      
-      // Refresh posts from API so images render with normalized structure
-      try {
-        const refreshed = await axios.get(
-          `${import.meta.env.VITE_API_URL}/group-posts/${groupId}?limit=20&offset=0&userId=${currentUserId}`,
-          { headers: { Authorization: `Bearer ${authToken}` } }
-        );
-        setPosts(refreshed.data.map((post: any) => ({
-          ...post,
-          images: typeof post.images === 'string' ? JSON.parse(post.images) : post.images,
-        })));
-      } catch (e) {
-        console.warn('Refresh posts after create failed, falling back to local insert');
-        const created = response.data;
-        setPosts(prev => [{
-          ...created,
-          images: typeof created.images === 'string' ? JSON.parse(created.images) : created.images,
-        }, ...prev]);
-      }
-      
-      // Reset form
-      setPostTitle('');
-      setPostContent('');
-      setPostImages([]);
-      setImagePreviews([]);
-      setShowCreatePost(false);
+
+      const createdPost = response.data;
+
+      // ✅ STEP 4: Replace optimistic post with real data
+      setPosts(prev => prev.map(post =>
+        post.post_id === optimisticPostId
+          ? {
+              ...createdPost,
+              images: typeof createdPost.images === 'string'
+                ? JSON.parse(createdPost.images)
+                : createdPost.images,
+            }
+          : post
+      ));
+
       showToastMessage("Post created successfully!", "success");
+
+      console.log('[GroupFeed] ✅ Optimistic post creation:', {
+        optimisticId: optimisticPostId,
+        realId: createdPost.post_id,
+        totalTime: 'Instant to user!',
+        backgroundUpload: `${imageUrls.length} images`
+      });
 
     } catch (error: any) {
       console.error("Error creating post:", error);
+
+      // ✅ STEP 5: Remove optimistic post on error
+      setPosts(prev => prev.filter(post => post.post_id !== optimisticPostId));
+
+      // Restore form data so user doesn't lose their work
+      setPostTitle(savedTitle);
+      setPostContent(savedContent);
+      setPostImages(savedImages);
+      setImagePreviews(savedPreviews);
+      setShowCreatePost(true);
+
       showToastMessage(error.response?.data?.error || "Failed to create post", "danger");
     } finally {
       setIsCreatingPost(false);
@@ -644,20 +686,33 @@ const handleInviteUser = async (userId: number) => {
   const handleLikePost = async (postId: number) => {
     if (!currentUserId) return;
 
+    // ✅ STEP 1: Optimistic update - instant visual feedback!
+    setPosts(prev => prev.map(post => {
+      if (post.post_id === postId) {
+        return {
+          ...post,
+          is_liked: !post.is_liked,
+          likes_count: post.is_liked ? post.likes_count - 1 : post.likes_count + 1
+        };
+      }
+      return post;
+    }));
+
     try {
+      // ✅ STEP 2: Sync with backend in background
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/group-likes/${postId}/toggle`,
         { userId: currentUserId },
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
 
-      // Update post in state with new like status
+      // ✅ STEP 3: Verify optimistic update matches reality
       setPosts(prev => prev.map(post => {
         if (post.post_id === postId) {
           return {
             ...post,
-            isLiked: response.data.liked,
-            likes: response.data.likes
+            is_liked: response.data.liked,
+            likes_count: response.data.likes
           };
         }
         return post;
@@ -665,6 +720,19 @@ const handleInviteUser = async (userId: number) => {
 
     } catch (error) {
       console.error("Error liking post:", error);
+
+      // ✅ STEP 4: Rollback on error
+      setPosts(prev => prev.map(post => {
+        if (post.post_id === postId) {
+          return {
+            ...post,
+            is_liked: !post.is_liked,
+            likes_count: post.is_liked ? post.likes_count - 1 : post.likes_count + 1
+          };
+        }
+        return post;
+      }));
+
       showToastMessage("Failed to like post", "danger");
     }
   };
@@ -694,7 +762,7 @@ const handleInviteUser = async (userId: number) => {
       // Update comment count in post
       setPosts(prev => prev.map(post => {
         if (post.post_id === postId) {
-          return { ...post, comments: post.comments + 1 };
+          return { ...post, comments_count: post.comments_count + 1 };
         }
         return post;
       }));
@@ -859,26 +927,99 @@ const handleInviteUser = async (userId: number) => {
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="club-navigation">
-          <IonSegment
-            value={activeSegment}
-            onIonChange={(e) => setActiveSegment((e.detail.value as string) || "leaderboard")}
-          >
-            <IonSegmentButton value="leaderboard">
-              <IonLabel>Club Leaderboard</IonLabel>
-            </IonSegmentButton>
-            <IonSegmentButton value="members">
-              <IonLabel>Members</IonLabel>
-            </IonSegmentButton>
-            <IonSegmentButton value="posts">
-              <IonLabel>Posts</IonLabel>
-            </IonSegmentButton>
-          </IonSegment>
-        </div>
+        {/* Access Check - Non-members must join first */}
+        {!isMember && userRole !== 'admin' ? (
+          <div className="club-main-content">
+            <div className="access-restricted-container" style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              minHeight: '400px',
+              padding: '48px 24px'
+            }}>
+              <div style={{
+                maxWidth: '500px',
+                textAlign: 'center',
+                background: '#1a1a1a',
+                borderRadius: '16px',
+                padding: '48px 32px',
+                border: '1px solid #2a2a2a'
+              }}>
+                <IonIcon
+                  icon={peopleOutline}
+                  style={{
+                    fontSize: '80px',
+                    color: '#84cc16',
+                    marginBottom: '24px'
+                  }}
+                />
+                <h2 style={{
+                  color: '#ffffff',
+                  fontSize: '24px',
+                  fontWeight: '700',
+                  margin: '0 0 16px 0'
+                }}>
+                  Join to Access Group Content
+                </h2>
+                <p style={{
+                  color: '#999999',
+                  fontSize: '16px',
+                  lineHeight: '1.6',
+                  margin: '0 0 32px 0'
+                }}>
+                  You need to be a member to view posts, leaderboards, and interact with this group.
+                </p>
+                <IonButton
+                  expand="block"
+                  color="success"
+                  size="large"
+                  onClick={handleJoinGroup}
+                  disabled={isJoining || groupDetails?.privacy}
+                  style={{
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    height: '48px'
+                  }}
+                >
+                  {isJoining ? (
+                    <IonSpinner name="crescent" />
+                  ) : groupDetails?.privacy ? (
+                    <>
+                      <IonIcon icon={lockClosedOutline} slot="start" />
+                      Invite Only
+                    </>
+                  ) : (
+                    <>
+                      <IonIcon icon={person} slot="start" />
+                      Join Group
+                    </>
+                  )}
+                </IonButton>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Navigation Tabs - Only visible to members */}
+            <div className="club-navigation">
+              <IonSegment
+                value={activeSegment}
+                onIonChange={(e) => setActiveSegment((e.detail.value as string) || "leaderboard")}
+              >
+                <IonSegmentButton value="leaderboard">
+                  <IonLabel>Club Leaderboard</IonLabel>
+                </IonSegmentButton>
+                <IonSegmentButton value="members">
+                  <IonLabel>Members</IonLabel>
+                </IonSegmentButton>
+                <IonSegmentButton value="posts">
+                  <IonLabel>Posts</IonLabel>
+                </IonSegmentButton>
+              </IonSegment>
+            </div>
 
-        {/* Main Content Area */}
-        <div className="club-main-content">
+            {/* Main Content Area - Only visible to members */}
+            <div className="club-main-content">
           <div className="club-content-grid">
             {/* Left Content */}
             <div className="club-left-content">
@@ -1140,10 +1281,10 @@ const handleInviteUser = async (userId: number) => {
                           {posts.map((post) => (
                             <div key={post.post_id} id={`gpost-${post.post_id}`} className="post-card">
                               <div className="post-header">
-                                {renderAvatar(post.avatar, post.author, "post-avatar")}
+                                {renderAvatar(post.author_avatar, post.author_name, "post-avatar")}
                                 <div className="post-author-info">
-                                  <span className="post-author-name">{post.author}</span>
-                                  <span className="post-timestamp">{post.timestamp}</span>
+                                  <span className="post-author-name">{post.author_name}</span>
+                                  <span className="post-timestamp">{post.created_at}</span>
                                 </div>
                               </div>
 
@@ -1212,19 +1353,19 @@ const handleInviteUser = async (userId: number) => {
                               <div className="post-footer">
                                 <div className="post-stats">
                                   <span className="kudos-text">
-                                    {post.likes} {post.likes === 1 ? 'Like' : 'Likes'} · {post.comments} {post.comments === 1 ? 'Comment' : 'Comments'}
+                                    {post.likes_count} {post.likes_count === 1 ? 'Like' : 'Likes'} · {post.comments_count} {post.comments_count === 1 ? 'Comment' : 'Comments'}
                                   </span>
                                 </div>
 
                                 <div className="post-actions">
-                                  <button 
-                                    className={`post-action-btn ${post.isLiked ? 'liked' : ''}`}
+                                  <button
+                                    className={`post-action-btn ${post.is_liked ? 'liked' : ''}`}
                                     onClick={() => handleLikePost(post.post_id)}
                                   >
-                                    <IonIcon icon={post.isLiked ? heart : heartOutline} />
-                                    <span>{post.isLiked ? 'Liked' : 'Like'}</span>
+                                    <IonIcon icon={post.is_liked ? heart : heartOutline} />
+                                    <span>{post.is_liked ? 'Liked' : 'Like'}</span>
                                   </button>
-                                  <button 
+                                  <button
                                     className="post-action-btn"
                                     onClick={() => toggleComments(post.post_id)}
                                   >
@@ -1344,6 +1485,8 @@ const handleInviteUser = async (userId: number) => {
             </div>
           </div>
         </div>
+          </>
+        )}
 
         <IonToast
           isOpen={showToast}
@@ -1388,15 +1531,21 @@ const handleInviteUser = async (userId: number) => {
     {/* // ==================== RENDER - ADD MODAL AT THE END ====================
 // Add this before the closing </IonPage> tag (after the image modal) */}
 
-      <IonModal 
-        isOpen={showInviteModal} 
+      <IonModal
+        isOpen={showInviteModal}
         onDidDismiss={() => {
           setShowInviteModal(false);
           setSearchQuery('');
           setSearchResults([]);
         }}
       >
-        <IonContent ref={contentRef}>
+        <IonContent
+          ref={contentRef}
+          style={{
+            '--background': '#0a0a0a',
+            '--color': '#ffffff'
+          } as React.CSSProperties}
+        >
           <div className="invite-modal-container">
             {/* Header */}
             <div className="invite-modal-header">

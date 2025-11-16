@@ -115,8 +115,8 @@ const Badges: React.FC = () => {
           <>
             {/* Gold Badges */}
             {badgesByTier.Gold.length > 0 && (
-              <div style={{ marginBottom: '24px' }}>
-                <h2 style={{ padding: '0 16px', fontSize: '20px', fontWeight: 'bold', color: '#FFD700' }}>
+              <div style={{ marginBottom: '32px', width: '100%', maxWidth: '800px' }}>
+                <h2 className="badge-section-header" style={{ color: '#FFD700' }}>
                   Gold Badges ({badgesByTier.Gold.length})
                 </h2>
                 <div className="badges-grid">
@@ -137,8 +137,8 @@ const Badges: React.FC = () => {
                             position: 'absolute',
                             top: '8px',
                             right: '8px',
-                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                            color: 'white',
+                            backgroundColor: 'rgba(146, 198, 40, 0.9)',
+                            color: '#000',
                             borderRadius: '12px',
                             padding: '4px 10px',
                             fontSize: '12px',
@@ -157,11 +157,11 @@ const Badges: React.FC = () => {
                           />
                         </div>
                         <h3 className="badge-title">{badge.badge_name}</h3>
-                        <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)', marginTop: '4px' }}>
+                        <p style={{ fontSize: '12px', color: '#999999', marginTop: '4px', textAlign: 'center', lineHeight: '1.4' }}>
                           {badge.badge_description}
                         </p>
                         {badge.count && badge.count > 1 && (
-                          <p style={{ fontSize: '11px', color: 'var(--ion-color-primary)', marginTop: '6px', fontWeight: '600' }}>
+                          <p style={{ fontSize: '11px', color: '#92C628', marginTop: '6px', fontWeight: '600', textAlign: 'center' }}>
                             Earned {badge.count} times
                           </p>
                         )}
@@ -174,8 +174,8 @@ const Badges: React.FC = () => {
 
             {/* Silver Badges */}
             {badgesByTier.Silver.length > 0 && (
-              <div style={{ marginBottom: '24px' }}>
-                <h2 style={{ padding: '0 16px', fontSize: '20px', fontWeight: 'bold', color: '#C0C0C0' }}>
+              <div style={{ marginBottom: '32px', width: '100%', maxWidth: '800px' }}>
+                <h2 className="badge-section-header" style={{ color: '#C0C0C0' }}>
                   Silver Badges ({badgesByTier.Silver.length})
                 </h2>
                 <div className="badges-grid">
@@ -196,8 +196,8 @@ const Badges: React.FC = () => {
                             position: 'absolute',
                             top: '8px',
                             right: '8px',
-                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                            color: 'white',
+                            backgroundColor: 'rgba(146, 198, 40, 0.9)',
+                            color: '#000',
                             borderRadius: '12px',
                             padding: '4px 10px',
                             fontSize: '12px',
@@ -216,11 +216,11 @@ const Badges: React.FC = () => {
                           />
                         </div>
                         <h3 className="badge-title">{badge.badge_name}</h3>
-                        <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)', marginTop: '4px' }}>
+                        <p style={{ fontSize: '12px', color: '#999999', marginTop: '4px', textAlign: 'center', lineHeight: '1.4' }}>
                           {badge.badge_description}
                         </p>
                         {badge.count && badge.count > 1 && (
-                          <p style={{ fontSize: '11px', color: 'var(--ion-color-primary)', marginTop: '6px', fontWeight: '600' }}>
+                          <p style={{ fontSize: '11px', color: '#92C628', marginTop: '6px', fontWeight: '600', textAlign: 'center' }}>
                             Earned {badge.count} times
                           </p>
                         )}
@@ -233,8 +233,8 @@ const Badges: React.FC = () => {
 
             {/* Bronze Badges */}
             {badgesByTier.Bronze.length > 0 && (
-              <div style={{ marginBottom: '24px' }}>
-                <h2 style={{ padding: '0 16px', fontSize: '20px', fontWeight: 'bold', color: '#CD7F32' }}>
+              <div style={{ marginBottom: '32px', width: '100%', maxWidth: '800px' }}>
+                <h2 className="badge-section-header" style={{ color: '#CD7F32' }}>
                   Bronze Badges ({badgesByTier.Bronze.length})
                 </h2>
                 <div className="badges-grid">
@@ -255,8 +255,8 @@ const Badges: React.FC = () => {
                             position: 'absolute',
                             top: '8px',
                             right: '8px',
-                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                            color: 'white',
+                            backgroundColor: 'rgba(146, 198, 40, 0.9)',
+                            color: '#000',
                             borderRadius: '12px',
                             padding: '4px 10px',
                             fontSize: '12px',
@@ -275,11 +275,11 @@ const Badges: React.FC = () => {
                           />
                         </div>
                         <h3 className="badge-title">{badge.badge_name}</h3>
-                        <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)', marginTop: '4px' }}>
+                        <p style={{ fontSize: '12px', color: '#999999', marginTop: '4px', textAlign: 'center', lineHeight: '1.4' }}>
                           {badge.badge_description}
                         </p>
                         {badge.count && badge.count > 1 && (
-                          <p style={{ fontSize: '11px', color: 'var(--ion-color-primary)', marginTop: '6px', fontWeight: '600' }}>
+                          <p style={{ fontSize: '11px', color: '#92C628', marginTop: '6px', fontWeight: '600', textAlign: 'center' }}>
                             Earned {badge.count} times
                           </p>
                         )}

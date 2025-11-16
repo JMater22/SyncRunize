@@ -24,7 +24,6 @@ import UserProfile from "./pages/UserProfile";
 import OtherUserProfile from "./pages/OtherUserProfile";
 import MyChallenges from "./pages/MyChallenges";
 import Settings from "./pages/Settings";
-import Leaderboards from "./pages/leaderboards";
 import Notification from "./pages/notification";
 import EditProfile from "./pages/Edit-Profile";
 import Notice from "./pages/Notice";
@@ -75,6 +74,14 @@ import { RunTrackerController } from "./hooks/useRunTracker";
 import { PushNotificationInitializer } from "./components/PushNotificationInitializer";
 
 setupIonicReact();
+
+// Load Google Fonts once for the entire app
+const fontLink = document.createElement('link');
+fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap';
+fontLink.rel = 'stylesheet';
+if (!document.head.querySelector(`link[href="${fontLink.href}"]`)) {
+  document.head.appendChild(fontLink);
+}
 
 const App: React.FC = () => {
   const { session, loading } = useSupabaseSession();
@@ -129,7 +136,6 @@ const App: React.FC = () => {
                   <Route exact path="/other-profile" component={OtherUserProfile} />
                   <Route exact path="/my-challenges" component={MyChallenges} />
                   <Route exact path="/settings" component={Settings} />
-                  <Route exact path="/leaderboards" component={Leaderboards} />
                   <Route exact path="/notification" component={Notification} />
                   <Route exact path="/edit-profile" component={EditProfile} />
                   <Route exact path="/notice" component={Notice} />
@@ -147,7 +153,6 @@ const App: React.FC = () => {
                   <Route exact path="/log-in" component={LogIn} />
                   <Route exact path="/authentication" component={Authentication} />
                   <Route exact path="/group-feed/:groupId" component={GroupFeed} />
-                  <Route exact path="/leaderboards/:groupId" component={Leaderboards} />
                   <Route exact path="/posts" component={ViewPost} />
                   <Route exact path="/activities" component={ViewActivity} />
                   <Route exact path="/badges" component={Badges} />

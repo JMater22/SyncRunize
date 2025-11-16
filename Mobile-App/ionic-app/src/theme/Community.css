@@ -40,8 +40,10 @@
   --background: #0a0a0a;
   padding: 6px;
   border-radius: 12px;
-  margin: 8px 16px;
-  width: 100%;
+  margin: 8px 12px;
+  margin-left: max(12px, env(safe-area-inset-left));
+  margin-right: max(12px, env(safe-area-inset-right));
+  width: calc(100% - 24px);
   max-width: 100%;
   display: flex;
   justify-content: space-evenly;
@@ -87,10 +89,18 @@
 
 /* Search Container */
 .search-container {
-  padding: 16px;
-  padding-left: max(16px, env(safe-area-inset-left));
-  padding-right: max(16px, env(safe-area-inset-right));
+  padding: 12px;
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
   background: #000000;
+}
+
+@media (max-width: 576px) {
+  .search-container {
+    padding: 8px;
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
 }
 
 .challenge-search,
@@ -109,12 +119,20 @@
 
 /* Current Challenge Card */
 .current-challenge-card {
-  margin: 0 16px 20px 16px;
-  margin-left: max(16px, env(safe-area-inset-left));
-  margin-right: max(16px, env(safe-area-inset-right));
+  margin: 0 12px 20px 12px;
+  margin-left: max(12px, env(safe-area-inset-left));
+  margin-right: max(12px, env(safe-area-inset-right));
   --background: #1a1a1a;
   border-radius: 16px;
   overflow: hidden;
+}
+
+@media (max-width: 576px) {
+  .current-challenge-card {
+    margin: 0 8px 20px 8px;
+    margin-left: max(8px, env(safe-area-inset-left));
+    margin-right: max(8px, env(safe-area-inset-right));
+  }
 }
 
 .challenge-image-container {
@@ -191,9 +209,9 @@
 
 /* Create Challenge Button */
 .create-challenge-btn {
-  margin: 0 16px 24px 16px;
-  margin-left: max(16px, env(safe-area-inset-left));
-  margin-right: max(16px, env(safe-area-inset-right));
+  margin: 0 12px 24px 12px;
+  margin-left: max(12px, env(safe-area-inset-left));
+  margin-right: max(12px, env(safe-area-inset-right));
   --background: #2a2a2a;
   --color: #ffffff;
   --border-radius: 12px;
@@ -202,11 +220,28 @@
   font-weight: 500;
 }
 
+@media (max-width: 576px) {
+  .create-challenge-btn {
+    margin: 0 8px 24px 8px;
+    margin-left: max(8px, env(safe-area-inset-left));
+    margin-right: max(8px, env(safe-area-inset-right));
+  }
+}
+
 /* Suggested Section */
 .suggested-section {
-  padding: 0 16px;
-  padding-left: max(16px, env(safe-area-inset-left));
-  padding-right: max(16px, env(safe-area-inset-right));
+  padding: 0 12px;
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+}
+
+/* Mobile-first responsive design */
+@media (max-width: 576px) {
+  .suggested-section {
+    padding: 0 8px;
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
 }
 
 .section-title {
@@ -361,10 +396,18 @@
 
 /* Groups Tab */
 .groups-tab {
-  padding: 16px;
-  padding-left: max(16px, env(safe-area-inset-left));
-  padding-right: max(16px, env(safe-area-inset-right));
+  padding: 12px;
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
   background: #000000;
+}
+
+@media (max-width: 576px) {
+  .groups-tab {
+    padding: 8px;
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
 }
 
 .groups-header {
@@ -426,6 +469,8 @@
   width: 100%;
   text-transform: none;
   letter-spacing: 0.3px;
+  margin-top: 16px;
+  margin-bottom: 16px;
 }
 
 .group-search {
@@ -594,18 +639,106 @@
   .challenge-title {
     font-size: 18px;
   }
-  
+
   .groups-header {
     flex-direction: column;
     gap: 8px;
   }
-  
+
   .find-groups-btn {
     width: 100%;
   }
-  
+
   .group-search {
     width: 100%;
+  }
+}
+
+/* Enhanced mobile optimization for very small screens */
+@media (max-width: 576px) {
+  .suggested-challenge-card {
+    margin-bottom: 12px;
+    border-radius: 12px;
+  }
+
+  .challenge-image-container {
+    height: 180px;
+  }
+
+  .suggested-content {
+    padding: 12px;
+  }
+
+  .suggested-title {
+    font-size: 15px;
+  }
+
+  .suggested-description {
+    font-size: 13px;
+  }
+
+  .community-segment {
+    margin: 8px 8px;
+    margin-left: max(8px, env(safe-area-inset-left));
+    margin-right: max(8px, env(safe-area-inset-right));
+    width: calc(100% - 16px);
+  }
+
+  .segment-btn {
+    min-height: 44px;
+    padding: 6px 3px;
+  }
+
+  .segment-btn ion-icon {
+    font-size: 22px;
+    margin-bottom: 3px;
+  }
+
+  .segment-btn ion-label {
+    font-size: 12px;
+  }
+
+  /* Groups Tab Mobile Optimization */
+  .group-card {
+    height: 160px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+  }
+
+  .group-overlay {
+    padding: 16px 12px 12px 12px;
+  }
+
+  .group-name {
+    font-size: 16px;
+  }
+
+  .join-group-btn,
+  .joined-group-btn {
+    height: 32px;
+    font-size: 12px;
+    padding: 0 12px;
+  }
+
+  .groups-header {
+    margin-bottom: 16px;
+    gap: 8px;
+  }
+
+  .group-list {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .create-groups-btn {
+    height: 40px;
+    font-size: 14px;
+    margin-top: 12px;
+    margin-bottom: 12px;
+  }
+
+  .group-search {
+    font-size: 14px;
   }
 }
 

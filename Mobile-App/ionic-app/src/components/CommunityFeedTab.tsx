@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   IonAvatar,
   IonButton,
@@ -34,7 +34,7 @@ interface CommunityFeedTabProps {
   onToast?: (message: string, color?: ToastColor) => void;
 }
 
-const POSTS_PER_PAGE = 10;
+const POSTS_PER_PAGE = 20;
 
 const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
   const { currentUser, loading: userLoading } = useUser();
@@ -45,7 +45,7 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const hasLoadedRef = useRef(false);
 
   // Comments states
   const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
@@ -55,12 +55,39 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
 
-  // Initial load
+  // Initial load - only once, not on every tab switch
   useEffect(() => {
-    console.log('[CommunityFeedTab] useEffect - currentUser:', currentUser?.user_id, 'userLoading:', userLoading);
     if (!currentUser || userLoading) return;
-    loadInitialFeed();
-  }, [currentUser, userLoading]);
+
+    // Try to restore posts from sessionStorage first
+    const cachedPostsKey = `feed_posts_${currentUser.user_id}`;
+    const cachedPosts = sessionStorage.getItem(cachedPostsKey);
+
+    if (cachedPosts && posts.length === 0) {
+      try {
+        const parsedPosts = JSON.parse(cachedPosts);
+        console.log('[CommunityFeedTab] Restoring', parsedPosts.length, 'posts from cache');
+        setPosts(parsedPosts);
+        hasLoadedRef.current = true;
+        return; // Skip fetch, use cached data
+      } catch (err) {
+        console.error('[CommunityFeedTab] Failed to parse cached posts:', err);
+        sessionStorage.removeItem(cachedPostsKey);
+      }
+    }
+
+    // Skip fetch if we already have posts in state
+    if (posts.length > 0 && hasLoadedRef.current) {
+      console.log('[CommunityFeedTab] Posts already in state, skipping fetch');
+      return;
+    }
+
+    // Only fetch if we don't have cached data
+    if (!hasLoadedRef.current) {
+      console.log('[CommunityFeedTab] No cache found, fetching feed');
+      loadInitialFeed();
+    }
+  }, [currentUser, userLoading, posts.length]);
 
   const notify = (message: string, color: ToastColor = 'success') => {
     onToast?.(message, color);
@@ -76,6 +103,13 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
       setPosts(fetchedPosts);
       setOffset(POSTS_PER_PAGE);
       setHasMore(fetchedPosts.length === POSTS_PER_PAGE);
+      hasLoadedRef.current = true; // Mark as loaded
+
+      // Cache posts to sessionStorage for instant restore on remount
+      if (currentUser) {
+        sessionStorage.setItem(`feed_loaded_${currentUser.user_id}`, 'true');
+        sessionStorage.setItem(`feed_posts_${currentUser.user_id}`, JSON.stringify(fetchedPosts));
+      }
     } catch (err: any) {
       console.error('[CommunityFeedTab] Failed to fetch feed:', err);
       setError(err.response?.data?.error || 'Failed to load feed');
@@ -87,9 +121,15 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
   const loadMorePosts = async (event: InfiniteScrollCustomEvent) => {
     try {
       const fetchedPosts = await PostsApi.getFeed(POSTS_PER_PAGE, offset);
-      setPosts(prev => [...prev, ...fetchedPosts]);
+      const updatedPosts = [...posts, ...fetchedPosts];
+      setPosts(updatedPosts);
       setOffset(prev => prev + POSTS_PER_PAGE);
       setHasMore(fetchedPosts.length === POSTS_PER_PAGE);
+
+      // Update cache with new posts
+      if (currentUser) {
+        sessionStorage.setItem(`feed_posts_${currentUser.user_id}`, JSON.stringify(updatedPosts));
+      }
     } catch (err: any) {
       console.error('Failed to load more posts:', err);
       notify('Failed to load more posts', 'danger');
@@ -100,16 +140,23 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
 
   const handleRefresh = async (event: CustomEvent<RefresherEventDetail>) => {
     try {
-      setIsRefreshing(true);
+      console.log('[CommunityFeedTab] Pull-to-refresh triggered');
       const fetchedPosts = await PostsApi.getFeed(POSTS_PER_PAGE, 0);
       setPosts(fetchedPosts);
       setOffset(POSTS_PER_PAGE);
       setHasMore(fetchedPosts.length === POSTS_PER_PAGE);
+      hasLoadedRef.current = true; // Keep loaded state
+
+      // Update cache with refreshed posts
+      if (currentUser) {
+        sessionStorage.setItem(`feed_posts_${currentUser.user_id}`, JSON.stringify(fetchedPosts));
+      }
+
+      console.log('[CommunityFeedTab] Refreshed with', fetchedPosts.length, 'posts');
     } catch (err: any) {
       console.error('Failed to refresh feed:', err);
       notify('Failed to refresh feed', 'danger');
     } finally {
-      setIsRefreshing(false);
       event.detail.complete();
     }
   };
@@ -117,20 +164,34 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
   const handleLike = async (postId: number) => {
     try {
       // Optimistic update
-      setPosts(prev => prev.map(post =>
+      const updatedPosts = posts.map(post =>
         post.post_id === postId
           ? { ...post, is_liked: !post.is_liked, likes_count: post.is_liked ? post.likes_count - 1 : post.likes_count + 1 }
           : post
-      ));
+      );
+      setPosts(updatedPosts);
+
+      // Update cache
+      if (currentUser) {
+        sessionStorage.setItem(`feed_posts_${currentUser.user_id}`, JSON.stringify(updatedPosts));
+      }
+
       await LikesApi.toggleLike(postId);
     } catch (err) {
       console.error('Failed to update like:', err);
       // Revert optimistic update on error
-      setPosts(prev => prev.map(post =>
+      const revertedPosts = posts.map(post =>
         post.post_id === postId
           ? { ...post, is_liked: !post.is_liked, likes_count: post.is_liked ? post.likes_count - 1 : post.likes_count + 1 }
           : post
-      ));
+      );
+      setPosts(revertedPosts);
+
+      // Update cache with reverted state
+      if (currentUser) {
+        sessionStorage.setItem(`feed_posts_${currentUser.user_id}`, JSON.stringify(revertedPosts));
+      }
+
       notify('Failed to update like', 'danger');
     }
   };
@@ -162,11 +223,17 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
       await CommentsApi.addComment(selectedPostId, { content: newComment.trim() });
 
       // Update comment count optimistically
-      setPosts(prev => prev.map(post =>
+      const updatedPosts = posts.map(post =>
         post.post_id === selectedPostId
           ? { ...post, comments_count: post.comments_count + 1 }
           : post
-      ));
+      );
+      setPosts(updatedPosts);
+
+      // Update cache
+      if (currentUser) {
+        sessionStorage.setItem(`feed_posts_${currentUser.user_id}`, JSON.stringify(updatedPosts));
+      }
 
       await fetchComments(selectedPostId);
       setNewComment('');
@@ -201,7 +268,7 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
   return (
     <>
       <div className="feed-tab-container">
-        <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh} pullMin={90} pullMax={150}>
           <IonRefresherContent></IonRefresherContent>
         </IonRefresher>
 

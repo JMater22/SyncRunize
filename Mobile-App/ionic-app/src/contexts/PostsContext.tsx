@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback, ReactNode, useRef } from 'react';
 import { PostsApi, Post } from '../services/posts';
 import { LikesApi } from '../services/likes';
 import { CommentsApi, Comment } from '../services/comments';
@@ -6,8 +6,10 @@ import { CommentsApi, Comment } from '../services/comments';
 interface PostsContextType {
   posts: Post[];
   loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
   error: string | null;
-  fetchFeed: () => Promise<void>;
+  fetchFeed: (loadMore?: boolean) => Promise<void>;
   fetchMyPosts: () => Promise<void>;
   createPost: (content?: string, routeId?: number, visibility?: 'public' | 'private') => Promise<void>;
   deletePost: (postId: number) => Promise<void>;
@@ -18,22 +20,54 @@ interface PostsContextType {
 
 const PostsContext = createContext<PostsContextType | undefined>(undefined);
 
+const POSTS_PER_PAGE = 20;
+
 export const PostsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const offsetRef = useRef(0);
+  const hasFetchedRef = useRef(false);
 
-  const fetchFeed = useCallback(async () => {
+  const fetchFeed = useCallback(async (loadMore: boolean = false) => {
     try {
-      setLoading(true);
+      // If already loaded and not loading more, skip (avoid reload on tab switch)
+      if (hasFetchedRef.current && !loadMore) {
+        return;
+      }
+
+      if (loadMore) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+        offsetRef.current = 0;
+        setHasMore(true);
+      }
+
       setError(null);
-      const feedPosts = await PostsApi.getFeed();
-      setPosts(feedPosts);
+
+      const offset = loadMore ? offsetRef.current : 0;
+      const feedPosts = await PostsApi.getFeed(POSTS_PER_PAGE, offset);
+
+      if (loadMore) {
+        setPosts(prev => [...prev, ...feedPosts]);
+      } else {
+        setPosts(feedPosts);
+        hasFetchedRef.current = true;
+      }
+
+      // Update pagination state
+      offsetRef.current = offset + feedPosts.length;
+      setHasMore(feedPosts.length === POSTS_PER_PAGE);
+
     } catch (err: any) {
       console.error('Failed to fetch feed:', err);
       setError(err.message || 'Failed to fetch posts');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
@@ -134,13 +168,19 @@ export const PostsProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   const refreshPosts = useCallback(async () => {
-    await fetchFeed();
+    // Force reload by resetting cache
+    hasFetchedRef.current = false;
+    offsetRef.current = 0;
+    setHasMore(true);
+    await fetchFeed(false);
   }, [fetchFeed]);
 
   const value = useMemo(
     () => ({
       posts,
       loading,
+      loadingMore,
+      hasMore,
       error,
       fetchFeed,
       fetchMyPosts,
@@ -150,7 +190,7 @@ export const PostsProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       addComment,
       refreshPosts,
     }),
-    [posts, loading, error, fetchFeed, fetchMyPosts, createPost, deletePost, toggleLike, addComment, refreshPosts]
+    [posts, loading, loadingMore, hasMore, error, fetchFeed, fetchMyPosts, createPost, deletePost, toggleLike, addComment, refreshPosts]
   );
 
   return (

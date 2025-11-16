@@ -83,8 +83,30 @@ const Community: React.FC = () => {
           `${import.meta.env.VITE_API_URL}/groups/`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        setGroups(response.data);
-        setFilteredGroups(response.data);
+
+        const groupsData = response.data;
+        setGroups(groupsData);
+        setFilteredGroups(groupsData);
+
+        // ✅ OPTIMIZATION: Extract membership and counts from API response
+        // No more nested loops! Backend now includes is_member and member_count
+        const joinedIds = groupsData
+          .filter((g: any) => g.is_member)
+          .map((g: any) => g.group_id);
+
+        const counts = groupsData.reduce((acc: any, g: any) => {
+          acc[g.group_id] = g.member_count || 0;
+          return acc;
+        }, {});
+
+        setJoinedGroups(joinedIds);
+        setMemberCounts(counts);
+
+        console.log('[Community] ✅ Optimized load - no nested API calls:', {
+          totalGroups: groupsData.length,
+          joinedGroups: joinedIds.length,
+          avgLoadTime: 'Single API call instead of N+1'
+        });
 
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -97,49 +119,9 @@ const Community: React.FC = () => {
     fetchData();
   }, []);
 
-  // Fetch joined groups and member counts for current user
-  useEffect(() => {
-    if (!currentUserId || groups.length === 0) return;
-
-    const fetchJoinedGroupsAndCounts = async () => {
-      try {
-        const joinedGroupIds: number[] = [];
-        const counts: { [groupId: number]: number } = {};
-
-        // Check membership for each group
-        for (const group of groups) {
-          try {
-            // Get all members of this group
-            const res = await axios.get(
-              `${import.meta.env.VITE_API_URL}/group-members/${group.group_id}/members`,
-              { headers: { Authorization: `Bearer ${authToken}` } }
-            );
-
-            // Store member count for this group
-            counts[group.group_id] = res.data.length;
-
-            // Check if current user is in the members list
-            const isMember = res.data.some((member: any) => member.user_id === currentUserId);
-            
-            if (isMember) {
-              joinedGroupIds.push(group.group_id);
-            }
-          } catch (error) {
-            // If endpoint doesn't exist yet or group has no members, set count to 0
-            console.log(`Could not fetch members for group ${group.group_id}`);
-            counts[group.group_id] = 0;
-          }
-        }
-
-        setJoinedGroups(joinedGroupIds);
-        setMemberCounts(counts);
-      } catch (error) {
-        console.error("Error fetching joined groups:", error);
-      }
-    };
-
-    fetchJoinedGroupsAndCounts();
-  }, [groups, currentUserId, authToken]);
+  // ✅ REMOVED: Nested loop that made N API calls
+  // Backend now returns is_member and member_count with each group
+  // This eliminates 10-50 sequential API calls on page load!
 
   // Filter groups based on search and filter criteria
   useEffect(() => {

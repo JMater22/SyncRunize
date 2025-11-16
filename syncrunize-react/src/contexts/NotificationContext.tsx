@@ -324,14 +324,30 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           if (updatedNotification) {
             console.log('✅ NotificationContext: Updating notification in state:', updatedNotification);
 
-            // Update the notification in the list
-            setNotifications((prev) =>
-              prev.map((notif) =>
-                notif.notification_id === updatedNotification.notification_id
-                  ? updatedNotification
-                  : notif
-              )
-            );
+            // Verify actor data exists before updating
+            const requiresActor = ['follow', 'like', 'comment', 'group_like', 'group_comment'].includes(updatedNotification.type);
+
+            if (requiresActor && !updatedNotification.actor && updatedNotification.actor_id) {
+              console.warn(`[NotificationContext] ⚠️ Supabase returned notification ${updatedNotification.notification_id} WITHOUT actor data - preserving existing`);
+              // Preserve existing actor data if Supabase didn't return it
+              setNotifications((prev) => {
+                const existing = prev.find((n) => n.notification_id === updatedNotification.notification_id);
+                return prev.map((notif) =>
+                  notif.notification_id === updatedNotification.notification_id
+                    ? { ...updatedNotification, actor: existing?.actor || notif.actor }
+                    : notif
+                );
+              });
+            } else {
+              // Update the notification in the list with full data
+              setNotifications((prev) =>
+                prev.map((notif) =>
+                  notif.notification_id === updatedNotification.notification_id
+                    ? updatedNotification
+                    : notif
+                )
+              );
+            }
 
             // Recalculate unread count
             if (updatedNotification.is_read) {

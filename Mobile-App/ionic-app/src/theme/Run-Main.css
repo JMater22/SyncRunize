@@ -3,8 +3,8 @@
   position: fixed;
   top: calc(56px + env(safe-area-inset-top));
   left: 16px;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background-color: rgba(163, 163, 163, 0.6);
   border: none;
@@ -17,7 +17,7 @@
 }
 
 .back-icon {
-  font-size: 20px;
+  font-size: 18px;
   color: white;
 }
  
@@ -231,9 +231,10 @@
   z-index: 12;
   display: flex;
   flex-direction: row;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
 }
 
 /* Map Type Tabs */
@@ -245,7 +246,7 @@
   padding: 2px;
   backdrop-filter: blur(10px);
   flex: 1;
-  max-width: 240px;
+  max-width: 200px;
 }
 
 .map-tab {
@@ -253,8 +254,8 @@
   color: rgba(255, 255, 255, 0.7);
   border: none;
   border-radius: 999px;
-  padding: 5px 8px;
-  font-size: 10px;
+  padding: 4px 6px;
+  font-size: 9px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -273,7 +274,7 @@
 }
 
 .map-tab.legend-toggle {
-  padding: 5px 6px;
+  padding: 4px 5px;
 }
 
 .view-toggle {
@@ -281,11 +282,11 @@
   color: #fff;
   border: none;
   border-radius: 999px;
-  padding: 6px 12px;
+  padding: 5px 10px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: 5px;
+  font-size: 10px;
   cursor: pointer;
   backdrop-filter: blur(10px);
   white-space: nowrap;
@@ -297,7 +298,79 @@
 }
 
 .view-toggle ion-icon {
-  font-size: 16px;
+  font-size: 14px;
+}
+
+/* Responsive breakpoints to prevent overlapping */
+@media (max-width: 576px) {
+  /* Very small screens - reduce sizes further */
+  .map-controls-top-right {
+    left: 48px;
+    right: 8px;
+    gap: 4px;
+  }
+
+  .map-type-tabs {
+    max-width: 160px;
+  }
+
+  .map-tab {
+    padding: 3px 5px;
+    font-size: 8px;
+  }
+
+  .map-tab.legend-toggle {
+    padding: 3px 4px;
+  }
+
+  .view-toggle {
+    padding: 4px 8px;
+    font-size: 9px;
+    gap: 4px;
+  }
+
+  .view-toggle ion-icon {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 400px) {
+  /* Extra small screens - stack vertically if needed */
+  .map-controls-top-right {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    left: 48px;
+  }
+
+  .map-type-tabs {
+    max-width: 180px;
+  }
+
+  .view-toggle {
+    width: auto;
+  }
+}
+
+@media (max-width: 360px) {
+  /* Ultra small screens - minimal layout */
+  .map-type-tabs {
+    max-width: 150px;
+  }
+
+  .map-tab {
+    padding: 2px 4px;
+    font-size: 7px;
+  }
+
+  .view-toggle {
+    padding: 3px 6px;
+    font-size: 8px;
+  }
+
+  .view-toggle ion-icon {
+    font-size: 11px;
+  }
 }
 
 .hazard-summary {

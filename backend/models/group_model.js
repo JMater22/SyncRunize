@@ -124,7 +124,7 @@ export const getWeeklyLeaderboard = async (groupId, week = "current") => {
         user_id,
         distance_km,
         duration_seconds,
-        users (
+        users:user_id (
           user_id,
           name,
           profile_picture
@@ -214,7 +214,7 @@ export const getLastWeekLeaders = async (groupId) => {
         user_id,
         distance_km,
         duration_seconds,
-        users (
+        users:user_id (
           user_id,
           name,
           profile_picture

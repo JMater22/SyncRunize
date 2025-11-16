@@ -201,7 +201,7 @@ export default function Notifications() {
 
   return (
     <IonPage>
-      <IonHeader className="dark-header">
+      <IonHeader className="dark-header" translucent>
         <IonToolbar>
           <IonButtons slot="start">
             <IonBackButton defaultHref="/home" />
@@ -218,7 +218,7 @@ export default function Notifications() {
       </IonHeader>
 
       <IonContent className="dark-content notification-content" fullscreen>
-        <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh} pullMin={90} pullMax={150}>
           <IonRefresherContent></IonRefresherContent>
         </IonRefresher>
 

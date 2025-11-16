@@ -1,4 +1,5 @@
 import * as GroupPostModel from "../models/group_post_model.js";
+import { invalidateGroupPostCache } from "../utils/cache_invalidation.js";
 
 // ✅ GET posts
 export const getGroupPosts = async (req, res) => {
@@ -56,6 +57,9 @@ export const createGroupPost = async (req, res) => {
 
     console.log("✅ Post created successfully:", post);
 
+    // Invalidate group post cache
+    await invalidateGroupPostCache(parseInt(groupId, 10));
+
     res.status(201).json(post);
   } catch (err) {
     console.error("❌ Error creating group post:", err);
@@ -64,10 +68,10 @@ export const createGroupPost = async (req, res) => {
   }
 };
 
-// ✅ PUT update post
+// ✅ OPTIMIZED: PUT update post with cache invalidation
 export const updateGroupPost = async (req, res) => {
   try {
-    const { postId } = req.params;
+    const { groupId, postId } = req.params;
     const { content, title, images } = req.body;
 
     const post = await GroupPostModel.updateGroupPost(
@@ -77,6 +81,9 @@ export const updateGroupPost = async (req, res) => {
       images || null
     );
 
+    // Invalidate group post cache
+    await invalidateGroupPostCache(parseInt(groupId, 10));
+
     res.json(post);
   } catch (err) {
     console.error("❌ Error updating group post:", err);
@@ -84,12 +91,15 @@ export const updateGroupPost = async (req, res) => {
   }
 };
 
-// ✅ DELETE post
+// ✅ OPTIMIZED: DELETE post with cache invalidation
 export const deleteGroupPost = async (req, res) => {
   try {
-    const { postId } = req.params;
+    const { groupId, postId } = req.params;
 
     const result = await GroupPostModel.deleteGroupPost(parseInt(postId, 10));
+
+    // Invalidate group post cache
+    await invalidateGroupPostCache(parseInt(groupId, 10));
 
     res.json(result);
   } catch (err) {

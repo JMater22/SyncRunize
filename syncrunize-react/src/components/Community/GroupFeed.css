@@ -1,10 +1,10 @@
-/* ==================== INVITE ATHLETES MODAL ==================== */
-/* Add this to your GroupFeed.css */
+/* ==================== INVITE ATHLETES MODAL - DARK MODE ==================== */
+/* Dark theme matching mobile app */
 
 .invite-modal-container {
   padding: 20px;
   min-height: 100%;
-  background: #f7f8fa;
+  background: #0a0a0a;
 }
 
 .invite-modal-header {
@@ -13,43 +13,44 @@
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid #2a2a2a;
 }
 
 .invite-modal-header h2 {
   font-size: 24px;
   font-weight: 700;
-  color: #1a1a1a;
+  color: #ffffff;
   margin: 0;
 }
 
 .close-modal-btn {
-  --color: #6b7280;
+  --color: #84cc16;
   font-size: 28px;
 }
 
-/* Search Section */
+/* Search Section - Dark Mode */
 .invite-search-section {
-  background: white;
+  background: #1a1a1a;
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #2a2a2a;
 }
 
 .search-input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
-  background: #f3f4f6;
+  background: #2a2a2a;
   border-radius: 8px;
   padding: 0 16px;
   margin-bottom: 12px;
+  border: 1px solid #333333;
 }
 
 .search-icon {
   font-size: 20px;
-  color: #6b7280;
+  color: #84cc16;
   margin-right: 12px;
 }
 
@@ -57,12 +58,14 @@
   --background: transparent;
   --padding-start: 0;
   --padding-end: 0;
+  --color: #ffffff;
+  --placeholder-color: #999999;
   flex: 1;
   font-size: 16px;
 }
 
 .search-spinner {
-  --color: #92C628;
+  --color: #84cc16;
   width: 20px;
   height: 20px;
   margin-left: 8px;
@@ -70,20 +73,20 @@
 
 .search-hint {
   font-size: 14px;
-  color: #6b7280;
+  color: #999999;
   margin: 0;
 }
 
-/* Search Results */
+/* Search Results - Dark Mode */
 .invite-search-results {
-  background: white;
+  background: #1a1a1a;
   border-radius: 12px;
   padding: 20px;
   min-height: 400px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #2a2a2a;
 }
 
-/* Empty States */
+/* Empty States - Dark Mode */
 .empty-search-state,
 .searching-state,
 .no-results-state {
@@ -93,14 +96,15 @@
   justify-content: center;
   padding: 60px 20px;
   text-align: center;
-  color: #6b7280;
+  color: #999999;
 }
 
 .empty-search-icon,
 .no-results-icon {
   font-size: 64px;
   margin-bottom: 16px;
-  opacity: 0.5;
+  opacity: 0.3;
+  color: #666666;
 }
 
 .empty-search-state p,
@@ -108,12 +112,12 @@
   font-size: 18px;
   font-weight: 600;
   margin: 0 0 8px 0;
-  color: #1a1a1a;
+  color: #ffffff;
 }
 
 .no-results-state span {
   font-size: 14px;
-  color: #6b7280;
+  color: #999999;
 }
 
 .searching-state {
@@ -121,7 +125,7 @@
 }
 
 .searching-state ion-spinner {
-  --color: #92C628;
+  --color: #84cc16;
   width: 40px;
   height: 40px;
   margin-bottom: 16px;
@@ -129,7 +133,7 @@
 
 .searching-state p {
   font-size: 16px;
-  color: #6b7280;
+  color: #999999;
   margin: 0;
 }
 
@@ -152,36 +156,36 @@
 .results-header {
   padding: 12px 0;
   margin-bottom: 16px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #2a2a2a;
 }
 
 .results-header p {
   font-size: 14px;
   font-weight: 600;
-  color: #6b7280;
+  color: #999999;
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-/* User Result Item */
+/* User Result Item - Dark Mode */
 .user-result-item {
   display: flex;
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
   border-radius: 8px;
   margin-bottom: 12px;
   transition: all 0.2s ease;
 }
 
 .user-result-item:hover {
-  background: #f3f4f6;
-  border-color: #92C628;
+  background: #252525;
+  border-color: #84cc16;
   transform: translateX(4px);
-  box-shadow: 0 2px 8px rgba(146, 198, 40, 0.1);
+  box-shadow: 0 2px 8px rgba(132, 204, 22, 0.2);
 }
 
 .user-result-avatar {
@@ -190,8 +194,8 @@
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
-  border: 2px solid white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 2px solid #2a2a2a;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .user-result-info {
@@ -205,7 +209,7 @@
 .user-result-name {
   font-size: 16px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -213,7 +217,7 @@
 
 .user-result-username {
   font-size: 14px;
-  color: #6b7280;
+  color: #999999;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -224,7 +228,7 @@
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: #9ca3af;
+  color: #666666;
 }
 
 .user-result-location ion-icon {
@@ -232,12 +236,12 @@
 }
 
 .invite-user-btn {
-  --background: #92C628;
-  --background-hover: #7ab01f;
-  --color: white;
+  --background: #84cc16;
+  --background-hover: #6fb010;
+  --color: #000000;
   --border-radius: 6px;
   height: 36px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 14px;
   text-transform: none;
   padding: 0 20px;
@@ -250,7 +254,7 @@
 }
 
 .invite-user-btn ion-spinner {
-  --color: white;
+  --color: #000000;
   width: 20px;
   height: 20px;
 }

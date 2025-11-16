@@ -66,6 +66,7 @@ export interface CreateGroupPostData {
   title?: string;
   content: string;
   images?: string[];
+  userId?: number;
 }
 
 export const GroupsApi = {
@@ -148,8 +149,9 @@ export const GroupsApi = {
   },
 
   // Get group posts
-  getGroupPosts: async (groupId: number, limit?: number, offset?: number): Promise<GroupPost[]> => {
+  getGroupPosts: async (groupId: number, userId?: number, limit?: number, offset?: number): Promise<GroupPost[]> => {
     const params: any = {};
+    if (userId) params.userId = userId;
     if (limit) params.limit = limit;
     if (offset) params.offset = offset;
     const { data } = await api.get(`/group-posts/${groupId}`, { params });

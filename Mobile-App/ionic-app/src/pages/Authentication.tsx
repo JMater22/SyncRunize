@@ -1,34 +1,47 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import {
   IonContent,
   IonPage,
   IonButton,
   IonIcon,
   IonText,
+  IonToast,
 } from '@ionic/react';
-import { logoGoogle, mail, call } from 'ionicons/icons';
-
-import { IonImg } from '@ionic/react';
+import { logoGoogle, mail } from 'ionicons/icons';
+import { useHideTabBar } from '../hooks/useHideTabBar';
+import { supabase } from '../lib/supabaseClient';
 
 const GetStarted: React.FC = () => {
-  const handleGoogleSignUp = () => {
-    // Handle Google sign up logic
-    console.log('Google sign up clicked');
+  useHideTabBar();
+  const history = useHistory();
+  const [error, setError] = useState<string | null>(null);
+
+  const handleGoogleSignUp = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/home',
+        },
+      });
+
+      if (error) {
+        console.error('[GetStarted] Google OAuth error:', error);
+        setError(error.message);
+      }
+    } catch (err: any) {
+      console.error('[GetStarted] Google sign-up error:', err);
+      setError(err?.message || 'Google sign-up failed');
+    }
   };
 
   const handleEmailSignUp = () => {
-    // Handle email sign up logic
-    console.log('Email sign up clicked');
-  };
-
-  const handlePhoneSignUp = () => {
-    // Handle phone sign up logic
-    console.log('Phone sign up clicked');
+    history.push('/create-account');
   };
 
   const handleLogIn = () => {
-    // Handle login logic
-    console.log('Log in clicked');
+    history.push('/log-in');
   };
 
   return (
@@ -47,32 +60,22 @@ const GetStarted: React.FC = () => {
               <div className="buttons-section">
                 <IonButton
                   expand="block"
-                  fill="clear"
-                  className="google-button"
-                  onClick={handleGoogleSignUp}
-                >
-                  <IonIcon icon={logoGoogle} slot="start" />
-                  Sign up with email
-                </IonButton>
-
-                <IonButton
-                  expand="block"
                   fill="solid"
                   className="email-button"
                   onClick={handleEmailSignUp}
                 >
                   <IonIcon icon={mail} slot="start" />
-                  Sign up with email
+                  Sign up with Email
                 </IonButton>
 
                 <IonButton
                   expand="block"
-                  fill="solid"
-                  className="phone-button"
-                  onClick={handlePhoneSignUp}
+                  fill="clear"
+                  className="google-button"
+                  onClick={handleGoogleSignUp}
                 >
-                  <IonIcon icon={call} slot="start" />
-                  Sign up with phone number
+                  <IonIcon icon={logoGoogle} slot="start" />
+                  Sign up with Google
                 </IonButton>
               </div>
 
@@ -88,6 +91,13 @@ const GetStarted: React.FC = () => {
           </div>
         </div>
       </IonContent>
+      <IonToast
+        isOpen={!!error}
+        message={error || ''}
+        duration={3000}
+        color="danger"
+        onDidDismiss={() => setError(null)}
+      />
     </IonPage>
   );
 };

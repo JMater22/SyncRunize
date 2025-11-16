@@ -25,56 +25,68 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Listen for auth state changes and redirect when logged in
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        console.log('[Login] Auth state changed to SIGNED_IN, redirecting to home');
+        history.replace('/home');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [history]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
         setError(error.message);
+        setSubmitting(false);
         return;
       }
 
-      // Verify session was created
       if (!data.session) {
         setError("Failed to establish session. Please try again.");
+        setSubmitting(false);
         return;
       }
 
-      // Wait for session to be persisted to localStorage
-      // This ensures onAuthStateChange listeners have fired
-      await new Promise(resolve => setTimeout(resolve, 150));
+      console.log('[Login] Login successful, waiting for auth state change event');
+      // Keep submitting=true, the auth listener will handle redirect
 
-      // Verify the session is actually stored before navigating
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setError("Session initialization failed. Please try again.");
-        return;
-      }
-
-      // Now it's safe to navigate
-      history.replace("/home");
     } catch (err: any) {
+      console.error('[Login] Login error:', err);
       setError(err?.message || "Login failed");
-    } finally {
       setSubmitting(false);
     }
-  }; 
+  };
 
-  const [isMobile, setIsMobile] = useState(false); 
+  const handleGoogleSignIn = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/home',
+        },
+      });
 
-  useEffect(() => {
-    const checkScreenSize = () => {
-      setIsMobile(window.innerWidth <= 768); 
-    };
-
-    checkScreenSize();
-    window.addEventListener("resize", checkScreenSize);
-
-    return () => window.removeEventListener("resize", checkScreenSize);
-  }, []);
+      if (error) {
+        console.error('[Login] Google OAuth error:', error);
+        setError(error.message);
+      }
+    } catch (err: any) {
+      console.error('[Login] Google sign-in error:', err);
+      setError(err?.message || "Google sign-in failed");
+    }
+  };
 
   return (
     <IonPage>
@@ -107,26 +119,47 @@ const Login: React.FC = () => {
                       placeholder="Enter your email"
                       value={email}
                       onIonInput={(e) => setEmail(e.detail.value || "")}
-                      debounce={0}
                       required
                     />
                   </div>
 
 
-                  <div className="input-group2" style={{ position: 'relative' }}>
+                  <div className="input-group2">
                     <label className="input-label2">Password</label>
-                    <IonInput
-                      className="custom-input2"
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="Enter your password"
-                      value={password}
-                      onIonInput={(e) => setPassword(e.detail.value || "")}
-                      debounce={0}
-                      required
-                    />
-                    <IonButton fill="clear" size="small" style={{ position: 'absolute', right: 0, top: 30 }} onClick={() => setShowPassword(s => !s)}>
-                      <IonIcon icon={showPassword ? eyeOffOutline : eyeOutline} />
-                    </IonButton>
+                    <div style={{ position: 'relative', width: '100%' }}>
+                      <IonInput
+                        className="custom-input2"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Enter your password"
+                        value={password}
+                        onIonInput={(e) => setPassword(e.detail.value || "")}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(s => !s)}
+                        style={{
+                          position: 'absolute',
+                          right: '12px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#999',
+                          zIndex: 10
+                        }}
+                      >
+                        <IonIcon
+                          icon={showPassword ? eyeOffOutline : eyeOutline}
+                          style={{ fontSize: '20px' }}
+                        />
+                      </button>
+                    </div>
                   </div> 
 
                  
@@ -147,11 +180,12 @@ const Login: React.FC = () => {
                   {submitting ? 'Signing in...' : 'Log in'}
                 </IonButton>
 
-               
+
                 <div className="social-login2">
                   <IonButton
                     fill="solid"
                     className="social-button google-button"
+                    onClick={handleGoogleSignIn}
                   >
                     <div className="social-content">
                       <svg className="social-icon" viewBox="0 0 24 24">

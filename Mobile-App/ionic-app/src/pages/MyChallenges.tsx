@@ -28,7 +28,7 @@ interface LocationState {
 
 const MyChallenges: React.FC = () => {
   const location = useLocation<LocationState>();
-  const { userChallenges: contextChallenges, loading: contextLoading } = useChallenges();
+  const { userChallenges: contextChallenges, loading: contextLoading, fetchUserChallenges } = useChallenges();
   const [selectedSegment, setSelectedSegment] = useState<'active' | 'completed'>('active');
   const [otherUserChallenges, setOtherUserChallenges] = useState<UserChallenge[]>([]);
   const [loadingOtherUser, setLoadingOtherUser] = useState(false);
@@ -40,6 +40,13 @@ const MyChallenges: React.FC = () => {
 
   const userChallenges = isViewingOtherUser ? otherUserChallenges : contextChallenges;
   const loading = isViewingOtherUser ? loadingOtherUser : contextLoading;
+
+  // Refresh challenges when viewing own challenges
+  useEffect(() => {
+    if (!isViewingOtherUser) {
+      fetchUserChallenges();
+    }
+  }, [isViewingOtherUser, fetchUserChallenges]);
 
   // Fetch other user's challenges if viewing another user
   useEffect(() => {
@@ -186,12 +193,12 @@ const MyChallenges: React.FC = () => {
                       <div className="progress-container">
                         <div className="progress-header">
                           <span className="progress-label">Progress</span>
-                          <span className="progress-percentage">{challenge.progress_percent.toFixed(0)}%</span>
+                          <span className="progress-percentage">{(challenge.progress_percent || 0).toFixed(0)}%</span>
                         </div>
                         <div className="progress-bar-wrapper">
                           <div
                             className="progress-bar-fill active-progress"
-                            style={{ width: `${challenge.progress_percent}%` }}
+                            style={{ width: `${challenge.progress_percent || 0}%` }}
                           />
                         </div>
                       </div>

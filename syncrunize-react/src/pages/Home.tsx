@@ -396,34 +396,27 @@ const Home: React.FC = () => {
     }
   }, [location.search]);
 
-  // Scroll to focused post after posts are present
+  // ✅ CONSOLIDATED: Scroll to focused post after posts are present
+  // Removed duplicate useEffect - this one does both scroll and highlight
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const focus = params.get('focusPost');
     if (!focus) return;
+
     const targetId = `post-${Number(focus)}`;
     const el = document.getElementById(targetId);
+
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // Add highlight effect for better UX
+      el.classList.add('highlight-focus');
+      setTimeout(() => el.classList.remove('highlight-focus'), 2000);
+
       // Remove focus param from URL to avoid repeated scrolls
       history.replace('/home');
     }
-  }, [posts]);
-
-  // Scroll to a post if focusPost query param is present
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const focus = params.get('focusPost');
-    if (!focus) return;
-    const targetId = `post-${Number(focus)}`;
-    const el = document.getElementById(targetId);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Optional: brief highlight class for UX
-      el.classList.add('highlight-focus');
-      setTimeout(() => el.classList.remove('highlight-focus'), 2000);
-    }
-  }, [posts]);
+  }, [posts, history]);
 
   // Fetch comments for a post
   const fetchComments = async (postId: number) => {
@@ -447,11 +440,39 @@ const Home: React.FC = () => {
 
   // Toggle like on a post
   const handleToggleLike = async (postId: number) => {
+    // ✅ STEP 1: Optimistic update - instant visual feedback!
+    setPosts(prevPosts =>
+      prevPosts.map(post =>
+        post.post_id === postId
+          ? {
+              ...post,
+              is_liked: !post.is_liked,
+              likes_count: post.is_liked ? post.likes_count - 1 : post.likes_count + 1
+            }
+          : post
+      )
+    );
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
-      if (!session?.access_token) return;
+      if (!session?.access_token) {
+        // Rollback if no session
+        setPosts(prevPosts =>
+          prevPosts.map(post =>
+            post.post_id === postId
+              ? {
+                  ...post,
+                  is_liked: !post.is_liked,
+                  likes_count: post.is_liked ? post.likes_count - 1 : post.likes_count + 1
+                }
+              : post
+          )
+        );
+        return;
+      }
 
+      // ✅ STEP 2: Sync with backend in background
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/likes/${postId}/toggle`,
         {},
@@ -460,7 +481,7 @@ const Home: React.FC = () => {
         }
       );
 
-      // Update the post in state
+      // ✅ STEP 3: Verify optimistic update matches reality
       setPosts(prevPosts =>
         prevPosts.map(post =>
           post.post_id === postId
@@ -470,6 +491,19 @@ const Home: React.FC = () => {
       );
     } catch (error) {
       console.error('Failed to toggle like:', error);
+
+      // ✅ STEP 4: Rollback on error
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.post_id === postId
+            ? {
+                ...post,
+                is_liked: !post.is_liked,
+                likes_count: post.is_liked ? post.likes_count - 1 : post.likes_count + 1
+              }
+            : post
+        )
+      );
     }
   };
 

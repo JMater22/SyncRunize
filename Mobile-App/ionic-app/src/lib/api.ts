@@ -30,6 +30,13 @@ const refreshSessionCache = async () => {
   }
 };
 
+// ✅ FIX: Export function to clear session cache (called on logout)
+export const clearSessionCache = () => {
+  console.log('[API] Clearing session cache');
+  cachedSession = null;
+  lastSessionFetch = 0;
+};
+
 // Attach Supabase JWT to every request
 api.interceptors.request.use(async (config) => {
   // ✅ FIX: Track request start time for performance monitoring

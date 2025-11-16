@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode, useRef } from 'react';
 import { NotificationsApi, Notification } from '../services/notifications';
 import { supabase } from '../lib/supabaseClient';
 import { useUser } from './UserContext';
@@ -20,6 +20,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedRef = useRef(false);
 
   // Safely calculate unread count - ensure notifications is always an array
   const unreadCount = Array.isArray(notifications) ? notifications.filter(n => !n.is_read).length : 0;
@@ -30,6 +31,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     try {
       setLoading(true);
       setError(null);
+      console.log('[NotificationContext] Fetching notifications');
       const data = await NotificationsApi.getAllNotifications(currentUser.user_id);
       console.log('📥 [NotificationContext] Fetched notifications:', data);
       console.log('📥 [NotificationContext] First notification actor:', data[0]?.actor);
@@ -42,7 +44,25 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         : [];
 
       console.log(`📥 [NotificationContext] Filtered ${data?.length || 0} → ${socialNotifications.length} social notifications`);
-      setNotifications(socialNotifications);
+
+      // Validate notifications before setting state - ensure actor data exists for social notifications
+      const validatedNotifications = socialNotifications.map(notif => {
+        // Notification types that require actor data
+        const requiresActor = ['follow', 'like', 'comment', 'group_like', 'group_comment'].includes(notif.type);
+
+        if (requiresActor && !notif.actor && notif.actor_id) {
+          console.warn(`[NotificationContext] Notification ${notif.notification_id} missing actor data for type ${notif.type}, actor_id=${notif.actor_id}`);
+        }
+
+        return notif;
+      });
+
+      setNotifications(validatedNotifications);
+      hasLoadedRef.current = true;
+
+      // Cache notifications to sessionStorage for instant restore
+      sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(validatedNotifications));
+      console.log('[NotificationContext] Cached', validatedNotifications.length, 'notifications');
     } catch (err: any) {
       console.error('Failed to fetch notifications:', err);
       setError(err.message || 'Failed to fetch notifications');
@@ -56,17 +76,29 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     try {
       await NotificationsApi.markAsRead(notificationId);
 
-      // Update local state
-      setNotifications(prev =>
-        prev.map(n =>
-          n.notification_id === notificationId ? { ...n, is_read: true } : n
-        )
-      );
+      // Update local state - preserve ALL notification data including actor
+      const updatedNotifications = notifications.map(n => {
+        if (n.notification_id === notificationId) {
+          // Debug: Check if actor data exists before updating
+          if (!n.actor && n.actor_id) {
+            console.warn(`[NotificationContext] Notification ${notificationId} missing actor data, actor_id=${n.actor_id}`);
+          }
+          return { ...n, is_read: true };
+        }
+        return n;
+      });
+      setNotifications(updatedNotifications);
+
+      // Update cache - but only if notifications have valid data
+      if (currentUser) {
+        sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(updatedNotifications));
+        console.log(`[NotificationContext] Marked notification ${notificationId} as read and updated cache`);
+      }
     } catch (err: any) {
       console.error('Failed to mark notification as read:', err);
       throw err;
     }
-  }, []);
+  }, [notifications, currentUser]);
 
   const clearAll = useCallback(async () => {
     if (!currentUser) return;
@@ -74,20 +106,63 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     try {
       await NotificationsApi.clearAll(currentUser.user_id);
       setNotifications([]);
+
+      // Clear cache
+      sessionStorage.removeItem(`notifications_${currentUser.user_id}`);
     } catch (err: any) {
       console.error('Failed to clear notifications:', err);
       throw err;
     }
   }, [currentUser]);
 
-  // Fetch notifications when user changes
+  // Fetch notifications when user changes with caching
   useEffect(() => {
-    if (currentUser) {
-      fetchNotifications();
-    } else {
+    if (!currentUser) {
       setNotifications([]);
+      hasLoadedRef.current = false;
+      return;
     }
-  }, [currentUser]);
+
+    // Try to restore from cache first
+    const cachedKey = `notifications_${currentUser.user_id}`;
+    const cachedNotifications = sessionStorage.getItem(cachedKey);
+
+    if (cachedNotifications && !hasLoadedRef.current) {
+      try {
+        const parsedNotifications = JSON.parse(cachedNotifications);
+        console.log('[NotificationContext] Restoring', parsedNotifications.length, 'notifications from cache');
+
+        // Validate cached notifications - check for missing actor data
+        const missingActorCount = parsedNotifications.filter((n: Notification) => {
+          const requiresActor = ['follow', 'like', 'comment', 'group_like', 'group_comment'].includes(n.type);
+          return requiresActor && !n.actor && n.actor_id;
+        }).length;
+
+        if (missingActorCount > 0) {
+          console.warn(`[NotificationContext] ⚠️ ${missingActorCount} cached notifications missing actor data - will refetch`);
+          // Clear bad cache and fetch fresh data
+          sessionStorage.removeItem(cachedKey);
+          fetchNotifications();
+          return;
+        }
+
+        setNotifications(parsedNotifications);
+        hasLoadedRef.current = true;
+
+        // Still fetch in background to get latest (but don't show loading)
+        fetchNotifications();
+        return;
+      } catch (err) {
+        console.error('[NotificationContext] Failed to parse cached notifications:', err);
+        sessionStorage.removeItem(cachedKey);
+      }
+    }
+
+    // If no cache or already loaded, fetch normally
+    if (!hasLoadedRef.current) {
+      fetchNotifications();
+    }
+  }, [currentUser, fetchNotifications]);
 
   // Set up real-time subscription
   useEffect(() => {
@@ -131,15 +206,40 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
           if (error) {
             console.error('Error fetching new notification with actor:', error);
-            // Fallback: add without actor details
+
+            // Don't add notification without actor data - instead trigger a refetch
+            // This prevents cache corruption with incomplete data
+            const requiresActor = ['follow', 'like', 'comment', 'group_like', 'group_comment'].includes(payload.new.type);
+
+            if (requiresActor) {
+              console.warn(`[NotificationContext] Skipping notification ${payload.new.notification_id} - missing actor data`);
+              // Trigger background refetch to get complete data
+              setTimeout(() => fetchNotifications(), 1000);
+              return;
+            }
+
+            // For notifications that don't require actor (e.g., system notifications), add them
             const payloadNotif = payload.new as Notification;
-            setNotifications(prev => [payloadNotif, ...prev]);
+            setNotifications(prev => {
+              const updated = [payloadNotif, ...prev];
+              if (currentUser) {
+                sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(updated));
+              }
+              return updated;
+            });
             return;
           }
 
           if (newNotification) {
             console.log('Adding new notification with actor:', newNotification);
-            setNotifications(prev => [newNotification, ...prev]);
+            setNotifications(prev => {
+              const updated = [newNotification, ...prev];
+              // Update cache
+              if (currentUser) {
+                sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(updated));
+              }
+              return updated;
+            });
           }
         }
       )
@@ -172,39 +272,105 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
             if (error) {
               console.error('Error fetching updated notification:', error);
-              // Fallback: preserve existing actor data
+
+              // Fallback: preserve existing actor data if available
               const payloadNotif = payload.new as Notification;
-              setNotifications(prev =>
-                prev.map(n =>
+              const requiresActor = ['follow', 'like', 'comment', 'group_like', 'group_comment'].includes(payloadNotif.type);
+
+              setNotifications(prev => {
+                const existing = prev.find(n => n.notification_id === payloadNotif.notification_id);
+
+                // If notification requires actor but existing doesn't have it, trigger refetch
+                if (requiresActor && existing && !existing.actor && existing.actor_id) {
+                  console.warn(`[NotificationContext] UPDATE fallback - existing notification ${payloadNotif.notification_id} missing actor data, triggering refetch`);
+                  setTimeout(() => fetchNotifications(), 1000);
+                  return prev; // Don't update state with broken data
+                }
+
+                // Preserve existing actor data in fallback
+                const updated = prev.map(n =>
                   n.notification_id === payloadNotif.notification_id
                     ? { ...payloadNotif, actor: n.actor }
                     : n
-                )
-              );
+                );
+
+                // Update cache
+                if (currentUser) {
+                  sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(updated));
+                }
+
+                return updated;
+              });
               return;
             }
 
             if (updatedNotification) {
-              // Update with full notification including actor details
-              setNotifications(prev =>
-                prev.map(n =>
-                  n.notification_id === updatedNotification.notification_id
-                    ? updatedNotification
-                    : n
-                )
-              );
+              // Verify actor data exists before updating
+              const requiresActor = ['follow', 'like', 'comment', 'group_like', 'group_comment'].includes(updatedNotification.type);
+
+              if (requiresActor && !updatedNotification.actor && updatedNotification.actor_id) {
+                console.warn(`[NotificationContext] ⚠️ Supabase returned notification ${updatedNotification.notification_id} WITHOUT actor data - preserving existing`);
+                // Preserve existing actor data if Supabase didn't return it
+                setNotifications(prev => {
+                  const existing = prev.find(n => n.notification_id === updatedNotification.notification_id);
+                  const updated = prev.map(n =>
+                    n.notification_id === updatedNotification.notification_id
+                      ? { ...updatedNotification, actor: existing?.actor || n.actor }
+                      : n
+                  );
+                  // Update cache with preserved actor data
+                  if (currentUser) {
+                    sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(updated));
+                  }
+                  return updated;
+                });
+              } else {
+                // Update with full notification including actor details
+                setNotifications(prev => {
+                  const updated = prev.map(n =>
+                    n.notification_id === updatedNotification.notification_id
+                      ? updatedNotification
+                      : n
+                  );
+                  // Update cache
+                  if (currentUser) {
+                    sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(updated));
+                  }
+                  return updated;
+                });
+              }
             }
           } catch (err) {
             console.error('Failed to refetch notification:', err);
+
             // Fallback: preserve existing actor data
             const payloadNotif = payload.new as Notification;
-            setNotifications(prev =>
-              prev.map(n =>
+            const requiresActor = ['follow', 'like', 'comment', 'group_like', 'group_comment'].includes(payloadNotif.type);
+
+            setNotifications(prev => {
+              const existing = prev.find(n => n.notification_id === payloadNotif.notification_id);
+
+              // If notification requires actor but existing doesn't have it, trigger refetch
+              if (requiresActor && existing && !existing.actor && existing.actor_id) {
+                console.warn(`[NotificationContext] UPDATE catch fallback - existing notification ${payloadNotif.notification_id} missing actor data, triggering refetch`);
+                setTimeout(() => fetchNotifications(), 1000);
+                return prev; // Don't update with broken data
+              }
+
+              // Preserve existing actor data
+              const updated = prev.map(n =>
                 n.notification_id === payloadNotif.notification_id
                   ? { ...payloadNotif, actor: n.actor }
                   : n
-              )
-            );
+              );
+
+              // Update cache
+              if (currentUser) {
+                sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(updated));
+              }
+
+              return updated;
+            });
           }
         }
       )
@@ -213,7 +379,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUser]);
+  }, [currentUser, fetchNotifications]);
 
   const value = useMemo(
     () => ({

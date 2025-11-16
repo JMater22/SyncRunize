@@ -519,6 +519,7 @@ const Community: React.FC = () => {
                             imageSrc={group.group_picture}
                             showJoinButton={!group.privacy}
                             isJoined={false}
+                            routerLink={`/group-feed/${group.group_id}`}
                             onJoin={() => handleJoinGroup(group.group_id)}
                           />
                         ))}

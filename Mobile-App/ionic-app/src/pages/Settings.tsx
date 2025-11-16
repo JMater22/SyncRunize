@@ -29,6 +29,7 @@ import { PushNotificationSchema, ActionPerformed } from '@capacitor/push-notific
 import { supabase } from "../lib/supabaseClient";
 import { useUser } from "../contexts/UserContext";
 import { UsersApi } from "../services/users";
+import { clearSessionCache } from "../lib/api";
 
 interface NotificationPreferences {
   pushEnabled: boolean;
@@ -97,7 +98,20 @@ export default function Settings() {
   const handleLogout = async () => {
     try {
       setLoggingOut(true);
+
+      // Clear in-memory session cache FIRST
+      clearSessionCache();
+      console.log('[Settings] Cleared in-memory session cache');
+
+      // Sign out to properly clear Supabase session (localStorage)
       await supabase.auth.signOut();
+      console.log('[Settings] Supabase signOut completed');
+
+      // Then clear all cached data
+      sessionStorage.clear();
+      localStorage.clear(); // Also clear localStorage to remove any stale Supabase data
+      console.log('[Settings] Cleared sessionStorage and localStorage');
+
       // After sign out, route to authentication gate
       history.replace('/authentication');
     } catch (e) {

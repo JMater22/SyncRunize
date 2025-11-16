@@ -8,26 +8,18 @@ export function useSupabaseSession() {
 
   useEffect(() => {
     let cancelled = false;
-    let retryTimeout: NodeJS.Timeout;
 
-    const loadSession = async (retryCount = 0) => {
+    const loadSession = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
-
-        if (error) {
-          if (!cancelled) setSession(null);
-        } else {
-          if (!cancelled) setSession(data.session ?? null);
+        const { data } = await supabase.auth.getSession();
+        if (!cancelled) {
+          setSession(data.session ?? null);
+          setLoading(false);
         }
-
-        // If session is null during initial load and we haven't retried much,
-        // wait a bit and try again (helps with race conditions during login)
-        if (!data.session && retryCount < 2 && !cancelled) {
-          retryTimeout = setTimeout(() => loadSession(retryCount + 1), 150);
-        }
-
-      } finally {
-        if (!cancelled && (retryCount >= 2 || session !== null)) {
+      } catch (error) {
+        console.error('[useSession] Error loading session:', error);
+        if (!cancelled) {
+          setSession(null);
           setLoading(false);
         }
       }
@@ -35,7 +27,8 @@ export function useSupabaseSession() {
 
     loadSession();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    // Listen to auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (!cancelled) {
         setSession(newSession);
         setLoading(false);
@@ -44,8 +37,7 @@ export function useSupabaseSession() {
 
     return () => {
       cancelled = true;
-      clearTimeout(retryTimeout);
-      sub.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 

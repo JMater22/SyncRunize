@@ -24,7 +24,10 @@ import {
   IonRouterLink,
   IonSpinner,
   IonToast,
+  IonRefresher,
+  IonRefresherContent,
 } from "@ionic/react";
+import type { RefresherEventDetail } from "@ionic/react";
 import { settingsOutline, chevronForwardOutline, location } from "ionicons/icons";
 import { useUser } from "../contexts/UserContext";
 import { useChallenges } from "../contexts/ChallengesContext";
@@ -41,10 +44,11 @@ export default function Profile() {
   const [followingCount, setFollowingCount] = useState(0);
   const [userRoutes, setUserRoutes] = useState<any[]>([]);
   const [timePeriod, setTimePeriod] = useState<'day' | 'week' | 'month'>('day');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start as false, let useEffect set it to true when fetching
   const [error, setError] = useState<string | null>(null);
 
   const isMountedRef = useRef(true);
+  const hasLoadedRef = useRef(false); // Track if profile already loaded
 
   // Performance stats state
   interface StatSummary {
@@ -117,10 +121,20 @@ export default function Profile() {
     };
   }, [userRoutes]);
 
-  const fetchProfileData = useCallback(async () => {
+  const fetchProfileData = useCallback(async (forceRefresh: boolean = false) => {
     if (!currentUser) return;
 
+    // Check both ref and sessionStorage (sessionStorage persists across unmounts in dev mode)
+    const hasLoadedInSession = sessionStorage.getItem(`profile_loaded_${currentUser.user_id}`) === 'true';
+
+    // Skip if already loaded and not forcing refresh (prevents reload on tab switch)
+    if ((hasLoadedRef.current || hasLoadedInSession) && !forceRefresh) {
+      console.log('[UserProfile] Already loaded, skipping fetch');
+      return;
+    }
+
     try {
+      console.log('[UserProfile] Fetching profile data', { forceRefresh });
       if (isMountedRef.current) {
         setLoading(true);
         setError(null);
@@ -138,7 +152,20 @@ export default function Profile() {
       const routes = await RoutesApi.getUserRoutes(currentUser.user_id, true);
 
       if (isMountedRef.current) {
-        setUserRoutes(Array.isArray(routes) ? routes : []);
+        const routesArray = Array.isArray(routes) ? routes : [];
+        setUserRoutes(routesArray);
+        hasLoadedRef.current = true; // Mark as loaded
+        sessionStorage.setItem(`profile_loaded_${currentUser.user_id}`, 'true'); // Persist across unmounts
+
+        // Cache profile data to sessionStorage for instant restore on remount
+        const profileData = {
+          followerCount: followCounts.followers,
+          followingCount: followCounts.following,
+          userRoutes: routesArray
+        };
+        sessionStorage.setItem(`profile_data_${currentUser.user_id}`, JSON.stringify(profileData));
+
+        console.log('[UserProfile] Profile loaded and cached successfully');
       }
     } catch (err: any) {
       console.error('Failed to fetch profile data:', err);
@@ -157,16 +184,57 @@ export default function Profile() {
 
     if (!currentUser) return;
 
-    fetchProfileData();
+    // Try to restore profile data from sessionStorage first
+    const cachedDataKey = `profile_data_${currentUser.user_id}`;
+    const cachedData = sessionStorage.getItem(cachedDataKey);
+
+    if (cachedData && followerCount === 0 && followingCount === 0 && userRoutes.length === 0) {
+      try {
+        const parsedData = JSON.parse(cachedData);
+        console.log('[UserProfile] Restoring profile data from cache');
+        setFollowerCount(parsedData.followerCount || 0);
+        setFollowingCount(parsedData.followingCount || 0);
+        setUserRoutes(parsedData.userRoutes || []);
+        hasLoadedRef.current = true;
+        return; // Skip fetch, use cached data
+      } catch (err) {
+        console.error('[UserProfile] Failed to parse cached data:', err);
+        sessionStorage.removeItem(cachedDataKey);
+      }
+    }
+
+    // Skip fetch if we already have data in state
+    if ((followerCount > 0 || followingCount > 0 || userRoutes.length > 0) && hasLoadedRef.current) {
+      console.log('[UserProfile] Data already in state, skipping fetch');
+      return;
+    }
+
+    // Only fetch if we don't have cached data
+    if (!hasLoadedRef.current) {
+      console.log('[UserProfile] No cache found, fetching profile data');
+      fetchProfileData(false);
+    }
 
     return () => {
       isMountedRef.current = false;
     };
-  }, [currentUser, fetchProfileData]);
+    // Include data variables to detect when state resets on remount
+  }, [currentUser, fetchProfileData, userRoutes.length, followerCount, followingCount]);
 
   const currentStats = statsData[timePeriod];
 
-  if (userLoading || loading) {
+  // Pull-to-refresh handler
+  const handleRefresh = async (event: CustomEvent<RefresherEventDetail>) => {
+    console.log('[UserProfile] Pull-to-refresh triggered');
+    await fetchProfileData(true); // true = force refresh
+    event.detail.complete();
+  };
+
+  // Only show loading skeleton if actually loading AND no data cached
+  const hasData = userRoutes.length > 0 || followerCount > 0 || followingCount > 0;
+  const shouldShowLoading = (userLoading || loading) && !hasData;
+
+  if (shouldShowLoading) {
     return (
       <IonPage>
         <IonHeader className="dark-header">
@@ -308,6 +376,11 @@ export default function Profile() {
 
       {/* Scrollable Content */}
       <IonContent className="profile-content">
+        {/* Pull-to-Refresh */}
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh} pullMin={90} pullMax={150}>
+          <IonRefresherContent></IonRefresherContent>
+        </IonRefresher>
+
         {/* Profile Section */}
         <IonItem lines="none">
           <IonAvatar slot="start">

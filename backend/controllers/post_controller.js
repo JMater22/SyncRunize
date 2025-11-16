@@ -1,4 +1,5 @@
 import * as PostModel from "../models/post_model.js";
+import { invalidatePostCache } from "../utils/cache_invalidation.js";
 
 // GET all posts (or by user_id) - LEGACY
 export const getPosts = async (req, res) => {
@@ -72,7 +73,7 @@ export const getPostById = async (req, res) => {
   }
 };
 
-// ✅ NEW: CREATE post from route
+// ✅ OPTIMIZED: CREATE post from route with cache invalidation
 export const createPostFromRoute = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -101,6 +102,9 @@ export const createPostFromRoute = async (req, res) => {
       visibility
     });
 
+    // Invalidate caches
+    await invalidatePostCache({ user_id: userId });
+
     res.status(201).json(post);
   } catch (err) {
     console.error("Create post from route error:", err);
@@ -108,26 +112,30 @@ export const createPostFromRoute = async (req, res) => {
   }
 };
 
-// CREATE new post (enhanced to support route-based posts)
+// ✅ OPTIMIZED: CREATE new post with cache invalidation
 export const createPost = async (req, res) => {
   try {
     const { content, imageUrl, route_id, image_url, visibility } = req.body;
     const userId = req.user.user_id;
 
+    let post;
     // If route_id is provided, use the from-route flow
     if (route_id) {
-      const post = await PostModel.createPostFromRouteId({
+      post = await PostModel.createPostFromRouteId({
         userId,
         routeId: route_id,
         content,
         snapshotUrl: image_url || imageUrl,
         visibility
       });
-      return res.status(201).json(post);
+    } else {
+      // Otherwise, create a generic text/image post
+      post = await PostModel.createPost(userId, content, imageUrl);
     }
 
-    // Otherwise, create a generic text/image post
-    const post = await PostModel.createPost(userId, content, imageUrl);
+    // Invalidate caches
+    await invalidatePostCache({ user_id: userId });
+
     res.status(201).json(post);
   } catch (err) {
     console.error("Create post error:", err);
@@ -135,7 +143,7 @@ export const createPost = async (req, res) => {
   }
 };
 
-// UPDATE post
+// ✅ OPTIMIZED: UPDATE post with cache invalidation
 export const updatePost = async (req, res) => {
   try {
     const { id } = req.params;
@@ -143,6 +151,10 @@ export const updatePost = async (req, res) => {
     const userId = req.user.user_id;
 
     const updated = await PostModel.updatePost(id, updates, userId);
+
+    // Invalidate caches
+    await invalidatePostCache({ user_id: userId });
+
     res.json(updated);
   } catch (err) {
     console.error("Update post error:", err);
@@ -159,12 +171,16 @@ export const updatePost = async (req, res) => {
   }
 };
 
-// DELETE post
+// ✅ OPTIMIZED: DELETE post with cache invalidation
 export const deletePost = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.user_id;
     const result = await PostModel.deletePost(id, userId);
+
+    // Invalidate caches
+    await invalidatePostCache({ user_id: userId });
+
     res.json(result);
   } catch (err) {
     console.error("Delete post error:", err);

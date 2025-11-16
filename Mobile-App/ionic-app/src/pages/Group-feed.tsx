@@ -50,7 +50,6 @@ import {
 } from "ionicons/icons";
 import { useHistory, useParams } from "react-router-dom";
 import ChallengePic from '../components/assets/istockphoto-143920084-612x612.jpg';
-import ProfilePic from '../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg';
 import { usePushNotifications } from "../components/push-notification";
 import { PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
@@ -58,6 +57,7 @@ import { GroupsApi, Group, GroupMember, GroupPost } from "../services/groups";
 import { UsersApi } from "../services/users";
 import { useUser } from "../contexts/UserContext";
 import { getAvatarUrl, formatRelativeTime, DEFAULT_AVATAR } from "../lib/utils";
+import { supabase } from "../lib/supabaseClient";
 import "../theme/Group-feed.css";
 
 interface Post {
@@ -138,6 +138,10 @@ const GroupFeed: React.FC = () => {
   const [postImages, setPostImages] = useState<string[]>([]);
   const [isCreatingPost, setIsCreatingPost] = useState(false);
 
+  // Image display state
+  const [imageLoadingStates, setImageLoadingStates] = useState<{[key: string]: boolean}>({});
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
   // Fetch group data from backend
   useEffect(() => {
     if (!currentUser) {
@@ -172,15 +176,46 @@ const GroupFeed: React.FC = () => {
       // ⚡ PARALLEL API CALLS - Fetch all data simultaneously
       const [groupData, postsData, membersData] = await Promise.all([
         GroupsApi.getGroup(parseInt(groupId)),
-        GroupsApi.getGroupPosts(parseInt(groupId), POSTS_PER_PAGE, 0),
+        GroupsApi.getGroupPosts(parseInt(groupId), currentUser?.user_id, POSTS_PER_PAGE, 0),
         GroupsApi.getGroupMembers(parseInt(groupId))
       ]);
 
       // Set group data
       setGroup(groupData);
 
-      // Set posts with pagination
-      setGroupPosts(Array.isArray(postsData) ? postsData : []);
+      // Set posts with pagination - Parse images if they're JSON strings
+      const parsedPosts = (Array.isArray(postsData) ? postsData : []).map(post => {
+        let parsedImages = post.images;
+
+        // Parse images if they're a JSON string
+        if (typeof post.images === 'string' && post.images.trim()) {
+          try {
+            parsedImages = JSON.parse(post.images);
+          } catch (e) {
+            console.error('[GroupFeed] Failed to parse images for post:', post.post_id, e);
+            parsedImages = [];
+          }
+        }
+
+        // Ensure images is an array or null
+        if (!Array.isArray(parsedImages)) {
+          parsedImages = null;
+        }
+
+        return {
+          ...post,
+          images: parsedImages
+        };
+      });
+
+      console.log('[GroupFeed] Fetched posts:', parsedPosts.map(p => ({
+        post_id: p.post_id,
+        hasImages: !!p.images,
+        isArray: Array.isArray(p.images),
+        imageCount: p.images?.length
+      })));
+
+      setGroupPosts(parsedPosts);
       setPostsOffset(POSTS_PER_PAGE);
       setHasMorePosts(postsData.length === POSTS_PER_PAGE);
 
@@ -226,9 +261,32 @@ const GroupFeed: React.FC = () => {
 
     try {
       console.log('[GroupFeed] Loading more posts...');
-      const morePosts = await GroupsApi.getGroupPosts(parseInt(groupId), POSTS_PER_PAGE, postsOffset);
+      const morePosts = await GroupsApi.getGroupPosts(parseInt(groupId), currentUser?.user_id, POSTS_PER_PAGE, postsOffset);
 
-      setGroupPosts(prev => [...prev, ...(Array.isArray(morePosts) ? morePosts : [])]);
+      // Parse images if they're JSON strings
+      const parsedMorePosts = (Array.isArray(morePosts) ? morePosts : []).map(post => {
+        let parsedImages = post.images;
+
+        if (typeof post.images === 'string' && post.images.trim()) {
+          try {
+            parsedImages = JSON.parse(post.images);
+          } catch (e) {
+            console.error('[GroupFeed] Failed to parse images for post:', post.post_id, e);
+            parsedImages = [];
+          }
+        }
+
+        if (!Array.isArray(parsedImages)) {
+          parsedImages = null;
+        }
+
+        return {
+          ...post,
+          images: parsedImages
+        };
+      });
+
+      setGroupPosts(prev => [...prev, ...parsedMorePosts]);
       setPostsOffset(prev => prev + POSTS_PER_PAGE);
       setHasMorePosts(morePosts.length === POSTS_PER_PAGE);
 
@@ -367,21 +425,108 @@ const GroupFeed: React.FC = () => {
     }
   };
 
+  // Helper function to compress image
+  const compressImage = (dataUrl: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1200;
+        const MAX_HEIGHT = 1200;
+
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Compress to JPEG with 0.8 quality
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.src = dataUrl;
+    });
+  };
+
   const handleAddPostImage = async () => {
+    if (postImages.length >= 4) {
+      setToastMessage('Maximum 4 images allowed');
+      setToastColor('danger');
+      setShowToast(true);
+      return;
+    }
+
+    // Web fallback - use file input for desktop browsers
+    if (window.navigator.userAgent.includes('Chrome') && !window.navigator.userAgent.includes('Mobile')) {
+      console.log('[GroupFeed] Using web file input for desktop');
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async (e: any) => {
+        const file = e.target?.files?.[0];
+        if (file) {
+          // Check file size (max 5MB)
+          if (file.size > 5 * 1024 * 1024) {
+            setToastMessage('Image too large. Maximum 5MB allowed.');
+            setToastColor('danger');
+            setShowToast(true);
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            const dataUrl = event.target?.result as string;
+            // Compress image
+            const compressed = await compressImage(dataUrl);
+            setPostImages(prev => [...prev, compressed]);
+            setToastMessage('Image added successfully');
+            setToastColor('success');
+            setShowToast(true);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      input.click();
+      return;
+    }
+
+    // Mobile - use Camera API
     try {
+      console.log('[GroupFeed] Opening camera/gallery picker...');
       const image = await Camera.getPhoto({
-        quality: 80,
+        quality: 70, // Reduced quality for smaller file size
         allowEditing: true,
         resultType: CameraResultType.DataUrl,
-        source: CameraSource.Prompt, // Allows user to choose camera or gallery
+        source: CameraSource.Prompt,
       });
 
       if (image.dataUrl) {
-        setPostImages(prev => [...prev, image.dataUrl!]);
+        // Compress image
+        const compressed = await compressImage(image.dataUrl);
+        setPostImages(prev => [...prev, compressed]);
+        setToastMessage('Image added');
+        setToastColor('success');
+        setShowToast(true);
       }
-    } catch (error) {
-      console.error('Error selecting image:', error);
-      setToastMessage('Failed to select image');
+    } catch (error: any) {
+      console.error('[GroupFeed] Error selecting image:', error);
+      if (error.message === 'User cancelled photos app') {
+        return;
+      }
+      setToastMessage(error?.message || 'Failed to select image');
       setToastColor('danger');
       setShowToast(true);
     }
@@ -391,17 +536,180 @@ const GroupFeed: React.FC = () => {
     setPostImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Helper function to convert data URL to Blob
+  const dataURLtoBlob = (dataURL: string): Blob => {
+    const arr = dataURL.split(',');
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  };
+
+  // Upload images to Supabase Storage
+  const uploadImagesToSupabase = async (dataUrls: string[]): Promise<string[]> => {
+    const uploadedUrls: string[] = [];
+
+    console.log('[GroupFeed] Uploading', dataUrls.length, 'images to Supabase...');
+
+    for (let i = 0; i < dataUrls.length; i++) {
+      try {
+        const dataUrl = dataUrls[i];
+        const blob = dataURLtoBlob(dataUrl);
+
+        // Generate unique filename
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(7);
+        const fileName = `${timestamp}_${random}.jpg`;
+        const filePath = `group-posts/${fileName}`;
+
+        console.log(`[GroupFeed] Uploading image ${i + 1}/${dataUrls.length}: ${filePath}`);
+
+        // Upload to Supabase Storage
+        const { data, error } = await supabase.storage
+          .from('assets')
+          .upload(filePath, blob, {
+            contentType: 'image/jpeg',
+            upsert: false
+          });
+
+        if (error) {
+          console.error('[GroupFeed] Upload error:', error);
+          throw error;
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('assets')
+          .getPublicUrl(filePath);
+
+        console.log(`[GroupFeed] Image ${i + 1} uploaded successfully:`, urlData.publicUrl);
+        uploadedUrls.push(urlData.publicUrl);
+      } catch (error) {
+        console.error('[GroupFeed] Failed to upload image:', error);
+        throw new Error(`Failed to upload image ${i + 1}`);
+      }
+    }
+
+    return uploadedUrls;
+  };
+
   const handleCreatePost = async () => {
-    if (!groupId || !currentUser || !postContent.trim()) return;
+    // Validation
+    if (!groupId) {
+      setToastMessage('Group not found');
+      setToastColor('danger');
+      setShowToast(true);
+      return;
+    }
+
+    if (!currentUser) {
+      setToastMessage('Please log in to create a post');
+      setToastColor('danger');
+      setShowToast(true);
+      return;
+    }
+
+    if (!postContent.trim()) {
+      setToastMessage('Post content is required');
+      setToastColor('danger');
+      setShowToast(true);
+      return;
+    }
+
+    if (postContent.trim().length > 5000) {
+      setToastMessage('Post content too long (max 5000 characters)');
+      setToastColor('danger');
+      setShowToast(true);
+      return;
+    }
 
     try {
       setIsCreatingPost(true);
+      console.log('[GroupFeed] Creating post...', {
+        groupId,
+        userId: currentUser.user_id,
+        contentLength: postContent.trim().length,
+        imageCount: postImages.length
+      });
 
-      await GroupsApi.createGroupPost(parseInt(groupId), {
+      // Upload images to Supabase first if there are any
+      let imageUrls: string[] = [];
+      if (postImages.length > 0) {
+        console.log('[GroupFeed] Uploading', postImages.length, 'images to Supabase...');
+        setToastMessage('Uploading images...');
+        setToastColor('primary');
+        setShowToast(true);
+
+        try {
+          imageUrls = await uploadImagesToSupabase(postImages);
+          console.log('[GroupFeed] All images uploaded successfully:', imageUrls);
+        } catch (error: any) {
+          console.error('[GroupFeed] Image upload failed:', error);
+          setToastMessage(error.message || 'Failed to upload images');
+          setToastColor('danger');
+          setShowToast(true);
+          setIsCreatingPost(false);
+          return;
+        }
+      }
+
+      const postData = {
         title: postTitle.trim() || undefined,
         content: postContent.trim(),
-        images: postImages.length > 0 ? postImages : undefined
+        images: imageUrls.length > 0 ? imageUrls : undefined,
+        userId: currentUser.user_id
+      };
+
+      console.log('[GroupFeed] Sending post to backend with image URLs:', imageUrls);
+
+      const newPost = await GroupsApi.createGroupPost(parseInt(groupId), postData);
+
+      console.log('[GroupFeed] Post created successfully:', newPost);
+
+      // Parse images if they're JSON strings
+      let parsedImages = newPost.images;
+
+      if (typeof newPost.images === 'string' && newPost.images.trim()) {
+        try {
+          parsedImages = JSON.parse(newPost.images);
+        } catch (e) {
+          console.error('[GroupFeed] Failed to parse images for new post:', e);
+          parsedImages = [];
+        }
+      }
+
+      if (!Array.isArray(parsedImages)) {
+        parsedImages = null;
+      }
+
+      const parsedNewPost = {
+        ...newPost,
+        images: parsedImages
+      };
+
+      console.log('[GroupFeed] Parsed new post images:', {
+        original: newPost.images,
+        parsed: parsedNewPost.images,
+        isArray: Array.isArray(parsedNewPost.images)
       });
+
+      // ✅ IMMEDIATELY add the new post to the state (optimistic update)
+      setGroupPosts(prev => [parsedNewPost, ...prev]);
+
+      // Initialize likes and comments for the new post
+      setLikes(prev => ({
+        ...prev,
+        [parsedNewPost.post_id]: { count: 0, isLiked: false }
+      }));
+      setComments(prev => ({
+        ...prev,
+        [parsedNewPost.post_id]: []
+      }));
 
       setToastMessage('Post created successfully!');
       setToastColor('success');
@@ -413,11 +721,25 @@ const GroupFeed: React.FC = () => {
       setPostContent("");
       setPostImages([]);
 
-      // Refresh posts
-      fetchGroupData();
+      // Don't fetch - trust the optimistic update to avoid cache race condition
+      // Post is already in state and saved to DB, will load fresh on next visit
     } catch (err: any) {
-      console.error('Failed to create post:', err);
-      setToastMessage(err.message || 'Failed to create post');
+      console.error('[GroupFeed] Failed to create post:', err);
+
+      let errorMessage = 'Failed to create post';
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      if (errorMessage.includes('timeout')) {
+        errorMessage = 'Request timed out. Please check your connection and try again.';
+      } else if (errorMessage.includes('Network')) {
+        errorMessage = 'Network error. Please check your connection.';
+      }
+
+      setToastMessage(errorMessage);
       setToastColor('danger');
       setShowToast(true);
     } finally {
@@ -646,15 +968,6 @@ const GroupFeed: React.FC = () => {
   const getActionSheetButtons = () => {
     const buttons = [];
 
-    // View Leaderboard button
-    buttons.push({
-      text: 'View Leaderboard',
-      icon: trophyOutline,
-      handler: () => {
-        history.push(`/leaderboards/${groupId}`);
-      }
-    });
-
     // View Members button
     buttons.push({
       text: 'View Members',
@@ -753,7 +1066,8 @@ const GroupFeed: React.FC = () => {
               Retry
             </IonButton>
           </div>
-        ) : (
+        ) : !isUserJoined && !isUserAdmin ? (
+          // Show join prompt for non-members - they cannot access group content
           <div className="feed-tab">
             {/* Group Info Card */}
             {group && (
@@ -774,7 +1088,74 @@ const GroupFeed: React.FC = () => {
               </IonCard>
             )}
 
-            {/* Tab Navigation */}
+            {/* Join Prompt - User must join to access content */}
+            <IonCard style={{ marginTop: '24px', textAlign: 'center', background: '#1a1a1a' }}>
+              <IonCardContent style={{ padding: '48px 24px' }}>
+                <IonIcon
+                  icon={peopleOutline}
+                  style={{ fontSize: '80px', color: '#84cc16', marginBottom: '24px' }}
+                />
+                <h2 style={{ color: '#ffffff', fontSize: '22px', fontWeight: '700', margin: '0 0 12px 0' }}>
+                  Join to Access Group Content
+                </h2>
+                <p style={{ color: '#999999', fontSize: '15px', lineHeight: '1.6', margin: '0 0 24px 0' }}>
+                  You need to be a member to view posts, leaderboards, and interact with this group.
+                </p>
+                <IonButton
+                  expand="block"
+                  color="success"
+                  size="large"
+                  onClick={async () => {
+                    try {
+                      if (!groupId || !currentUser) return;
+                      await GroupsApi.joinGroup(parseInt(groupId));
+                      setToastMessage('Successfully joined the group!');
+                      setToastColor('success');
+                      setShowToast(true);
+                      // Refresh group data to update membership status
+                      fetchGroupData();
+                    } catch (err: any) {
+                      console.error('Failed to join group:', err);
+                      setToastMessage(err.message || 'Failed to join group');
+                      setToastColor('danger');
+                      setShowToast(true);
+                    }
+                  }}
+                  style={{
+                    '--border-radius': '12px',
+                    fontWeight: '700',
+                    fontSize: '16px',
+                    height: '48px'
+                  }}
+                >
+                  <IonIcon icon={personAddOutline} slot="start" />
+                  Join Group
+                </IonButton>
+              </IonCardContent>
+            </IonCard>
+          </div>
+        ) : (
+          <div className="feed-tab">
+            {/* Group Info Card - Only visible to members */}
+            {group && (
+              <IonCard className="group-info-card">
+                <IonCardContent>
+                  <h2>
+                    {group.name}
+                  </h2>
+                  <p>
+                    {group.description}
+                  </p>
+                  <div className="group-meta">
+                    <span>{group.member_count || members.length} members</span>
+                    {group.location && <span>📍 {group.location}</span>}
+                    <span>{group.privacy ? '🔒 Private' : '🌐 Public'}</span>
+                  </div>
+                </IonCardContent>
+              </IonCard>
+            )}
+
+            {/* Tab Navigation - Only visible to members */}
             <IonSegment
               value={activeTab}
               onIonChange={(e) => setActiveTab(e.detail.value as 'posts' | 'leaderboard' | 'members')}
@@ -863,24 +1244,104 @@ const GroupFeed: React.FC = () => {
                             {post.content}
                           </p>
 
-                          {post.images && post.images.length > 0 && post.images[0] && (
-                            <img
-                              src={post.images[0]}
-                              alt="Post content"
-                              className="post-image"
-                              loading="lazy"
+                          {/* Multi-image display (up to 4 images in grid) */}
+                          {post.images && Array.isArray(post.images) && post.images.length > 0 && (
+                            <div
+                              className={`post-images-grid ${
+                                post.images.length === 1 ? 'single-image' :
+                                post.images.length === 2 ? 'two-images' :
+                                post.images.length === 3 ? 'three-images' :
+                                'four-plus-images'
+                              }`}
                               style={{
-                                borderRadius: '12px',
+                                display: 'grid',
+                                gap: '4px',
                                 marginBottom: '12px',
-                                width: '100%',
-                                maxHeight: '400px',
-                                objectFit: 'cover'
+                                gridTemplateColumns: post.images.length === 1 ? '1fr' :
+                                                   post.images.length === 2 ? '1fr 1fr' :
+                                                   '1fr 1fr',
+                                gridTemplateRows: post.images.length <= 2 ? 'auto' : 'auto auto'
                               }}
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                              }}
-                            />
+                            >
+                              {post.images.slice(0, 4).map((img, idx) => {
+                                const imageKey = `${post.post_id}-${idx}`;
+                                const isLoading = imageLoadingStates[imageKey] ?? true;
+
+                                return (
+                                  <div
+                                    key={idx}
+                                    style={{
+                                      position: 'relative',
+                                      borderRadius: '12px',
+                                      overflow: 'hidden',
+                                      backgroundColor: '#1a1a1a',
+                                      minHeight: post.images.length === 1 ? '250px' : '150px',
+                                      cursor: 'pointer'
+                                    }}
+                                    onClick={() => setSelectedImage(img)}
+                                  >
+                                    {/* Actual Image - Always in DOM so it can load */}
+                                    <img
+                                      src={img}
+                                      alt={`Post image ${idx + 1}`}
+                                      style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'cover',
+                                        opacity: isLoading ? 0 : 1,
+                                        transition: 'opacity 0.3s ease-in-out'
+                                      }}
+                                      onLoad={() => {
+                                        setImageLoadingStates(prev => ({ ...prev, [imageKey]: false }));
+                                      }}
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        setImageLoadingStates(prev => ({ ...prev, [imageKey]: false }));
+                                      }}
+                                    />
+
+                                    {/* Loading Spinner Overlay */}
+                                    {isLoading && (
+                                      <div style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        backgroundColor: '#1a1a1a',
+                                        zIndex: 1
+                                      }}>
+                                        <IonSpinner name="crescent" />
+                                      </div>
+                                    )}
+
+                                    {/* Show "+X more" overlay on 4th image if there are more than 4 images */}
+                                    {idx === 3 && post.images && post.images.length > 4 && (
+                                      <div style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: '#ffffff',
+                                        fontSize: '24px',
+                                        fontWeight: 'bold'
+                                      }}>
+                                        +{post.images.length - 4}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
                           )}
 
                           <div className="post-actions" style={{
@@ -944,7 +1405,7 @@ const GroupFeed: React.FC = () => {
                     <IonCardHeader>
                       <div className="post-header" style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
                         <IonAvatar>
-                          <IonImg src={ProfilePic} />
+                          <IonImg src={getAvatarUrl()} />
                         </IonAvatar>
                         <div className="user-info">
                           <div style={{fontWeight: 'bold'}}>{post.user}</div>
@@ -1527,7 +1988,7 @@ const GroupFeed: React.FC = () => {
                       <IonCard key={user.user_id} className="member-card" style={{ marginBottom: '12px' }}>
                         <IonItem lines="none">
                           <IonAvatar slot="start" style={{ width: '48px', height: '48px' }}>
-                            <img src={user.profile_picture || ProfilePic} alt={user.name} />
+                            <img src={getAvatarUrl(user.profile_picture)} alt={user.name} />
                           </IonAvatar>
                           <IonLabel>
                             <h2 style={{ color: '#ffffff', fontWeight: '600', fontSize: '15px', margin: '0 0 4px 0' }}>
@@ -1626,6 +2087,48 @@ const GroupFeed: React.FC = () => {
           position="top"
           color={toastColor}
         />
+
+        {/* Full-screen Image Modal */}
+        <IonModal
+          isOpen={!!selectedImage}
+          onDidDismiss={() => setSelectedImage(null)}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              backgroundColor: '#000000'
+            }}
+          >
+            <IonButton
+              fill="clear"
+              color="light"
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                fontSize: '30px',
+                zIndex: 10
+              }}
+              onClick={() => setSelectedImage(null)}
+            >
+              ✕
+            </IonButton>
+            {selectedImage && (
+              <img
+                src={selectedImage}
+                alt="Full-screen view"
+                style={{
+                  objectFit: 'contain',
+                  maxHeight: '100%',
+                  maxWidth: '100%'
+                }}
+              />
+            )}
+          </div>
+        </IonModal>
       </IonContent>
     </IonPage>
   );

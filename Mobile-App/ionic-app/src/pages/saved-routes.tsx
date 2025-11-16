@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   IonPage,
   IonHeader,
@@ -16,7 +16,10 @@ import {
   IonSpinner,
   IonToast,
   IonIcon,
+  IonRefresher,
+  IonRefresherContent,
 } from "@ionic/react";
+import type { RefresherEventDetail } from "@ionic/react";
 import { SavedRoutesApi } from "../services/saved-routes";
 import { Route, RoutesApi } from "../services/routes";
 import { useUser } from "../contexts/UserContext";
@@ -36,15 +39,10 @@ const SavedRoutes: React.FC = () => {
   const [toastMessage, setToastMessage] = useState("");
   const [toastColor, setToastColor] = useState<'success' | 'danger'>('success');
   const [usingRouteId, setUsingRouteId] = useState<number | null>(null);
+  const hasLoadedRef = useRef(false);
 
+  // Filter routes based on search query
   useEffect(() => {
-    if (currentUser) {
-      fetchSavedRoutes();
-    }
-  }, [currentUser]);
-
-  useEffect(() => {
-    // Filter routes based on search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       const filtered = savedRoutes.filter(route => {
@@ -58,23 +56,61 @@ const SavedRoutes: React.FC = () => {
     }
   }, [searchQuery, savedRoutes]);
 
+  // Initial load with caching
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Try to restore saved routes from sessionStorage first
+    const cachedRoutesKey = `saved_routes_${currentUser.user_id}`;
+    const cachedRoutes = sessionStorage.getItem(cachedRoutesKey);
+
+    if (cachedRoutes && savedRoutes.length === 0) {
+      try {
+        const parsedRoutes = JSON.parse(cachedRoutes);
+        console.log('[SavedRoutes] Restoring', parsedRoutes.length, 'routes from cache');
+        setSavedRoutes(parsedRoutes);
+        setFilteredRoutes(parsedRoutes);
+        hasLoadedRef.current = true;
+        return; // Skip fetch, use cached data
+      } catch (err) {
+        console.error('[SavedRoutes] Failed to parse cached routes:', err);
+        sessionStorage.removeItem(cachedRoutesKey);
+      }
+    }
+
+    // Skip fetch if we already have routes in state
+    if (savedRoutes.length > 0 && hasLoadedRef.current) {
+      console.log('[SavedRoutes] Routes already in state, skipping fetch');
+      return;
+    }
+
+    // Only fetch if we don't have cached data
+    if (!hasLoadedRef.current) {
+      console.log('[SavedRoutes] No cache found, fetching saved routes');
+      fetchSavedRoutes();
+    }
+  }, [currentUser, savedRoutes.length]);
+
   const fetchSavedRoutes = async () => {
     if (!currentUser) return;
     try {
       setLoading(true);
-      console.log('Fetching saved routes...');
+      console.log('[SavedRoutes] Fetching saved routes');
       const routes = await SavedRoutesApi.getSavedRoutes();
-      console.log('Fetched routes:', routes);
 
       // Ensure routes is an array
       const routesArray = Array.isArray(routes) ? routes : [];
-      console.log('Routes array length:', routesArray.length);
+      console.log('[SavedRoutes] Fetched', routesArray.length, 'routes');
 
       setSavedRoutes(routesArray);
       setFilteredRoutes(routesArray);
+      hasLoadedRef.current = true;
+
+      // Cache routes to sessionStorage for instant restore on remount
+      sessionStorage.setItem(`saved_routes_${currentUser.user_id}`, JSON.stringify(routesArray));
+      console.log('[SavedRoutes] Cached', routesArray.length, 'routes');
     } catch (err: any) {
       console.error('Failed to fetch saved routes:', err);
-      console.error('Error details:', err.response?.data || err.message);
       setSavedRoutes([]);
       setFilteredRoutes([]);
       setToastMessage(err.response?.data?.error || 'Failed to load saved routes');
@@ -91,14 +127,36 @@ const SavedRoutes: React.FC = () => {
       setToastMessage('Route removed from saved routes');
       setToastColor('success');
       setShowToast(true);
-      // Refresh the list
-      fetchSavedRoutes();
+
+      // Optimistically remove from UI
+      const updatedRoutes = savedRoutes.filter(route => route.route_id !== routeId);
+      setSavedRoutes(updatedRoutes);
+      setFilteredRoutes(updatedRoutes.filter(route => {
+        if (!searchQuery.trim()) return true;
+        const query = searchQuery.toLowerCase();
+        const routeName = route.route_name?.toLowerCase() || '';
+        const description = route.description?.toLowerCase() || '';
+        return routeName.includes(query) || description.includes(query);
+      }));
+
+      // Update cache
+      if (currentUser) {
+        sessionStorage.setItem(`saved_routes_${currentUser.user_id}`, JSON.stringify(updatedRoutes));
+      }
     } catch (err: any) {
       console.error('Failed to unsave route:', err);
       setToastMessage(err.message || 'Failed to remove route');
       setToastColor('danger');
       setShowToast(true);
+      // Refetch on error to restore correct state
+      fetchSavedRoutes();
     }
+  };
+
+  const handleRefresh = async (event: CustomEvent<RefresherEventDetail>) => {
+    console.log('[SavedRoutes] Pull-to-refresh triggered');
+    await fetchSavedRoutes();
+    event.detail.complete();
   };
 
   const handleUseRoute = async (route: Route) => {
@@ -142,6 +200,10 @@ const SavedRoutes: React.FC = () => {
 
       {/* Main Content */}
       <IonContent>
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh} pullMin={90} pullMax={150}>
+          <IonRefresherContent />
+        </IonRefresher>
+
         {/* Search Bar */}
         <IonSearchbar
           placeholder="Search saved routes"

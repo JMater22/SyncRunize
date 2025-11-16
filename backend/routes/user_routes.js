@@ -2,15 +2,16 @@
 import express from "express";
 import * as UserController from "../controllers/user_controller.js";
 import { authenticate } from "../utils/auth_middleware.js";
+import { cacheUserProfile, cachePublicProfile } from "../middleware/cache_middleware.js";
 
 const router = express.Router();
 
-// ✅ Public route — anyone can view another user's public profile
-router.get("/public/:id", UserController.getPublicProfile);
+// ✅ OPTIMIZED: Public route with caching
+router.get("/public/:id", cachePublicProfile, UserController.getPublicProfile);
 
 // ✅ Protected routes — require Supabase session token
 router.post("/register", authenticate, UserController.createUserProfile);
-router.get("/me", authenticate, UserController.getMyProfile);
+router.get("/me", authenticate, cacheUserProfile, UserController.getMyProfile);
 router.put("/update-me", authenticate, UserController.updateProfile);
 router.delete("/delete-me", authenticate, UserController.deleteProfile);
 
@@ -22,7 +23,7 @@ router.put("/settings/password", authenticate, UserController.updatePassword);
 // Search users
 router.get("/search", authenticate, UserController.searchUsers);
 
-// Get user by ID (protected - for viewing other user profiles)
-router.get("/:id", authenticate, UserController.getPublicProfile);
+// ✅ OPTIMIZED: Get user by ID with caching
+router.get("/:id", authenticate, cachePublicProfile, UserController.getPublicProfile);
 
 export default router;

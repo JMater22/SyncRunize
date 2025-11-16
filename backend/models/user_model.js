@@ -12,10 +12,9 @@ const normalizeBase = (name) => {
   return stripped || 'user';
 };
 
-const ensureAtPrefix = (s) => (s.startsWith('@') ? s : `@${s}`);
-
 const findAvailableUsername = async (base) => {
   // Try base, then base1..base99, then random suffix fallback
+  // Note: We no longer add '@' prefix - that's only for frontend display
   const tryCandidate = async (candidate) => {
     const { data, error } = await supabase
       .from('users')
@@ -27,27 +26,27 @@ const findAvailableUsername = async (base) => {
     return !data; // available if no data
   };
 
-  const baseAt = ensureAtPrefix(base);
-  if (await tryCandidate(baseAt)) return baseAt;
+  // Try base username without '@' prefix
+  if (await tryCandidate(base)) return base;
 
   for (let i = 1; i <= 99; i++) {
-    const candidate = `${baseAt}${i}`;
+    const candidate = `${base}${i}`;
     if (await tryCandidate(candidate)) return candidate;
   }
 
   // Fallback: random suffix
   for (let i = 0; i < 200; i++) {
-    const candidate = `${baseAt}${Math.floor(1000 + Math.random() * 9000)}`;
+    const candidate = `${base}${Math.floor(1000 + Math.random() * 9000)}`;
     if (await tryCandidate(candidate)) return candidate;
   }
 
   // Last resort
-  return `${baseAt}${Date.now().toString().slice(-6)}`;
+  return `${base}${Date.now().toString().slice(-6)}`;
 };
 
 // Create user profile (after signup)
 export const createUserProfile = async (auth_id, name, email, gender = null, age = null, weight_kg = null) => {
-  // Generate a username from full name: lowercase, no spaces/non-alnum, with '@'
+  // Generate a username from full name: lowercase, no spaces/non-alnum (@ added in frontend)
   const base = normalizeBase(name);
   const username = await findAvailableUsername(base);
 
@@ -184,7 +183,8 @@ export const searchUsers = async (searchQuery) => {
       user_id,
       name,
       username,
-      profile_picture
+      profile_picture,
+      location
     `)
     .or(`name.ilike.%${searchQuery}%,username.ilike.%${searchQuery}%`)
     .limit(20);

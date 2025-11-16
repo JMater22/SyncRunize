@@ -38,7 +38,10 @@ export interface PersonalRecordsResponse {
 export const StatsApi = {
   getAggregatedStats: async (userId: number, period: StatsPeriod): Promise<AggregatedStat[]> => {
     const { data } = await api.get(`/stats/${userId}`, {
-      params: { period },
+      params: {
+        period,
+        _t: Date.now() // Cache-busting timestamp
+      },
     });
 
     if (Array.isArray(data?.data)) {
@@ -51,14 +54,21 @@ export const StatsApi = {
 
   getCurrentStats: async (userId: number, period: StatsPeriod): Promise<CurrentStatsResponse | null> => {
     const { data } = await api.get(`/stats/${userId}/current`, {
-      params: { period },
+      params: {
+        period,
+        _t: Date.now() // Cache-busting timestamp
+      },
     });
 
     return data ?? null;
   },
 
   getPersonalRecords: async (userId: number): Promise<PersonalRecordsResponse> => {
-    const { data } = await api.get(`/stats/${userId}/records`);
+    const { data } = await api.get(`/stats/${userId}/records`, {
+      params: {
+        _t: Date.now() // Cache-busting timestamp
+      }
+    });
     return data;
   },
 };

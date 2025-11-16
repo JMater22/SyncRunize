@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   IonPage,
   IonHeader,
@@ -17,17 +17,22 @@ import {
   IonModal,
   IonLabel,
   IonToast,
+  IonRefresher,
+  IonRefresherContent,
 } from '@ionic/react';
+import type { RefresherEventDetail } from '@ionic/react';
 import { bookmark, pencil, navigateOutline, informationCircleOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { RoutesApi, Route } from '../services/routes';
 import { SavedRoutesApi } from '../services/saved-routes';
 import { buildGuidedRoutePayload, normalizeRoutePath } from '../lib/routeGuides';
 import { formatDurationShort, formatPace } from '../lib/utils';
+import { useUser } from '../contexts/UserContext';
 import '../theme/Routes.css';
 
 const RoutesPage: React.FC = () => {
   const history = useHistory();
+  const { currentUser } = useUser();
   const [routes, setRoutes] = useState<Route[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,6 +40,7 @@ const RoutesPage: React.FC = () => {
   const [savingRouteId, setSavingRouteId] = useState<number | null>(null);
   const [usingRouteId, setUsingRouteId] = useState<number | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const hasLoadedRef = useRef(false);
   const [toast, setToast] = useState<{ open: boolean; message: string; color: 'success' | 'danger' | 'primary' }>({
     open: false,
     message: '',
@@ -45,11 +51,21 @@ const RoutesPage: React.FC = () => {
     setToast({ open: true, message, color });
   };
 
-  const fetchRoutes = useCallback(async () => {
+  const fetchRoutes = useCallback(async (forceRefresh: boolean = false) => {
     try {
       setLoading(true);
+      console.log('[RoutesPage] Fetching public routes');
       const data = await RoutesApi.getPublicRoutes();
-      setRoutes(Array.isArray(data) ? data : []);
+      const routesArray = Array.isArray(data) ? data : [];
+      setRoutes(routesArray);
+      hasLoadedRef.current = true;
+
+      // Cache routes to sessionStorage for instant restore on remount
+      if (currentUser) {
+        sessionStorage.setItem(`routes_loaded_${currentUser.user_id}`, 'true');
+        sessionStorage.setItem(`routes_data_${currentUser.user_id}`, JSON.stringify(routesArray));
+        console.log('[RoutesPage] Cached', routesArray.length, 'routes');
+      }
     } catch (err: any) {
       console.error('Failed to load routes:', err);
       showToast(err?.message || 'Unable to load public routes', 'danger');
@@ -57,11 +73,41 @@ const RoutesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUser]);
 
+  // Initial load with caching
   useEffect(() => {
-    fetchRoutes();
-  }, [fetchRoutes]);
+    if (!currentUser) return;
+
+    // Try to restore routes from sessionStorage first
+    const cachedRoutesKey = `routes_data_${currentUser.user_id}`;
+    const cachedRoutes = sessionStorage.getItem(cachedRoutesKey);
+
+    if (cachedRoutes && routes.length === 0) {
+      try {
+        const parsedRoutes = JSON.parse(cachedRoutes);
+        console.log('[RoutesPage] Restoring', parsedRoutes.length, 'routes from cache');
+        setRoutes(parsedRoutes);
+        hasLoadedRef.current = true;
+        return; // Skip fetch, use cached data
+      } catch (err) {
+        console.error('[RoutesPage] Failed to parse cached routes:', err);
+        sessionStorage.removeItem(cachedRoutesKey);
+      }
+    }
+
+    // Skip fetch if we already have routes in state
+    if (routes.length > 0 && hasLoadedRef.current) {
+      console.log('[RoutesPage] Routes already in state, skipping fetch');
+      return;
+    }
+
+    // Only fetch if we don't have cached data
+    if (!hasLoadedRef.current) {
+      console.log('[RoutesPage] No cache found, fetching routes');
+      fetchRoutes(false);
+    }
+  }, [currentUser, fetchRoutes, routes.length]);
 
   const filteredRoutes = useMemo(() => {
     if (!searchQuery.trim()) return routes;
@@ -78,12 +124,27 @@ const RoutesPage: React.FC = () => {
       setSavingRouteId(routeId);
       await SavedRoutesApi.saveRouteToLibrary({ route_id: routeId });
       showToast('Route saved to your library');
+
+      // Invalidate saved-routes cache so it refetches next time
+      if (currentUser) {
+        sessionStorage.removeItem(`saved_routes_${currentUser.user_id}`);
+        console.log('[RoutesPage] Invalidated saved-routes cache after saving');
+      }
+
+      // Refetch routes to update the UI (in case backend adds is_saved flag)
+      await fetchRoutes(true);
     } catch (err: any) {
       console.error('Failed to save route:', err);
       showToast(err?.message || 'Unable to save route', 'danger');
     } finally {
       setSavingRouteId(null);
     }
+  };
+
+  const handleRefresh = async (event: CustomEvent<RefresherEventDetail>) => {
+    console.log('[RoutesPage] Pull-to-refresh triggered');
+    await fetchRoutes(true);
+    event.detail.complete();
   };
 
   const handleUseRoute = async (route: Route) => {
@@ -145,6 +206,10 @@ const RoutesPage: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh} pullMin={90} pullMax={150}>
+          <IonRefresherContent />
+        </IonRefresher>
+
         <div className="routes-search-bar">
           <IonSearchbar
             placeholder="Search public routes"

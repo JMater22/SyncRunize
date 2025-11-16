@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   IonPage,
   IonHeader,
@@ -33,7 +33,9 @@ import {
   IonImg,
   IonSpinner,
   IonToast,
-  IonBadge
+  IonBadge,
+  IonRefresher,
+  IonRefresherContent
 } from "@ionic/react";
 import {
 
@@ -53,10 +55,6 @@ import "../theme/Home.css";
 
 import "../theme/global.css";
 
-
-
-import ProfilePic from "../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg";
-
 import ChallengePic from "../components/assets/istockphoto-143920084-612x612.jpg";
 
 import { usePushNotifications } from "../components/push-notification";
@@ -67,21 +65,6 @@ import { useChallenges } from "../contexts/ChallengesContext";
 import { useHistory } from "react-router-dom";
 import { RoutesApi, Route } from "../services/routes";
 import { useNotifications } from "../contexts/NotificationContext";
-
-
-// Import Google Fonts
-
-const fontLink = document.createElement('link');
-
-fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap';
-
-fontLink.rel = 'stylesheet';
-
-if (!document.head.querySelector(`link[href="${fontLink.href}"]`)) {
-
-  document.head.appendChild(fontLink);
-
-}
 
 
 
@@ -513,7 +496,7 @@ export default function Dashboard() {
   const [toastMessage, setToastMessage] = useState("");
   const [userProfile, setUserProfile] = useState<{ name: string; userId: number } | null>(null);
   const [userProfileError, setUserProfileError] = useState<string | null>(null);
-  const [userProfileLoading, setUserProfileLoading] = useState(true);
+  const [userProfileLoading, setUserProfileLoading] = useState(false);
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [recordsError, setRecordsError] = useState<string | null>(null);
@@ -522,69 +505,94 @@ export default function Dashboard() {
   const { challenges } = useChallenges();
   const { unreadCount } = useNotifications();
   const history = useHistory();
+  const hasLoadedRef = useRef(false);
   const suggestedChallenge = useMemo(
     () => challenges.find((challenge) => !challenge.joined && !challenge.completed),
     [challenges]
   );
 
-  const fetchUserProfile = useCallback(async () => {
-    setUserProfileLoading(true);
-    setUserProfileError(null);
+  // Parallel data loading with caching
+  const loadAllData = useCallback(async (forceRefresh: boolean = false) => {
     try {
+      setUserProfileLoading(true);
+      setRecordsLoading(true);
+      setActivitiesLoading(true);
+
+      // Fetch user profile first to get userId
       const me = await UsersApi.me();
+      const userId = me.user_id;
+
+      // Only skip if already loaded in current mount (not forcing refresh)
+      if (hasLoadedRef.current && !forceRefresh) {
+        console.log('[Home] Already loaded in current session, skipping fetch');
+        setUserProfileLoading(false);
+        setRecordsLoading(false);
+        setActivitiesLoading(false);
+        return;
+      }
+
+      // Reset state on force refresh
+      if (forceRefresh) {
+        hasLoadedRef.current = false;
+      }
+
       setUserProfile({
-        name: me.name || me.username || `User ${me.user_id}`,
-        userId: me.user_id,
+        name: me.name || me.username || `User ${userId}`,
+        userId: userId,
       });
-      return me;
+
+      // Fetch personal records and recent activities in parallel
+      const [recordsData, activitiesData] = await Promise.all([
+        StatsApi.getPersonalRecords(userId).catch((err) => {
+          setRecordsError(err?.message || 'Failed to load personal records');
+          return null;
+        }),
+        RoutesApi.getUserRoutes(userId, true).catch((err) => {
+          console.error('Failed to load recent activities:', err);
+          return [];
+        }),
+      ]);
+
+      // Update personal records
+      if (recordsData) {
+        setPersonalRecords(mapRecordsToDisplay(recordsData.records));
+        setRecordsError(null);
+      } else {
+        setPersonalRecords([]);
+      }
+
+      // Update recent activities (only first 2)
+      setRecentActivities(activitiesData.slice(0, 2));
+
+      // Mark as loaded for current mount
+      hasLoadedRef.current = true;
+
     } catch (err: any) {
+      console.error('Failed to load home data:', err);
       setUserProfileError(err?.message || 'Failed to load profile');
-      throw err;
     } finally {
       setUserProfileLoading(false);
+      setRecordsLoading(false);
+      setActivitiesLoading(false);
     }
   }, []);
 
+  // Initial load
   useEffect(() => {
-    fetchUserProfile().catch(() => undefined);
-  }, [fetchUserProfile]);
+    loadAllData(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const fetchPersonalRecords = useCallback(async (targetUserId?: number) => {
-    const userId = targetUserId ?? userProfile?.userId;
-    if (!userId) return;
-    setRecordsLoading(true);
-    setRecordsError(null);
-    try {
-      const data = await StatsApi.getPersonalRecords(userId);
-      setPersonalRecords(mapRecordsToDisplay(data.records));
-    } catch (err: any) {
-      setRecordsError(err?.message || 'Failed to load personal records');
-      setPersonalRecords([]);
-    } finally {
-      setRecordsLoading(false);
-    }
-  }, [userProfile?.userId]);
+  // Pull-to-refresh handler
+  const handleRefresh = async (event: CustomEvent) => {
+    await loadAllData(true);
+    event.detail.complete();
+  };
 
-  const fetchRecentActivities = useCallback(async (targetUserId?: number) => {
-    const userId = targetUserId ?? userProfile?.userId;
-    if (!userId) return;
-    setActivitiesLoading(true);
-    try {
-      const routes = await RoutesApi.getUserRoutes(userId, true);
-      setRecentActivities(routes.slice(0, 2)); // Get only the first 2 activities
-    } catch (err: any) {
-      console.error('Failed to load recent activities:', err);
-      setRecentActivities([]);
-    } finally {
-      setActivitiesLoading(false);
-    }
-  }, [userProfile?.userId]);
-
-  useEffect(() => {
-    if (!userProfile?.userId) return;
-    fetchPersonalRecords();
-    fetchRecentActivities();
-  }, [userProfile?.userId, fetchPersonalRecords, fetchRecentActivities]);
+  // Retry handler for personal records
+  const handleRecordsRetry = () => {
+    loadAllData(true);
+  };
 
   // Initialize push notifications
   usePushNotifications({
@@ -608,9 +616,6 @@ export default function Dashboard() {
     }
   });
 
-  const handleRecordsRetry = () => {
-    fetchPersonalRecords();
-  };
 
   const handleSuggestedChallengeClick = () => {
     if (!suggestedChallenge) return;
@@ -623,7 +628,7 @@ export default function Dashboard() {
 
       {/* ===== Header ===== */}
 
-      <IonHeader className="dark-header">
+      <IonHeader className="dark-header" translucent>
 
         <IonToolbar className="dashboard-toolbar">
 
@@ -687,6 +692,9 @@ export default function Dashboard() {
 
       {/* ===== Scrollable Content ===== */}
       <IonContent fullscreen className="dark-content">
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh} pullMin={90} pullMax={150}>
+          <IonRefresherContent />
+        </IonRefresher>
         <UserGreeting name={userProfile?.name} />
         {/* Personal Records */}
 
