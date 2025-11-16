@@ -185,21 +185,21 @@ const GroupFeed: React.FC = () => {
 
       // Set posts with pagination - Parse images if they're JSON strings
       const parsedPosts = (Array.isArray(postsData) ? postsData : []).map(post => {
-        let parsedImages = post.images;
+        let parsedImages: string[] | undefined = post.images as any;
 
         // Parse images if they're a JSON string
-        if (typeof post.images === 'string' && post.images.trim()) {
+        if (typeof post.images === 'string' && (post.images as string).trim()) {
           try {
-            parsedImages = JSON.parse(post.images);
+            parsedImages = JSON.parse(post.images as string);
           } catch (e) {
             console.error('[GroupFeed] Failed to parse images for post:', post.post_id, e);
             parsedImages = [];
           }
         }
 
-        // Ensure images is an array or null
+        // Ensure images is an array or undefined
         if (!Array.isArray(parsedImages)) {
-          parsedImages = null;
+          parsedImages = undefined;
         }
 
         return {
@@ -265,11 +265,11 @@ const GroupFeed: React.FC = () => {
 
       // Parse images if they're JSON strings
       const parsedMorePosts = (Array.isArray(morePosts) ? morePosts : []).map(post => {
-        let parsedImages = post.images;
+        let parsedImages: string[] | undefined = post.images as any;
 
-        if (typeof post.images === 'string' && post.images.trim()) {
+        if (typeof post.images === 'string' && (post.images as string).trim()) {
           try {
-            parsedImages = JSON.parse(post.images);
+            parsedImages = JSON.parse(post.images as string);
           } catch (e) {
             console.error('[GroupFeed] Failed to parse images for post:', post.post_id, e);
             parsedImages = [];
@@ -277,7 +277,7 @@ const GroupFeed: React.FC = () => {
         }
 
         if (!Array.isArray(parsedImages)) {
-          parsedImages = null;
+          parsedImages = undefined;
         }
 
         return {
@@ -672,11 +672,11 @@ const GroupFeed: React.FC = () => {
       console.log('[GroupFeed] Post created successfully:', newPost);
 
       // Parse images if they're JSON strings
-      let parsedImages = newPost.images;
+      let parsedImages: string[] | undefined = newPost.images as any;
 
-      if (typeof newPost.images === 'string' && newPost.images.trim()) {
+      if (typeof newPost.images === 'string' && (newPost.images as string).trim()) {
         try {
-          parsedImages = JSON.parse(newPost.images);
+          parsedImages = JSON.parse(newPost.images as string);
         } catch (e) {
           console.error('[GroupFeed] Failed to parse images for new post:', e);
           parsedImages = [];
@@ -684,7 +684,7 @@ const GroupFeed: React.FC = () => {
       }
 
       if (!Array.isArray(parsedImages)) {
-        parsedImages = null;
+        parsedImages = undefined;
       }
 
       const parsedNewPost = {
@@ -1275,7 +1275,7 @@ const GroupFeed: React.FC = () => {
                                       borderRadius: '12px',
                                       overflow: 'hidden',
                                       backgroundColor: '#1a1a1a',
-                                      minHeight: post.images.length === 1 ? '250px' : '150px',
+                                      minHeight: post.images?.length === 1 ? '250px' : '150px',
                                       cursor: 'pointer'
                                     }}
                                     onClick={() => setSelectedImage(img)}

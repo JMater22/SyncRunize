@@ -14,6 +14,7 @@ import "../theme/log-in.css";
 import LogoIcon from "../components/assets/SycnRunize-Logo.png";
 import { useHideTabBar } from "../hooks/useHideTabBar";
 import { supabase } from "../lib/supabaseClient";
+import { getAuthRedirectUrl } from "../lib/authRedirect";
 
 const Login: React.FC = () => {
   useHideTabBar();
@@ -71,11 +72,10 @@ const Login: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     try {
+      const redirectTo = getAuthRedirectUrl('/home');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: window.location.origin + '/home',
-        },
+        options: redirectTo ? { redirectTo } : {},
       });
 
       if (error) {

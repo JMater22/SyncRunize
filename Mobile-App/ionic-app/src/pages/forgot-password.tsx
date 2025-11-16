@@ -3,6 +3,7 @@ import { useHistory } from 'react-router-dom';
 import { IonPage, IonContent, IonButton, IonInput, IonText, IonToast } from '@ionic/react';
 import LogoIcon from '../components/assets/SycnRunize-Logo.png';
 import { supabase } from '../lib/supabaseClient';
+import { getAuthRedirectUrl } from '../lib/authRedirect';
 import '../theme/log-in.css';
 
 const ForgotPassword: React.FC = () => {
@@ -19,8 +20,9 @@ const ForgotPassword: React.FC = () => {
     }
     try {
       setSending(true);
-      const redirectTo = `${window.location.origin}/reset-password`;
-      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      const redirectTo = getAuthRedirectUrl('/reset-password');
+      const options = redirectTo ? { redirectTo } : {};
+      const { error } = await supabase.auth.resetPasswordForEmail(email, options);
       if (error) {
         setToast({ open: true, msg: error.message, color: 'danger' });
         return;

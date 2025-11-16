@@ -1,11 +1,12 @@
 /* ✅ Desktop Tab Bar */
 .desktop-tabs {
-  background: #2C3E50; 
+  background: #2C3E50;
   border-bottom: 2px solid var(--ion-color-medium, #ccc);
   display: flex;
   justify-content: center;
   padding: 0 20px;
-  height: 56px;
+  padding-top: calc(env(safe-area-inset-top) + 12px);
+  height: calc(56px + env(safe-area-inset-top) + 12px);
   color: #fff;
 }
 
@@ -53,6 +54,11 @@ ion-tab-bar {
 /* ✅ Mobile/Desktop toggle */
 .mobile-header {
   display: none;
+}
+
+.mobile-header ion-toolbar {
+  --padding-top: calc(env(safe-area-inset-top) + 12px);
+  --min-height: calc(56px + env(safe-area-inset-top) + 12px);
 }
 @media (max-width: 768px) {
   .desktop-tabs {

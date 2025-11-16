@@ -231,10 +231,10 @@
   z-index: 12;
   display: flex;
   flex-direction: row;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 /* Map Type Tabs */
@@ -245,8 +245,8 @@
   border-radius: 999px;
   padding: 2px;
   backdrop-filter: blur(10px);
-  flex: 1;
-  max-width: 200px;
+  flex-shrink: 1;
+  max-width: fit-content;
 }
 
 .map-tab {
@@ -254,12 +254,13 @@
   color: rgba(255, 255, 255, 0.7);
   border: none;
   border-radius: 999px;
-  padding: 4px 6px;
-  font-size: 9px;
+  padding: 4px 8px;
+  font-size: 10px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .map-tab.active {
@@ -291,6 +292,7 @@
   backdrop-filter: blur(10px);
   white-space: nowrap;
   height: 32px;
+  flex-shrink: 0;
 }
 
 .view-toggle:focus-visible {
@@ -303,20 +305,20 @@
 
 /* Responsive breakpoints to prevent overlapping */
 @media (max-width: 576px) {
-  /* Very small screens - reduce sizes further */
+  /* Very small screens - reduce sizes further, keep in one row */
   .map-controls-top-right {
     left: 48px;
     right: 8px;
-    gap: 4px;
+    gap: 3px;
   }
 
   .map-type-tabs {
-    max-width: 160px;
+    gap: 1px;
   }
 
   .map-tab {
-    padding: 3px 5px;
-    font-size: 8px;
+    padding: 3px 6px;
+    font-size: 9px;
   }
 
   .map-tab.legend-toggle {
@@ -324,9 +326,9 @@
   }
 
   .view-toggle {
-    padding: 4px 8px;
+    padding: 4px 7px;
     font-size: 9px;
-    gap: 4px;
+    gap: 3px;
   }
 
   .view-toggle ion-icon {
@@ -335,27 +337,34 @@
 }
 
 @media (max-width: 400px) {
-  /* Extra small screens - stack vertically if needed */
+  /* Extra small screens - keep in one row with minimal sizes */
   .map-controls-top-right {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
     left: 48px;
+    right: 6px;
+    gap: 2px;
   }
 
-  .map-type-tabs {
-    max-width: 180px;
+  .map-tab {
+    padding: 3px 5px;
+    font-size: 8px;
   }
 
   .view-toggle {
-    width: auto;
+    padding: 3px 6px;
+    font-size: 8px;
   }
 }
 
 @media (max-width: 360px) {
-  /* Ultra small screens - minimal layout */
+  /* Ultra small screens - minimal layout, one row */
+  .map-controls-top-right {
+    left: 44px;
+    right: 4px;
+    gap: 2px;
+  }
+
   .map-type-tabs {
-    max-width: 150px;
+    gap: 1px;
   }
 
   .map-tab {
@@ -363,13 +372,18 @@
     font-size: 7px;
   }
 
+  .map-tab.legend-toggle {
+    padding: 2px 3px;
+  }
+
   .view-toggle {
-    padding: 3px 6px;
-    font-size: 8px;
+    padding: 2px 5px;
+    font-size: 7px;
+    gap: 2px;
   }
 
   .view-toggle ion-icon {
-    font-size: 11px;
+    font-size: 10px;
   }
 }
 

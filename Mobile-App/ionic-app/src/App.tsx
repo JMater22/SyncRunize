@@ -72,6 +72,7 @@ import "./theme/global.css";
 import { RunTrackerProvider } from "./state/runTrackerContext";
 import { RunTrackerController } from "./hooks/useRunTracker";
 import { PushNotificationInitializer } from "./components/PushNotificationInitializer";
+import { DeepLinkHandler } from "./hooks/useDeepLinks";
 
 setupIonicReact();
 
@@ -100,6 +101,7 @@ const App: React.FC = () => {
   if (!session) {
     return (
       <IonApp>
+        <DeepLinkHandler />
         <IonReactRouter>
           <IonRouterOutlet>
             <Route exact path="/log-in" component={LogIn} />
@@ -125,6 +127,7 @@ const App: React.FC = () => {
             <RunTrackerProvider>
               <RunTrackerController />
               <PushNotificationInitializer />
+              <DeepLinkHandler />
               <IonReactRouter>
               <IonTabs>
                 <IonRouterOutlet>

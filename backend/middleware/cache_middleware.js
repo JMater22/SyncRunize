@@ -74,7 +74,8 @@ export const cachePublicProfile = cacheMiddleware(600, (req) => {
 
 // User posts cache (1 minute)
 export const cacheUserPosts = cacheMiddleware(60, (req) => {
-  const userId = req.params.id || req.params.userId;
+  // For /my route, userId will be from req.user; for /user/:userId route, from params
+  const userId = req.params.id || req.params.userId || req.user?.user_id;
   const currentUserId = req.user?.user_id || 'anon';
   const limit = req.query.limit || 20;
   const offset = req.query.offset || 0;
@@ -109,6 +110,95 @@ export const cacheGroupDetails = cacheMiddleware(300, (req) => {
 export const cacheGroupMembers = cacheMiddleware(300, (req) => {
   const groupId = req.params.id || req.params.groupId;
   return `group:members:${groupId}`;
+});
+
+// All challenges cache (5 minutes)
+export const cacheAllChallenges = cacheMiddleware(300, (req) => {
+  const userId = req.user?.user_id || 'anon';
+  return `challenges:all:${userId}`;
+});
+
+// User challenges with status cache (5 minutes)
+export const cacheUserChallengesWithStatus = cacheMiddleware(300, (req) => {
+  const userId = req.params.userId;
+  return `challenges:status:${userId}`;
+});
+
+// User challenges progress cache (3 minutes)
+export const cacheUserChallengesProgress = cacheMiddleware(180, (req) => {
+  const userId = req.user?.user_id;
+  return `challenges:progress:${userId}`;
+});
+
+// User challenges (activities) cache (3 minutes)
+export const cacheUserChallenges = cacheMiddleware(180, (req) => {
+  const userId = req.params.userId;
+  return `user:challenges:${userId}`;
+});
+
+// User badges cache (5 minutes)
+export const cacheUserBadges = cacheMiddleware(300, (req) => {
+  const userId = req.params.userId;
+  return `user:badges:${userId}`;
+});
+
+// User badge detail cache (5 minutes)
+export const cacheUserBadgeDetail = cacheMiddleware(300, (req) => {
+  const userChallengeId = req.params.userChallengeId;
+  return `user:badge:detail:${userChallengeId}`;
+});
+
+// User routes cache (2 minutes)
+export const cacheUserRoutes = cacheMiddleware(120, (req) => {
+  const userId = req.user?.user_id;
+  const activitiesOnly = req.query.activities_only || 'false';
+  const routeStatus = req.query.route_status || 'all';
+  return `user:routes:${userId}:${activitiesOnly}:${routeStatus}`;
+});
+
+// User routes by userId cache (3 minutes)
+export const cacheUserRoutesByUserId = cacheMiddleware(180, (req) => {
+  const userId = req.params.userId;
+  const viewerId = req.user?.user_id || 'anon';
+  return `user:routes:${userId}:viewer:${viewerId}`;
+});
+
+// Public routes cache (5 minutes)
+export const cachePublicRoutes = cacheMiddleware(300, (req) => {
+  const userId = req.user?.user_id || 'anon';
+  return `routes:public:${userId}`;
+});
+
+// Route by ID cache (5 minutes)
+export const cacheRouteById = cacheMiddleware(300, (req) => {
+  const routeId = req.params.id;
+  const userId = req.user?.user_id;
+  return `route:${routeId}:${userId}`;
+});
+
+// Follow counts cache (3 minutes)
+export const cacheFollowCounts = cacheMiddleware(180, (req) => {
+  const userId = req.params.userId;
+  return `follow:counts:${userId}`;
+});
+
+// Followers list cache (3 minutes)
+export const cacheFollowers = cacheMiddleware(180, (req) => {
+  const userId = req.params.userId;
+  return `follow:followers:${userId}`;
+});
+
+// Following list cache (3 minutes)
+export const cacheFollowing = cacheMiddleware(180, (req) => {
+  const userId = req.params.userId;
+  return `follow:following:${userId}`;
+});
+
+// Follow status cache (2 minutes)
+export const cacheFollowStatus = cacheMiddleware(120, (req) => {
+  const userId = req.params.userId;
+  const currentUserId = req.user?.user_id;
+  return `follow:status:${currentUserId}:${userId}`;
 });
 
 export default cacheMiddleware;

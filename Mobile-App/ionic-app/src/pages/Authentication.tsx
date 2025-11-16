@@ -11,6 +11,7 @@ import {
 import { logoGoogle, mail } from 'ionicons/icons';
 import { useHideTabBar } from '../hooks/useHideTabBar';
 import { supabase } from '../lib/supabaseClient';
+import { getAuthRedirectUrl } from '../lib/authRedirect';
 
 const GetStarted: React.FC = () => {
   useHideTabBar();
@@ -19,11 +20,10 @@ const GetStarted: React.FC = () => {
 
   const handleGoogleSignUp = async () => {
     try {
+      const redirectTo = getAuthRedirectUrl('/home');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: window.location.origin + '/home',
-        },
+        options: redirectTo ? { redirectTo } : {},
       });
 
       if (error) {
