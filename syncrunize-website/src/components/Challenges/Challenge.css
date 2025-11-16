@@ -450,6 +450,140 @@
   }
 }
 
+/* Mobile breakpoint - standard phones */
+@media (max-width: 600px) {
+  .suggested-row {
+    padding: 0 12px;
+    gap: 12px;
+    margin-bottom: 80px;
+  }
+
+  .suggested-header {
+    font-size: 18px;
+    margin-left: 0;
+    padding: 0 16px;
+  }
+
+  .suggested-card {
+    min-height: 420px;
+  }
+
+  .suggested-card ion-img {
+    height: 240px;
+    padding: 16px;
+  }
+
+  .suggested-card .challenge-subtitle {
+    font-size: 15px;
+    margin-bottom: 6px;
+  }
+
+  .suggested-card .challenge-description {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .suggested-card .challenge-date {
+    font-size: 11px;
+    margin-bottom: 10px;
+  }
+
+  .challenge-title {
+    font-size: 20px;
+  }
+
+  .challenge-card {
+    padding: 16px;
+  }
+}
+
+/* Small mobile breakpoint - smaller phones */
+@media (max-width: 480px) {
+  .suggested-row {
+    padding: 0 8px;
+    gap: 10px;
+    margin-bottom: 70px;
+  }
+
+  .suggested-header {
+    font-size: 16px;
+    margin: 16px 0 8px 0;
+    padding: 0 12px;
+  }
+
+  .suggested-card {
+    min-height: 380px;
+    border-radius: 10px;
+  }
+
+  .suggested-card ion-img {
+    height: 200px;
+    padding: 12px;
+  }
+
+  .suggested-card ion-card-header {
+    padding: 12px 12px 6px 12px;
+  }
+
+  .suggested-card ion-card-content {
+    padding: 0 12px 12px 12px;
+  }
+
+  .suggested-card .challenge-subtitle {
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+
+  .suggested-card .challenge-description {
+    font-size: 11px;
+    margin-bottom: 4px;
+    line-height: 1.4;
+  }
+
+  .suggested-card .challenge-date {
+    font-size: 10px;
+    margin-bottom: 8px;
+  }
+
+  .suggested-join-btn {
+    font-size: 12px;
+    padding: 7px 0;
+    margin-top: 8px;
+  }
+
+  .challenge-title {
+    font-size: 18px;
+  }
+
+  .challenge-card {
+    padding: 14px;
+    margin-top: 40px;
+  }
+
+  .challenge-details .detail-item {
+    font-size: 13px;
+  }
+
+  .detail-icon {
+    font-size: 16px;
+  }
+
+  .progress-label,
+  .progress-percentage {
+    font-size: 11px;
+  }
+
+  .progress-text {
+    font-size: 10px;
+  }
+
+  .join-challenge-btn,
+  .leave-challenge-btn {
+    font-size: 12px;
+    padding: 10px 0;
+  }
+}
+
 /* Highlight animation for focused challenge */
 .highlight-focus {
   animation: highlightPulse 2s ease-in-out;

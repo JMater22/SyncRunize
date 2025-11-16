@@ -506,3 +506,187 @@ ion-searchbar.activities-searchbar {
   }
 }
 
+/* Mobile breakpoint - standard phones */
+@media (max-width: 600px) {
+  .ion-padding {
+    padding: 16px !important;
+    margin-left: 0;
+  }
+
+  .activities-header h2 {
+    font-size: 24px;
+    margin-left: 0;
+  }
+
+  .activities-searchbar {
+    --border-radius: 8px;
+    font-size: 14px;
+  }
+
+  .activities-summary h3 {
+    font-size: 16px;
+    margin-left: 0;
+  }
+
+  .activities-cards {
+    max-height: calc(100vh - 240px);
+    padding-bottom: 16px;
+  }
+
+  .activity-card {
+    margin-bottom: 14px;
+    border-radius: 10px;
+  }
+
+  .activity-card ion-card-content {
+    padding: 14px;
+  }
+
+  .activity-title {
+    font-size: 16px;
+  }
+
+  .activity-date {
+    font-size: 13px;
+  }
+
+  .card-stats {
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+
+  .stat-value {
+    font-size: 15px;
+  }
+
+  .delete-actions ion-button {
+    font-size: 13px;
+  }
+
+  .delete-confirmation-alert .alert-title {
+    font-size: 18px;
+  }
+
+  .delete-confirmation-alert .alert-message {
+    font-size: 13px;
+  }
+}
+
+/* Small mobile breakpoint - smaller phones */
+@media (max-width: 480px) {
+  .ion-padding {
+    padding: 12px !important;
+  }
+
+  .activities-header {
+    margin-bottom: 16px;
+    gap: 12px;
+  }
+
+  .activities-header h2 {
+    font-size: 20px;
+  }
+
+  .activities-searchbar {
+    --border-radius: 8px;
+    font-size: 13px;
+  }
+
+  .activities-summary {
+    margin: 8px 0 16px;
+  }
+
+  .activities-summary h3 {
+    font-size: 14px;
+  }
+
+  .activities-cards {
+    max-height: calc(100vh - 220px);
+    padding-bottom: 12px;
+  }
+
+  .activity-card {
+    margin-bottom: 12px;
+    border-radius: 8px;
+  }
+
+  .activity-card ion-card-content {
+    padding: 12px;
+  }
+
+  .card-header {
+    margin-bottom: 10px;
+  }
+
+  .activity-title {
+    font-size: 15px;
+  }
+
+  .activity-date {
+    font-size: 12px;
+    margin-left: 8px;
+  }
+
+  .card-stats {
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .stat-item {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 0.3px;
+  }
+
+  .stat-value {
+    font-size: 14px;
+  }
+
+  .delete-actions {
+    gap: 6px;
+  }
+
+  .delete-actions ion-button {
+    font-size: 12px;
+    --padding-start: 10px;
+    --padding-end: 10px;
+    --padding-top: 6px;
+    --padding-bottom: 6px;
+  }
+
+  .delete-confirmation-alert {
+    --max-width: 95%;
+  }
+
+  .delete-confirmation-alert .alert-head {
+    padding: 20px 20px 12px;
+  }
+
+  .delete-confirmation-alert .alert-title {
+    font-size: 16px;
+  }
+
+  .delete-confirmation-alert .alert-message {
+    font-size: 12px;
+    padding: 0 16px 16px;
+  }
+
+  .delete-confirmation-alert .alert-button-group {
+    padding: 0 12px 12px;
+    gap: 8px;
+  }
+
+  .delete-confirmation-alert .alert-button {
+    font-size: 14px;
+    padding: 10px 20px;
+  }
+}

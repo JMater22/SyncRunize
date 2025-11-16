@@ -302,17 +302,18 @@ ion-popover .popover-content {
   .filter-btn-col .create-group-btn {
     width: 100%;
   }
+}
 
-  /* ✅ Mobile & Small Tablets */
+/* ✅ Mobile & Small Tablets */
 @media (max-width: 768px) {
-  .groups-page-header{
+  .groups-page-header {
     margin-top: 20px;
+    padding: 0 16px;
   }
-
 
   .filter-search-bar,
   .groups-grid {
-    padding: 0 16px; /* reduce side padding */
+    padding: 0 16px;
   }
 
   .groups-page-header {
@@ -323,7 +324,7 @@ ion-popover .popover-content {
   }
 
   .page-title {
-    font-size: 28px; /* smaller for mobile */
+    font-size: 28px;
     margin-left: 0px;
   }
 
@@ -340,7 +341,7 @@ ion-popover .popover-content {
 
   .filter-col,
   .loc-searchbar {
-    width: 100%; /* stack filters full width */
+    width: 100%;
   }
 
   .filter-btn-col {
@@ -352,7 +353,6 @@ ion-popover .popover-content {
     width: 100%;
   }
 
-  /* Groups grid cards */
   .groups-grid {
     margin-top: 12px;
     margin-bottom: 60px;
@@ -370,7 +370,8 @@ ion-popover .popover-content {
   .card-info .member-count {
     font-size: 12px;
   }
-    .join-btn,
+
+  .join-btn,
   .joined-btn {
     height: 38px;
     font-size: 13px;
@@ -378,4 +379,117 @@ ion-popover .popover-content {
   }
 }
 
+/* Mobile breakpoint - standard phones */
+@media (max-width: 600px) {
+  .groups-page-header,
+  .filter-search-bar,
+  .groups-grid {
+    padding: 0 12px;
+  }
+
+  .page-title {
+    font-size: 24px;
+    margin-left: 0;
+  }
+
+  .create-group-btn {
+    height: 44px;
+    font-size: 14px;
+  }
+
+  .filter-select {
+    height: 44px;
+    font-size: 14px;
+  }
+
+  .groups-grid {
+    margin-top: 10px;
+    margin-bottom: 70px;
+  }
+
+  .group-card img {
+    height: 130px;
+  }
+
+  .card-info {
+    padding: 14px;
+  }
+
+  .card-info h3 {
+    font-size: 15px;
+    margin-bottom: 6px;
+  }
+
+  .card-info .location,
+  .card-info .member-count {
+    font-size: 11px;
+  }
+
+  .join-btn,
+  .joined-btn {
+    height: 36px;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+}
+
+/* Small mobile breakpoint - smaller phones */
+@media (max-width: 480px) {
+  .groups-page-header,
+  .filter-search-bar,
+  .groups-grid {
+    padding: 0 8px;
+  }
+
+  .groups-page-header {
+    margin-top: 16px;
+    gap: 10px;
+  }
+
+  .page-title {
+    font-size: 20px;
+    margin-left: 0;
+  }
+
+  .create-group-btn {
+    height: 42px;
+    font-size: 13px;
+    padding: 0 16px;
+  }
+
+  .filter-select {
+    height: 42px;
+    font-size: 13px;
+  }
+
+  .groups-grid {
+    margin-top: 8px;
+    margin-bottom: 60px;
+  }
+
+  .group-card img {
+    height: 120px;
+  }
+
+  .card-info {
+    padding: 12px;
+  }
+
+  .card-info h3 {
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+
+  .card-info .location,
+  .card-info .member-count {
+    font-size: 10px;
+    margin-bottom: 2px;
+  }
+
+  .join-btn,
+  .joined-btn {
+    height: 34px;
+    font-size: 11px;
+    margin-top: 6px;
+  }
 }
