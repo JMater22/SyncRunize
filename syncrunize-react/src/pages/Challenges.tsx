@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   IonPage,
   IonContent,
@@ -35,6 +36,7 @@ const Challenges: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [joining, setJoining] = useState<{ [key: string]: boolean }>({});
+  const location = useLocation<{ focusChallengeId?: number }>();
 
   // ✅ Retrieve authenticated user ID
   const fetchCurrentUser = async () => {
@@ -103,6 +105,22 @@ const fetchChallenges = async () => {
 useEffect(() => {
   fetchChallenges();
 }, []);
+
+// ✅ Scroll to focused challenge after challenges load
+useEffect(() => {
+  if (!location.state?.focusChallengeId || challenges.length === 0) return;
+
+  const challengeId = location.state.focusChallengeId;
+  const targetElement = document.getElementById(`challenge-${challengeId}`);
+
+  if (targetElement) {
+    setTimeout(() => {
+      targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      targetElement.classList.add('highlight-focus');
+      setTimeout(() => targetElement.classList.remove('highlight-focus'), 2000);
+    }, 300);
+  }
+}, [challenges, location.state]);
 
   // ✅ Handle join challenge
   const handleJoinClick = async (challengeId: string) => {
@@ -234,7 +252,7 @@ const renderButton = (challenge: Challenge) => {
           <IonRow className="suggested-row">
             {challenges.map((ch) => (
               <IonCol size="12" sizeMd="6" sizeLg="2.5" key={ch.challenge_id}>
-                <IonCard className="suggested-card">
+                <IonCard className="suggested-card" id={`challenge-${ch.challenge_id}`}>
                   <IonImg src={ch.image_url} alt={ch.name} />
                   <IonCardHeader>
                     <IonCardTitle className="challenge-subtitle">{ch.name}</IonCardTitle>

@@ -89,9 +89,6 @@ interface UserSearchResult {
 
 // Placeholder images
 import { DEFAULT_AVATAR } from "../constants/avatar";
-import Couch5K from "../assets/Couch to 5K.jpg";
-import SevenDayStarter from "../assets/The 7-Day Starter.jpg";
-import ThreeTimesAWeek from "../assets/Three Times a Week.jpg";
 import { supabase } from "../supabaseClient";
 
 const Home: React.FC = () => {
@@ -124,6 +121,10 @@ const Home: React.FC = () => {
     time: '0h 0m',
     calories: '0'
   });
+
+  // Suggested challenges state
+  const [suggestedChallenges, setSuggestedChallenges] = useState<any[]>([]);
+  const [challengesLoading, setChallengesLoading] = useState(false);
 
   const history = useHistory();
   const location = useLocation();
@@ -305,6 +306,38 @@ const Home: React.FC = () => {
     history.push(`/user/${userId}`);
   };
 
+  // Fetch suggested challenges (not joined, not completed)
+  const fetchSuggestedChallenges = async (userId: number) => {
+    try {
+      setChallengesLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/challenges/${userId}/all`,
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        }
+      );
+
+      const allChallenges = Array.isArray(response.data)
+        ? response.data
+        : (Array.isArray(response.data.challenges) ? response.data.challenges : []);
+
+      // Filter for challenges that are NOT joined and NOT completed
+      const suggested = allChallenges
+        .filter((challenge: any) => !challenge.joined && !challenge.completed)
+        .slice(0, 3); // Take only first 3
+
+      setSuggestedChallenges(suggested);
+    } catch (error) {
+      console.error('Failed to fetch suggested challenges:', error);
+      setSuggestedChallenges([]);
+    } finally {
+      setChallengesLoading(false);
+    }
+  };
+
   const fetchCurrentUserProfile = async () => {
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -327,6 +360,11 @@ const Home: React.FC = () => {
         profile_picture: user.profile_picture,
         user_id: user.user_id
       });
+
+      // Fetch suggested challenges for this user
+      if (user.user_id) {
+        fetchSuggestedChallenges(user.user_id);
+      }
 
       // Fetch follow counts
       const { data: counts } = await axios.get(
@@ -592,6 +630,10 @@ const Home: React.FC = () => {
 
   const handleViewAllChallenges = () => {
     history.push('/challenges');
+  };
+
+  const handleChallengeClick = (challengeId: number) => {
+    history.push('/challenges', { focusChallengeId: challengeId });
   };
   
 
@@ -948,50 +990,50 @@ const Home: React.FC = () => {
             <IonCard className="sidebar-card-enhanced challenges-card">
                 <div className="sidebar-card-header">
                   <div>
-                    <h3 className="sidebar-title">Your Challenges</h3>
+                    <h3 className="sidebar-title">Suggested Challenges</h3>
                   </div>
                 </div>
                 <div className="sidebar-card-content">
-                    <div className="challenge-list">
-                      <div className="strava-challenge-item">
-                        <div className="challenge-badge">
-                          <img src={Couch5K} alt="Couch to 5K" />
-                        </div>
-                        <div className="challenge-info">
-                          <h4 className="challenge-title">Couch to 5K</h4>
-                          <div className="challenge-days-left">
-                            <IonIcon icon={timeOutline} />
-                            <span>38 days left</span>
-                          </div>
-                        </div>
+                    {challengesLoading ? (
+                      <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+                        Loading challenges...
                       </div>
-
-                      <div className="strava-challenge-item">
-                        <div className="challenge-badge">
-                          <img src={SevenDayStarter} alt="The 7-Day Starter" />
-                        </div>
-                        <div className="challenge-info">
-                          <h4 className="challenge-title">The 7-Day Starter</h4>
-                          <div className="challenge-days-left">
-                            <IonIcon icon={timeOutline} />
-                            <span>2 days left</span>
-                          </div>
-                        </div>
+                    ) : suggestedChallenges.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+                        No suggested challenges available
                       </div>
-
-                      <div className="strava-challenge-item">
-                        <div className="challenge-badge">
-                          <img src={ThreeTimesAWeek} alt="Three Times a Week" />
-                        </div>
-                        <div className="challenge-info">
-                          <h4 className="challenge-title">Three Times a Week</h4>
-                          <div className="challenge-days-left">
-                            <IonIcon icon={timeOutline} />
-                            <span>10 days left</span>
+                    ) : (
+                      <div className="challenge-list">
+                        {suggestedChallenges.map((challenge: any) => (
+                          <div
+                            key={challenge.challenge_id}
+                            className="strava-challenge-item"
+                            onClick={() => handleChallengeClick(challenge.challenge_id)}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <div className="challenge-badge">
+                              {(challenge.image_url || challenge.challenge_image) && (
+                                <img
+                                  src={challenge.image_url || challenge.challenge_image}
+                                  alt={challenge.name || challenge.challenge_name || 'Challenge'}
+                                />
+                              )}
+                            </div>
+                            <div className="challenge-info">
+                              <h4 className="challenge-title">
+                                {challenge.challenge_name || challenge.name || 'Challenge'}
+                              </h4>
+                              <div className="challenge-days-left">
+                                <IonIcon icon={timeOutline} />
+                                <span>
+                                  {challenge.challenge_duration_days || challenge.duration_days || 'N/A'} days
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        ))}
                       </div>
-                  </div>
+                    )}
                   <IonButton expand="block" fill="clear" className="sidebar-cta" onClick={handleViewAllChallenges}>
                     View All Challenges
                   </IonButton>
