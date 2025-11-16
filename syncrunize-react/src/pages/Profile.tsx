@@ -1583,7 +1583,7 @@ const handleSaveProfile = async () => {
                   <IonImg src={editForm.profilePic} alt="Profile" />
                 </IonAvatar>
                 <IonButton 
-                  fill="outline" 
+                  fill="solid" 
                   size="small" 
                   className="change-photo-btn"
                   onClick={() => setIsActionSheetOpen(true)}
@@ -1638,10 +1638,10 @@ const handleSaveProfile = async () => {
                 
                 <IonButton
                   expand="block"
-                  fill="outline"
+                  fill="solid"
                   onClick={handleCancelEdit}
                   className="cancel-profile-btn"
-                >
+                > 
                   Cancel
                 </IonButton>
               </div>
