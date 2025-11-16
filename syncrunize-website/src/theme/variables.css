@@ -215,15 +215,30 @@ ion-router-outlet {
 /* Mobile footer adjustments */
 @media (max-width: 768px) {
   .footer-content p {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
   }
-  
+
   .app-footer ion-toolbar {
-    --min-height: 45px;
+    --min-height: 36px;
   }
-  
+
   .footer-content {
-    padding: 10px 12px;
+    padding: 6px 10px;
+  }
+}
+
+/* Smaller mobile devices - further minimize footer */
+@media (max-width: 480px) {
+  .footer-content p {
+    font-size: 0.6rem;
+  }
+
+  .app-footer ion-toolbar {
+    --min-height: 32px;
+  }
+
+  .footer-content {
+    padding: 4px 8px;
   }
 }
 

@@ -67,4 +67,26 @@ ion-tab-bar {
   .mobile-header {
     display: block;
   }
+
+  /* Minimize mobile header */
+  .mobile-header ion-toolbar {
+    --padding-top: calc(env(safe-area-inset-top) + 4px);
+    --min-height: calc(44px + env(safe-area-inset-top) + 4px);
+  }
+
+  .mobile-header ion-title {
+    font-size: 16px;
+  }
+}
+
+/* Smaller mobile devices - further minimize */
+@media (max-width: 480px) {
+  .mobile-header ion-toolbar {
+    --padding-top: calc(env(safe-area-inset-top) + 2px);
+    --min-height: calc(40px + env(safe-area-inset-top) + 2px);
+  }
+
+  .mobile-header ion-title {
+    font-size: 15px;
+  }
 }
