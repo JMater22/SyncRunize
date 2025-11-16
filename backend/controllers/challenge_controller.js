@@ -1,6 +1,7 @@
 // controllers/challenge_controller.js
 import * as ChallengeModel from "../models/challenge_model.js";
 import * as UserChallengeModel from "../models/user_challenge_model.js";
+import { deleteCache } from "../utils/redis.js";
 
 // GET /api/challenges → all challenges
 export const getAllChallenges = async (req, res) => {
@@ -41,6 +42,13 @@ export const joinChallenge = async (req, res) => {
     // Insert new user_challenge using your model (createUserChallenge(userId, challengeId))
     const user_challenge = await UserChallengeModel.createUserChallenge(parsedUserId, challenge_id);
 
+    // Invalidate cache for this user's challenges
+    await deleteCache([
+      `challenges:status:${parsedUserId}`,
+      `challenges:progress:${parsedUserId}`,
+      `challenges:all:${parsedUserId}`
+    ]);
+
     return res.status(201).json({ message: "Challenge joined", user_challenge });
   } catch (err) {
     console.error("❌ Joining challenge failed:", err);
@@ -58,6 +66,13 @@ export const leaveChallenge = async (req, res) => {
     }
 
     await UserChallengeModel.deleteUserChallengeByUserAndChallenge(userId, challengeId);
+
+    // Invalidate cache for this user's challenges
+    await deleteCache([
+      `challenges:status:${userId}`,
+      `challenges:progress:${userId}`,
+      `challenges:all:${userId}`
+    ]);
 
     return res.json({ message: "Challenge left successfully" });
   } catch (err) {
