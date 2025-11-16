@@ -78,7 +78,8 @@ const fetchChallenges = async () => {
 
     // Step 2: Fetch challenges for this user
     const res = await axios.get(
-      `${import.meta.env.VITE_API_URL}/challenges/${userId}/all`
+      `${import.meta.env.VITE_API_URL}/challenges/${userId}/all`,
+      { headers: { Authorization: `Bearer ${token}` } }
     );
 
     // Log response to confirm structure
