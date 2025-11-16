@@ -214,27 +214,44 @@ ion-router-outlet {
 
 /* Mobile footer adjustments */
 @media (max-width: 768px) {
+  .app-footer {
+    position: relative !important;
+    bottom: auto !important;
+  }
+
   .footer-content p {
     font-size: 0.65rem;
   }
 
   .app-footer ion-toolbar {
     --min-height: 36px;
+    position: relative !important;
   }
 
   .footer-content {
     padding: 6px 10px;
   }
+
+  /* Ensure content doesn't get hidden under footer */
+  ion-content {
+    --offset-bottom: 0 !important;
+  }
 }
 
 /* Smaller mobile devices - further minimize footer */
 @media (max-width: 480px) {
+  .app-footer {
+    position: relative !important;
+    bottom: auto !important;
+  }
+
   .footer-content p {
     font-size: 0.6rem;
   }
 
   .app-footer ion-toolbar {
     --min-height: 32px;
+    position: relative !important;
   }
 
   .footer-content {
