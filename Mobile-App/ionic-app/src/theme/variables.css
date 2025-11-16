@@ -76,17 +76,9 @@ ion-tab-bar {
   padding-left: 1rem;
   margin-top: 1.5rem;
   font-size: x-large;
-  
+
 }
-.profile{
-  background-image: url('../components/assets/close-up-portrait-serious-man-with-curly-hair.jpg');
-  width: 95%;
-  height: 180px;       /* fixed height */
-  overflow: hidden;    /* crop overflow */
-  border-radius: 8px 8px 0 0; /* match card radius */
-  background-position: center;
-  margin: .5rem;
-}
+
 .bar-row {
   display: flex;
   align-items: center;
