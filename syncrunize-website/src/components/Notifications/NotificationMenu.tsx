@@ -179,7 +179,7 @@ const NotificationMenu: React.FC = () => {
 
     // Generate avatar with user initials if no profile picture
     const actorName = notification.actor?.username || notification.actor?.name;
-    return generateAvatarUrl(actorName, 128);
+    return generateAvatarUrl(actorName);
   };
 
   if (loading) {

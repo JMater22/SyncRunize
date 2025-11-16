@@ -33,3 +33,4 @@ yarn-error.log*
 # APK files (too large for git)
 *.apk
 public/downloads/*.apk
+.vercel

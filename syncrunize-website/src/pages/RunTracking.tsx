@@ -21,19 +21,42 @@ const RunTracking: React.FC = () => {
   };
 
   return (
-    <IonPage> 
+    <IonPage>
       <IonContent className="ion-padding">
         <main className="mobile-app-info">
-          <img src={Laptop} alt="Run Tracking Mobile App" />
+          <img
+            src={Laptop}
+            alt="Run Tracking Mobile App"
+            style={{
+              maxWidth: '100%',
+              height: 'auto',
+              maxHeight: '500px',
+              objectFit: 'contain'
+            }}
+          />
           <div className="mobile-app-text">
             <h2>Run Tracking Available on Mobile App Only</h2>
             <p>
-              Experience seamless run tracking with real-time GPS monitoring, 
-              personalized insights, and achievement milestones. Take your fitness 
+              Experience seamless run tracking with real-time GPS monitoring,
+              personalized insights, and achievement milestones. Take your fitness
               journey to the next level — download now and start running smarter!
             </p>
-            <IonButton 
-              expand="block"  
+            <p style={{
+              marginTop: '16px',
+              padding: '12px',
+              backgroundColor: '#fff3cd',
+              borderLeft: '4px solid #ffc107',
+              borderRadius: '4px',
+              fontSize: '14px',
+              lineHeight: '1.6',
+              color: '#856404'
+            }}>
+              <strong>Important:</strong> Upon installation of the mobile application,
+              please grant all necessary permissions (location, storage, notifications)
+              to ensure optimal functionality and access to all features.
+            </p>
+            <IonButton
+              expand="block"
               className="download-btn"
               onClick={handleDownloadAPK}
             >
