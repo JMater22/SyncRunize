@@ -64,7 +64,8 @@ export const createHazard = async (req, res) => {
     });
 
     // Step 2-4: Compute scores in background (NON-BLOCKING)
-    // This runs AFTER the response is sent, so it never blocks the user
+    // ✅ CRITICAL: Updates scores for BOTH new hazard AND all nearby existing hazards
+    // This ensures the safest path algorithm always uses up-to-date trust/agreement scores
     (async () => {
       try {
         const neighbors = await Hazard.findHazardsNearLocation(
@@ -73,34 +74,50 @@ export const createHazard = async (req, res) => {
           0.3
         );
 
-        let agreement = 0;
-        let trust = 0;
+        console.log(`[Hazard] Found ${neighbors.length} nearby hazards to update`);
 
-        try {
-          const [agreementResult, trustResult] = await Promise.allSettled([
-            computeAgreement(newHazard, neighbors),
-            computeTrust([...neighbors, newHazard])
-          ]);
+        // ✅ Update ALL hazards (new + existing) with recalculated scores
+        const allHazards = [...neighbors, newHazard];
+        const updatePromises = allHazards.map(async (hazard) => {
+          try {
+            // For each hazard, get its neighbors (including the newly created one)
+            const hazardNeighbors = await Hazard.findHazardsNearLocation(
+              hazard.lat,
+              hazard.lng,
+              0.3
+            );
 
-          agreement = (agreementResult.status === 'fulfilled' && agreementResult.value !== null)
-            ? agreementResult.value
-            : 0;
-          trust = (trustResult.status === 'fulfilled' && trustResult.value !== null)
-            ? trustResult.value
-            : 0;
+            // Compute updated scores considering all current neighbors
+            const [agreementResult, trustResult] = await Promise.allSettled([
+              computeAgreement(hazard, hazardNeighbors),
+              computeTrust([...hazardNeighbors, hazard])
+            ]);
 
-          console.log(`[Hazard] Computed scores for ${newHazard.report_id}: agreement=${agreement}, trust=${trust}`);
-        } catch (err) {
-          console.warn('[Hazard] Failed to compute scores:', err.message);
-        }
+            const agreement = (agreementResult.status === 'fulfilled' && agreementResult.value !== null)
+              ? agreementResult.value
+              : 0;
+            const trust = (trustResult.status === 'fulfilled' && trustResult.value !== null)
+              ? trustResult.value
+              : 0;
 
-        // Update scores in background
-        await Hazard.modifyHazard(newHazard.report_id, {
-          agreement_score: agreement,
-          trust_score: trust,
+            // Update hazard with new scores
+            await Hazard.modifyHazard(hazard.report_id, {
+              agreement_score: agreement,
+              trust_score: trust,
+            });
+
+            console.log(`[Hazard] ✅ Updated scores for hazard ${hazard.report_id}: agreement=${agreement.toFixed(2)}, trust=${trust.toFixed(2)}`);
+            return { report_id: hazard.report_id, agreement, trust };
+          } catch (err) {
+            console.warn(`[Hazard] Failed to update scores for hazard ${hazard.report_id}:`, err.message);
+            return null;
+          }
         });
 
-        console.log(`[Hazard] ✅ Scores updated for hazard ${newHazard.report_id}`);
+        const results = await Promise.allSettled(updatePromises);
+        const successful = results.filter(r => r.status === 'fulfilled' && r.value !== null).length;
+
+        console.log(`[Hazard] ✅ Scoring complete: ${successful}/${allHazards.length} hazards updated (including new hazard ${newHazard.report_id})`);
       } catch (err) {
         console.error('[Hazard] Background scoring failed:', err.message);
       }

@@ -10,6 +10,8 @@ export const getAllGroups = async (req, res) => {
     const offset = parseInt(req.query.offset) || 0;
 
     let groups;
+    let joinedIds = [];
+
     if (!userId) {
       const { data, error } = await supabase
         .from('groups')
@@ -20,7 +22,7 @@ export const getAllGroups = async (req, res) => {
       if (error) throw error;
       groups = data;
     } else {
-      const joinedIds = await GroupMemberModel.getJoinedGroupIdsByUser(userId);
+      joinedIds = await GroupMemberModel.getJoinedGroupIdsByUser(userId);
       const { data, error } = await supabase
         .from('groups')
         .select('*')
@@ -31,8 +33,28 @@ export const getAllGroups = async (req, res) => {
       // Show: public OR created_by me OR where I'm a member
       groups = (data || []).filter(g => g.privacy === false || g.created_by === userId || joinedIds.includes(g.group_id));
     }
-    res.json(groups);
+
+    // ✅ OPTIMIZATION: Add is_member and member_count to each group
+    // This eliminates the need for frontend to make N separate API calls
+    const enrichedGroups = await Promise.all(groups.map(async (group) => {
+      const isMember = userId ? joinedIds.includes(group.group_id) : false;
+
+      // Get member count efficiently
+      const { count } = await supabase
+        .from('group_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('group_id', group.group_id);
+
+      return {
+        ...group,
+        is_member: isMember,
+        member_count: count || 0
+      };
+    }));
+
+    res.json(enrichedGroups);
   } catch (err) {
+    console.error('[GroupController] Error fetching groups:', err);
     res.status(500).json({ error: "Failed to fetch groups" });
   }
 };

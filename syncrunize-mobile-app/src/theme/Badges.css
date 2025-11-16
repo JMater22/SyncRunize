@@ -1,0 +1,126 @@
+/* Badges Page Styles */
+
+.badges-toolbar {
+  --background: #050505;
+  --color: #ffffff;
+}
+
+.badges-content {
+  --background: #050505;
+  --padding-top: 20px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Grid Layout */
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  padding: 20px 16px;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+  justify-items: center;
+}
+
+/* Badge Card */
+.badge-card {
+  margin: 0;
+  background: linear-gradient(145deg, #1a1a1a 0%, #0a0a0a 100%);
+  border: 1px solid rgba(146, 198, 40, 0.15);
+  border-radius: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  height: 280px;
+  width: 100%;
+  max-width: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.badge-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(146, 198, 40, 0.2);
+  border-color: rgba(146, 198, 40, 0.3);
+}
+
+.badge-card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  width: 100%;
+  height: 100%;
+}
+
+/* Badge Circle */
+.badge-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  position: relative;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* Badge Icon */
+.badge-icon {
+  font-size: 60px;
+  color: #ffffff;
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+
+.badge-icon::before {
+  content: '';
+  position: absolute;
+  top: 35px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 3px;
+  background: #ffffff;
+}
+
+.badge-icon::after {
+  content: '';
+  position: absolute;
+  top: 30px;
+  right: 45px;
+  width: 15px;
+  height: 3px;
+  background: #ffffff;
+  transform: rotate(45deg);
+}
+
+/* Badge Title */
+.badge-title {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  margin: 0 0 8px 0;
+  line-height: 1.3;
+}
+
+/* Badge Section Headers */
+.badge-section-header {
+  padding: 0 16px;
+  margin-bottom: 16px;
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+

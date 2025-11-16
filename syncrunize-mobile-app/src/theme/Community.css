@@ -1,0 +1,759 @@
+/* Community.css - Dark Theme */
+
+/* Global Dark Theme */
+.community-page {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.community-content {
+  --background: #000000;
+  --color: #ffffff;
+  background: #000000;
+  /* Handle safe area insets for devices with notches */
+  --padding-start: env(safe-area-inset-left);
+  --padding-end: env(safe-area-inset-right);
+}
+
+/* Header Styles */
+.community-header ion-toolbar {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.title-icon {
+  margin-right: 8px;
+  color: #84cc16;
+}
+
+/* Segment Navigation */
+.segment-toolbar {
+  --background: #000000;
+  --border-color: #2a2a2a;
+  border-bottom: 1px solid #2a2a2a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.community-segment {
+  --background: #0a0a0a;
+  padding: 6px;
+  border-radius: 12px;
+  margin: 8px 12px;
+  margin-left: max(12px, env(safe-area-inset-left));
+  margin-right: max(12px, env(safe-area-inset-right));
+  width: calc(100% - 24px);
+  max-width: 100%;
+  display: flex;
+  justify-content: space-evenly;
+}
+
+.segment-btn {
+  --color: #999999;
+  --color-checked: #000000;
+  --indicator-color: #84cc16;
+  --background-checked: #84cc16;
+  --border-radius: 8px;
+  min-height: 48px;
+  flex: 1;
+  margin: 2px;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 4px;
+}
+
+.segment-btn ion-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.segment-btn ion-label {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+  margin: 0;
+  padding: 0;
+}
+
+.segment-btn.segment-button-checked {
+  font-weight: 700;
+}
+
+.segment-btn.segment-button-checked ion-label {
+  font-weight: 700;
+}
+
+/* Search Container */
+.search-container {
+  padding: 12px;
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+  background: #000000;
+}
+
+@media (max-width: 576px) {
+  .search-container {
+    padding: 8px;
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
+}
+
+.challenge-search,
+.group-search {
+  --background: #1a1a1a;
+  --color: #ffffff;
+  --placeholder-color: #666666;
+  --icon-color: #666666;
+  --border-radius: 12px;
+}
+
+/* Challenges Tab */
+.challenges-tab {
+  padding: 0;
+}
+
+/* Current Challenge Card */
+.current-challenge-card {
+  margin: 0 12px 20px 12px;
+  margin-left: max(12px, env(safe-area-inset-left));
+  margin-right: max(12px, env(safe-area-inset-right));
+  --background: #1a1a1a;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+@media (max-width: 576px) {
+  .current-challenge-card {
+    margin: 0 8px 20px 8px;
+    margin-left: max(8px, env(safe-area-inset-left));
+    margin-right: max(8px, env(safe-area-inset-right));
+  }
+}
+
+.challenge-image-container {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
+}
+
+.challenge-image-container ion-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.challenge-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.8));
+  padding: 20px 16px 16px 16px;
+  color: white;
+}
+
+.challenge-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: white;
+}
+
+.participants {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: #cccccc;
+}
+
+.participants-icon {
+  font-size: 16px;
+}
+
+.challenge-content {
+  padding: 16px;
+  background: #1a1a1a;
+}
+
+.progress-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress-label {
+  font-size: 14px;
+  color: #cccccc;
+  font-weight: 500;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #333333;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #84cc16;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Create Challenge Button */
+.create-challenge-btn {
+  margin: 0 12px 24px 12px;
+  margin-left: max(12px, env(safe-area-inset-left));
+  margin-right: max(12px, env(safe-area-inset-right));
+  --background: #2a2a2a;
+  --color: #ffffff;
+  --border-radius: 12px;
+  height: 48px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+@media (max-width: 576px) {
+  .create-challenge-btn {
+    margin: 0 8px 24px 8px;
+    margin-left: max(8px, env(safe-area-inset-left));
+    margin-right: max(8px, env(safe-area-inset-right));
+  }
+}
+
+/* Suggested Section */
+.suggested-section {
+  padding: 0 12px;
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+}
+
+/* Mobile-first responsive design */
+@media (max-width: 576px) {
+  .suggested-section {
+    padding: 0 8px;
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 16px 0;
+}
+
+.suggested-challenge-card {
+  margin-bottom: 16px;
+  --background: #1a1a1a;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.suggested-overlay {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+}
+
+.join-challenge-btn {
+  --background: #84cc16;
+  --color: #000000;
+  --border-radius: 8px;
+  height: 32px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.suggested-content {
+  padding: 16px;
+  background: #1a1a1a;
+}
+
+.suggested-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 8px 0;
+}
+
+.suggested-description {
+  font-size: 14px;
+  color: #cccccc;
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+}
+
+.suggested-date {
+  font-size: 12px;
+  color: #888888;
+  margin: 0;
+}
+
+/* Feed Tab Container */
+.feed-tab-container {
+  background: #000000;
+  color: #ffffff;
+  min-height: 100%;
+  padding: 0;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.post-input-card {
+  --background: #1a1a1a;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.post-input-card ion-item {
+  --background: transparent;
+  --border-color: transparent;
+}
+
+.post-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-size: 16px;
+  flex: 1;
+  padding: 8px 0;
+}
+
+.post-input::placeholder {
+  color: #666666;
+}
+
+.feed-posts {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 16px 16px 16px;
+}
+
+.post-card {
+  --background: #1a1a1a;
+  border-radius: 12px;
+}
+
+.post-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.post-header ion-avatar {
+  width: 40px;
+  height: 40px;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.username {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.timestamp {
+  font-size: 12px;
+  color: #888888;
+}
+
+.post-text {
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 8px 0 12px 0;
+}
+
+.post-image {
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.post-actions {
+  display: flex;
+  gap: 20px;
+}
+
+.action-item {
+  font-size: 14px;
+  color: #888888;
+}
+
+/* Groups Tab */
+.groups-tab {
+  padding: 12px;
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+  background: #000000;
+}
+
+@media (max-width: 576px) {
+  .groups-tab {
+    padding: 8px;
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
+}
+
+.groups-header {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  align-items: center;
+  flex-direction: column;
+}
+
+.groups-header ion-item {
+  --background: transparent;
+  --border-color: transparent;
+  width: 100%;
+  --padding-start: 0;
+  --inner-padding-end: 0;
+}
+
+.groups-header ion-label {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.groups-header ion-segment {
+  --background: #1a1a1a;
+  border-radius: 12px;
+  padding: 4px;
+  width: 100%;
+  max-width: 100% !important;
+}
+
+.groups-header ion-segment-button {
+  --color: #999999;
+  --color-checked: #000000;
+  --background-checked: #84cc16;
+  --indicator-color: transparent;
+  --border-radius: 8px;
+  min-height: 36px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: none;
+}
+
+.groups-header ion-segment-button ion-label {
+  margin: 0;
+  color: inherit;
+  font-size: 14px;
+}
+
+.create-groups-btn {
+  --background: #84cc16;
+  --color: #000000;
+  --border-radius: 12px;
+  height: 44px;
+  font-size: 15px;
+  font-weight: 600;
+  width: 100%;
+  text-transform: none;
+  letter-spacing: 0.3px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.group-search {
+  width: 100%;
+  --background: #1a1a1a;
+  --color: #ffffff;
+  --placeholder-color: #999999;
+  --icon-color: #84cc16;
+  --border-radius: 12px;
+  padding: 4px 0;
+}
+
+.groups-section {
+  background: #000000;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #84cc16;
+  margin: 24px 0 16px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.group-card {
+  --background: #1a1a1a;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  height: 180px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border: 1px solid #2a2a2a;
+  transition: all 0.3s ease;
+}
+
+.group-card:active {
+  transform: scale(0.98);
+}
+
+.group-card ion-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.85);
+}
+
+.group-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 60%, transparent 100%);
+  padding: 20px 16px 16px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.group-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  flex: 1;
+  margin-right: 12px;
+}
+
+.join-group-btn {
+  --background: #84cc16;
+  --color: #000000;
+  --border-radius: 8px;
+  height: 36px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 16px;
+  text-transform: none;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 8px rgba(132, 204, 22, 0.3);
+}
+
+.joined-group-btn {
+  --background: transparent;
+  --color: #84cc16;
+  --border-color: #84cc16;
+  --border-width: 2px;
+  --border-radius: 8px;
+  height: 36px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 16px;
+  text-transform: none;
+  letter-spacing: 0.3px;
+}
+
+/* Modal Styles */
+.community-page ion-modal {
+  --background: #000000;
+}
+
+.community-page ion-modal ion-header ion-toolbar {
+  --background: #000000;
+  --color: #ffffff;
+  --border-color: #2a2a2a;
+}
+
+.community-page ion-modal ion-title {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.modal-content {
+  --background: #000000;
+  --color: #ffffff;
+  background: #000000;
+}
+
+.modal-content ion-toolbar {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.create-form {
+  padding: 16px;
+}
+
+.create-form ion-item {
+  --background: #1a1a1a;
+  --border-radius: 12px;
+  --border-color: #333333;
+  margin-bottom: 16px;
+}
+
+.create-form ion-label {
+  color: #ffffff;
+}
+
+.create-form ion-input,
+.create-form ion-textarea {
+  --color: #ffffff;
+  --placeholder-color: #666666;
+}
+
+.form-actions {
+  margin-top: 24px;
+}
+
+.create-challenge-final-btn {
+  --background: #84cc16;
+  --color: #000000;
+  --border-radius: 12px;
+  height: 48px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .challenge-title {
+    font-size: 18px;
+  }
+
+  .groups-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .find-groups-btn {
+    width: 100%;
+  }
+
+  .group-search {
+    width: 100%;
+  }
+}
+
+/* Enhanced mobile optimization for very small screens */
+@media (max-width: 576px) {
+  .suggested-challenge-card {
+    margin-bottom: 12px;
+    border-radius: 12px;
+  }
+
+  .challenge-image-container {
+    height: 180px;
+  }
+
+  .suggested-content {
+    padding: 12px;
+  }
+
+  .suggested-title {
+    font-size: 15px;
+  }
+
+  .suggested-description {
+    font-size: 13px;
+  }
+
+  .community-segment {
+    margin: 8px 8px;
+    margin-left: max(8px, env(safe-area-inset-left));
+    margin-right: max(8px, env(safe-area-inset-right));
+    width: calc(100% - 16px);
+  }
+
+  .segment-btn {
+    min-height: 44px;
+    padding: 6px 3px;
+  }
+
+  .segment-btn ion-icon {
+    font-size: 22px;
+    margin-bottom: 3px;
+  }
+
+  .segment-btn ion-label {
+    font-size: 12px;
+  }
+
+  /* Groups Tab Mobile Optimization */
+  .group-card {
+    height: 160px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+  }
+
+  .group-overlay {
+    padding: 16px 12px 12px 12px;
+  }
+
+  .group-name {
+    font-size: 16px;
+  }
+
+  .join-group-btn,
+  .joined-group-btn {
+    height: 32px;
+    font-size: 12px;
+    padding: 0 12px;
+  }
+
+  .groups-header {
+    margin-bottom: 16px;
+    gap: 8px;
+  }
+
+  .group-list {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .create-groups-btn {
+    height: 40px;
+    font-size: 14px;
+    margin-top: 12px;
+    margin-bottom: 12px;
+  }
+
+  .group-search {
+    font-size: 14px;
+  }
+}
+
+/* Animation */
+.current-challenge-card,
+.suggested-challenge-card,
+.post-card,
+.group-card {
+  transition: transform 0.2s ease;
+}
+
+.current-challenge-card:hover,
+.suggested-challenge-card:hover,
+.post-card:hover,
+.group-card:hover {
+  transform: translateY(-2px);
+}
+

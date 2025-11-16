@@ -1,14 +1,15 @@
 import express from "express";
 import * as GroupPostController from "../controllers/group_post_controller.js";
 import { authenticate } from "../utils/auth_middleware.js";
+import { cacheGroupPosts } from "../middleware/cache_middleware.js";
 
 const router = express.Router();
 
 // ==================== GROUP POST ROUTES ====================
 
-// ✅ GET all posts in a group
+// ✅ OPTIMIZED: GET all posts in a group with caching
 // GET /api/group-posts/:groupId?limit=20&offset=0&userId=5
-router.get("/:groupId", GroupPostController.getGroupPosts);
+router.get("/:groupId", cacheGroupPosts, GroupPostController.getGroupPosts);
 
 // ✅ CREATE post in group
 // POST /api/group-posts/:groupId

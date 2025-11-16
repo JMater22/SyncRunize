@@ -26,7 +26,24 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 
   -- Timestamps
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  read_at TIMESTAMPTZ
+  read_at TIMESTAMPTZ,
+
+  -- Constraints
+  CONSTRAINT notifications_type_check CHECK (
+    type IN (
+      'follow',
+      'like',
+      'comment',
+      'group_like',
+      'group_comment',
+      'group_invite',
+      'challenge_progress',
+      'badge_earned',
+      'hazard_alert',
+      'traffic_alert',
+      'batch_alert'
+    )
+  )
 );
 
 -- Indexes for performance
@@ -37,7 +54,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(
 
 -- Comments for documentation
 COMMENT ON TABLE public.notifications IS 'Stores all user notifications including push notifications, likes, comments, challenges, and hazard alerts.';
-COMMENT ON COLUMN public.notifications.type IS 'Types: follow, like, comment, group_like, group_comment, group_invite, challenge_progress, badge_earned, hazard_alert, traffic_alert';
+COMMENT ON COLUMN public.notifications.type IS 'Types: follow, like, comment, group_like, group_comment, group_invite, challenge_progress, badge_earned, hazard_alert, traffic_alert, batch_alert';
 COMMENT ON COLUMN public.notifications.push_status IS 'Status: pending, sent, failed, skipped';
 COMMENT ON COLUMN public.notifications.actor_id IS 'User who triggered the notification (e.g., who liked your post)';
 COMMENT ON COLUMN public.notifications.report_id IS 'Reference to hazard/traffic report for alert notifications';
