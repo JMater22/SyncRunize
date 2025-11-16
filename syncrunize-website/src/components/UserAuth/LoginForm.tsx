@@ -224,6 +224,43 @@ const LoginForm: React.FC = () => {
                     Create New Account
                   </a>
                 </div>
+
+                {/* APK Download Section */}
+                <div style={{
+                  marginTop: '24px',
+                  padding: '16px',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #e0e0e0'
+                }}>
+                  <IonText>
+                    <p style={{
+                      margin: '0 0 12px 0',
+                      fontSize: '14px',
+                      color: '#333',
+                      lineHeight: '1.5'
+                    }}>
+                      To access the full range of features, please download our mobile application.
+                      Upon installation, kindly grant the necessary permissions to ensure optimal functionality.
+                    </p>
+                  </IonText>
+                  <IonButton
+                    expand="block"
+                    className="download-apk-button"
+                    href="/downloads/SyncRunize-v1.0.0.apk"
+                    download="SyncRunize-v1.0.0.apk"
+                    style={{
+                      '--background': '#7cb342',
+                      '--background-hover': '#689f38',
+                      '--background-activated': '#558b2f',
+                      fontSize: '14px',
+                      fontWeight: '600'
+                    }}
+                  >
+                    Download Mobile App
+                  </IonButton>
+                </div>
               </form>
             </div>
           </div>

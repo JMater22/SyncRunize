@@ -29,3 +29,8 @@ yarn-error.log*
 
 # Optional eslint cache
 .eslintcache
+
+# APK files (too large for git)
+*.apk
+public/downloads/*.apk
+.vercel

@@ -216,9 +216,19 @@ const [invitingUsers, setInvitingUsers] = useState<{ [userId: number]: boolean }
 
     try {
       setIsSearching(true);
+
+      // Get fresh token from Supabase session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session) {
+        throw new Error("No active session");
+      }
+
+      const token = session.access_token;
+
       const response = await axios.get(
         `${import.meta.env.VITE_API_URL}/users/search?q=${encodeURIComponent(query)}`,
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       // Filter out users who are already members
