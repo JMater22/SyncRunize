@@ -19,5 +19,5 @@ router.get("/user/", authenticate, cacheUserChallengesProgress, ChallengeControl
 
 
 // ✅ New: Retrieve all challenges with join/in-progress status
-router.get("/:userId/all", cacheUserChallengesWithStatus, ChallengeController.getAllChallengesWithStatus);
+router.get("/:userId/all", authenticate, cacheUserChallengesWithStatus, ChallengeController.getAllChallengesWithStatus);
 export default router;

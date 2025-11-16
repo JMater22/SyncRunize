@@ -128,15 +128,27 @@ useEffect(() => {
     try {
       setJoining((prev) => ({ ...prev, [challengeId]: true }));
 
+      // Get authentication token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session) {
+        console.error("No active session");
+        return;
+      }
+
+      const token = session.access_token;
+
       await axios.post(
         `${import.meta.env.VITE_API_URL}/challenges/${currentUserId}/join`,
-        { challenge_id: challengeId }
+        { challenge_id: challengeId },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       // Refresh list to show updated joined state
       await fetchChallenges();
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ Join failed:", err);
+      alert(err?.response?.data?.error || "Failed to join challenge. Please try again.");
     } finally {
       setJoining((prev) => ({ ...prev, [challengeId]: false }));
     }
@@ -148,13 +160,25 @@ useEffect(() => {
     try {
       setJoining((prev) => ({ ...prev, [challengeId]: true }));
 
+      // Get authentication token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session) {
+        console.error("No active session");
+        return;
+      }
+
+      const token = session.access_token;
+
       await axios.delete(
-        `${import.meta.env.VITE_API_URL}/challenges/${currentUserId}/leave/${challengeId}`
+        `${import.meta.env.VITE_API_URL}/challenges/${currentUserId}/leave/${challengeId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       await fetchChallenges();
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ Leave failed:", err);
+      alert(err?.response?.data?.error || "Failed to leave challenge. Please try again.");
     } finally {
       setJoining((prev) => ({ ...prev, [challengeId]: false }));
     }

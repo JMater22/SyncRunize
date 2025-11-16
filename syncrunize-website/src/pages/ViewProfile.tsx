@@ -858,33 +858,176 @@ const ViewProfile: React.FC = () => {
                     ) : (
                       <div className="activity-feed">
                         {posts.map((post) => (
-                          <IonCard key={post.post_id} className="activity-card-enhanced">
-                            <IonCardContent>
-                              {post.route_name && <h4 style={{ marginBottom: '10px', fontWeight: 'bold' }}>{post.route_name}</h4>}
-                              {post.content && <p style={{ marginBottom: '15px' }}>{post.content}</p>}
-                              {post.route_id && (
-                                <div className="activity-stats-row">
-                                  <div className="activity-stat">
-                                    <strong>{(post.distance_km || 0).toFixed(1)} km</strong>
-                                    <span>Distance</span>
-                                  </div>
-                                  <div className="activity-stat">
-                                    <strong>{formatDuration(post.duration_seconds || 0)}</strong>
-                                    <span>Time</span>
-                                  </div>
-                                  <div className="activity-stat">
-                                    <strong>{post.average_pace || "N/A"}</strong>
-                                    <span>Pace</span>
-                                  </div>
-                                  <div className="activity-stat">
-                                    <strong>{post.estimated_calories || "N/A"}</strong>
-                                    <span>Calories</span>
-                                  </div>
+                          <IonCard key={post.post_id} className="activity-card-enhanced" style={{
+                            marginBottom: '20px',
+                            borderRadius: '12px',
+                            overflow: 'hidden',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                          }}>
+                            {/* Post Header - Facebook style */}
+                            <div style={{
+                              padding: '12px 16px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                              borderBottom: '1px solid #e4e6eb'
+                            }}>
+                              <IonImg
+                                src={profilePic}
+                                alt={userName}
+                                style={{
+                                  width: '40px',
+                                  height: '40px',
+                                  borderRadius: '50%',
+                                  objectFit: 'cover'
+                                }}
+                              />
+                              <div style={{ flex: 1 }}>
+                                <h4 style={{
+                                  margin: 0,
+                                  fontSize: '15px',
+                                  fontWeight: '600',
+                                  color: '#050505'
+                                }}>
+                                  {userName}
+                                </h4>
+                                <p style={{
+                                  margin: 0,
+                                  fontSize: '13px',
+                                  color: '#65676b'
+                                }}>
+                                  {new Date(post.created_at).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+
+                            <IonCardContent style={{ padding: 0 }}>
+                              {/* Post Content */}
+                              {(post.route_name || post.content) && (
+                                <div style={{ padding: '16px' }}>
+                                  {post.route_name && (
+                                    <h4 style={{
+                                      margin: '0 0 8px 0',
+                                      fontSize: '16px',
+                                      fontWeight: 'bold',
+                                      color: '#050505'
+                                    }}>
+                                      {post.route_name}
+                                    </h4>
+                                  )}
+                                  {post.content && (
+                                    <p style={{
+                                      margin: 0,
+                                      fontSize: '15px',
+                                      lineHeight: '1.5',
+                                      color: '#050505'
+                                    }}>
+                                      {post.content}
+                                    </p>
+                                  )}
                                 </div>
                               )}
+
+                              {/* Map Image - Full Width */}
                               {post.snapshot_url && (
-                                <div className="activity-map">
-                                  <IonImg src={post.snapshot_url} alt="Run Map" />
+                                <div style={{
+                                  width: '100%',
+                                  maxHeight: '500px',
+                                  overflow: 'hidden',
+                                  backgroundColor: '#f0f2f5'
+                                }}>
+                                  <IonImg
+                                    src={post.snapshot_url}
+                                    alt="Run Map"
+                                    style={{
+                                      width: '100%',
+                                      height: 'auto',
+                                      display: 'block'
+                                    }}
+                                  />
+                                </div>
+                              )}
+
+                              {/* Run Stats - Grid Layout */}
+                              {post.route_id && (
+                                <div style={{
+                                  padding: '16px',
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                                  gap: '12px',
+                                  backgroundColor: '#f7f8fa',
+                                  borderTop: '1px solid #e4e6eb'
+                                }}>
+                                  <div style={{ textAlign: 'center' }}>
+                                    <div style={{
+                                      fontSize: '18px',
+                                      fontWeight: 'bold',
+                                      color: '#1c1e21'
+                                    }}>
+                                      {(post.distance_km || 0).toFixed(1)} km
+                                    </div>
+                                    <div style={{
+                                      fontSize: '12px',
+                                      color: '#65676b',
+                                      marginTop: '4px'
+                                    }}>
+                                      Distance
+                                    </div>
+                                  </div>
+                                  <div style={{ textAlign: 'center' }}>
+                                    <div style={{
+                                      fontSize: '18px',
+                                      fontWeight: 'bold',
+                                      color: '#1c1e21'
+                                    }}>
+                                      {formatDuration(post.duration_seconds || 0)}
+                                    </div>
+                                    <div style={{
+                                      fontSize: '12px',
+                                      color: '#65676b',
+                                      marginTop: '4px'
+                                    }}>
+                                      Duration
+                                    </div>
+                                  </div>
+                                  <div style={{ textAlign: 'center' }}>
+                                    <div style={{
+                                      fontSize: '18px',
+                                      fontWeight: 'bold',
+                                      color: '#1c1e21'
+                                    }}>
+                                      {post.average_pace || "N/A"}
+                                    </div>
+                                    <div style={{
+                                      fontSize: '12px',
+                                      color: '#65676b',
+                                      marginTop: '4px'
+                                    }}>
+                                      Avg Pace
+                                    </div>
+                                  </div>
+                                  <div style={{ textAlign: 'center' }}>
+                                    <div style={{
+                                      fontSize: '18px',
+                                      fontWeight: 'bold',
+                                      color: '#1c1e21'
+                                    }}>
+                                      {post.estimated_calories || "N/A"}
+                                    </div>
+                                    <div style={{
+                                      fontSize: '12px',
+                                      color: '#65676b',
+                                      marginTop: '4px'
+                                    }}>
+                                      Calories
+                                    </div>
+                                  </div>
                                 </div>
                               )}
                             </IonCardContent>
