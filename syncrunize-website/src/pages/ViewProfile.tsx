@@ -873,8 +873,8 @@ const ViewProfile: React.FC = () => {
                               borderBottom: '1px solid #e4e6eb'
                             }}>
                               <IonImg
-                                src={profilePic}
-                                alt={userName}
+                                src={post.author_avatar || DEFAULT_AVATAR}
+                                alt={post.author_name}
                                 style={{
                                   width: '40px',
                                   height: '40px',
@@ -889,7 +889,7 @@ const ViewProfile: React.FC = () => {
                                   fontWeight: '600',
                                   color: '#050505'
                                 }}>
-                                  {userName}
+                                  {post.author_name}
                                 </h4>
                                 <p style={{
                                   margin: 0,
