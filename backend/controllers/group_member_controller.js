@@ -1,4 +1,5 @@
 import * as GroupMemberModel from "../models/group_member_model.js";
+import * as GroupModel from "../models/group_model.js";
 import * as NotificationService from "../services/notification_service.js";
 import { supabase } from "../utils/supabase.js";
 
@@ -88,9 +89,26 @@ export const updateRole = async (req, res) => {
 export const removeMember = async (req, res) => {
   try {
     const { groupId, userId } = req.params;
+
+    // Remove the member
     const result = await GroupMemberModel.removeMember(groupId, userId);
+
+    // Check if group has any members left
+    const remainingMembers = await GroupMemberModel.getGroupMembers(groupId);
+
+    // If no members left, auto-delete the group
+    if (!remainingMembers || remainingMembers.length === 0) {
+      console.log(`🗑️ Group ${groupId} has no members left. Auto-deleting...`);
+      await GroupModel.deleteGroup(groupId);
+      return res.json({
+        message: "Member removed and group deleted (no members left)",
+        groupDeleted: true
+      });
+    }
+
     res.json(result);
   } catch (err) {
+    console.error("❌ Failed to remove member:", err);
     res.status(500).json({ error: "Failed to remove member" });
   }
 };

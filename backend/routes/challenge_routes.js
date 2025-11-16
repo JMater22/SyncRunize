@@ -11,8 +11,8 @@ const router = express.Router();
 
 // Existing routes
 router.get("/", authenticate, cacheAllChallenges, ChallengeController.getAllChallenges);
-router.post("/:userId/join", ChallengeController.joinChallenge);
-router.delete("/:userId/leave/:challengeId", ChallengeController.leaveChallenge);
+router.post("/:userId/join", authenticate, ChallengeController.joinChallenge);
+router.delete("/:userId/leave/:challengeId", authenticate, ChallengeController.leaveChallenge);
 
 // ✅ NEW: get joined challenges for a user
 router.get("/user/", authenticate, cacheUserChallengesProgress, ChallengeController.getUserChallengesProgress);
