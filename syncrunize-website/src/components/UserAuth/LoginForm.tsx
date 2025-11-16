@@ -226,7 +226,7 @@ const LoginForm: React.FC = () => {
                 </div>
 
                 {/* APK Download Section */}
-                <div style={{
+                <div className="download-apk-section" style={{
                   marginTop: '24px',
                   padding: '16px',
                   backgroundColor: '#f8f9fa',
