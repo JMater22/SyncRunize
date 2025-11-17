@@ -13,7 +13,14 @@ export const getAuthRedirectUrl = (path: string): string | undefined => {
   const isNative = Capacitor.isNativePlatform();
 
   if (isNative) {
-    // Deep Link - OAuth will return to the app
+    // For password reset, always redirect to web app (not deep link)
+    // User will complete password reset in browser, then return to app
+    if (path === '/reset-password') {
+      const webAppUrl = import.meta.env.VITE_WEB_APP_URL || 'https://syncrunize-website.vercel.app';
+      return `${webAppUrl}${path}`;
+    }
+
+    // For OAuth callbacks, use deep link to return to app
     const customScheme = 'syncrunize';
     return `${customScheme}://${path.replace(/^\//, '')}`;
   }

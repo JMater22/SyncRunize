@@ -34,6 +34,18 @@ export const useDeepLinks = () => {
         console.log('[DeepLink] Path:', path);
         console.log('[DeepLink] Search params:', urlObj.searchParams.toString());
 
+        // Handle OAuth callback (Google Sign-In)
+        // Format: syncrunize://home (after successful OAuth)
+        if (path === 'home' || path === '/home') {
+          console.log('[DeepLink] Detected OAuth redirect to home');
+
+          // Navigate to home page after OAuth success
+          setTimeout(() => {
+            history.push('/home');
+          }, 100);
+          return;
+        }
+
         // Handle password reset deep link
         // Format: syncrunize://reset-password?access_token=...&refresh_token=...
         if (path === 'reset-password' || path === '/reset-password') {
