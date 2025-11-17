@@ -18,6 +18,7 @@ export type RunState = 'IDLE' | 'RUNNING' | 'PAUSED' | 'FINISHED';
 const INSTANT_PACE_WINDOW_MS = 30000; // 30 seconds (was 10s - too noisy)
 const INSTANT_PACE_ALPHA = 0.35;
 const MIN_MOVEMENT_THRESHOLD_METERS = 2.5; // Ignore GPS jitter < 2.5m
+const MAX_GPS_ACCURACY_METERS = 20; // ✅ FIX: Reject GPS samples with accuracy > 20m
 // ✅ FIX: GPS signal loss detection - pause timer if no movement for 30 seconds
 const GPS_STALL_THRESHOLD_MS = 30000; // 30 seconds without movement = consider stalled
 
@@ -201,6 +202,14 @@ const applySamples = (state: RunSession, samples: GpsSample[]): RunSession => {
     if (!isFinite(sample.lat) || !isFinite(sample.lng)) {
       return;
     }
+
+    // ✅ FIX: Reject GPS samples with poor accuracy to prevent stationary drift
+    // Poor GPS accuracy (>20m) causes apparent movement when standing still
+    if (sample.accuracy && sample.accuracy > MAX_GPS_ACCURACY_METERS) {
+      console.warn(`[RunTracker] Rejecting GPS sample with poor accuracy: ${sample.accuracy.toFixed(1)}m`);
+      return; // Skip this sample
+    }
+
     if (previous) {
       const delta = haversineDistanceMeters(previous, sample);
       // Professional standard: Ignore GPS jitter below threshold (Strava/Nike method)

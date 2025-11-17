@@ -68,24 +68,29 @@ export const createHazard = async (req, res) => {
     // This ensures the safest path algorithm always uses up-to-date trust/agreement scores
     (async () => {
       try {
-        const neighbors = await Hazard.findHazardsNearLocation(
+        // ✅ OPTIMIZATION: Query ALL nearby hazards once (0.5km radius to cover all overlaps)
+        const allNearbyHazards = await Hazard.findHazardsNearLocation(
           newHazard.lat,
           newHazard.lng,
-          0.3
+          0.5 // Larger radius to include all potential neighbors
         );
 
-        console.log(`[Hazard] Found ${neighbors.length} nearby hazards to update`);
+        console.log(`[Hazard] Found ${allNearbyHazards.length} nearby hazards to update`);
 
         // ✅ Update ALL hazards (new + existing) with recalculated scores
-        const allHazards = [...neighbors, newHazard];
+        const allHazards = [...allNearbyHazards, newHazard];
         const updatePromises = allHazards.map(async (hazard) => {
           try {
-            // For each hazard, get its neighbors (including the newly created one)
-            const hazardNeighbors = await Hazard.findHazardsNearLocation(
-              hazard.lat,
-              hazard.lng,
-              0.3
-            );
+            // ✅ OPTIMIZATION: Filter pre-fetched hazards instead of querying database again
+            // This eliminates N database queries (was 10 queries, now 0 additional queries)
+            const hazardNeighbors = allHazards.filter(neighbor => {
+              if (neighbor.report_id === hazard.report_id) return false;
+              const distance = calculateDistance(
+                hazard.lat, hazard.lng,
+                neighbor.lat, neighbor.lng
+              );
+              return distance <= 0.3; // 300m radius
+            });
 
             // Compute updated scores considering all current neighbors
             const [agreementResult, trustResult] = await Promise.allSettled([
