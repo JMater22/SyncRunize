@@ -34,7 +34,6 @@
   import path from "path";
   import { fileURLToPath } from "url";
   import { swaggerUi, swaggerSpec } from "./utils/swagger.js";
-  import { mkdirp } from "mkdirp";
   import fs from "fs";
 
   import emailRoutes from "./routes/email_routes.js";
@@ -51,7 +50,7 @@
   // Render uses ephemeral filesystem, so this directory needs to be recreated each deployment
   const uploadsDir = path.join(__dirname, 'uploads', 'hazards');
   try {
-    mkdirp.sync(uploadsDir);
+    fs.mkdirSync(uploadsDir, { recursive: true });
     console.log(`✅ Uploads directory created/verified: ${uploadsDir}`);
   } catch (err) {
     console.error(`❌ Failed to create uploads directory: ${err.message}`);
