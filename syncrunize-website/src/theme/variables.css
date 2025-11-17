@@ -84,10 +84,23 @@
   ion-page#main-content {
     padding-top: 0 !important;
   }
-  
+
   ion-content {
     --padding-top: 50px !important;
     --padding-bottom: 0px !important;
+    --overflow: auto;
+    overflow: auto !important;
+  }
+
+  /* Force scroll container to allow scrolling */
+  ion-content::part(scroll) {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Allow content to expand beyond viewport */
+  ion-tabs, ion-router-outlet {
+    overflow: visible;
   }
 
   /* Mobile layout adjustments */
