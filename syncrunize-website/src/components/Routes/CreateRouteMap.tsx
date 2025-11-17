@@ -833,12 +833,14 @@ const CreateRouteMap = () => {
       // Step 1: Call algorithm engine to get safest path
       let algoResponse;
 
+      const algoEngineUrl = import.meta.env.VITE_ALGO_ENGINE_URL || 'http://localhost:8000';
+
       if (routeMode === 'distance') {
         // Distance-based routing: find safest circular route
         const distanceInKm = distanceUnit === 'miles' ? targetDistance * 1.60934 : targetDistance;
         console.log('Calling algorithm engine for distance-based route:', { start: startPoint, distance: distanceInKm });
 
-        algoResponse = await axios.post('http://localhost:8000/route-distance', {
+        algoResponse = await axios.post(`${algoEngineUrl}/route-distance`, {
           start: startPoint,
           target_distance_km: distanceInKm,
           alpha: 0.5 // Balance between distance and safety
@@ -846,7 +848,7 @@ const CreateRouteMap = () => {
       } else {
         // Endpoint-based routing: find safest path to destination
         console.log('Calling algorithm engine with:', { start: startPoint, end: endPoint });
-        algoResponse = await axios.post('http://localhost:8000/route-osm', {
+        algoResponse = await axios.post(`${algoEngineUrl}/route-osm`, {
           start: startPoint,
           end: endPoint,
           alpha: 0.5 // Balance between distance and safety
