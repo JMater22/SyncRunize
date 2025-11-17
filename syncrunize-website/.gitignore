@@ -31,6 +31,7 @@ yarn-error.log*
 .eslintcache
 
 # APK files (too large for git)
-*.apk
-public/downloads/*.apk
+# *.apk
+# public/downloads/*.apk
+# NOTE: Temporarily allowing APK files in public/downloads for deployment
 .vercel
