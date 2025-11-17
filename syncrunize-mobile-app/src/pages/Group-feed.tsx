@@ -76,6 +76,7 @@ const GroupFeed: React.FC = () => {
   // Backend state
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
+  const [hasFetchedMembers, setHasFetchedMembers] = useState(false);  // ✅ Track if members loaded
   const [groupPosts, setGroupPosts] = useState<GroupPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -155,12 +156,12 @@ const GroupFeed: React.FC = () => {
     }
   }, [groupId, currentUser]);
 
-  // Fetch members when Members tab is activated
+  // ✅ PERFORMANCE FIX: Lazy load members when Members tab is activated
   useEffect(() => {
-    if (activeTab === 'members' && groupId && members.length === 0) {
+    if (activeTab === 'members' && !hasFetchedMembers) {
       fetchMembers();
     }
-  }, [activeTab]);
+  }, [activeTab, hasFetchedMembers]);
 
   const fetchGroupData = async () => {
     if (!groupId) {
@@ -173,11 +174,10 @@ const GroupFeed: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // ⚡ PARALLEL API CALLS - Fetch all data simultaneously
-      const [groupData, postsData, membersData] = await Promise.all([
+      // ⚡ PERFORMANCE FIX: Only fetch group and posts initially (lazy load members when tab clicked)
+      const [groupData, postsData] = await Promise.all([
         GroupsApi.getGroup(parseInt(groupId)),
-        GroupsApi.getGroupPosts(parseInt(groupId), currentUser?.user_id, POSTS_PER_PAGE, 0),
-        GroupsApi.getGroupMembers(parseInt(groupId))
+        GroupsApi.getGroupPosts(parseInt(groupId), currentUser?.user_id, POSTS_PER_PAGE, 0)
       ]);
 
       // Set group data
@@ -234,7 +234,33 @@ const GroupFeed: React.FC = () => {
       setLikes(initialLikes);
       setComments(initialComments);
 
-      // Set members data
+      // ✅ PERFORMANCE FIX: Check membership with lightweight API (doesn't fetch all members)
+      if (currentUser) {
+        try {
+          const membership = await GroupsApi.checkMembership(parseInt(groupId), currentUser.user_id);
+          setIsUserJoined(membership.isMember);
+          setIsUserAdmin(membership.role === 'admin');
+        } catch (err) {
+          console.error('Failed to check membership status:', err);
+        }
+      }
+
+    } catch (err: any) {
+      console.error('Failed to fetch group data:', err);
+      setError(err.message || 'Failed to load group');
+      setGroupPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ PERFORMANCE FIX: Lazy load members only when Members tab is clicked
+  const fetchMembers = async () => {
+    if (!groupId || hasFetchedMembers) return;
+
+    try {
+      setLoadingMembers(true);
+      const membersData = await GroupsApi.getGroupMembers(parseInt(groupId));
       setMembers(Array.isArray(membersData) ? membersData : []);
 
       // Check if current user is a member and their role
@@ -243,13 +269,13 @@ const GroupFeed: React.FC = () => {
         setIsUserJoined(!!userMember);
         setIsUserAdmin(userMember?.role === 'admin');
       }
+
+      setHasFetchedMembers(true);
     } catch (err: any) {
-      console.error('Failed to fetch group data:', err);
-      setError(err.message || 'Failed to load group');
-      setGroupPosts([]);
+      console.error('Failed to fetch members:', err);
       setMembers([]);
     } finally {
-      setLoading(false);
+      setLoadingMembers(false);
     }
   };
 

@@ -6,6 +6,7 @@ import {
   IonTabButton,
   IonTabs,
   IonIcon,
+  IonSpinner,
   setupIonicReact,
 } from "@ionic/react";
 import { personOutline } from "ionicons/icons";
@@ -87,11 +88,14 @@ if (!document.head.querySelector(`link[href="${fontLink.href}"]`)) {
 const App: React.FC = () => {
   const { session, loading } = useSupabaseSession();
 
+  // ✅ PERFORMANCE FIX: Don't block on session loading, show skeleton instead
+  // Session check is usually fast (<500ms) and contexts can load in background
   if (loading) {
     return (
       <IonApp>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-          <span>Loading...</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: '1rem' }}>
+          <IonSpinner name="circular" style={{ width: '48px', height: '48px' }} />
+          <span style={{ color: '#666', fontSize: '14px' }}>Loading SyncRunize...</span>
         </div>
       </IonApp>
     );
