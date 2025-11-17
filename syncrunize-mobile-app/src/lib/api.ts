@@ -5,7 +5,7 @@ const baseURL = (import.meta as any)?.env?.VITE_API_URL || 'http://localhost:500
 
 const api = axios.create({
   baseURL,
-  timeout: 30000  // 30 second timeout
+  timeout: 60000  // 60 second timeout - Render free tier cold starts can take 30-45s
 });
 
 // ✅ CRITICAL FIX: Cache auth session in memory to avoid blocking localStorage fetch on EVERY request

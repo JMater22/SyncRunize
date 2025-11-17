@@ -13,19 +13,9 @@ export const getAuthRedirectUrl = (path: string): string | undefined => {
   const isNative = Capacitor.isNativePlatform();
 
   if (isNative) {
-    // OPTION 1: Web App Redirect (RECOMMENDED - simple and reliable)
-    // Email link opens in browser → user resets password → returns to app
-    const webAppUrl = import.meta.env.VITE_WEB_APP_URL as string;
-    if (webAppUrl) {
-      return `${webAppUrl}${path}`;
-    }
-
-    // OPTION 2: Deep Link (advanced - requires Android manifest configuration)
-    // Uncomment this ONLY if you've configured deep links properly
-    // const customScheme = 'syncrunize';
-    // return `${customScheme}://${path.replace(/^\//, '')}`;
-
-    return undefined;
+    // Deep Link - OAuth will return to the app
+    const customScheme = 'syncrunize';
+    return `${customScheme}://${path.replace(/^\//, '')}`;
   }
 
   // For web app, use the current origin
