@@ -363,7 +363,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                 </div>
 
                 {/* APK Download Section */}
-                <div style={{
+                <div className="download-apk-section" style={{
                   marginTop: '24px',
                   padding: '16px',
                   backgroundColor: '#f8f9fa',
@@ -385,8 +385,8 @@ const handleSubmit = async (e: React.FormEvent) => {
                   <IonButton
                     expand="block"
                     className="download-apk-button"
-                    href="/downloads/SyncRunize-v1.0.0.apk"
-                    download="SyncRunize-v1.0.0.apk"
+                    href="/downloads/SyncRunize-v1.0.2.apk"
+                    download="SyncRunize-v1.0.2.apk"
                     style={{
                       '--background': '#7cb342',
                       '--background-hover': '#689f38',

@@ -1,4 +1,4 @@
-import { Redirect, Route } from "react-router-dom";
+import { Redirect, Route, useLocation } from "react-router-dom";
 import {
   IonApp,
   IonPage,
@@ -57,25 +57,16 @@ import { NotificationProvider } from "./contexts/NotificationContext";
 import React, { useEffect, useState } from "react";
 setupIonicReact();
 
-const AppContent: React.FC<{ session: any; userData: any; loading: boolean }> = ({ session, userData, loading }) => {
-  if (loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: '#f5f5f5'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <h2>Loading SyncRunize...</h2>
-        </div>
-      </div>
-    );
-  }
+// Inner component that uses useLocation (must be inside Router)
+const AppLayout: React.FC<{ session: any }> = ({ session }) => {
+  const location = useLocation();
+
+  // Auth pages where header/footer should be hidden
+  const authPages = ['/login', '/get-started', '/forgot-password', '/reset-password'];
+  const isAuthPage = authPages.includes(location.pathname);
 
   return (
-    <IonReactRouter>
+    <>
       {/* Side Menu - Only visible on mobile */}
       <IonMenu side="start" contentId="main-content" menuId="main-menu">
         <IonHeader>
@@ -109,15 +100,17 @@ const AppContent: React.FC<{ session: any; userData: any; loading: boolean }> = 
 
       {/* Main Content */}
       <IonPage id="main-content">
-        {/* Mobile Header with Menu Button - Only visible on mobile */}
-        <IonHeader className="mobile-header">
-          <IonToolbar>
-            <IonButtons slot="start">
-              <IonMenuButton menu="main-menu" autoHide={false} />
-            </IonButtons>
-            <IonTitle>SYNCRUNIZE</IonTitle>
-          </IonToolbar>
-        </IonHeader>
+        {/* Mobile Header with Menu Button - Only visible on mobile and NOT on auth pages */}
+        {!isAuthPage && (
+          <IonHeader className="mobile-header">
+            <IonToolbar>
+              <IonButtons slot="start">
+                <IonMenuButton menu="main-menu" autoHide={false} />
+              </IonButtons>
+              <IonTitle>SYNCRUNIZE</IonTitle>
+            </IonToolbar>
+          </IonHeader>
+        )}
 
         <IonTabs>
           <IonRouterOutlet>
@@ -238,16 +231,42 @@ const AppContent: React.FC<{ session: any; userData: any; loading: boolean }> = 
             </div>
           </IonHeader>
         </IonTabs>
-        
-        {/* Footer - visible on both mobile and desktop - MOVED OUTSIDE OF TABS */}
-        <IonFooter className="app-footer">
-          <IonToolbar>
-            <div className="footer-content">
-              <p>© 2025 SyncRunize. All rights reserved.</p>
-            </div>
-          </IonToolbar>
-        </IonFooter>
+
+        {/* Footer - visible on both mobile and desktop but NOT on auth pages */}
+        {!isAuthPage && (
+          <IonFooter className="app-footer">
+            <IonToolbar>
+              <div className="footer-content">
+                <p>© 2025 SyncRunize. All rights reserved.</p>
+              </div>
+            </IonToolbar>
+          </IonFooter>
+        )}
       </IonPage>
+    </>
+  );
+};
+
+const AppContent: React.FC<{ session: any; userData: any; loading: boolean }> = ({ session, userData, loading }) => {
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        background: '#f5f5f5'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <h2>Loading SyncRunize...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <IonReactRouter>
+      <AppLayout session={session} />
     </IonReactRouter>
   );
 };

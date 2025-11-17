@@ -54,6 +54,8 @@ ion-tab-bar {
 /* ✅ Mobile/Desktop toggle */
 .mobile-header {
   display: none;
+  position: relative;
+  z-index: 10;
 }
 
 .mobile-header ion-toolbar {
@@ -66,5 +68,35 @@ ion-tab-bar {
   }
   .mobile-header {
     display: block;
+    position: relative !important;
+  }
+
+  /* Minimize mobile header */
+  .mobile-header ion-toolbar {
+    --padding-top: calc(env(safe-area-inset-top) + 4px);
+    --min-height: calc(44px + env(safe-area-inset-top) + 4px);
+    position: relative !important;
+  }
+
+  .mobile-header ion-title {
+    font-size: 16px;
+  }
+
+  /* Ensure content doesn't get hidden under header */
+  ion-content {
+    --offset-top: 0 !important;
+  }
+}
+
+/* Smaller mobile devices - further minimize */
+@media (max-width: 480px) {
+  .mobile-header ion-toolbar {
+    --padding-top: calc(env(safe-area-inset-top) + 2px);
+    --min-height: calc(40px + env(safe-area-inset-top) + 2px);
+    position: relative !important;
+  }
+
+  .mobile-header ion-title {
+    font-size: 15px;
   }
 }

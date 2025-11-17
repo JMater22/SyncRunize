@@ -1614,3 +1614,249 @@ ion-header {
     --color: #ffffff;
   }
 }
+
+/* Mobile breakpoint - standard phones */
+@media (max-width: 600px) {
+  .banner-container {
+    height: 160px;
+  }
+
+  .profile-info-card {
+    margin: -50px 16px 0 16px;
+    padding: 70px 24px 20px 24px;
+  }
+
+  .profile-avatar-container {
+    width: 90px;
+    height: 90px;
+  }
+
+  .profile-name {
+    font-size: 24px;
+  }
+
+  .profile-username {
+    font-size: 14px;
+  }
+
+  .profile-bio {
+    font-size: 13px;
+    margin-bottom: 14px;
+  }
+
+  .profile-stats-row {
+    padding: 14px;
+    gap: 8px;
+  }
+
+  .stat-number {
+    font-size: 16px;
+  }
+
+  .stat-label {
+    font-size: 9px;
+  }
+
+  .content-section {
+    padding: 24px 20px;
+    margin-bottom: 24px;
+  }
+
+  .section-header h2 {
+    font-size: 20px;
+  }
+
+  .activities-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .badges-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .nav-tabs-container {
+    padding: 0 16px 16px 16px;
+  }
+
+  .nav-tab {
+    padding: 12px 8px;
+    font-size: 12px;
+  }
+
+  .nav-tab ion-icon {
+    font-size: 18px;
+  }
+}
+
+/* Small mobile breakpoint - smaller phones */
+@media (max-width: 480px) {
+  .banner-container {
+    height: 140px;
+  }
+
+  .profile-info-card {
+    margin: -45px 12px 0 12px;
+    padding: 60px 20px 18px 20px;
+    border-radius: 20px;
+  }
+
+  .profile-avatar-container {
+    width: 80px;
+    height: 80px;
+    border: 3px solid white;
+  }
+
+  .profile-name {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+
+  .profile-username {
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+
+  .profile-bio {
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
+  .profile-stats-row {
+    padding: 12px;
+    gap: 6px;
+  }
+
+  .stat-number {
+    font-size: 14px;
+  }
+
+  .stat-label {
+    font-size: 8px;
+    letter-spacing: 0.3px;
+  }
+
+  .stat-divider {
+    height: 35px;
+  }
+
+  .profile-action-buttons-bottom {
+    gap: 6px;
+    padding: 0 10px;
+    margin-bottom: 16px;
+  }
+
+  .settings-button,
+  .edit-profile-button,
+  .logout-button {
+    font-size: 11px;
+    padding: 8px 6px;
+  }
+
+  .nav-tabs-container {
+    padding: 0 12px 14px 12px;
+  }
+
+  .nav-tabs {
+    padding: 4px;
+  }
+
+  .nav-tab {
+    padding: 10px 6px;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .nav-tab ion-icon {
+    font-size: 16px;
+  }
+
+  .content-grid {
+    padding: 0 12px;
+  }
+
+  .content-section {
+    padding: 20px 16px;
+    margin-bottom: 20px;
+    border-radius: 20px;
+  }
+
+  .section-header {
+    margin-bottom: 24px;
+  }
+
+  .section-header h2 {
+    font-size: 18px;
+  }
+
+  .activities-grid {
+    gap: 14px;
+  }
+
+  .activity-card-modern {
+    width: 100%;
+  }
+
+  h3.activity-title {
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+
+  .activity-stats-row {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .activity-stat {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  .activity-stat strong {
+    font-size: 14px;
+  }
+
+  .activity-stat span {
+    font-size: 10px;
+  }
+
+  .activity-map img,
+  .activity-map ion-img {
+    height: 140px;
+  }
+
+  .badges-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .badge-card-modern {
+    padding: 24px 20px;
+  }
+
+  .badge-title {
+    font-size: 16px;
+  }
+
+  .badge-description {
+    font-size: 12px;
+    min-height: 36px;
+  }
+
+  .stats-card {
+    padding: 18px;
+  }
+
+  .stats-card h4 {
+    font-size: 13px;
+  }
+
+  .stats-value {
+    font-size: 15px;
+  }
+
+  .stats-label {
+    font-size: 11px;
+  }
+}

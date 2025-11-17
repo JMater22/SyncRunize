@@ -1126,6 +1126,23 @@ ion-fab[vertical="bottom"][horizontal="end"] {
   }
 }
 
+/* Tablet breakpoint */
+@media (max-width: 900px) {
+  .page-layout-enhanced {
+    grid-template-columns: 1fr;
+    padding: 16px 12px 60px;
+  }
+
+  .left-sidebar,
+  .right-sidebar {
+    display: none;
+  }
+
+  .feed-column-enhanced {
+    max-width: 100%;
+  }
+}
+
 @media (max-width: 768px) {
   .page-layout-enhanced {
     display: flex;
@@ -1216,6 +1233,156 @@ ion-fab[vertical="bottom"][horizontal="end"] {
 
   .post-submit-btn {
     height: 44px;
+    font-size: 14px;
+  }
+}
+
+/* Mobile breakpoint - standard phones */
+@media (max-width: 600px) {
+  .page-layout-enhanced {
+    padding: 12px 8px 60px;
+  }
+
+  .profile-header-enhanced,
+  .profile-card-content {
+    padding: 16px 12px;
+  }
+
+  h2.profile-name {
+    font-size: 18px !important;
+  }
+
+  .profile-tagline {
+    font-size: 12px;
+  }
+
+  .profile-stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .stat-number {
+    font-size: 18px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+  }
+
+  .activity-stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .stat-value {
+    font-size: 15px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+
+  .feed-column-enhanced h2 {
+    font-size: 18px;
+  }
+
+  .activity-content-enhanced > h4 {
+    font-size: 14px;
+  }
+
+  .activity-content-enhanced > p {
+    font-size: 14px;
+  }
+}
+
+/* Small mobile breakpoint - smaller phones */
+@media (max-width: 480px) {
+  .page-layout-enhanced {
+    padding: 8px 6px 60px;
+  }
+
+  .profile-header-enhanced,
+  .profile-card-content {
+    padding: 12px 8px;
+  }
+
+  .profile-avatar-large {
+    width: 60px;
+    height: 60px;
+  }
+
+  h2.profile-name {
+    font-size: 16px !important;
+  }
+
+  .profile-tagline {
+    font-size: 11px;
+  }
+
+  .profile-stats-grid {
+    gap: 8px;
+  }
+
+  .stat-number {
+    font-size: 16px;
+  }
+
+  .stat-label {
+    font-size: 9px;
+  }
+
+  .activity-card-enhanced {
+    padding: 10px;
+  }
+
+  .activity-header-enhanced {
+    padding: 8px 10px;
+  }
+
+  .activity-user-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .activity-user-name {
+    font-size: 13px;
+  }
+
+  .activity-stats-grid {
+    gap: 6px;
+    padding: 10px 12px;
+  }
+
+  .stat-value {
+    font-size: 14px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+  }
+
+  .feed-column-enhanced h2 {
+    font-size: 16px;
+  }
+
+  .activity-content-enhanced > h4 {
+    font-size: 13px;
+  }
+
+  .activity-content-enhanced > p {
+    font-size: 13px;
+  }
+
+  .action-btn {
+    font-size: 14px;
+    height: 30px;
+  }
+
+  .action-btn span {
+    font-size: 14px;
+  }
+
+  .comment-input {
     font-size: 14px;
   }
 }
