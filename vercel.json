@@ -2,5 +2,11 @@
   "buildCommand": "npm --prefix syncrunize-website run build",
   "devCommand": "npm --prefix syncrunize-website run dev",
   "installCommand": "npm --prefix syncrunize-website install",
-  "outputDirectory": "syncrunize-website/dist"
+  "outputDirectory": "syncrunize-website/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }

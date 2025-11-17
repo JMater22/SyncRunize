@@ -173,15 +173,23 @@ ion-tab-bar,
 
 /* Ensure proper layout structure */
 ion-page#main-content {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
 }
 
 ion-tabs {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
 }
 
 ion-router-outlet {
-  display: block;
+  flex: 1;
+  position: relative;
+  min-height: 0; /* KEY: allows flex children to shrink below content size */
 }
 
 .footer-content {
