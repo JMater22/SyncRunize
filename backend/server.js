@@ -34,6 +34,8 @@
   import path from "path";
   import { fileURLToPath } from "url";
   import { swaggerUi, swaggerSpec } from "./utils/swagger.js";
+  import { mkdirp } from "mkdirp";
+  import fs from "fs";
 
   import emailRoutes from "./routes/email_routes.js";
 
@@ -44,6 +46,16 @@
 
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
+
+  // ✅ FIX: Create uploads directory on server startup
+  // Render uses ephemeral filesystem, so this directory needs to be recreated each deployment
+  const uploadsDir = path.join(__dirname, 'uploads', 'hazards');
+  try {
+    mkdirp.sync(uploadsDir);
+    console.log(`✅ Uploads directory created/verified: ${uploadsDir}`);
+  } catch (err) {
+    console.error(`❌ Failed to create uploads directory: ${err.message}`);
+  }
 
   app.use(cors());
   app.use(bodyParser.json({ limit: '5mb' }));
