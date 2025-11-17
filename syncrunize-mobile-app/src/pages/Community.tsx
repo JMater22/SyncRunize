@@ -148,7 +148,7 @@ const Community: React.FC = () => {
         if (Array.isArray(joinedGroups)) {
           if (joinedGroups.length > 0 && typeof joinedGroups[0] === 'number') {
             // API returned array of IDs directly
-            joinedGroupIds = joinedGroups as number[];
+            joinedGroupIds = joinedGroups as any as number[];
           } else {
             // API returned array of Group objects
             joinedGroupIds = joinedGroups.map((g: any) => g.group_id);

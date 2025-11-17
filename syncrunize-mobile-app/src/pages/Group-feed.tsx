@@ -337,23 +337,6 @@ const GroupFeed: React.FC = () => {
     }
   };
 
-  const fetchMembers = async () => {
-    if (!groupId) return;
-
-    try {
-      setLoadingMembers(true);
-      const membersData = await GroupsApi.getGroupMembers(parseInt(groupId));
-      setMembers(Array.isArray(membersData) ? membersData : []);
-    } catch (err: any) {
-      console.error('Failed to fetch members:', err);
-      setToastMessage(err.message || 'Failed to load members');
-      setToastColor('danger');
-      setShowToast(true);
-    } finally {
-      setLoadingMembers(false);
-    }
-  };
-
   const fetchLeaderboard = async (week: 'current' | 'last' = weekFilter) => {
     if (!groupId) return;
 
