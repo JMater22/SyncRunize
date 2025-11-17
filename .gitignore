@@ -146,3 +146,8 @@ vite.config.ts.timestamp-*
 # Backend credentials (Firebase service account, etc.)
 backend/credentials/
 backend/credentials/*.json
+
+# Android signing keys (SENSITIVE - DO NOT COMMIT)
+syncrunize-mobile-app/android/key.properties
+syncrunize-mobile-app/android/app/*.keystore
+*.keystore

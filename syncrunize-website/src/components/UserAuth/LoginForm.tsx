@@ -248,8 +248,8 @@ const LoginForm: React.FC = () => {
                   <IonButton
                     expand="block"
                     className="download-apk-button"
-                    href="/downloads/SyncRunize-v1.0.5.apk"
-                    download="SyncRunize-v1.0.5.apk"
+                    href="/downloads/SyncRunize-v1.0.6.apk"
+                    download="SyncRunize-v1.0.6.apk"
                     style={{
                       '--background': '#7cb342',
                       '--background-hover': '#689f38',
