@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd syncrunize-website && npm run build",
+  "outputDirectory": "syncrunize-website/dist",
+  "installCommand": "cd syncrunize-website && npm install",
+  "framework": "vite"
+}
