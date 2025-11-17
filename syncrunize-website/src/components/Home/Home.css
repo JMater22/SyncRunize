@@ -1301,8 +1301,8 @@ ion-fab[vertical="bottom"][horizontal="end"] {
 @media (max-width: 480px) {
   .page-layout-enhanced {
     padding: 8px 6px 60px;
-    margin-top: 42px;
-    margin-bottom: 32px;
+    margin-top: 48px; /* Space for smaller mobile header (~42px) */
+    margin-bottom: 36px; /* Space for smaller mobile footer (~32px) */
   }
 
   .profile-header-enhanced,

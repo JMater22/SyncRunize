@@ -4,8 +4,8 @@
 
 .route-builder-container {
   display: flex;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh; /* Allow content to expand for footer */
+  overflow: visible; /* Allow scrolling */
   width: 100%;
   position: relative;
 }
@@ -14,7 +14,7 @@
 .sidebar {
   width: 360px;
   background: #ffffff;
-  padding: 20px 18px;
+  padding: 20px 18px 40px; /* Add bottom padding for footer space */
   overflow-y: auto;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08);
   position: relative;
@@ -22,7 +22,7 @@
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  height: 100vh;
+  min-height: 100vh; /* Allow sidebar to expand naturally */
 }
 
 .sidebar-header {
@@ -1185,7 +1185,7 @@
   top: 0;
   right: 0;
   width: 320px;
-  height: 100vh;
+  max-height: 100vh; /* Use max-height instead of height for panels */
   background: white;
   box-shadow: -4px 0 16px rgba(0, 0, 0, 0.15);
   z-index: 1000;
@@ -1353,7 +1353,7 @@
   .map-container {
     position: relative;
     flex: 1;
-    height: 100vh;
+    min-height: 100vh; /* Allow map to expand naturally */
   }
 
   .legend-content {

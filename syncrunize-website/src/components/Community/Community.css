@@ -443,7 +443,8 @@ ion-popover .popover-content {
   }
 
   .groups-page-header {
-    margin-top: 16px;
+    margin-top: 48px; /* Space for smaller mobile header */
+    margin-bottom: 36px; /* Space for smaller mobile footer */
     gap: 10px;
   }
 

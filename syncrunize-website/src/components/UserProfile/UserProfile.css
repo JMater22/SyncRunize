@@ -1697,6 +1697,11 @@ ion-header {
 
 /* Small mobile breakpoint - smaller phones */
 @media (max-width: 480px) {
+  .profile-container {
+    padding-top: 48px; /* Space for smaller mobile header */
+    padding-bottom: 36px; /* Space for smaller mobile footer */
+  }
+
   .banner-container {
     height: 140px;
   }

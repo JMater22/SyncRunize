@@ -1217,7 +1217,7 @@ const CreateRouteMap = () => {
 
   return (
     <IonPage>
-      <IonContent className="route-builder-content">
+      <IonContent className="route-builder-content" scrollY={true}>
         <div className="route-builder-container">
           {/* Left Sidebar */}
           <div className="sidebar">

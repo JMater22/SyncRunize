@@ -356,8 +356,8 @@ ion-button.social-button:hover {
   }
 
   .form-container2 {
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    min-height: 100vh; /* Allow content to expand beyond viewport */
     max-width: none;
     min-width: none;
     padding: 2rem 1.5rem 3rem 1.5rem;
