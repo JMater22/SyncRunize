@@ -1,7 +1,7 @@
 // services/hazard_service.js
 import axios from "axios";
 
-const ALGO_ENGINE_URL = process.env.ALGO_ENGINE_URL || "http://127.0.0.1:8000"; // FastAPI engine
+const ALGO_ENGINE_URL = process.env.ALGORITHM_ENGINE_URL || "http://127.0.0.1:8000"; // FastAPI engine
 
 // 🧮 Agreement scoring
 export const computeAgreement = async (report, neighbors) => {
