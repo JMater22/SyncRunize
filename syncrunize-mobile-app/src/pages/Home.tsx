@@ -518,10 +518,6 @@ export default function Dashboard() {
       setRecordsLoading(true);
       setActivitiesLoading(true);
 
-      // Fetch user profile first to get userId
-      const me = await UsersApi.me();
-      const userId = me.user_id;
-
       // Only skip if already loaded in current mount (not forcing refresh)
       if (hasLoadedRef.current && !forceRefresh) {
         console.log('[Home] Already loaded in current session, skipping fetch');
@@ -536,12 +532,17 @@ export default function Dashboard() {
         hasLoadedRef.current = false;
       }
 
+      // ✅ PERFORMANCE FIX: Fetch user first, then ALL other data in parallel
+      // This is faster than sequential (old: user -> wait -> records -> wait -> activities)
+      const me = await UsersApi.me();
+      const userId = me.user_id;
+
       setUserProfile({
         name: me.name || me.username || `User ${userId}`,
         userId: userId,
       });
 
-      // Fetch personal records and recent activities in parallel
+      // Now fetch records and activities in parallel (don't wait for each other)
       const [recordsData, activitiesData] = await Promise.all([
         StatsApi.getPersonalRecords(userId).catch((err) => {
           setRecordsError(err?.message || 'Failed to load personal records');

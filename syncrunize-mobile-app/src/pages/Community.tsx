@@ -124,24 +124,24 @@ const Community: React.FC = () => {
       }
 
       console.log('[Community] Fetching groups with pagination...');
-      // Fetch groups with pagination (includes privacy filtering on backend)
-      const allGroups = await GroupsApi.getAllGroups(GROUPS_PER_PAGE, isRefresh ? 0 : groupsOffset);
-      console.log('[Community] Groups fetched:', allGroups);
 
-      if (isRefresh) {
-        setGroups(Array.isArray(allGroups) ? allGroups : []);
-      } else {
-        setGroups(prev => [...prev, ...(Array.isArray(allGroups) ? allGroups : [])]);
-      }
-
-      setGroupsOffset(isRefresh ? GROUPS_PER_PAGE : groupsOffset + GROUPS_PER_PAGE);
-      setHasMoreGroups(allGroups.length === GROUPS_PER_PAGE);
-
-      console.log('[Community] Fetching user joined groups for user:', currentUser.user_id);
-      // Fetch user's joined groups (only on initial load/refresh)
+      // ✅ PERFORMANCE FIX: Fetch groups and joined groups in parallel on initial load
       if (isRefresh || groupsOffset === 0) {
-        const joinedGroups: any = await GroupsApi.getUserJoinedGroups(currentUser.user_id);
+        const [allGroups, joinedGroups] = await Promise.all([
+          GroupsApi.getAllGroups(GROUPS_PER_PAGE, isRefresh ? 0 : groupsOffset),
+          GroupsApi.getUserJoinedGroups(currentUser.user_id)
+        ]);
+        console.log('[Community] Groups fetched:', allGroups);
         console.log('[Community] Joined groups fetched:', joinedGroups);
+
+        if (isRefresh) {
+          setGroups(Array.isArray(allGroups) ? allGroups : []);
+        } else {
+          setGroups(prev => [...prev, ...(Array.isArray(allGroups) ? allGroups : [])]);
+        }
+
+        setGroupsOffset(isRefresh ? GROUPS_PER_PAGE : groupsOffset + GROUPS_PER_PAGE);
+        setHasMoreGroups(allGroups.length === GROUPS_PER_PAGE);
 
         // Handle both possible response formats: array of numbers OR array of Group objects
         let joinedGroupIds: number[] = [];
@@ -156,6 +156,14 @@ const Community: React.FC = () => {
         }
         console.log('[Community] Joined group IDs:', joinedGroupIds);
         setUserGroups(joinedGroupIds);
+      } else {
+        // Pagination: Only fetch more groups (joined groups already loaded)
+        const allGroups = await GroupsApi.getAllGroups(GROUPS_PER_PAGE, groupsOffset);
+        console.log('[Community] More groups fetched:', allGroups);
+
+        setGroups(prev => [...prev, ...(Array.isArray(allGroups) ? allGroups : [])]);
+        setGroupsOffset(groupsOffset + GROUPS_PER_PAGE);
+        setHasMoreGroups(allGroups.length === GROUPS_PER_PAGE);
       }
     } catch (err: any) {
       console.error('[Community] Failed to fetch groups:', err);
