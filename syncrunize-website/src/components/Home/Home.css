@@ -7,13 +7,12 @@
 
 .page-layout-enhanced {
   display: grid;
-  grid-template-columns: 320px 1fr 340px; 
+  grid-template-columns: 320px 1fr 340px;
   gap: 24px;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 24px 20px 80px;  
+  padding: 24px 20px 80px;
   align-items: start;
-  min-height: 100vh;
 }
   
 

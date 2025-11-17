@@ -20,7 +20,6 @@
   padding: 16px 12px 16px;
   max-width: 100%;
   margin: 0 auto;
-  min-height: 100vh;
 }
 
 /* Desktop grid layout */
@@ -33,7 +32,6 @@
     margin: 0 auto;
     padding: 24px 20px 24px;
     align-items: start;
-    min-height: calc(100vh - 60px);
   }
 }
 
@@ -47,12 +45,6 @@
   ion-content {
     --padding-top: 60px !important;
     --padding-bottom: 0px !important;
-
-  }
-  
-  /* Ensure content areas stretch to fill viewport */
-  ion-content::part(scroll) {
-    min-height: calc(100vh - 60px);
   }
 }
 
@@ -66,11 +58,10 @@
     --padding-top: 50px !important;
     --padding-bottom: 0px !important;
   }
-  
+
   /* Mobile layout adjustments */
   .page-layout-enhanced {
     padding: 16px 12px 16px;
-    min-height: calc(100vh - 50px);
   }
 }
 
@@ -182,19 +173,15 @@ ion-tab-bar,
 
 /* Ensure proper layout structure */
 ion-page#main-content {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
+  display: block;
 }
 
 ion-tabs {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+  display: block;
 }
 
 ion-router-outlet {
-  flex: 1;
+  display: block;
 }
 
 .footer-content {
