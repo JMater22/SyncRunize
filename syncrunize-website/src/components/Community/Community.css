@@ -307,7 +307,8 @@ ion-popover .popover-content {
 /* ✅ Mobile & Small Tablets */
 @media (max-width: 768px) {
   .groups-page-header {
-    margin-top: 20px;
+    margin-top: 56px; /* Space for mobile header */
+    margin-bottom: 40px; /* Space for mobile footer */
     padding: 0 16px;
   }
 

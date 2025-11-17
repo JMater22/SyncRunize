@@ -651,7 +651,7 @@ const Home: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent className="home-content">
+      <IonContent className="home-content" scrollY={true}>
         <div className="page-layout-enhanced">
           {/* Left Sidebar */}
           <aside className="left-sidebar">

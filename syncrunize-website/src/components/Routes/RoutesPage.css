@@ -204,9 +204,13 @@ ion-button.save-routes-btn {
   h1.my-routes-title {
     text-align: center;
     margin-left: 0;
-    margin-top: 20px;
+    margin-top: 56px; /* Space for mobile header */
     margin-bottom: -15px;
     font-size: 28px;
+  }
+
+  .routes-container {
+    margin-bottom: 40px; /* Space for mobile footer */
   }
   
   .searchbar-container {

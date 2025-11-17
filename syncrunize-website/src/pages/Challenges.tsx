@@ -266,7 +266,7 @@ const renderButton = (challenge: Challenge) => {
 
   return (
     <IonPage>
-      <IonContent className="ion-padding challenges-page">
+      <IonContent className="ion-padding challenges-page" scrollY={true}>
         <IonGrid>
           <IonRow>
             <IonCol size="12">

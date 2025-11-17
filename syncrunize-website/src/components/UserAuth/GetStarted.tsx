@@ -18,7 +18,7 @@ const handleOAuthLogin = async (provider: 'google') => {
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: window.location.origin, // redirect after login
+      redirectTo: `${window.location.origin}/home`, // redirect after login
     },
   });
 

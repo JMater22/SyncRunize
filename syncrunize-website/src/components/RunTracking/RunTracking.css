@@ -60,6 +60,11 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .mobile-app-info {
+    padding-top: 56px; /* Space for mobile header */
+    padding-bottom: 40px; /* Space for mobile footer */
+  }
+
   .mobile-app-info img {
     max-width: 250px;
     margin-top: 0px;

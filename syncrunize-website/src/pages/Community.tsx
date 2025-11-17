@@ -208,7 +208,7 @@ const Community: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent className="ion-padding">
+      <IonContent className="ion-padding" scrollY={true}>
         <section className="groups-page-header">
           <h1 className="page-title">Groups</h1>
           <IonButton className="create-group-btn" routerLink="/create-group">

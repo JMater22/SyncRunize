@@ -911,9 +911,9 @@ const handleSaveProfile = async () => {
     }
   };
 
-  return ( 
+  return (
     <IonPage>
-      <IonContent className="profile-content">
+      <IonContent className="profile-content" scrollY={true}>
         <div className="profile-container">
           {/* Enhanced Profile Header */}
           <div className="profile-header-section">

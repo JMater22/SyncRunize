@@ -1148,6 +1148,8 @@ ion-fab[vertical="bottom"][horizontal="end"] {
     display: flex;
     flex-direction: column;
     padding: 16px 12px 60px;
+    margin-top: 56px; /* Space for mobile header */
+    margin-bottom: 40px; /* Space for mobile footer */
   }
 
   .left-sidebar {
@@ -1299,6 +1301,8 @@ ion-fab[vertical="bottom"][horizontal="end"] {
 @media (max-width: 480px) {
   .page-layout-enhanced {
     padding: 8px 6px 60px;
+    margin-top: 42px;
+    margin-bottom: 32px;
   }
 
   .profile-header-enhanced,

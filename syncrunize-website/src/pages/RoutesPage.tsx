@@ -157,7 +157,7 @@ const RoutesPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent>
+      <IonContent scrollY={true}>
         {/* Header Title */}
       <IonRow className="routes-header ion-align-items-center">
         <IonCol size="12">
