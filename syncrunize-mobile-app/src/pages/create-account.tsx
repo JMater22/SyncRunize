@@ -87,8 +87,10 @@ const CreateAccount: React.FC = () => {
         return;
       }
 
-      // Create user profile in database
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
+      // Create user profile in database (no token required - user doesn't exist yet)
+      console.log('[CreateAccount] Creating profile for user:', authData.user.id);
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/users/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

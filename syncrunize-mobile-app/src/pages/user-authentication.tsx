@@ -130,22 +130,13 @@ const GetStarted: React.FC = () => {
         return;
       }
 
-      // Get the session token
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
+      // Create user profile in database (no token required - user doesn't exist yet)
+      console.log('[GetStarted] Creating profile for user:', authData.user.id);
 
-      if (!token) {
-        setError("Failed to get authentication token. Please try again.");
-        setSubmitting(false);
-        return;
-      }
-
-      // Create user profile in database
       const response = await fetch(`${import.meta.env.VITE_API_URL}/users/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           email: email.trim(),
