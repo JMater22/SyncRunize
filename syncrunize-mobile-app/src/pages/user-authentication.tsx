@@ -153,9 +153,9 @@ const GetStarted: React.FC = () => {
       console.log('[GetStarted] Account created successfully');
       setSuccess(true);
 
-      // Redirect after a short delay
+      // Redirect to login page after a short delay
       setTimeout(() => {
-        history.replace("/home");
+        history.replace("/log-in");
       }, 1500);
 
     } catch (err: any) {
@@ -403,7 +403,7 @@ const GetStarted: React.FC = () => {
 
         <IonToast
           isOpen={success}
-          message="Account created successfully! Redirecting to home..."
+          message="Account created successfully! Please log in."
           duration={1500}
           color="success"
           position="top"

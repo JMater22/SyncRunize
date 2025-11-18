@@ -16,10 +16,23 @@ export const createUserProfile = async (req, res) => {
       });
     }
 
-    // ✅ Check if profile already exists
-    const existing = await UserModel.getUserByAuthId(auth_id);
-    if (existing) {
-      return res.status(400).json({ error: "Profile already exists" });
+    // ✅ Check if profile already exists by auth_id
+    const existingByAuthId = await UserModel.getUserByAuthId(auth_id);
+    if (existingByAuthId) {
+      return res.status(400).json({ error: "Profile already exists for this account" });
+    }
+
+    // ✅ Check if email is already in use (from a previous account)
+    const { data: existingByEmail } = await supabase
+      .from('users')
+      .select('user_id, auth_id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existingByEmail) {
+      // Email exists but with different auth_id - delete old profile and create new one
+      console.log(`[CreateUserProfile] Email ${email} exists with old auth_id. Deleting old profile...`);
+      await supabase.from('users').delete().eq('auth_id', existingByEmail.auth_id);
     }
 
     // ✅ Create profile with data from signup
