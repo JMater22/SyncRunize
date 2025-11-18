@@ -6,23 +6,35 @@ import { supabase } from "../utils/supabase.js";
 export const createUserProfile = async (req, res) => {
   try {
     const { name, gender, age, weight_kg } = req.body;
-    const user = req.user; // from authenticate middleware
 
-    if (!user) {
-      return res.status(401).json({ error: "Unauthorized" });
+    // ✅ Manually verify Supabase token (can't use authenticate middleware - user doesn't exist in DB yet)
+    const authHeader = req.headers["authorization"];
+    if (!authHeader) {
+      return res.status(401).json({ error: "No token provided" });
     }
 
-    // ✅ Use auth_id (UUID) to check if profile exists
-    const existing = await UserModel.getUserByAuthId(user.auth_id);
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ error: "Invalid token format" });
+    }
+
+    // Verify token with Supabase and get user info
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return res.status(403).json({ error: "Invalid or expired token" });
+    }
+
+    // ✅ Use auth_id (UUID) to check if profile already exists
+    const existing = await UserModel.getUserByAuthId(user.id);
     if (existing) {
       return res.status(400).json({ error: "Profile already exists" });
     }
 
-    // ✅ Create profile with auth_id
+    // ✅ Create profile with auth_id from Supabase token
     const newUser = await UserModel.createUserProfile(
-      user.auth_id,  // ✅ Pass UUID auth_id
+      user.id,       // ✅ auth_id (UUID) from Supabase
       name,
-      user.email,
+      user.email,    // email from Supabase token
       gender,
       age,
       weight_kg

@@ -4,16 +4,19 @@ import {
   IonPage,
   IonContent,
   IonButton,
-  IonText, 
+  IonText,
   IonInput,
   IonRouterLink,
+  IonToast,
+  IonSpinner,
 } from "@ionic/react";
 import "../theme/user-authentication.css";
 import LogoIcon from "../components/assets/SycnRunize-Logo.png";
 import { useHideTabBar } from "../hooks/useHideTabBar";
+import { supabase } from "../lib/supabaseClient";
 
 
-const GetStarted: React.FC = () => { 
+const GetStarted: React.FC = () => {
   useHideTabBar(); // Hide tab bar on this page
   const history = useHistory();
   const [isMobile, setIsMobile] = useState(false);
@@ -21,16 +24,21 @@ const GetStarted: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  
+
   // Password visibility states
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   // Error states
   const [fullnameError, setFullnameError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
+
+  // Submission states
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -43,7 +51,7 @@ const GetStarted: React.FC = () => {
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Reset all errors
@@ -51,6 +59,7 @@ const GetStarted: React.FC = () => {
     setEmailError("");
     setPasswordError("");
     setConfirmPasswordError("");
+    setError(null);
 
     let isValid = true;
 
@@ -91,9 +100,77 @@ const GetStarted: React.FC = () => {
     }
 
     // If all validations pass, proceed with signup
-    if (isValid) {
-      console.log("Sign up successful", { fullname, email, password });
-      history.push("/login");
+    if (!isValid) {
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      // Sign up with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            name: fullname.trim(),
+          }
+        }
+      });
+
+      if (authError) {
+        setError(authError.message);
+        setSubmitting(false);
+        return;
+      }
+
+      if (!authData.user) {
+        setError("Failed to create account. Please try again.");
+        setSubmitting(false);
+        return;
+      }
+
+      // Get the session token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      if (!token) {
+        setError("Failed to get authentication token. Please try again.");
+        setSubmitting(false);
+        return;
+      }
+
+      // Create user profile in database
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/users/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          name: fullname.trim(),
+          auth_id: authData.user.id,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create user profile');
+      }
+
+      console.log('[GetStarted] Account created successfully');
+      setSuccess(true);
+
+      // Redirect after a short delay
+      setTimeout(() => {
+        history.replace("/home");
+      }, 1500);
+
+    } catch (err: any) {
+      console.error('[GetStarted] Signup error:', err);
+      setError(err?.message || "Signup failed. Please try again.");
+      setSubmitting(false);
     }
   };
 
@@ -269,8 +346,16 @@ const GetStarted: React.FC = () => {
                   expand="block"
                   type="submit"
                   className="submit-button"
+                  disabled={submitting}
                 >
-                  Sign Up
+                  {submitting ? (
+                    <>
+                      <IonSpinner name="crescent" style={{ marginRight: '8px' }} />
+                      Creating Account...
+                    </>
+                  ) : (
+                    'Sign Up'
+                  )}
                 </IonButton>
 
                 {/* Social Login */}
@@ -314,6 +399,24 @@ const GetStarted: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Toast Messages */}
+        <IonToast
+          isOpen={!!error}
+          message={error || ''}
+          duration={3000}
+          color="danger"
+          onDidDismiss={() => setError(null)}
+          position="top"
+        />
+
+        <IonToast
+          isOpen={success}
+          message="Account created successfully! Redirecting to home..."
+          duration={1500}
+          color="success"
+          position="top"
+        />
       </IonContent>
     </IonPage>
   );

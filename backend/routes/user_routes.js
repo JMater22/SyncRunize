@@ -9,8 +9,8 @@ const router = express.Router();
 // ✅ OPTIMIZED: Public route with caching
 router.get("/public/:id", cachePublicProfile, UserController.getPublicProfile);
 
-// ✅ Protected routes — require Supabase session token
-router.post("/register", authenticate, UserController.createUserProfile);
+// ✅ Registration route — token verified in controller (user doesn't exist in DB yet)
+router.post("/register", UserController.createUserProfile);
 router.get("/me", authenticate, cacheUserProfile, UserController.getMyProfile);
 router.put("/update-me", authenticate, UserController.updateProfile);
 router.delete("/delete-me", authenticate, UserController.deleteProfile);
