@@ -14,7 +14,9 @@ import { kalmanLikeFilter, createSmoothingState, type SmoothingState } from '../
 import { analyzeRunPath, getElevationCalorieMultiplier, type PathWithElevation } from '../services/mapbox';
 
 const STORAGE_KEY = 'syncrunize-run-tracker-v1';
-const HAZARD_POLL_INTERVAL_MS = 15_000; // ✅ Reduced from 45s to 15s for faster detection
+// ✅ FIX: Increased from 15s to 45s (reduce from 240 to 80 API calls/hour)
+// Balance between timely hazard detection and battery/network performance
+const HAZARD_POLL_INTERVAL_MS = 45_000; // 45 seconds
 const ALERT_COOLDOWN_MS = 15 * 60_000;
 const HAZARD_ALERT_RADIUS_KM = 0.35;
 
@@ -276,11 +278,14 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     hydratedRef.current = true;
   }, [isController, hydrateSession]);
 
+  // ✅ FIX: Debounced localStorage writes to reduce write frequency
+  // Increased from 5 to 15 samples (66% fewer writes)
+  // With 10s GPS sampling: writes every ~2.5 minutes instead of ~50 seconds
   useEffect(() => {
     if (!isController) return;
     if (!hydratedRef.current) return;
     const delta = session.samples.length - lastPersistedSamples.current;
-    const shouldPersist = delta >= 5 || session.status === 'FINISHED';
+    const shouldPersist = delta >= 15 || session.status === 'FINISHED';
     if (shouldPersist) {
       persistSession();
     }
@@ -356,7 +361,8 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     }
 
     // Only RUNNING state continues GPS sampling
-    const intervalMs = isAppActive ? 5000 : 8000; // 5s active, 8s background
+    // ✅ FIX: Reduced from 5s to 10s (50% fewer GPS queries = better battery life)
+    const intervalMs = isAppActive ? 10000 : 15000; // 10s active, 15s background
 
     stopSampler();
     samplerRef.current = startSampler({
@@ -478,27 +484,43 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     dispatch({ type: 'SET_META', name: meta.name, visibility: meta.visibility });
 
     try {
-      // Professional-grade: Analyze path for elevation data (Strava standard)
-      console.log('[RunTracker] Analyzing route elevation...');
+      // ✅ FIX: Skip elevation analysis for short runs to save 2-5 seconds
+      // For runs under 2km, elevation impact is minimal and API calls are wasteful
+      let pathAnalysis: PathWithElevation;
+      const distanceKm = session.movingDistanceMeters / 1000;
 
-      // ✅ FIX: Add 10-second timeout to elevation analysis to prevent indefinite hangs
-      // If MapBox API is slow or unresponsive, gracefully fall back to no elevation data
-      const ELEVATION_TIMEOUT_MS = 10000; // 10 seconds
-      const pathAnalysis = await Promise.race([
-        analyzeRunPath(session.samples),
-        new Promise<PathWithElevation>((resolve) =>
-          setTimeout(() => {
-            console.warn('[RunTracker] Elevation analysis timed out after 10s - proceeding without elevation data');
-            resolve({
-              coordinates: session.samples.map(s => ({ lat: s.lat, lng: s.lng })),
-              elevationGain: 0,
-              elevationLoss: 0,
-              elevationProfile: [],
-              dataQuality: 'none'
-            });
-          }, ELEVATION_TIMEOUT_MS)
-        )
-      ]);
+      if (distanceKm < 2.0) {
+        console.log(`[RunTracker] Skipping elevation for short run (${distanceKm.toFixed(2)}km < 2km)`);
+        pathAnalysis = {
+          coordinates: session.samples.map(s => ({ lat: s.lat, lng: s.lng })),
+          elevationGain: 0,
+          elevationLoss: 0,
+          elevationProfile: [],
+          dataQuality: 'none'
+        };
+      } else {
+        // Professional-grade: Analyze path for elevation data (Strava standard)
+        console.log('[RunTracker] Analyzing route elevation...');
+
+        // ✅ FIX: Add 10-second timeout to elevation analysis to prevent indefinite hangs
+        // If MapBox API is slow or unresponsive, gracefully fall back to no elevation data
+        const ELEVATION_TIMEOUT_MS = 10000; // 10 seconds
+        pathAnalysis = await Promise.race([
+          analyzeRunPath(session.samples),
+          new Promise<PathWithElevation>((resolve) =>
+            setTimeout(() => {
+              console.warn('[RunTracker] Elevation analysis timed out after 10s - proceeding without elevation data');
+              resolve({
+                coordinates: session.samples.map(s => ({ lat: s.lat, lng: s.lng })),
+                elevationGain: 0,
+                elevationLoss: 0,
+                elevationProfile: [],
+                dataQuality: 'none'
+              });
+            }, ELEVATION_TIMEOUT_MS)
+          )
+        ]);
+      }
 
       // ✅ FIX: Validate elevation data quality before applying calorie multiplier
       const hasValidElevation = pathAnalysis.dataQuality === 'complete' || pathAnalysis.dataQuality === 'partial';
@@ -578,12 +600,43 @@ export const RunTrackerController = () => {
   return null;
 };
 
+/**
+ * ✅ FIX: Decimates GPS path to reduce payload size and processing time
+ * Uses intelligent sampling to preserve route shape while reducing points
+ * @param samples - Original GPS samples
+ * @param maxPoints - Maximum points to keep (default: 200)
+ * @returns Decimated samples array
+ */
+const decimatePath = <T>(samples: T[], maxPoints: number = 200): T[] => {
+  if (samples.length <= maxPoints) return samples;
+
+  // Calculate step size to evenly distribute points
+  const step = Math.ceil(samples.length / maxPoints);
+  const decimated: T[] = [];
+
+  // Always keep first point
+  decimated.push(samples[0]);
+
+  // Keep evenly distributed points
+  for (let i = step; i < samples.length - 1; i += step) {
+    decimated.push(samples[i]);
+  }
+
+  // Always keep last point
+  decimated.push(samples[samples.length - 1]);
+
+  return decimated;
+};
+
 const buildRoutePayload = (
   session: RunSession,
   meta: RecordMeta,
   elevation?: { elevationGain: number; elevationLoss: number; elevationMultiplier: number }
 ): CreateRouteRequest => {
-  const chosen_path = session.samples.map((sample) => ({ lat: sample.lat, lng: sample.lng, t: sample.t }));
+  // ✅ FIX: Decimate path to max 200 points (reduces payload by 50-80%)
+  // For a 60-min run with 720 samples: 720 → 200 = 72% reduction
+  const decimatedSamples = decimatePath(session.samples, 200);
+  const chosen_path = decimatedSamples.map((sample) => ({ lat: sample.lat, lng: sample.lng, t: sample.t }));
   const first = chosen_path[0];
   const last = chosen_path[chosen_path.length - 1] ?? first;
 

@@ -44,11 +44,19 @@ api.interceptors.request.use(async (config) => {
   console.log(`[API] Starting request: ${config.method?.toUpperCase()} ${config.url}`);
 
   try {
-    // ✅ CRITICAL FIX: Only fetch session from localStorage if cache is stale (> 5 minutes old)
-    // This eliminates the 1-5s blocking delay that was causing "infinite loading"
-    const cacheAge = Date.now() - lastSessionFetch;
-    if (!cachedSession || cacheAge > SESSION_CACHE_DURATION) {
-      console.log(`[API] Session cache stale (${(cacheAge / 1000).toFixed(1)}s old), refreshing...`);
+    // ✅ FIX: Check both cache age AND token expiration
+    const now = Date.now();
+    const cacheAge = now - lastSessionFetch;
+    const tokenExpired = cachedSession?.expires_at
+      ? (cachedSession.expires_at * 1000) <= now + 60000 // Refresh if expires in < 1 minute
+      : false;
+
+    if (!cachedSession || cacheAge > SESSION_CACHE_DURATION || tokenExpired) {
+      if (tokenExpired) {
+        console.log('[API] Token expired or expiring soon, refreshing...');
+      } else {
+        console.log(`[API] Session cache stale (${(cacheAge / 1000).toFixed(1)}s old), refreshing...`);
+      }
       await refreshSessionCache();
     }
 

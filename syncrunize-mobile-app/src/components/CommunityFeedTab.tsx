@@ -105,10 +105,12 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
       setHasMore(fetchedPosts.length === POSTS_PER_PAGE);
       hasLoadedRef.current = true; // Mark as loaded
 
-      // Cache posts to sessionStorage for instant restore on remount
+      // ✅ FIX: Cache posts with size limit to prevent bloat
+      // Limit to 50 most recent posts instead of unbounded growth
       if (currentUser) {
+        const postsToCache = fetchedPosts.slice(0, 50); // Max 50 posts (~100KB)
         sessionStorage.setItem(`feed_loaded_${currentUser.user_id}`, 'true');
-        sessionStorage.setItem(`feed_posts_${currentUser.user_id}`, JSON.stringify(fetchedPosts));
+        sessionStorage.setItem(`feed_posts_${currentUser.user_id}`, JSON.stringify(postsToCache));
       }
     } catch (err: any) {
       console.error('[CommunityFeedTab] Failed to fetch feed:', err);
@@ -126,9 +128,11 @@ const CommunityFeedTab: React.FC<CommunityFeedTabProps> = ({ onToast }) => {
       setOffset(prev => prev + POSTS_PER_PAGE);
       setHasMore(fetchedPosts.length === POSTS_PER_PAGE);
 
-      // Update cache with new posts
+      // ✅ FIX: Limit cache to 50 posts to prevent unbounded growth
+      // Previous bug: cache grew to 400KB+ after 10 scrolls (200 posts)
       if (currentUser) {
-        sessionStorage.setItem(`feed_posts_${currentUser.user_id}`, JSON.stringify(updatedPosts));
+        const postsToCache = updatedPosts.slice(0, 50); // Keep only most recent 50
+        sessionStorage.setItem(`feed_posts_${currentUser.user_id}`, JSON.stringify(postsToCache));
       }
     } catch (err: any) {
       console.error('Failed to load more posts:', err);

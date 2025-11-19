@@ -37,9 +37,13 @@
   import fs from "fs";
 
   import emailRoutes from "./routes/email_routes.js";
+  import { validateEnv } from "./utils/validate_env.js";
 
 
   dotenv.config();
+
+  // ✅ FIX: Validate environment variables on startup (fail fast if config is missing)
+  validateEnv();
 
   const app = express();
 
@@ -48,6 +52,7 @@
 
   // ✅ FIX: Create uploads directory on server startup
   // Render uses ephemeral filesystem, so this directory needs to be recreated each deployment
+  // NOTE: With memory storage, this is no longer needed but kept for backward compatibility
   const uploadsDir = path.join(__dirname, 'uploads', 'hazards');
   try {
     fs.mkdirSync(uploadsDir, { recursive: true });
@@ -55,6 +60,32 @@
   } catch (err) {
     console.error(`❌ Failed to create uploads directory: ${err.message}`);
   }
+
+  // ✅ FIX: Verify Supabase storage bucket exists on startup
+  const verifySupabaseStorage = async () => {
+    try {
+      const { supabase } = await import('./utils/supabase.js');
+      const { data, error } = await supabase.storage.getBucket('assets');
+      if (error) {
+        console.error('❌ Supabase bucket "assets" not found:', error.message);
+        console.error('⚠️  Hazard image uploads will fail!');
+        console.error('➡️  Create bucket in Supabase Dashboard: Storage → New Bucket → "assets" (public)');
+      } else {
+        console.log(`✅ Supabase storage bucket "assets" verified (${data.public ? 'PUBLIC' : 'PRIVATE'})`);
+        if (!data.public) {
+          console.warn('⚠️  Bucket "assets" is PRIVATE - image URLs may not be accessible!');
+          console.warn('➡️  Make bucket public in Supabase Dashboard: Storage → assets → Settings → Make Public');
+        }
+      }
+    } catch (err) {
+      console.error('❌ Failed to verify Supabase storage:', err.message);
+    }
+  };
+  verifySupabaseStorage();
+
+  // ✅ FIX: Start keep-warm service to prevent Render cold starts
+  const { startKeepWarm } = await import('./utils/keep_warm.js');
+  startKeepWarm();
 
   app.use(cors());
   app.use(bodyParser.json({ limit: '5mb' }));

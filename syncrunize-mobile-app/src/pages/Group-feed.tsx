@@ -872,9 +872,34 @@ const GroupFeed: React.FC = () => {
     }
   };
 
-  const openComments = (postId: number) => {
+  // ✅ FIX: Fetch comments when opening modal
+  const openComments = async (postId: number) => {
     setSelectedPostId(postId);
     setIsCommentsOpen(true);
+
+    // Fetch actual comments from database
+    try {
+      console.log('[GroupFeed] Fetching comments for post:', postId);
+      const fetchedComments = await GroupsApi.getGroupPostComments(postId);
+
+      // Transform to match local state format with actual timestamps
+      const transformedComments = fetchedComments.map((c: any) => ({
+        id: c.comment_id,
+        user: c.name || c.username || 'Unknown',
+        text: c.content,
+        time: formatRelativeTime(c.created_at)  // ✅ Use actual timestamp
+      }));
+
+      setComments(prev => ({
+        ...prev,
+        [postId]: transformedComments
+      }));
+
+      console.log('[GroupFeed] Loaded', transformedComments.length, 'comments');
+    } catch (error) {
+      console.error('[GroupFeed] Failed to fetch comments:', error);
+      // Keep empty array on error
+    }
   };
 
   const closeComments = () => {
@@ -888,24 +913,25 @@ const GroupFeed: React.FC = () => {
     }
 
     const commentText = newComment.trim();
-
-    // Optimistic UI update
-    const newCommentObj = {
-      id: Date.now(),
-      user: currentUser.name || "You",
-      text: commentText,
-      time: "Just now"
-    };
-
-    setComments(prev => ({
-      ...prev,
-      [selectedPostId]: [...(prev[selectedPostId] || []), newCommentObj]
-    }));
-
     setNewComment("");
 
     try {
+      // ✅ FIX: Add comment and re-fetch to get actual timestamp
       await GroupsApi.commentOnGroupPost(selectedPostId, commentText);
+
+      // Re-fetch comments to get the actual timestamp from database
+      const fetchedComments = await GroupsApi.getGroupPostComments(selectedPostId);
+      const transformedComments = fetchedComments.map((c: any) => ({
+        id: c.comment_id,
+        user: c.name || c.username || 'Unknown',
+        text: c.content,
+        time: formatRelativeTime(c.created_at)  // ✅ Use actual timestamp
+      }));
+
+      setComments(prev => ({
+        ...prev,
+        [selectedPostId]: transformedComments
+      }));
 
       // Update comment count in the post
       setGroupPosts(prev => prev.map(post =>
@@ -919,11 +945,6 @@ const GroupFeed: React.FC = () => {
       setShowToast(true);
     } catch (error: any) {
       console.error('Failed to add comment:', error);
-      // Revert optimistic update on error
-      setComments(prev => ({
-        ...prev,
-        [selectedPostId]: (prev[selectedPostId] || []).filter(c => c.id !== newCommentObj.id)
-      }));
       setToastMessage(error.message || 'Failed to add comment');
       setToastColor('danger');
       setShowToast(true);

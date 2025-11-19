@@ -37,7 +37,6 @@ import TrafficNotice from "./pages/Traffic-Notice";
 import HazardReport from "./pages/Hazard-Report";
 import Information from "./pages/Profile-Information";
 import PasswordSecurity from "./pages/Password-Security";
-import CreateAccount from "./pages/create-account";
 import LogIn from "./pages/log-in";
 import Authentication from "./pages/user-authentication";
 import GroupFeed from "./pages/Group-feed";
@@ -74,6 +73,7 @@ import { RunTrackerProvider } from "./state/runTrackerContext";
 import { RunTrackerController } from "./hooks/useRunTracker";
 import { PushNotificationInitializer } from "./components/PushNotificationInitializer";
 import { DeepLinkHandler } from "./hooks/useDeepLinks";
+import { StorageMonitor } from "./components/StorageMonitor";
 
 setupIonicReact();
 
@@ -101,7 +101,7 @@ const App: React.FC = () => {
     );
   }
 
-  // Unauthenticated: allow only create-account/authentication/forgot/reset; root -> /authentication
+  // Unauthenticated: allow only authentication/login/forgot/reset; root -> /authentication
   if (!session) {
     return (
       <IonApp>
@@ -110,7 +110,6 @@ const App: React.FC = () => {
           <IonRouterOutlet>
             <Route exact path="/log-in" component={LogIn} />
             <Route exact path="/authentication" component={Authentication} />
-            <Route exact path="/create-account" component={CreateAccount} />
             <Route exact path="/forgot-password" component={ForgotPassword} />
             <Route exact path="/reset-password" component={ResetPassword} />
             <Route>
@@ -131,6 +130,7 @@ const App: React.FC = () => {
             <RunTrackerProvider>
               <RunTrackerController />
               <PushNotificationInitializer />
+              <StorageMonitor />
               <DeepLinkHandler />
               <IonReactRouter>
               <IonTabs>
@@ -156,7 +156,6 @@ const App: React.FC = () => {
                   <Route exact path="/profile-info" component={Information} />
                   <Route exact path="/security" component={PasswordSecurity} />
                   {/* Auth screens remain accessible but are redundant when logged in */}
-                  <Route exact path="/create-account" component={CreateAccount} />
                   <Route exact path="/log-in" component={LogIn} />
                   <Route exact path="/authentication" component={Authentication} />
                   <Route exact path="/group-feed/:groupId" component={GroupFeed} />

@@ -13,6 +13,14 @@ interface NotificationContextType {
   clearAll: () => Promise<void>;
 }
 
+// ✅ FIX: Add TTL to notification cache to prevent stale data
+interface CachedNotifications {
+  data: Notification[];
+  timestamp: number;
+}
+
+const NOTIFICATION_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -60,9 +68,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       setNotifications(validatedNotifications);
       hasLoadedRef.current = true;
 
-      // Cache notifications to sessionStorage for instant restore
-      sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(validatedNotifications));
-      console.log('[NotificationContext] Cached', validatedNotifications.length, 'notifications');
+      // ✅ FIX: Cache notifications with timestamp for TTL checking
+      const cachedData: CachedNotifications = {
+        data: validatedNotifications,
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(cachedData));
+      console.log('[NotificationContext] Cached', validatedNotifications.length, 'notifications with TTL');
     } catch (err: any) {
       console.error('Failed to fetch notifications:', err);
       setError(err.message || 'Failed to fetch notifications');
@@ -89,9 +101,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       });
       setNotifications(updatedNotifications);
 
-      // Update cache - but only if notifications have valid data
+      // ✅ FIX: Update cache with timestamp for TTL
       if (currentUser) {
-        sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(updatedNotifications));
+        const cachedData: CachedNotifications = {
+          data: updatedNotifications,
+          timestamp: Date.now()
+        };
+        sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(cachedData));
         console.log(`[NotificationContext] Marked notification ${notificationId} as read and updated cache`);
       }
     } catch (err: any) {
@@ -123,17 +139,40 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       return;
     }
 
-    // Try to restore from cache first
+    // ✅ FIX: Try to restore from cache with TTL check
     const cachedKey = `notifications_${currentUser.user_id}`;
     const cachedNotifications = sessionStorage.getItem(cachedKey);
 
     if (cachedNotifications && !hasLoadedRef.current) {
       try {
-        const parsedNotifications = JSON.parse(cachedNotifications);
-        console.log('[NotificationContext] Restoring', parsedNotifications.length, 'notifications from cache');
+        const parsed = JSON.parse(cachedNotifications);
+
+        // Check if this is new format with timestamp or old format (array)
+        const isNewFormat = parsed && typeof parsed === 'object' && 'data' in parsed && 'timestamp' in parsed;
+
+        if (!isNewFormat) {
+          // Old format: clear and refetch
+          console.log('[NotificationContext] Old cache format detected, clearing...');
+          sessionStorage.removeItem(cachedKey);
+          fetchNotifications();
+          return;
+        }
+
+        const cachedData = parsed as CachedNotifications;
+        const cacheAge = Date.now() - cachedData.timestamp;
+
+        // Check if cache is expired (24 hours)
+        if (cacheAge > NOTIFICATION_CACHE_TTL_MS) {
+          console.log(`[NotificationContext] Cache expired (${(cacheAge / 1000 / 60 / 60).toFixed(1)}h old), clearing...`);
+          sessionStorage.removeItem(cachedKey);
+          fetchNotifications();
+          return;
+        }
+
+        console.log(`[NotificationContext] Restoring ${cachedData.data.length} notifications from cache (${(cacheAge / 1000 / 60).toFixed(1)}m old)`);
 
         // Validate cached notifications - check for missing actor data
-        const missingActorCount = parsedNotifications.filter((n: Notification) => {
+        const missingActorCount = cachedData.data.filter((n: Notification) => {
           const requiresActor = ['follow', 'like', 'comment', 'group_like', 'group_comment'].includes(n.type);
           return requiresActor && !n.actor && n.actor_id;
         }).length;
@@ -146,7 +185,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           return;
         }
 
-        setNotifications(parsedNotifications);
+        setNotifications(cachedData.data);
         hasLoadedRef.current = true;
 
         // Still fetch in background to get latest (but don't show loading)
@@ -222,8 +261,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             const payloadNotif = payload.new as Notification;
             setNotifications(prev => {
               const updated = [payloadNotif, ...prev];
+              // ✅ FIX: Update cache with timestamp
               if (currentUser) {
-                sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(updated));
+                const cachedData: CachedNotifications = {
+                  data: updated,
+                  timestamp: Date.now()
+                };
+                sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(cachedData));
               }
               return updated;
             });
@@ -234,9 +278,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             console.log('Adding new notification with actor:', newNotification);
             setNotifications(prev => {
               const updated = [newNotification, ...prev];
-              // Update cache
+              // ✅ FIX: Update cache with timestamp
               if (currentUser) {
-                sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(updated));
+                const cachedData: CachedNotifications = {
+                  data: updated,
+                  timestamp: Date.now()
+                };
+                sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(cachedData));
               }
               return updated;
             });
@@ -294,9 +342,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                     : n
                 );
 
-                // Update cache
+                // ✅ FIX: Update cache with timestamp
                 if (currentUser) {
-                  sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(updated));
+                  const cachedData: CachedNotifications = {
+                    data: updated,
+                    timestamp: Date.now()
+                  };
+                  sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(cachedData));
                 }
 
                 return updated;
@@ -318,9 +370,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                       ? { ...updatedNotification, actor: existing?.actor || n.actor }
                       : n
                   );
-                  // Update cache with preserved actor data
+                  // ✅ FIX: Update cache with timestamp
                   if (currentUser) {
-                    sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(updated));
+                    const cachedData: CachedNotifications = {
+                      data: updated,
+                      timestamp: Date.now()
+                    };
+                    sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(cachedData));
                   }
                   return updated;
                 });
@@ -332,9 +388,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                       ? updatedNotification
                       : n
                   );
-                  // Update cache
+                  // ✅ FIX: Update cache with timestamp
                   if (currentUser) {
-                    sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(updated));
+                    const cachedData: CachedNotifications = {
+                      data: updated,
+                      timestamp: Date.now()
+                    };
+                    sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(cachedData));
                   }
                   return updated;
                 });
@@ -364,9 +424,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                   : n
               );
 
-              // Update cache
+              // ✅ FIX: Update cache with timestamp
               if (currentUser) {
-                sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(updated));
+                const cachedData: CachedNotifications = {
+                  data: updated,
+                  timestamp: Date.now()
+                };
+                sessionStorage.setItem(`notifications_${currentUser.user_id}`, JSON.stringify(cachedData));
               }
 
               return updated;

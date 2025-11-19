@@ -3,19 +3,21 @@ import * as Hazard from "../models/hazard_model.js";
 import { computeAgreement, computeTrust } from "../services/hazard_service.js";
 import { summarizeHazard, summarizeNearbyHazards } from "../services/ai_service.js";
 import { sendAlertPush } from "../services/push_service.js";
-import fs from "fs";
-import { safeDeleteFile } from "../utils/file_utils.js";
 import { supabase } from "../utils/supabase.js";
 
 const sanitizeFileName = (fileName) => fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
 
+// ✅ FIX: Upload directly from memory buffer (no disk I/O)
+// This is faster and more reliable on Render's ephemeral filesystem
 const uploadHazardImageToSupabase = async (file) => {
   if (!file) return null;
-  const buffer = await fs.promises.readFile(file.path);
+
+  // Use buffer directly from memory (multer.memoryStorage provides file.buffer)
+  const buffer = file.buffer;
   const storageFileName = `${Date.now()}-${sanitizeFileName(file.originalname)}`;
   const storagePath = `hazardImage/${storageFileName}`;
+
   try {
-    // ✅ FIX: Changed from "asset" to "assets" (plural) to match Supabase bucket name
     const { error } = await supabase.storage.from("assets").upload(storagePath, buffer, {
       contentType: file.mimetype,
       upsert: true,
@@ -25,11 +27,13 @@ const uploadHazardImageToSupabase = async (file) => {
       throw error;
     }
     const { data } = supabase.storage.from("assets").getPublicUrl(storagePath);
-    console.log('[Hazard] Image uploaded to:', data?.publicUrl);
+    console.log('[Hazard] ✅ Image uploaded to:', data?.publicUrl);
     return data?.publicUrl || null;
-  } finally {
-    safeDeleteFile(`/uploads/hazards/${file.filename}`);
+  } catch (err) {
+    console.error('[Hazard] Upload failed:', err);
+    throw err;
   }
+  // No file cleanup needed - no disk files created with memory storage!
 };
 
 // Create hazard with scoring + AI summary
@@ -79,30 +83,46 @@ export const createHazard = async (req, res) => {
 
         // ✅ Update ALL hazards (new + existing) with recalculated scores
         const allHazards = [...allNearbyHazards, newHazard];
-        const updatePromises = allHazards.map(async (hazard) => {
+
+        // ✅ FIX: Parallelize ALL algorithm calls at once (was: sequential per-hazard)
+        // Pre-compute neighbors for all hazards
+        const hazardNeighborsMap = new Map();
+        allHazards.forEach(hazard => {
+          const neighbors = allHazards.filter(neighbor => {
+            if (neighbor.report_id === hazard.report_id) return false;
+            const distance = calculateDistance(
+              hazard.lat, hazard.lng,
+              neighbor.lat, neighbor.lng
+            );
+            return distance <= 0.3; // 300m radius
+          });
+          hazardNeighborsMap.set(hazard.report_id, neighbors);
+        });
+
+        // Fire ALL agreement calls simultaneously
+        const allAgreementPromises = allHazards.map(hazard =>
+          computeAgreement(hazard, hazardNeighborsMap.get(hazard.report_id))
+        );
+
+        // Fire ALL trust calls simultaneously
+        const allTrustPromises = allHazards.map(hazard =>
+          computeTrust([...hazardNeighborsMap.get(hazard.report_id), hazard])
+        );
+
+        // Wait for all calls to complete in parallel
+        const [agreementResults, trustResults] = await Promise.all([
+          Promise.allSettled(allAgreementPromises),
+          Promise.allSettled(allTrustPromises)
+        ]);
+
+        // Update all hazards with their scores
+        const updatePromises = allHazards.map(async (hazard, index) => {
           try {
-            // ✅ OPTIMIZATION: Filter pre-fetched hazards instead of querying database again
-            // This eliminates N database queries (was 10 queries, now 0 additional queries)
-            const hazardNeighbors = allHazards.filter(neighbor => {
-              if (neighbor.report_id === hazard.report_id) return false;
-              const distance = calculateDistance(
-                hazard.lat, hazard.lng,
-                neighbor.lat, neighbor.lng
-              );
-              return distance <= 0.3; // 300m radius
-            });
-
-            // Compute updated scores considering all current neighbors
-            const [agreementResult, trustResult] = await Promise.allSettled([
-              computeAgreement(hazard, hazardNeighbors),
-              computeTrust([...hazardNeighbors, hazard])
-            ]);
-
-            const agreement = (agreementResult.status === 'fulfilled' && agreementResult.value !== null)
-              ? agreementResult.value
+            const agreement = (agreementResults[index].status === 'fulfilled' && agreementResults[index].value !== null)
+              ? agreementResults[index].value
               : 0;
-            const trust = (trustResult.status === 'fulfilled' && trustResult.value !== null)
-              ? trustResult.value
+            const trust = (trustResults[index].status === 'fulfilled' && trustResults[index].value !== null)
+              ? trustResults[index].value
               : 0;
 
             // Update hazard with new scores
@@ -134,11 +154,19 @@ export const createHazard = async (req, res) => {
         .then(async (imageUrl) => {
           if (imageUrl) {
             await Hazard.modifyHazard(newHazard.report_id, { image_url: imageUrl });
-            console.log(`[Hazard] ✅ Image uploaded for hazard ${newHazard.report_id}`);
+            console.log(`[Hazard] ✅ Image uploaded successfully for hazard ${newHazard.report_id}: ${imageUrl}`);
+          } else {
+            console.warn(`[Hazard] ⚠️ Image upload returned null for hazard ${newHazard.report_id}`);
           }
         })
-        .catch((err) => {
-          console.error("⚠️ Failed to upload hazard image:", err);
+        .catch(async (err) => {
+          console.error(`[Hazard] ❌ Failed to upload image for hazard ${newHazard.report_id}:`, {
+            error: err.message,
+            stack: err.stack,
+            fileSize: fileToUpload.size,
+            fileType: fileToUpload.mimetype,
+          });
+          // Note: Consider adding a notification or retry mechanism here in the future
         });
     }
 
@@ -261,31 +289,34 @@ const notifyNearbyUsersOfHazard = async (hazard, summary, reporterUserId) => {
 
     console.log(`[HazardNotify] Found ${usersToNotify.length} users who run near this location (out of ${userIds.length} total users)`);
 
-    // Step 5: Send push notifications to nearby users
-    const notificationPromises = usersToNotify.map(async (userId) => {
+    // ✅ FIX: Batch insert all notifications at once (was: N individual INSERTs)
+    // Step 5a: Create all notification records in a single batch INSERT
+    const notificationRecords = usersToNotify.map(userId => ({
+      user_id: userId,
+      type: 'hazard_alert',
+      message: `New hazard reported nearby: ${summary}`,
+      is_read: false,
+      push_status: 'pending',
+    }));
+
+    const { data: notifications, error: batchInsertError } = await supabase
+      .from('notifications')
+      .insert(notificationRecords)
+      .select();
+
+    if (batchInsertError) {
+      console.error(`[HazardNotify] Failed to batch insert notifications:`, batchInsertError);
+      return;
+    }
+
+    console.log(`[HazardNotify] ✅ Batch inserted ${notifications.length} notifications`);
+
+    // ✅ FIX: Send all push notifications in parallel (unchanged, was already parallel)
+    // Step 5b: Send push notifications via FCM
+    const pushPromises = notifications.map(async (notification) => {
       try {
-        // Create notification record in database
-        const { data: notification, error: notifError } = await supabase
-          .from('notifications')
-          .insert({
-            user_id: userId,
-            type: 'hazard_alert',
-            message: `New hazard reported nearby: ${summary}`,
-            is_read: false,
-            push_status: 'pending',
-          })
-          .select()
-          .single();
-
-        if (notifError) {
-          console.error(`[HazardNotify] Failed to create notification for user ${userId}:`, notifError);
-          return;
-        }
-
-        // Send push notification via FCM
-        // Don't duplicate the hazard type in the message since it's already in the summary
         await sendAlertPush({
-          userId: userId,
+          userId: notification.user_id,
           summary: summary, // AI summary is already user-friendly and complete
           type: 'hazard_alert',
           notification: {
@@ -294,20 +325,35 @@ const notifyNearbyUsersOfHazard = async (hazard, summary, reporterUserId) => {
             distance_km: 0.5, // Approximate for now
           },
         });
-
-        // Mark as sent
-        await supabase
-          .from('notifications')
-          .update({ push_status: 'sent' })
-          .eq('notification_id', notification.notification_id);
-
-        console.log(`[HazardNotify] ✅ Notified user ${userId}`);
+        return notification.notification_id;
       } catch (err) {
-        console.error(`[HazardNotify] Failed to notify user ${userId}:`, err);
+        console.error(`[HazardNotify] Failed to send push to user ${notification.user_id}:`, err);
+        return null;
       }
     });
 
-    await Promise.allSettled(notificationPromises);
+    const pushResults = await Promise.allSettled(pushPromises);
+    const sentNotificationIds = pushResults
+      .filter(r => r.status === 'fulfilled' && r.value !== null)
+      .map(r => r.value);
+
+    console.log(`[HazardNotify] ✅ Sent ${sentNotificationIds.length}/${notifications.length} push notifications`);
+
+    // ✅ FIX: Batch update all notifications at once (was: N individual UPDATEs)
+    // Step 5c: Mark all successfully sent notifications in a single batch UPDATE
+    if (sentNotificationIds.length > 0) {
+      const { error: batchUpdateError } = await supabase
+        .from('notifications')
+        .update({ push_status: 'sent' })
+        .in('notification_id', sentNotificationIds);
+
+      if (batchUpdateError) {
+        console.error(`[HazardNotify] Failed to batch update notification status:`, batchUpdateError);
+      } else {
+        console.log(`[HazardNotify] ✅ Batch updated ${sentNotificationIds.length} notification statuses`);
+      }
+    }
+
     console.log(`[HazardNotify] Completed notifications for hazard ${hazard.report_id}`);
   } catch (err) {
     console.error("[HazardNotify] Error in notifyNearbyUsersOfHazard:", err);

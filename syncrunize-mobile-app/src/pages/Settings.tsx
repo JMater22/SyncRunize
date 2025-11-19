@@ -22,6 +22,7 @@ import {
   IonToast,
   IonSpinner
 } from "@ionic/react";
+import { Preferences } from '@capacitor/preferences';
 import '../theme/variables.css';
 import "../theme/global.css";
 import { usePushNotifications } from "../components/push-notification";
@@ -50,6 +51,24 @@ export default function Settings() {
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>({
     pushEnabled: true
   });
+
+  // ✅ FIX: Load notification preference from storage on mount
+  useEffect(() => {
+    const loadNotificationPreference = async () => {
+      try {
+        const { value } = await Preferences.get({ key: 'pushNotificationsEnabled' });
+        if (value !== null) {
+          const enabled = value === 'true';
+          setNotificationPrefs({ pushEnabled: enabled });
+          console.log('[Settings] Loaded push notification preference:', enabled);
+        }
+      } catch (err) {
+        console.error('[Settings] Failed to load notification preference:', err);
+      }
+    };
+
+    loadNotificationPreference();
+  }, []);
 
   // Load user preferences on mount
   useEffect(() => {
@@ -99,31 +118,52 @@ export default function Settings() {
     try {
       setLoggingOut(true);
 
-      // Clear in-memory session cache (fast)
+      // ✅ FIX: Clear user-specific caches BEFORE navigation to prevent race condition
+      // Previous bug: navigation happened before cleanup, allowing new login to see old data
+
+      // Clear in-memory session cache
       clearSessionCache();
-      console.log('[Settings] Cleared in-memory session cache');
 
-      // Sign out from Supabase (invalidates session)
+      // Clear user-specific sessionStorage (selective, not nuclear)
+      if (currentUser) {
+        const userCacheKeys = [
+          `notifications_${currentUser.user_id}`,
+          `feed_loaded_${currentUser.user_id}`,
+          `feed_posts_${currentUser.user_id}`,
+          `routes_loaded_${currentUser.user_id}`,
+          `routes_data_${currentUser.user_id}`,
+          `saved_routes_${currentUser.user_id}`,
+          `profile_loaded_${currentUser.user_id}`,
+          `profile_last_fetch_${currentUser.user_id}`,
+          `profile_data_${currentUser.user_id}`,
+        ];
+
+        userCacheKeys.forEach(key => {
+          try {
+            sessionStorage.removeItem(key);
+          } catch (err) {
+            console.warn(`Failed to clear ${key}:`, err);
+          }
+        });
+      }
+
+      // Clear run tracker localStorage (can be abandoned session)
+      try {
+        localStorage.removeItem('syncrunize-run-tracker-v1');
+      } catch (err) {
+        console.warn('Failed to clear run tracker:', err);
+      }
+
+      // Sign out from Supabase (invalidates session and clears auth tokens)
       await supabase.auth.signOut();
-      console.log('[Settings] Supabase signOut completed');
 
-      // ✅ OPTIMIZATION: Redirect IMMEDIATELY for instant perceived logout
-      // Storage clearing happens in background (non-blocking)
+      console.log('[Settings] Logout cleanup completed, navigating...');
+
+      // Navigate to authentication after cleanup
       history.replace('/authentication');
 
-      // ✅ OPTIMIZATION: Clear storage in background (saves 100-500ms perceived time)
-      // This runs after navigation, so user doesn't wait for it
-      setTimeout(() => {
-        try {
-          sessionStorage.clear();
-          localStorage.clear();
-          console.log('[Settings] Background cleanup: cleared sessionStorage and localStorage');
-        } catch (err) {
-          console.error('[Settings] Background cleanup error:', err);
-        }
-      }, 100); // Small delay to ensure navigation completes first
-
     } catch (e) {
+      console.error('[Settings] Logout error:', e);
       setToastMessage('Failed to log out');
       setToastColor('danger');
       setShowToast(true);
@@ -132,12 +172,23 @@ export default function Settings() {
     }
   };
 
-  // Handle toggle changes
-  const handleToggleChange = (value: boolean) => {
+  // ✅ FIX: Handle toggle changes and persist to storage
+  const handleToggleChange = async (value: boolean) => {
     const newPrefs: NotificationPreferences = {
       pushEnabled: value
     };
     setNotificationPrefs(newPrefs);
+
+    // Save preference to persistent storage
+    try {
+      await Preferences.set({
+        key: 'pushNotificationsEnabled',
+        value: String(value)
+      });
+      console.log('[Settings] Saved push notification preference:', value);
+    } catch (err) {
+      console.error('[Settings] Failed to save notification preference:', err);
+    }
 
     if (fcmToken) {
       sendTokenToBackend(fcmToken, newPrefs);

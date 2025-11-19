@@ -73,13 +73,14 @@ export const getCommentCount = async (groupPostId) => {
 export const createComment = async (groupPostId, userId, content) => {
   console.log("📝 Creating comment:", { groupPostId, userId, content });
   
+  // ✅ FIX: Let database handle created_at automatically (removed server timestamp override)
   const { data, error } = await supabase
     .from("group_comments")
     .insert([{
       group_post_id: groupPostId,
       user_id: userId,
-      content: content.trim(),
-      created_at: new Date().toISOString()
+      content: content.trim()
+      // created_at will be set by database default (NOW())
     }])
     .select(`
       comment_id,

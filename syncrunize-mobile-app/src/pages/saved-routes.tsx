@@ -28,6 +28,14 @@ import { buildGuidedRoutePayload, normalizeRoutePath } from "../lib/routeGuides"
 import { navigateOutline } from "ionicons/icons";
 import "../theme/saved-routes.css";
 
+// ✅ FIX: Add TTL to saved routes cache to prevent stale data
+interface CachedRoutes {
+  data: Route[];
+  timestamp: number;
+}
+
+const SAVED_ROUTES_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
 const SavedRoutes: React.FC = () => {
   const { currentUser } = useUser();
   const history = useHistory();
@@ -60,16 +68,39 @@ const SavedRoutes: React.FC = () => {
   useEffect(() => {
     if (!currentUser) return;
 
-    // Try to restore saved routes from sessionStorage first
+    // ✅ FIX: Try to restore saved routes from cache with TTL check
     const cachedRoutesKey = `saved_routes_${currentUser.user_id}`;
     const cachedRoutes = sessionStorage.getItem(cachedRoutesKey);
 
     if (cachedRoutes && savedRoutes.length === 0) {
       try {
-        const parsedRoutes = JSON.parse(cachedRoutes);
-        console.log('[SavedRoutes] Restoring', parsedRoutes.length, 'routes from cache');
-        setSavedRoutes(parsedRoutes);
-        setFilteredRoutes(parsedRoutes);
+        const parsed = JSON.parse(cachedRoutes);
+
+        // Check if this is new format with timestamp or old format (array)
+        const isNewFormat = parsed && typeof parsed === 'object' && 'data' in parsed && 'timestamp' in parsed;
+
+        if (!isNewFormat) {
+          // Old format: clear and refetch
+          console.log('[SavedRoutes] Old cache format detected, clearing...');
+          sessionStorage.removeItem(cachedRoutesKey);
+          fetchSavedRoutes();
+          return;
+        }
+
+        const cachedData = parsed as CachedRoutes;
+        const cacheAge = Date.now() - cachedData.timestamp;
+
+        // Check if cache is expired (7 days)
+        if (cacheAge > SAVED_ROUTES_CACHE_TTL_MS) {
+          console.log(`[SavedRoutes] Cache expired (${(cacheAge / 1000 / 60 / 60 / 24).toFixed(1)} days old), clearing...`);
+          sessionStorage.removeItem(cachedRoutesKey);
+          fetchSavedRoutes();
+          return;
+        }
+
+        console.log(`[SavedRoutes] Restoring ${cachedData.data.length} routes from cache (${(cacheAge / 1000 / 60 / 60).toFixed(1)}h old)`);
+        setSavedRoutes(cachedData.data);
+        setFilteredRoutes(cachedData.data);
         hasLoadedRef.current = true;
         return; // Skip fetch, use cached data
       } catch (err) {
@@ -106,9 +137,13 @@ const SavedRoutes: React.FC = () => {
       setFilteredRoutes(routesArray);
       hasLoadedRef.current = true;
 
-      // Cache routes to sessionStorage for instant restore on remount
-      sessionStorage.setItem(`saved_routes_${currentUser.user_id}`, JSON.stringify(routesArray));
-      console.log('[SavedRoutes] Cached', routesArray.length, 'routes');
+      // ✅ FIX: Cache routes with timestamp for TTL checking
+      const cachedData: CachedRoutes = {
+        data: routesArray,
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem(`saved_routes_${currentUser.user_id}`, JSON.stringify(cachedData));
+      console.log('[SavedRoutes] Cached', routesArray.length, 'routes with TTL');
     } catch (err: any) {
       console.error('Failed to fetch saved routes:', err);
       setSavedRoutes([]);
@@ -139,9 +174,13 @@ const SavedRoutes: React.FC = () => {
         return routeName.includes(query) || description.includes(query);
       }));
 
-      // Update cache
+      // ✅ FIX: Update cache with timestamp for TTL
       if (currentUser) {
-        sessionStorage.setItem(`saved_routes_${currentUser.user_id}`, JSON.stringify(updatedRoutes));
+        const cachedData: CachedRoutes = {
+          data: updatedRoutes,
+          timestamp: Date.now()
+        };
+        sessionStorage.setItem(`saved_routes_${currentUser.user_id}`, JSON.stringify(cachedData));
       }
     } catch (err: any) {
       console.error('Failed to unsave route:', err);

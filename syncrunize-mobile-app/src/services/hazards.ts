@@ -59,7 +59,7 @@ export const HazardsApi = {
   },
 
   // Report a hazard
-  reportHazard: async (hazardData: CreateHazardData): Promise<HazardReport> => {
+  reportHazard: async (hazardData: CreateHazardData, onUploadProgress?: (progress: number) => void): Promise<HazardReport> => {
     console.log('[HazardsApi] reportHazard called with:', {
       title: hazardData.title,
       incident_type: hazardData.incident_type,
@@ -90,7 +90,13 @@ export const HazardsApi = {
     try {
       const { data } = await api.post('/hazards', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 30000, // ✅ FIX: 30-second timeout to prevent infinite hanging
+        timeout: 45000, // ✅ FIX: 45-second timeout to account for Render cold starts (30-50s)
+        onUploadProgress: (progressEvent: any) => {
+          if (progressEvent.total && onUploadProgress) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            onUploadProgress(percentCompleted);
+          }
+        },
       });
 
       const requestTime = performance.now() - requestStart;

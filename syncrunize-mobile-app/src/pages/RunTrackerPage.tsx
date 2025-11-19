@@ -18,6 +18,7 @@ const mapboxDefaultCenter: LatLngLiteral = { lat: 15.4755, lng: 120.5963 };
 const HAZARD_RADIUS_KM = 1000; // Match create-route: 1000km to get all hazards in Philippines
 const HAZARD_RADIUS_METERS = HAZARD_RADIUS_KM * 1000;
 const HAZARD_REFETCH_MS = 45_000;
+const HAZARD_ALERT_RADIUS_KM = 0.35; // Alert radius - match TTS/push notification radius
 
 interface AccidentCluster {
   cluster_id: number;
@@ -110,10 +111,20 @@ const RunTrackerPage: React.FC = () => {
   }, [guidedRoute]);
   const shouldShowLivePath = pathCoords.length > 0 && session.status !== 'IDLE';
   const hasGuide = Boolean(guidedRoute);
+
+  // ✅ FIX: Filter hazards within alert radius for text display (map still shows all)
+  const nearbyHazardsCount = useMemo(() => {
+    if (!latestLocationRef.current) return 0;
+    return hazards.filter(hazard => {
+      const distanceKm = computeHazardDistanceKm(hazard);
+      return distanceKm !== null && distanceKm <= HAZARD_ALERT_RADIUS_KM;
+    }).length;
+  }, [hazards, computeHazardDistanceKm]);
+
   const hazardSummaryText = hazardLoading
     ? 'Checking nearby hazards...'
-    : hazards.length
-      ? `${hazards.length} hazard${hazards.length > 1 ? 's' : ''} nearby`
+    : nearbyHazardsCount > 0
+      ? `${nearbyHazardsCount} hazard${nearbyHazardsCount > 1 ? 's' : ''} nearby`
       : 'No hazards nearby';
 
 
@@ -751,4 +762,6 @@ const formatDuration = (ms: number) => {
     : `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-export default RunTrackerPage;
+// ✅ FIX: Wrap in React.memo to prevent unnecessary re-renders
+// Component was re-rendering 60+ times per minute (timer + GPS + hazard polls)
+export default React.memo(RunTrackerPage);

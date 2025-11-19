@@ -331,11 +331,13 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
         // Track initial style
         currentStyleRef.current = MAP_STYLES.streets;
 
-        // ✅ FIX: Resize map after load to ensure proper dimensions
-        // Without this, map may render at incorrect size until toggle is clicked
+        // ✅ FIX: Double RAF for reliable layout completion before resize
+        // First RAF waits for browser paint, second RAF waits for layout to settle
         requestAnimationFrame(() => {
-          map.resize();
-          console.log('[RunTrackerMap] Map resized after initial load');
+          requestAnimationFrame(() => {
+            map.resize();
+            console.log('[RunTrackerMap] Map resized after initial load (double RAF)');
+          });
         });
 
         setMapReady(true);
@@ -409,8 +411,9 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
     // Only update path if it actually changed (more than just adding 1-2 points)
     const runnerSource = map.getSource(RUNNER_SOURCE_ID) as GeoJSONSource | undefined;
     if (runnerSource) {
-      // Batch update: only re-render every 5 points or if path is short
-      const shouldUpdatePath = pathCoords.length % 5 === 0 || pathCoords.length < 10;
+      // ✅ FIX: Increased from 5 to 15 points (66% fewer map updates)
+      // With 10s GPS sampling, updates every ~2.5 minutes instead of ~50 seconds
+      const shouldUpdatePath = pathCoords.length % 15 === 0 || pathCoords.length < 20;
       if (shouldUpdatePath) {
         runnerSource.setData(createLineGeoJSON(pathCoords));
       }
@@ -420,8 +423,9 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
     updateRunnerMarker(latest);
     updateRunnerRadius(latest);
 
-    // Only auto-center every 10 points to reduce camera animation overhead
-    if (latest && !mapOnlyView && pathCoords.length % 10 === 0) {
+    // ✅ FIX: Increased from 10 to 20 points to reduce camera animations
+    // Animations now every ~3.3 minutes instead of ~1.7 minutes
+    if (latest && !mapOnlyView && pathCoords.length % 20 === 0) {
       map.easeTo({
         center: [latest.lng, latest.lat],
         duration: 300, // Faster animation (was 500ms)
@@ -490,29 +494,14 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
     });
   }, [hazards, mapReady, onSelectHazard, selectedHazardId]);
 
+  // ✅ FIX: Use source.setData() instead of removing/re-adding layer
+  // Prevents expensive layer recreation on every accident cluster update
   useEffect(() => {
     if (!mapReady || !mapRef.current || accidentClusters.length === 0) return;
 
     const map = mapRef.current;
 
     try {
-      // Remove existing accident cluster layers and sources
-      try {
-        if (map.getLayer('accident-cluster-circles')) {
-          map.removeLayer('accident-cluster-circles');
-        }
-      } catch (e) {
-        // Layer doesn't exist, ignore
-      }
-
-      try {
-        if (map.getSource('accident-clusters')) {
-          map.removeSource('accident-clusters');
-        }
-      } catch (e) {
-        // Source doesn't exist, ignore
-      }
-
       // Create GeoJSON features from accident clusters
       const features = accidentClusters.map(cluster => ({
         type: 'Feature' as const,
@@ -527,56 +516,73 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
         }
       }));
 
-      // Add accident clusters source
-      map.addSource('accident-clusters', {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: features
-        }
-      });
+      const featureCollection = {
+        type: 'FeatureCollection' as const,
+        features: features
+      };
 
-      // Add circle layer for accident clusters with color based on severity
-      map.addLayer({
-        id: 'accident-cluster-circles',
-        type: 'circle',
-        source: 'accident-clusters',
-        paint: {
-          'circle-radius': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            10, 10,  // At zoom 10, radius is 10px (enhanced visibility)
-            15, 30   // At zoom 15, radius is 30px (enhanced visibility)
-          ],
-          'circle-color': [
-            'step',
-            ['get', 'count'],
-            '#FFA500', // Yellow-Orange for count < 15
-            15, '#FF8C00', // Dark Orange for count 15-29
-            30, '#FF6500'  // Vivid Orange for count >= 30
-          ],
-          'circle-opacity': 0.3,  // Increased from 0.15 to make more visible
-          'circle-stroke-width': 2,  // Increased from 1
-          'circle-stroke-color': [
-            'step',
-            ['get', 'count'],
-            '#FFA500',
-            15, '#FF8C00',
-            30, '#FF6500'
-          ],
-          'circle-stroke-opacity': 0.6  // Increased from 0.4
-        }
-      });
+      // Check if source already exists
+      const existingSource = map.getSource('accident-clusters') as GeoJSONSource | undefined;
+
+      if (existingSource) {
+        // ✅ Just update the data, don't recreate layer
+        existingSource.setData(featureCollection);
+      } else {
+        // First time: create source and layer
+        map.addSource('accident-clusters', {
+          type: 'geojson',
+          data: featureCollection
+        });
+
+        // Add circle layer for accident clusters with color based on severity
+        map.addLayer({
+          id: 'accident-cluster-circles',
+          type: 'circle',
+          source: 'accident-clusters',
+          paint: {
+            'circle-radius': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              10, 10,  // At zoom 10, radius is 10px (enhanced visibility)
+              15, 30   // At zoom 15, radius is 30px (enhanced visibility)
+            ],
+            'circle-color': [
+              'step',
+              ['get', 'count'],
+              '#FFA500', // Yellow-Orange for count < 15
+              15, '#FF8C00', // Dark Orange for count 15-29
+              30, '#FF6500'  // Vivid Orange for count >= 30
+            ],
+            'circle-opacity': 0.3,  // Increased from 0.15 to make more visible
+            'circle-stroke-width': 2,  // Increased from 1
+            'circle-stroke-color': [
+              'step',
+              ['get', 'count'],
+              '#FFA500',
+              15, '#FF8C00',
+              30, '#FF6500'
+            ],
+            'circle-stroke-opacity': 0.6  // Increased from 0.4
+          }
+        });
+      }
     } catch (error) {
       console.error('[RunTrackerMap] Error displaying accident clusters:', error);
     }
   }, [accidentClusters, mapReady, styleVersion]);
 
+  // ✅ FIX: Resize map when toggling between map-only and split view
+  // Delay allows CSS transitions to complete before resize
   useEffect(() => {
-    if (mapOnlyView) {
+    if (!mapRef.current) return;
+
+    const timeoutId = setTimeout(() => {
       mapRef.current?.resize();
-    }
+      console.log('[RunTrackerMap] Map resized after view toggle:', mapOnlyView ? 'map-only' : 'split');
+    }, 150); // 150ms delay for CSS transition completion
+
+    return () => clearTimeout(timeoutId);
   }, [mapOnlyView]);
 
   return (

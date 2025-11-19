@@ -45,7 +45,7 @@ import { PostsApi, Post } from "../services/posts";
 import { LikesApi, Liker } from "../services/likes";
 import { CommentsApi, Comment } from "../services/comments";
 import { useUser } from "../contexts/UserContext";
-import { formatDurationShort, formatDate, getAvatarUrl } from "../lib/utils";
+import { formatDurationShort, formatRelativeTime, getAvatarUrl } from "../lib/utils";
 import "../theme/Community.css";
 import "./View-Activity.css";
 
@@ -263,7 +263,7 @@ export default function ViewPosts() {
                     <div className="post-header">
                       <div className="user-info">
                         <span className="username">{isViewingOtherUser ? post.author_name : "Your Post"}</span>
-                        <span className="timestamp">{formatDate(post.created_at)}</span>
+                        <span className="timestamp">{formatRelativeTime(post.created_at)}</span>
                       </div>
                       {!isViewingOtherUser && (
                         <div style={{ display: 'flex', gap: '8px' }}>
@@ -589,7 +589,7 @@ export default function ViewPosts() {
                           </div>
                           <p style={{ margin: '8px 0 0 0', fontSize: '14px' }}>{comment.content}</p>
                           <span style={{ fontSize: '12px', color: '#999', marginTop: '4px', display: 'block' }}>
-                            {new Date(comment.created_at).toLocaleDateString()}
+                            {formatRelativeTime(comment.created_at)}
                           </span>
                         </div>
                       </div>

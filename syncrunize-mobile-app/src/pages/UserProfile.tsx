@@ -36,6 +36,16 @@ import { FollowsApi } from "../services/follows";
 import { getAvatarUrl } from "../lib/utils";
 import "../theme/User-Profile.css";
 
+// ✅ FIX: Add TTL to profile cache to prevent stale data
+interface CachedProfileData {
+  followerCount: number;
+  followingCount: number;
+  userRoutes: any[];
+  timestamp: number;
+}
+
+const PROFILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 export default function Profile() {
   const { currentUser, loading: userLoading } = useUser();
   const { badges } = useChallenges();
@@ -124,13 +134,18 @@ export default function Profile() {
   const fetchProfileData = useCallback(async (forceRefresh: boolean = false) => {
     if (!currentUser) return;
 
-    // Check both ref and sessionStorage (sessionStorage persists across unmounts in dev mode)
-    const hasLoadedInSession = sessionStorage.getItem(`profile_loaded_${currentUser.user_id}`) === 'true';
+    // ✅ FIX: Only check cache if NOT forcing refresh
+    // This allows auto-refresh to work while still preventing duplicate initial loads
+    if (!forceRefresh) {
+      const hasLoadedInSession = sessionStorage.getItem(`profile_loaded_${currentUser.user_id}`) === 'true';
+      const timeSinceLastFetch = Date.now() - (parseInt(sessionStorage.getItem(`profile_last_fetch_${currentUser.user_id}`) || '0'));
+      const CACHE_DURATION = 60000; // 60 seconds
 
-    // Skip if already loaded and not forcing refresh (prevents reload on tab switch)
-    if ((hasLoadedRef.current || hasLoadedInSession) && !forceRefresh) {
-      console.log('[UserProfile] Already loaded, skipping fetch');
-      return;
+      // Skip if loaded recently (within 60s) and not forcing refresh
+      if ((hasLoadedRef.current || hasLoadedInSession) && timeSinceLastFetch < CACHE_DURATION) {
+        console.log('[UserProfile] Data fresh (< 60s), skipping fetch');
+        return;
+      }
     }
 
     try {
@@ -155,13 +170,16 @@ export default function Profile() {
         const routesArray = Array.isArray(routes) ? routes : [];
         setUserRoutes(routesArray);
         hasLoadedRef.current = true; // Mark as loaded
-        sessionStorage.setItem(`profile_loaded_${currentUser.user_id}`, 'true'); // Persist across unmounts
+        sessionStorage.setItem(`profile_loaded_${currentUser.user_id}`, 'true');
+        // ✅ FIX: Store fetch timestamp for cache expiration
+        sessionStorage.setItem(`profile_last_fetch_${currentUser.user_id}`, String(Date.now()));
 
-        // Cache profile data to sessionStorage for instant restore on remount
-        const profileData = {
+        // ✅ FIX: Cache profile data with timestamp for TTL checking
+        const profileData: CachedProfileData = {
           followerCount: followCounts.followers,
           followingCount: followCounts.following,
-          userRoutes: routesArray
+          userRoutes: routesArray,
+          timestamp: Date.now()
         };
         sessionStorage.setItem(`profile_data_${currentUser.user_id}`, JSON.stringify(profileData));
 
@@ -184,17 +202,44 @@ export default function Profile() {
 
     if (!currentUser) return;
 
-    // Try to restore profile data from sessionStorage first
+    // ✅ FIX: Try to restore profile data from cache with TTL check
     const cachedDataKey = `profile_data_${currentUser.user_id}`;
     const cachedData = sessionStorage.getItem(cachedDataKey);
 
     if (cachedData && followerCount === 0 && followingCount === 0 && userRoutes.length === 0) {
       try {
         const parsedData = JSON.parse(cachedData);
-        console.log('[UserProfile] Restoring profile data from cache');
-        setFollowerCount(parsedData.followerCount || 0);
-        setFollowingCount(parsedData.followingCount || 0);
-        setUserRoutes(parsedData.userRoutes || []);
+
+        // Check if this is new format with timestamp or old format (object without timestamp)
+        const isNewFormat = parsedData && typeof parsedData === 'object' && 'timestamp' in parsedData;
+
+        if (!isNewFormat) {
+          // Old format: clear and refetch
+          console.log('[UserProfile] Old cache format detected, clearing...');
+          sessionStorage.removeItem(cachedDataKey);
+          sessionStorage.removeItem(`profile_loaded_${currentUser.user_id}`);
+          sessionStorage.removeItem(`profile_last_fetch_${currentUser.user_id}`);
+          fetchProfileData(false);
+          return;
+        }
+
+        const cachedProfileData = parsedData as CachedProfileData;
+        const cacheAge = Date.now() - cachedProfileData.timestamp;
+
+        // Check if cache is expired (24 hours)
+        if (cacheAge > PROFILE_CACHE_TTL_MS) {
+          console.log(`[UserProfile] Cache expired (${(cacheAge / 1000 / 60 / 60).toFixed(1)}h old), clearing...`);
+          sessionStorage.removeItem(cachedDataKey);
+          sessionStorage.removeItem(`profile_loaded_${currentUser.user_id}`);
+          sessionStorage.removeItem(`profile_last_fetch_${currentUser.user_id}`);
+          fetchProfileData(false);
+          return;
+        }
+
+        console.log(`[UserProfile] Restoring profile data from cache (${(cacheAge / 1000 / 60).toFixed(1)}m old)`);
+        setFollowerCount(cachedProfileData.followerCount || 0);
+        setFollowingCount(cachedProfileData.followingCount || 0);
+        setUserRoutes(cachedProfileData.userRoutes || []);
         hasLoadedRef.current = true;
         return; // Skip fetch, use cached data
       } catch (err) {
@@ -220,6 +265,35 @@ export default function Profile() {
     };
     // Include data variables to detect when state resets on remount
   }, [currentUser, fetchProfileData, userRoutes.length, followerCount, followingCount]);
+
+  // ✅ FIX: Auto-refresh profile data every 60 seconds when page is visible
+  // This ensures challenges, posts, and activities update without manual refresh
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && hasLoadedRef.current) {
+        console.log('[UserProfile] Page visible, checking for updates');
+        fetchProfileData(false); // Respects 60s cache
+      }
+    };
+
+    // Refresh on visibility change (tab switch back)
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Auto-refresh every 60 seconds if page is visible
+    const autoRefreshInterval = setInterval(() => {
+      if (document.visibilityState === 'visible' && hasLoadedRef.current) {
+        console.log('[UserProfile] Auto-refresh: checking for updates');
+        fetchProfileData(false); // Respects 60s cache
+      }
+    }, 60000); // 60 seconds
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(autoRefreshInterval);
+    };
+  }, [currentUser, fetchProfileData]);
 
   const currentStats = statsData[timePeriod];
 

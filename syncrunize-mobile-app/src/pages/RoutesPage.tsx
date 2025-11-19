@@ -30,6 +30,14 @@ import { formatDurationShort, formatPace } from '../lib/utils';
 import { useUser } from '../contexts/UserContext';
 import '../theme/Routes.css';
 
+// ✅ FIX: Add TTL to route cache to prevent stale data
+interface CachedRoutes {
+  data: Route[];
+  timestamp: number;
+}
+
+const ROUTES_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
 const RoutesPage: React.FC = () => {
   const history = useHistory();
   const { currentUser } = useUser();
@@ -60,11 +68,15 @@ const RoutesPage: React.FC = () => {
       setRoutes(routesArray);
       hasLoadedRef.current = true;
 
-      // Cache routes to sessionStorage for instant restore on remount
+      // ✅ FIX: Cache routes with timestamp for TTL checking
       if (currentUser) {
+        const cachedData: CachedRoutes = {
+          data: routesArray,
+          timestamp: Date.now()
+        };
         sessionStorage.setItem(`routes_loaded_${currentUser.user_id}`, 'true');
-        sessionStorage.setItem(`routes_data_${currentUser.user_id}`, JSON.stringify(routesArray));
-        console.log('[RoutesPage] Cached', routesArray.length, 'routes');
+        sessionStorage.setItem(`routes_data_${currentUser.user_id}`, JSON.stringify(cachedData));
+        console.log('[RoutesPage] Cached', routesArray.length, 'routes with TTL');
       }
     } catch (err: any) {
       console.error('Failed to load routes:', err);
@@ -79,15 +91,40 @@ const RoutesPage: React.FC = () => {
   useEffect(() => {
     if (!currentUser) return;
 
-    // Try to restore routes from sessionStorage first
+    // ✅ FIX: Try to restore routes from cache with TTL check
     const cachedRoutesKey = `routes_data_${currentUser.user_id}`;
     const cachedRoutes = sessionStorage.getItem(cachedRoutesKey);
 
     if (cachedRoutes && routes.length === 0) {
       try {
-        const parsedRoutes = JSON.parse(cachedRoutes);
-        console.log('[RoutesPage] Restoring', parsedRoutes.length, 'routes from cache');
-        setRoutes(parsedRoutes);
+        const parsed = JSON.parse(cachedRoutes);
+
+        // Check if this is new format with timestamp or old format (array)
+        const isNewFormat = parsed && typeof parsed === 'object' && 'data' in parsed && 'timestamp' in parsed;
+
+        if (!isNewFormat) {
+          // Old format: clear and refetch
+          console.log('[RoutesPage] Old cache format detected, clearing...');
+          sessionStorage.removeItem(cachedRoutesKey);
+          sessionStorage.removeItem(`routes_loaded_${currentUser.user_id}`);
+          fetchRoutes();
+          return;
+        }
+
+        const cachedData = parsed as CachedRoutes;
+        const cacheAge = Date.now() - cachedData.timestamp;
+
+        // Check if cache is expired (7 days)
+        if (cacheAge > ROUTES_CACHE_TTL_MS) {
+          console.log(`[RoutesPage] Cache expired (${(cacheAge / 1000 / 60 / 60 / 24).toFixed(1)} days old), clearing...`);
+          sessionStorage.removeItem(cachedRoutesKey);
+          sessionStorage.removeItem(`routes_loaded_${currentUser.user_id}`);
+          fetchRoutes();
+          return;
+        }
+
+        console.log(`[RoutesPage] Restoring ${cachedData.data.length} routes from cache (${(cacheAge / 1000 / 60 / 60).toFixed(1)}h old)`);
+        setRoutes(cachedData.data);
         hasLoadedRef.current = true;
         return; // Skip fetch, use cached data
       } catch (err) {

@@ -22,6 +22,7 @@ import {
   IonToast,
   IonSpinner,
   IonInput,
+  IonProgressBar,
 } from '@ionic/react';
 import { useHistory, useLocation } from 'react-router-dom';
 import {
@@ -77,6 +78,8 @@ const ReportHazard: React.FC = () => {
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   // ✅ CRITICAL FIX: Pre-convert blob at capture time to avoid UI freeze during submit
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
+  // ✅ FIX: Track upload progress to show user feedback
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   const initialLocation = useMemo(() => ({
     lat: location.state?.lat,
@@ -143,11 +146,11 @@ const ReportHazard: React.FC = () => {
       const captureStart = performance.now();
 
       const photo = await Camera.getPhoto({
-        quality: 50, // ✅ FIX: Reduced to 50% to ensure images under 3MB
+        quality: 40, // ✅ FIX: Reduced to 40% for faster uploads (saves ~30% file size)
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Prompt,
-        width: 1024, // ✅ FIX: Resize to max 1024px width (smaller = faster upload)
-        height: 1024, // ✅ FIX: Max height to keep files small
+        width: 800, // ✅ FIX: Resize to max 800px width (smaller = faster upload)
+        height: 800, // ✅ FIX: Max height to keep files small (saves ~40% vs 1024px)
       });
 
       console.log(`[HazardReport] Photo captured after ${(performance.now() - captureStart).toFixed(0)}ms`);
@@ -193,6 +196,7 @@ const ReportHazard: React.FC = () => {
 
     try {
       setSubmitting(true);
+      setUploadProgress(0); // ✅ FIX: Reset progress
       console.log('[HazardReport] Validation passed, preparing data...');
 
       const hazardData = {
@@ -212,7 +216,11 @@ const ReportHazard: React.FC = () => {
       });
 
       const apiCallStart = performance.now();
-      await HazardsApi.reportHazard(hazardData);
+      // ✅ FIX: Pass progress callback to show upload status
+      await HazardsApi.reportHazard(hazardData, (progress) => {
+        setUploadProgress(progress);
+        console.log(`[HazardReport] Upload progress: ${progress}%`);
+      });
       const apiCallTime = performance.now() - apiCallStart;
 
       console.log(`[HazardReport] ✅ API call completed in ${apiCallTime.toFixed(0)}ms`);
@@ -229,6 +237,7 @@ const ReportHazard: React.FC = () => {
       setToast({ message: msg, color: 'danger' });
     } finally {
       setSubmitting(false);
+      setUploadProgress(0); // ✅ FIX: Reset progress
     }
   };
 
@@ -356,6 +365,23 @@ const ReportHazard: React.FC = () => {
         <IonButton expand="block" size="large" onClick={handleSubmit} disabled={submitting}>
           {submitting ? <IonSpinner name="crescent" /> : 'Submit hazard'}
         </IonButton>
+
+        {/* ✅ FIX: Show upload progress to user */}
+        {submitting && uploadProgress > 0 && (
+          <div style={{ marginTop: '16px', padding: '0 16px' }}>
+            <IonProgressBar value={uploadProgress / 100} color="success" />
+            <p style={{
+              textAlign: 'center',
+              fontSize: '14px',
+              marginTop: '8px',
+              color: 'var(--ion-color-medium)'
+            }}>
+              {uploadProgress < 100
+                ? `Uploading... ${uploadProgress}%`
+                : 'Processing...'}
+            </p>
+          </div>
+        )}
 
         <IonToast
           isOpen={!!toast}

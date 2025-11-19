@@ -15,7 +15,7 @@ import {
 import { useLocation } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { RoutesApi, Route } from "../services/routes";
-import { formatDate, formatDurationShort } from "../lib/utils";
+import { formatRelativeTime, formatDurationShort } from "../lib/utils";
 import "./View-Activity.css";
 
 // Fallback image for routes without map images
@@ -93,7 +93,7 @@ const ViewActivity: React.FC = () => {
                       <span className="activity-type">
                         {route.route_type?.charAt(0).toUpperCase() + route.route_type?.slice(1) || "Run"}
                       </span>
-                      <span className="activity-date">{formatDate(route.created_at)}</span>
+                      <span className="activity-date">{formatRelativeTime(route.created_at)}</span>
                     </div>
 
                     <h3 className="activity-title">

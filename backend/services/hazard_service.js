@@ -1,7 +1,23 @@
 // services/hazard_service.js
 import axios from "axios";
+import axiosRetry from "axios-retry";
 
 const ALGO_ENGINE_URL = process.env.ALGORITHM_ENGINE_URL || "http://127.0.0.1:8000"; // FastAPI engine
+
+// ✅ FIX: Configure retry logic for algorithm engine API calls
+// Retries on network errors and 5xx server errors (Render cold starts, timeouts)
+axiosRetry(axios, {
+  retries: 3, // Retry up to 3 times
+  retryDelay: axiosRetry.exponentialDelay, // Exponential backoff: 1s, 2s, 4s
+  retryCondition: (error) => {
+    // Retry on network errors or 5xx server errors
+    return axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+           (error.response?.status >= 500 && error.response?.status < 600);
+  },
+  onRetry: (retryCount, error) => {
+    console.warn(`[Retry ${retryCount}/3] Algorithm API call failed:`, error.message);
+  }
+});
 
 // 🧮 Agreement scoring
 export const computeAgreement = async (report, neighbors) => {
@@ -36,7 +52,7 @@ export const computeAgreement = async (report, neighbors) => {
       report: formattedReport,
       neighbors: formattedNeighbors,
     }, {
-      timeout: 10000, // ✅ FIX: 10-second timeout to prevent hanging if engine is down
+      timeout: 30000, // ✅ FIX: 30-second timeout for heavy load scenarios
     });
 
     return res.data.agreement_score;
@@ -64,7 +80,7 @@ export const computeTrust = async (reports) => {
     }));
 
     const res = await axios.post(`${ALGO_ENGINE_URL}/trust`, formattedReports, {
-      timeout: 10000, // ✅ FIX: 10-second timeout to prevent hanging if engine is down
+      timeout: 30000, // ✅ FIX: 30-second timeout for heavy load scenarios
     });
     return res.data.trust_score;
   } catch (err) {

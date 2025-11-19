@@ -16,6 +16,7 @@ import {
   IonRadio,
   IonText,
   IonSpinner,
+  IonProgressBar,
 } from '@ionic/react';
 import { closeOutline, trendingUp, trendingDown } from 'ionicons/icons';
 import type { RunSession } from '../state/runTrackerContext';
@@ -154,11 +155,11 @@ export const ActivitySummarySheet = ({
           >
             <IonItem>
               <IonLabel>Public</IonLabel>
-              <IonRadio value="public" />
+              <IonRadio value="public" disabled={isRecording} />
             </IonItem>
             <IonItem>
               <IonLabel>Private</IonLabel>
-              <IonRadio value="private" />
+              <IonRadio value="private" disabled={isRecording} />
             </IonItem>
           </IonRadioGroup>
         </IonList>
@@ -167,6 +168,21 @@ export const ActivitySummarySheet = ({
           <IonText color="danger">
             <p>{localError || error}</p>
           </IonText>
+        )}
+
+        {/* ✅ FIX: Show progress indicator during recording */}
+        {isRecording && (
+          <div style={{ marginTop: '16px', padding: '0 16px' }}>
+            <IonProgressBar type="indeterminate" color="success" />
+            <p style={{
+              textAlign: 'center',
+              fontSize: '14px',
+              marginTop: '8px',
+              color: 'var(--ion-color-medium)'
+            }}>
+              Saving your run...
+            </p>
+          </div>
         )}
 
         <div className="summary-actions">

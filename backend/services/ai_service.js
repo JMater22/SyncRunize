@@ -1,4 +1,5 @@
 import axios from "axios";
+import axiosRetry from "axios-retry";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -6,6 +7,22 @@ dotenv.config();
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || process.env.GPT_API_KEY;
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const MODEL = "gpt-4o-mini";
+
+// ✅ FIX: Configure retry logic for OpenAI API calls
+// Retries on network errors and 5xx server errors (rate limits, timeouts)
+axiosRetry(axios, {
+  retries: 3, // Retry up to 3 times
+  retryDelay: axiosRetry.exponentialDelay, // Exponential backoff: 1s, 2s, 4s
+  retryCondition: (error) => {
+    // Retry on network errors, 5xx errors, or rate limit errors (429)
+    return axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+           error.response?.status === 429 || // Rate limit
+           (error.response?.status >= 500 && error.response?.status < 600);
+  },
+  onRetry: (retryCount, error) => {
+    console.warn(`[Retry ${retryCount}/3] OpenAI API call failed:`, error.message);
+  }
+});
 
 const callOpenAI = async (prompt, options = {}) => {
   if (!OPENAI_API_KEY) {

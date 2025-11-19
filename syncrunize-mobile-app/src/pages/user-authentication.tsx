@@ -153,10 +153,10 @@ const GetStarted: React.FC = () => {
       console.log('[GetStarted] Account created successfully');
       setSuccess(true);
 
-      // Redirect to login page after a short delay
+      // Redirect to login page after showing success message
       setTimeout(() => {
         history.replace("/log-in");
-      }, 1500);
+      }, 3000);
 
     } catch (err: any) {
       console.error('[GetStarted] Signup error:', err);
@@ -403,8 +403,8 @@ const GetStarted: React.FC = () => {
 
         <IonToast
           isOpen={success}
-          message="Account created successfully! Please log in."
-          duration={1500}
+          message="Account created! Please check your email to verify your account, then log in."
+          duration={3000}
           color="success"
           position="top"
         />
