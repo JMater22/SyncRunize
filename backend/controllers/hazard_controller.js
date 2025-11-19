@@ -20,11 +20,45 @@ export const createHazard = async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
+    // ✅ FIX: Safely parse coordinates - handle both number and string inputs
+    const lat = typeof req.body.lat === 'number' ? req.body.lat : parseFloat(req.body.lat);
+    const lng = typeof req.body.lng === 'number' ? req.body.lng : parseFloat(req.body.lng);
+
+    console.log('[Hazard] Coordinate validation:', {
+      rawLat: req.body.lat,
+      rawLng: req.body.lng,
+      rawLatType: typeof req.body.lat,
+      rawLngType: typeof req.body.lng,
+      parsedLat: lat,
+      parsedLng: lng,
+      isLatValid: !isNaN(lat),
+      isLngValid: !isNaN(lng),
+    });
+
+    // Validate coordinates format
+    if (isNaN(lat) || isNaN(lng)) {
+      console.error('[Hazard] ❌ Invalid coordinates - not a number:', {
+        lat: req.body.lat,
+        lng: req.body.lng,
+        parsedLat: lat,
+        parsedLng: lng,
+      });
+      return res.status(400).json({
+        error: "Invalid latitude or longitude format.",
+        details: {
+          lat: req.body.lat,
+          lng: req.body.lng,
+          latType: typeof req.body.lat,
+          lngType: typeof req.body.lng,
+        }
+      });
+    }
+
     const hazardData = {
       ...req.body,
       user_id: userId,
-      lat: parseFloat(req.body.lat),
-      lng: parseFloat(req.body.lng),
+      lat: lat,
+      lng: lng,
       // ✅ NEW: Accept image_url directly from frontend (already uploaded to Supabase)
       image_url: req.body.image_url || null,
     };
@@ -33,12 +67,6 @@ export const createHazard = async (req, res) => {
       lng: hazardData.lng,
       hasImage: !!hazardData.image_url
     });
-
-    // Validate coordinates format
-    if (isNaN(hazardData.lat) || isNaN(hazardData.lng)) {
-      console.error('[Hazard] ❌ Invalid coordinates - not a number');
-      return res.status(400).json({ error: "Invalid latitude or longitude format." });
-    }
 
     // Validate coordinate ranges
     if (hazardData.lat < -90 || hazardData.lat > 90) {
