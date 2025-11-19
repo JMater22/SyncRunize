@@ -1,4 +1,4 @@
-  import React from "react";
+  import React, { useState } from "react";
   import {
     IonCard,
     IonCardContent,
@@ -24,9 +24,19 @@
     routerLink="/group-feed",
     onJoin
   }) => {
+    const [imageError, setImageError] = useState(false);
+    const defaultGroupImage = "https://i.pinimg.com/736x/43/a5/4b/43a54b5ac213b39d702b16a503738437.jpg";
+
     return (
       <IonCard className="group-card" routerLink={routerLink}>
-        <IonImg src={imageSrc} alt={`${name} Group`} />
+        <IonImg
+          src={imageError ? defaultGroupImage : (imageSrc || defaultGroupImage)}
+          alt={`${name} Group`}
+          onIonError={() => {
+            console.error(`[GroupCard] Failed to load image: ${imageSrc}`);
+            setImageError(true);
+          }}
+        />
         <IonCardContent className="group-overlay">
           <span className="group-name">{name}</span>
           {showJoinButton && !isJoined && (

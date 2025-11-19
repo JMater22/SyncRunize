@@ -39,7 +39,7 @@ import {
   globeOutline,
 } from "ionicons/icons";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
-import { supabase } from "../lib/supabaseClient";
+import { supabase, uploadImageToSupabase } from "../lib/supabaseClient";
 import CommunityChallengesTab from "../components/CommunityChallengesTab";
 import CommunityFeedTab from "../components/CommunityFeedTab";
 import GroupCard from "../components/group-card";
@@ -235,10 +235,7 @@ const Community: React.FC = () => {
         throw new Error("No image data");
       }
 
-      // ✅ NEW: Upload directly to Supabase
-      setToastMessage("Uploading group photo...");
-      setToastColor('success');
-      setShowToast(true);
+      console.log('[Community] Starting group photo upload...');
 
       // Convert dataUrl to blob
       const response = await fetch(photo.dataUrl);
@@ -246,38 +243,25 @@ const Community: React.FC = () => {
 
       // Generate unique filename
       const timestamp = Date.now();
-      const fileName = `${timestamp}.jpg`;
-      const filePath = `group-picture/${fileName}`;
+      const fileName = `group-${timestamp}.jpg`;
 
-      console.log('[Community] Uploading group picture to:', filePath);
+      console.log('[Community] Uploading group picture:', fileName, `(${(blob.size / 1024).toFixed(0)}KB)`);
 
-      // Upload to Supabase Storage
-      const { data, error } = await supabase.storage
-        .from('assets')
-        .upload(filePath, blob, {
-          contentType: 'image/jpeg',
-          upsert: true
-        });
+      // ✅ FIX: Use the same reliable upload helper as hazard reports
+      const publicUrl = await uploadImageToSupabase(
+        blob,
+        fileName,
+        'group-picture' // folder name in 'assets' bucket
+      );
 
-      if (error) {
-        console.error('[Community] Upload error:', error);
-        throw error;
-      }
+      console.log('[Community] Group picture uploaded successfully:', publicUrl);
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('assets')
-        .getPublicUrl(filePath);
-
-      const publicUrl = urlData.publicUrl;
-      console.log('[Community] Group picture uploaded:', publicUrl);
-
-      setGroupPhoto(publicUrl);  // ✅ Store URL instead of base64
+      setGroupPhoto(publicUrl);  // ✅ Store URL for group creation
       setToastMessage("Group photo added!");
       setToastColor('success');
       setShowToast(true);
     } catch (error: any) {
-      console.error("Photo upload error:", error);
+      console.error('[Community] Photo upload error:', error);
       setToastMessage(error?.message || "Failed to upload photo.");
       setToastColor('danger');
       setShowToast(true);
