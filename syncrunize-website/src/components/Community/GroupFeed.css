@@ -19,7 +19,7 @@
 .invite-modal-header h2 {
   font-size: 24px;
   font-weight: 700;
-  color: #ffffff;
+  color: #ffffff; 
   margin: 0;
 }
 
@@ -357,6 +357,7 @@ ion-header ion-button {
   height: 300px;
   overflow: hidden;
   margin-bottom: 0;
+  margin-top: 0;
 }
 
 .hero-image {
@@ -1553,15 +1554,27 @@ ion-header ion-button {
   .club-navigation{
     font-size: 12px;
   }
+
+    .club-hero-banner {
+    margin-top: 50px;
+    height: 300px;
+  }
+  
+  .club-hero-overlay {
+    padding: 1.5rem;
+  }
   .club-hero-content {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .club-avatar {
-    width: 80px;
-    height: 80px;
-  }
+.club-avatar {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  top: -40px; 
+  margin-bottom: -40px; 
+}
 
   .club-name {
     font-size: 1.5rem;

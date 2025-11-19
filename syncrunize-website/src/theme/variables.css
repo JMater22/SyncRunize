@@ -15,7 +15,7 @@
 }
 
 ::-webkit-scrollbar:horizontal {
-    height: 11px;
+    height: 11px; 
 }
 
 ::-webkit-scrollbar-thumb {
@@ -246,6 +246,7 @@ ion-router-outlet {
   text-align: center;
 }
 
+
 /* Mobile footer adjustments */
 @media (max-width: 768px) {
   .app-footer {
@@ -269,27 +270,6 @@ ion-router-outlet {
   /* Ensure content doesn't get hidden under footer */
   ion-content {
     --offset-bottom: 0 !important;
-  }
-}
-
-/* Smaller mobile devices - further minimize footer */
-@media (max-width: 480px) {
-  .app-footer {
-    position: relative !important;
-    bottom: auto !important;
-  }
-
-  .footer-content p {
-    font-size: 0.6rem;
-  }
-
-  .app-footer ion-toolbar {
-    --min-height: 32px;
-    position: relative !important;
-  }
-
-  .footer-content {
-    padding: 4px 8px;
   }
 }
 
