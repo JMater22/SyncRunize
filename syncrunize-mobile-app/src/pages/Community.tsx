@@ -39,6 +39,7 @@ import {
   globeOutline,
 } from "ionicons/icons";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { supabase } from "../lib/supabaseClient";
 import CommunityChallengesTab from "../components/CommunityChallengesTab";
 import CommunityFeedTab from "../components/CommunityFeedTab";
 import GroupCard from "../components/group-card";
@@ -218,29 +219,70 @@ const Community: React.FC = () => {
       }
     }
   });
-  /** 📸 Select Photo for Group - Android Platform */
+  /** 📸 Select Photo for Group - Upload directly to Supabase */
   const selectGroupPhoto = async (source: CameraSource) => {
     try {
       const photo = await Camera.getPhoto({
-        resultType: CameraResultType.DataUrl,  // Changed from Uri to DataUrl for base64 encoding
+        resultType: CameraResultType.DataUrl,
         source: source,
-        quality: 60,  // Reduced from 90 to 60 for smaller file size
+        quality: 60,
         allowEditing: true,
-        width: 400,  // Reduced from 600 to 400
-        height: 400,  // Reduced from 600 to 400
+        width: 400,
+        height: 400,
       });
 
-      if (photo.dataUrl) {
-        setGroupPhoto(photo.dataUrl);  // Store base64 encoded image
-        setToastMessage("Group photo added!");
-        setToastColor('success');
-        setShowToast(true);
+      if (!photo.dataUrl) {
+        throw new Error("No image data");
       }
-    } catch (error) {
-      console.error("Camera error:", error);
-      setToastMessage("Failed to select photo.");
+
+      // ✅ NEW: Upload directly to Supabase
+      setToastMessage("Uploading group photo...");
+      setToastColor('primary');
+      setShowToast(true);
+
+      // Convert dataUrl to blob
+      const response = await fetch(photo.dataUrl);
+      const blob = await response.blob();
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const fileName = `${timestamp}.jpg`;
+      const filePath = `group-picture/${fileName}`;
+
+      console.log('[Community] Uploading group picture to:', filePath);
+
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('assets')
+        .upload(filePath, blob, {
+          contentType: 'image/jpeg',
+          upsert: true
+        });
+
+      if (error) {
+        console.error('[Community] Upload error:', error);
+        throw error;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('assets')
+        .getPublicUrl(filePath);
+
+      const publicUrl = urlData.publicUrl;
+      console.log('[Community] Group picture uploaded:', publicUrl);
+
+      setGroupPhoto(publicUrl);  // ✅ Store URL instead of base64
+      setToastMessage("Group photo added!");
+      setToastColor('success');
+      setShowToast(true);
+    } catch (error: any) {
+      console.error("Photo upload error:", error);
+      setToastMessage(error?.message || "Failed to upload photo.");
       setToastColor('danger');
       setShowToast(true);
+    } finally {
+      setShowPhotoActionSheet(false);
     }
   };
 
