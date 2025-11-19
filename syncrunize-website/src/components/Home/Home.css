@@ -1080,9 +1080,12 @@ h4.challenge-title {
 }
 
 /* Notification FAB Button - Fixed Position */
+
 ion-fab[vertical="bottom"][horizontal="end"] {
   bottom: 70px !important; /* Move up from footer */
   right: 30px;
+  position: fixed !important; /* Ensure it stays fixed on scroll */
+  z-index: 9999 !important;
 }
 
 /* Empty State (if needed) */
@@ -1156,6 +1159,7 @@ ion-fab[vertical="bottom"][horizontal="end"] {
     position: static;
     width: 100%;
     margin: 40px auto 16px;
+    display: flex;
   }
 
   .feed-column-enhanced {
