@@ -26,7 +26,7 @@ export interface CreateHazardData {
   lat: number;
   lng: number;
   severity_weight?: number;
-  imageFile?: Blob | File | null;
+  image_url?: string; // ✅ NEW: Send URL instead of file blob
 }
 
 export interface SafetyWarning {
@@ -65,38 +65,30 @@ export const HazardsApi = {
       incident_type: hazardData.incident_type,
       lat: hazardData.lat,
       lng: hazardData.lng,
-      hasImage: !!hazardData.imageFile,
-      imageSize: hazardData.imageFile ? `${(hazardData.imageFile.size / 1024).toFixed(0)}KB` : 'none',
+      hasImage: !!hazardData.image_url,
+      imageUrl: hazardData.image_url || 'none',
     });
 
-    const formDataStart = performance.now();
-    const formData = new FormData();
-    formData.append('title', hazardData.title);
-    formData.append('incident_type', hazardData.incident_type);
-    formData.append('description', hazardData.description);
-    formData.append('lat', hazardData.lat.toString());
-    formData.append('lng', hazardData.lng.toString());
-    if (typeof hazardData.severity_weight === 'number') {
-      formData.append('severity_weight', hazardData.severity_weight.toString());
-    }
-    if (hazardData.imageFile) {
-      formData.append('image', hazardData.imageFile, 'hazard.jpg');
-    }
-    console.log(`[HazardsApi] FormData prepared in ${(performance.now() - formDataStart).toFixed(0)}ms`);
+    // ✅ NEW: Send JSON payload instead of FormData
+    // Image is already uploaded to Supabase, we just send the URL
+    console.log('[HazardsApi] Preparing JSON payload...');
+    const payload = {
+      title: hazardData.title,
+      incident_type: hazardData.incident_type,
+      description: hazardData.description,
+      lat: hazardData.lat,
+      lng: hazardData.lng,
+      severity_weight: hazardData.severity_weight,
+      image_url: hazardData.image_url, // ✅ NEW: Send URL instead of file
+    };
 
-    console.log('[HazardsApi] Sending POST /hazards...');
+    console.log('[HazardsApi] Sending POST /hazards...', payload);
     const requestStart = performance.now();
 
     try {
-      const { data } = await api.post('/hazards', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 45000, // ✅ FIX: 45-second timeout to account for Render cold starts (30-50s)
-        onUploadProgress: (progressEvent: any) => {
-          if (progressEvent.total && onUploadProgress) {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            onUploadProgress(percentCompleted);
-          }
-        },
+      const { data } = await api.post('/hazards', payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000, // ✅ Much shorter timeout now - no file upload!
       });
 
       const requestTime = performance.now() - requestStart;

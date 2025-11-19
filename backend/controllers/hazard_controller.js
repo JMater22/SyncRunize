@@ -3,64 +3,54 @@ import * as Hazard from "../models/hazard_model.js";
 import { computeAgreement, computeTrust } from "../services/hazard_service.js";
 import { summarizeHazard, summarizeNearbyHazards } from "../services/ai_service.js";
 import { sendAlertPush } from "../services/push_service.js";
-import { supabase } from "../utils/supabase.js";
 
-const sanitizeFileName = (fileName) => fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-
-// ✅ FIX: Upload directly from memory buffer (no disk I/O)
-// This is faster and more reliable on Render's ephemeral filesystem
-const uploadHazardImageToSupabase = async (file) => {
-  if (!file) return null;
-
-  // Use buffer directly from memory (multer.memoryStorage provides file.buffer)
-  const buffer = file.buffer;
-  const storageFileName = `${Date.now()}-${sanitizeFileName(file.originalname)}`;
-  const storagePath = `hazardImage/${storageFileName}`;
-
-  try {
-    const { error } = await supabase.storage.from("assets").upload(storagePath, buffer, {
-      contentType: file.mimetype,
-      upsert: true,
-    });
-    if (error) {
-      console.error('[Hazard] Supabase storage upload error:', error);
-      throw error;
-    }
-    const { data } = supabase.storage.from("assets").getPublicUrl(storagePath);
-    console.log('[Hazard] ✅ Image uploaded to:', data?.publicUrl);
-    return data?.publicUrl || null;
-  } catch (err) {
-    console.error('[Hazard] Upload failed:', err);
-    throw err;
-  }
-  // No file cleanup needed - no disk files created with memory storage!
-};
+// ✅ NEW: No file upload logic needed - images uploaded directly from frontend to Supabase
 
 // Create hazard with scoring + AI summary
 export const createHazard = async (req, res) => {
+  const requestStart = Date.now();
+  console.log('[Hazard] ========== CREATE HAZARD REQUEST START ==========');
+  console.log('[Hazard] Request body:', req.body);
+
   try {
-    const userId = req.user.user_id; // �o. Integer from users table
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    const userId = req.user.user_id;
+    console.log('[Hazard] User ID:', userId);
+    if (!userId) {
+      console.error('[Hazard] ❌ No user ID found');
+      return res.status(401).json({ error: "Unauthorized" });
+    }
 
     const hazardData = {
       ...req.body,
       user_id: userId,
       lat: parseFloat(req.body.lat),
       lng: parseFloat(req.body.lng),
+      // ✅ NEW: Accept image_url directly from frontend (already uploaded to Supabase)
+      image_url: req.body.image_url || null,
     };
+    console.log('[Hazard] Parsed data:', {
+      lat: hazardData.lat,
+      lng: hazardData.lng,
+      hasImage: !!hazardData.image_url
+    });
+
     if (isNaN(hazardData.lat) || isNaN(hazardData.lng)) {
+      console.error('[Hazard] ❌ Invalid coordinates');
       return res.status(400).json({ error: "Invalid latitude or longitude." });
     }
 
-    // ✅ FIX: Store file reference but don't upload yet (non-blocking)
-    const fileToUpload = req.file;
-
-    // Step 1: Insert into DB (without image URL initially)
+    // Insert into DB with image_url already present
+    console.log('[Hazard] Inserting hazard into DB...');
+    const dbInsertStart = Date.now();
     const newHazard = await Hazard.create(hazardData);
+    console.log(`[Hazard] ✅ DB insert completed in ${Date.now() - dbInsertStart}ms, ID: ${newHazard?.report_id}`);
+
     if (!newHazard) throw new Error("Failed to insert hazard");
 
-    // ✅ CRITICAL FIX: Return response IMMEDIATELY - Don't wait for anything!
-    // Algorithm scoring, image upload, and AI summary all happen in background
+    // ✅ Return response IMMEDIATELY
+    // Algorithm scoring and AI summary happen in background
+    const responseTime = Date.now() - requestStart;
+    console.log(`[Hazard] ✅ Sending response after ${responseTime}ms`);
     res.status(201).json({
       message: "✅ Hazard created successfully",
       hazard: newHazard,
@@ -148,27 +138,8 @@ export const createHazard = async (req, res) => {
       }
     })();
 
-    // Step 6: Upload image in background (non-blocking)
-    if (fileToUpload) {
-      uploadHazardImageToSupabase(fileToUpload)
-        .then(async (imageUrl) => {
-          if (imageUrl) {
-            await Hazard.modifyHazard(newHazard.report_id, { image_url: imageUrl });
-            console.log(`[Hazard] ✅ Image uploaded successfully for hazard ${newHazard.report_id}: ${imageUrl}`);
-          } else {
-            console.warn(`[Hazard] ⚠️ Image upload returned null for hazard ${newHazard.report_id}`);
-          }
-        })
-        .catch(async (err) => {
-          console.error(`[Hazard] ❌ Failed to upload image for hazard ${newHazard.report_id}:`, {
-            error: err.message,
-            stack: err.stack,
-            fileSize: fileToUpload.size,
-            fileType: fileToUpload.mimetype,
-          });
-          // Note: Consider adding a notification or retry mechanism here in the future
-        });
-    }
+    // ✅ NEW: Image is already uploaded to Supabase by frontend
+    // No background upload needed - image_url is already in hazardData
 
     // Step 7: Generate AI summary and notify users in background (non-blocking)
     summarizeHazard(newHazard)

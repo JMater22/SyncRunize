@@ -199,6 +199,31 @@ const ReportHazard: React.FC = () => {
       setUploadProgress(0); // ✅ FIX: Reset progress
       console.log('[HazardReport] Validation passed, preparing data...');
 
+      // ✅ NEW: Upload image directly to Supabase first (if present)
+      let imageUrl: string | undefined = undefined;
+      if (photoBlob) {
+        console.log(`[HazardReport] Uploading image to Supabase (${(photoBlob.size / 1024).toFixed(0)}KB)...`);
+        const uploadStart = performance.now();
+
+        try {
+          const { uploadImageToSupabase } = await import('../lib/supabaseClient');
+          imageUrl = await uploadImageToSupabase(
+            photoBlob,
+            `hazard-${Date.now()}.jpg`,
+            'hazardImage',
+            (progress) => {
+              setUploadProgress(progress);
+              console.log(`[HazardReport] Upload progress: ${progress}%`);
+            }
+          );
+          const uploadTime = performance.now() - uploadStart;
+          console.log(`[HazardReport] ✅ Image uploaded to Supabase in ${uploadTime.toFixed(0)}ms: ${imageUrl}`);
+        } catch (uploadError: any) {
+          console.error('[HazardReport] ❌ Image upload failed:', uploadError);
+          throw new Error('Failed to upload image: ' + uploadError.message);
+        }
+      }
+
       const hazardData = {
         title: title.trim() || 'Hazard report',
         incident_type: hazardType,
@@ -206,21 +231,18 @@ const ReportHazard: React.FC = () => {
         lat: latNum,
         lng: lngNum,
         severity_weight: severity / 100,
-        // ✅ CRITICAL FIX: Use pre-converted blob (no conversion delay during submit!)
-        imageFile: photoBlob || undefined,
+        // ✅ NEW: Send image URL instead of file blob
+        image_url: imageUrl,
       };
 
       console.log('[HazardReport] Data prepared, calling API...', {
-        hasImage: !!photoBlob,
-        imageSize: photoBlob ? `${(photoBlob.size / 1024).toFixed(0)}KB` : 'none',
+        hasImage: !!imageUrl,
+        imageUrl: imageUrl || 'none',
       });
 
       const apiCallStart = performance.now();
-      // ✅ FIX: Pass progress callback to show upload status
-      await HazardsApi.reportHazard(hazardData, (progress) => {
-        setUploadProgress(progress);
-        console.log(`[HazardReport] Upload progress: ${progress}%`);
-      });
+      // Backend now just saves the metadata (no file processing!)
+      await HazardsApi.reportHazard(hazardData);
       const apiCallTime = performance.now() - apiCallStart;
 
       console.log(`[HazardReport] ✅ API call completed in ${apiCallTime.toFixed(0)}ms`);

@@ -204,6 +204,8 @@ const RunTrackerPage: React.FC = () => {
       fetchAccidentClusters();
       // Load hazards at current map center (not fixed default center)
       const center = mapHandleRef.current?.getCenter() ?? mapboxDefaultCenter;
+      // ✅ FIX: Set latestLocationRef even when not recording so nearbyHazardsCount works
+      latestLocationRef.current = center;
       loadHazards(center);
     }
   }, [mapLoaded, fetchAccidentClusters, loadHazards]);

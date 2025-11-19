@@ -17,8 +17,9 @@ export type RunState = 'IDLE' | 'RUNNING' | 'PAUSED' | 'FINISHED';
 // Professional-grade constants (Strava/Nike Run Club standards)
 const INSTANT_PACE_WINDOW_MS = 30000; // 30 seconds (was 10s - too noisy)
 const INSTANT_PACE_ALPHA = 0.35;
-const MIN_MOVEMENT_THRESHOLD_METERS = 2.5; // Ignore GPS jitter < 2.5m
+const MIN_MOVEMENT_THRESHOLD_METERS = 5.0; // ✅ FIX: Increased from 2.5m to 5m to prevent GPS drift when stationary
 const MAX_GPS_ACCURACY_METERS = 20; // ✅ FIX: Reject GPS samples with accuracy > 20m
+const MIN_WALKING_SPEED_MPS = 0.5; // ✅ FIX: 0.5 m/s (~1.8 km/h) - slower than slow walk, likely stationary
 // ✅ FIX: GPS signal loss detection - pause timer if no movement for 30 seconds
 const GPS_STALL_THRESHOLD_MS = 30000; // 30 seconds without movement = consider stalled
 
@@ -212,8 +213,15 @@ const applySamples = (state: RunSession, samples: GpsSample[]): RunSession => {
 
     if (previous) {
       const delta = haversineDistanceMeters(previous, sample);
+
+      // ✅ FIX: Additional speed check to prevent GPS drift accumulation when stationary
+      // If speed is below minimum walking speed AND delta is small, skip distance accumulation
+      const isLikelyStationary = sample.speedMs !== undefined && sample.speedMs !== null
+        && sample.speedMs < MIN_WALKING_SPEED_MPS
+        && delta < MIN_MOVEMENT_THRESHOLD_METERS * 2; // Allow slightly larger threshold when speed confirms stationary
+
       // Professional standard: Ignore GPS jitter below threshold (Strava/Nike method)
-      if (isFinite(delta) && delta >= MIN_MOVEMENT_THRESHOLD_METERS) {
+      if (isFinite(delta) && delta >= MIN_MOVEMENT_THRESHOLD_METERS && !isLikelyStationary) {
         breadcrumb += delta;
         if (state.status === 'RUNNING') {
           moving += delta;
