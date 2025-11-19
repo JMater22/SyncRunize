@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(./gradlew assembleRelease:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nRelease mobile app v1.0.10 with session timeout fix and coordinate validation debugging\n\nChanges:\n- Fixed infinite loading issue by adding 5-second timeout to session refresh in api.ts\n- Added comprehensive coordinate validation debugging in Hazard-Report.tsx\n- Updated mobile app version to 1.0.10\n- Updated website download links to v1.0.10\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

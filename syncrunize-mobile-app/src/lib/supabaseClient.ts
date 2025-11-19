@@ -33,44 +33,59 @@ export const uploadImageToSupabase = async (
 
     console.log(`[Supabase] Uploading to: ${storagePath} (${(blob.size / 1024).toFixed(0)}KB)`);
 
-    // Simulate progress updates (Supabase doesn't provide native progress)
+    // ✅ FIX: Simulate progress updates with incremental increase (not random)
+    let currentProgress = 0;
     const progressInterval = setInterval(() => {
-      if (onProgress) {
-        // Simulate progress from 0-90% during upload
-        const fakeProgress = Math.min(90, Math.random() * 90);
-        onProgress(fakeProgress);
+      if (onProgress && currentProgress < 90) {
+        // Increment progress gradually: +3-8% each tick
+        currentProgress += Math.random() * 5 + 3;
+        currentProgress = Math.min(90, currentProgress); // Cap at 90%
+        onProgress(Math.round(currentProgress));
       }
-    }, 200);
+    }, 300);
 
-    const { data, error } = await supabase.storage
-      .from('assets')
-      .upload(storagePath, blob, {
-        contentType: blob.type,
-        upsert: true,
-      });
+    try {
+      // ✅ FIX: Add 30-second timeout to prevent infinite hanging
+      const uploadPromise = supabase.storage
+        .from('assets')
+        .upload(storagePath, blob, {
+          contentType: blob.type,
+          upsert: true,
+        });
 
-    clearInterval(progressInterval);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Upload timeout after 30 seconds')), 30000)
+      );
 
-    if (error) {
-      console.error('[Supabase] Upload error:', error);
-      throw new Error(error.message || 'Failed to upload image');
+      const { error } = await Promise.race([uploadPromise, timeoutPromise]);
+
+      clearInterval(progressInterval);
+
+      if (error) {
+        console.error('[Supabase] Upload error:', error);
+        throw new Error(error.message || 'Failed to upload image');
+      }
+
+      if (onProgress) onProgress(100);
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('assets')
+        .getPublicUrl(storagePath);
+
+      const publicUrl = urlData?.publicUrl;
+
+      if (!publicUrl) {
+        throw new Error('Failed to get public URL for uploaded image');
+      }
+
+      console.log(`[Supabase] Upload successful: ${publicUrl}`);
+      return publicUrl;
+    } catch (error: any) {
+      clearInterval(progressInterval); // ✅ FIX: Always clear interval on error
+      console.error('[Supabase] Upload failed:', error);
+      throw error;
     }
-
-    if (onProgress) onProgress(100);
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('assets')
-      .getPublicUrl(storagePath);
-
-    const publicUrl = urlData?.publicUrl;
-
-    if (!publicUrl) {
-      throw new Error('Failed to get public URL for uploaded image');
-    }
-
-    console.log(`[Supabase] Upload successful: ${publicUrl}`);
-    return publicUrl;
   } catch (error: any) {
     console.error('[Supabase] Upload failed:', error);
     throw error;
