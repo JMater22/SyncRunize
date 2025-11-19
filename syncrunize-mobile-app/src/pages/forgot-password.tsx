@@ -20,9 +20,11 @@ const ForgotPassword: React.FC = () => {
     }
     try {
       setSending(true);
-      const redirectTo = getAuthRedirectUrl('/reset-password');
-      const options = redirectTo ? { redirectTo } : {};
-      const { error } = await supabase.auth.resetPasswordForEmail(email, options);
+      // ✅ FIX: Use website redirect bridge for password reset
+      // This works reliably on mobile by redirecting through the website first,
+      // then triggering the deep link to open the app
+      const redirectTo = 'https://syncrunize-website.vercel.app/auth-redirect';
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) {
         setToast({ open: true, msg: error.message, color: 'danger' });
         return;

@@ -14,6 +14,7 @@ import "../theme/user-authentication.css";
 import LogoIcon from "../components/assets/SycnRunize-Logo.png";
 import { useHideTabBar } from "../hooks/useHideTabBar";
 import { supabase } from "../lib/supabaseClient";
+import { getAuthRedirectUrl } from "../lib/authRedirect";
 
 
 const GetStarted: React.FC = () => {
@@ -43,13 +44,45 @@ const GetStarted: React.FC = () => {
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth <= 768);
-    }; 
+    };
 
     checkScreenSize();
     window.addEventListener("resize", checkScreenSize);
 
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
+
+  // Listen for auth state changes and redirect when logged in
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        console.log('[GetStarted] Auth state changed to SIGNED_IN, redirecting to home');
+        history.replace('/home');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [history]);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const redirectTo = getAuthRedirectUrl('/home');
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: redirectTo ? { redirectTo } : {},
+      });
+
+      if (error) {
+        console.error('[GetStarted] Google OAuth error:', error);
+        setError(error.message);
+      }
+    } catch (err: any) {
+      console.error('[GetStarted] Google sign-in error:', err);
+      setError(err?.message || "Google sign-in failed");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -354,6 +387,7 @@ const GetStarted: React.FC = () => {
                   <IonButton
                     fill="solid"
                     className="social-button google-button"
+                    onClick={handleGoogleSignIn}
                   >
                     <div className="social-content">
                       <svg className="social-icon" viewBox="0 0 24 24">

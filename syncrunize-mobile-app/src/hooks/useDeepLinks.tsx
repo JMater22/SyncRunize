@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
 import { App, URLOpenListenerEvent } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
+import { supabase } from '../lib/supabaseClient';
 
 /**
  * Deep Link Handler for Mobile App
@@ -35,14 +36,50 @@ export const useDeepLinks = () => {
         console.log('[DeepLink] Search params:', urlObj.searchParams.toString());
 
         // Handle OAuth callback (Google Sign-In)
-        // Format: syncrunize://home (after successful OAuth)
+        // Format: syncrunize://home#access_token=...&refresh_token=...
         if (path === 'home' || path === '/home') {
           console.log('[DeepLink] Detected OAuth redirect to home');
 
-          // Navigate to home page after OAuth success
-          setTimeout(() => {
-            history.push('/home');
-          }, 100);
+          // Check if URL contains auth tokens in the hash
+          const hash = urlObj.hash.substring(1); // Remove the '#'
+          const hashParams = new URLSearchParams(hash);
+          const accessToken = hashParams.get('access_token');
+
+          if (accessToken) {
+            console.log('[DeepLink] OAuth tokens detected, establishing session...');
+
+            // Get all required tokens from the hash
+            const refreshToken = hashParams.get('refresh_token');
+            const expiresIn = hashParams.get('expires_in');
+            const tokenType = hashParams.get('token_type') || 'bearer';
+
+            // Set the session explicitly with the tokens from the URL
+            supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+            }).then(({ data: { session }, error }) => {
+              if (error) {
+                console.error('[DeepLink] Error establishing OAuth session:', error);
+                history.push('/log-in');
+                return;
+              }
+
+              if (session) {
+                console.log('[DeepLink] OAuth session established, redirecting to home');
+                setTimeout(() => {
+                  history.push('/home');
+                }, 100);
+              } else {
+                console.warn('[DeepLink] No session found after OAuth, redirecting to login');
+                history.push('/log-in');
+              }
+            });
+          } else {
+            // No tokens in URL, just navigate to home
+            setTimeout(() => {
+              history.push('/home');
+            }, 100);
+          }
           return;
         }
 

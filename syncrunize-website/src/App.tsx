@@ -36,6 +36,7 @@ import GetStarted from "./components/UserAuth/GetStarted";
 import Login from "./components/UserAuth/LoginForm";
 import ForgotPassword from "./components/UserAuth/ForgotPassword";
 import ResetPassword from "./components/UserAuth/ResetPassword";
+import AuthRedirect from "./pages/AuthRedirect";
 import CreateRouteMap from "./components/Routes/CreateRouteMap";
 
 import "@ionic/react/css/core.css";
@@ -62,7 +63,7 @@ const AppLayout: React.FC<{ session: any }> = ({ session }) => {
   const location = useLocation();
 
   // Auth pages where header/footer should be hidden
-  const authPages = ['/login', '/get-started', '/forgot-password', '/reset-password'];
+  const authPages = ['/login', '/get-started', '/forgot-password', '/reset-password', '/auth-redirect'];
   const isAuthPage = authPages.includes(location.pathname);
 
   return (
@@ -142,6 +143,10 @@ const AppLayout: React.FC<{ session: any }> = ({ session }) => {
               exact
               path="/reset-password"
               component={ResetPassword} />
+            <Route
+              exact
+              path="/auth-redirect"
+              component={AuthRedirect} />
             <Route
               exact
               path="/community"
