@@ -237,7 +237,7 @@ const Community: React.FC = () => {
 
       // ✅ NEW: Upload directly to Supabase
       setToastMessage("Uploading group photo...");
-      setToastColor('primary');
+      setToastColor('success');
       setShowToast(true);
 
       // Convert dataUrl to blob
