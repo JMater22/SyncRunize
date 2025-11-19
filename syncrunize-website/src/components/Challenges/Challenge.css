@@ -9,7 +9,7 @@
 .button-animation-container.joined {
   min-height: 140px;
 }
-
+ 
 /* Join Challenge Button Styles */
 .join-challenge-btn,
 .main-challenge-btn,
@@ -390,10 +390,10 @@
     margin-right: 12px;
   }
 
-  .suggested-header {
+  h3.suggested-header {
     font-size: 20px;
     text-align: center;
-    margin: 20px 0 10px 0;
+    margin: 70px 0 10px 0;
     padding: 0 12px;
   }
 

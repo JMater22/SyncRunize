@@ -16,7 +16,7 @@ import {
 } from "@ionic/react";
 import {
   location,
-  chatbubbles,
+  chatbubbles, 
   imageOutline,
   closeCircle, 
   arrowBack,
@@ -1036,8 +1036,10 @@ const handleInviteUser = async (userId: number) => {
               {/* ==================== LEADERBOARD ==================== */}
               {activeSegment === "leaderboard" && (
                 <>
-                  <section className="leaders-section">
-                    <h2 className="section-heading">Last Week's Leaders</h2>
+                 <section className="leaders-section">
+                  <h2 className="section-heading">
+                    {leaderboardWeek === 'last' ? "Last Week's Leaders" : "This Week's Leaders"}
+                  </h2>
                     <div className="leaders-grid">
                       <div className="leader-category">
                         <h3 className="category-title">Distance</h3>

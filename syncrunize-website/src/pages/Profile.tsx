@@ -8,9 +8,9 @@ import {
   IonCardContent,
   IonImg,
   IonGrid,
-  IonRow,
+  IonRow, 
   IonCol,
-  IonIcon,
+  IonIcon, 
   IonModal, 
   IonHeader,
   IonToolbar,
@@ -1090,7 +1090,7 @@ const handleSaveProfile = async () => {
 
               <div className="activity-stats-row">
                 <div className="activity-stat">
-                  <strong>{route.distance_km}</strong>
+                  <strong>{Number(route.distance_km).toFixed(2)}</strong>
                   <span>Distance</span>
                 </div>
                 <div className="activity-stat">

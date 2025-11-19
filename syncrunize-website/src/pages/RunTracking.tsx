@@ -48,20 +48,10 @@ const RunTracking: React.FC = () => {
               lineHeight: '1.3'
             }}>
               Run Tracking Available on Mobile App Only
-            </h2>
-            <p style={{
-              fontSize: 'clamp(0.9rem, 2vw, 1rem)',
-              lineHeight: '1.6',
-              marginBottom: '16px',
-              color: '#555'
-            }}>
-              Experience seamless run tracking with real-time GPS monitoring,
-              personalized insights, and achievement milestones. Take your fitness
-              journey to the next level — download now and start running smarter!
-            </p>
+            </h2> 
             <div style={{
-              marginTop: '16px',
-              marginBottom: '20px',
+              marginTop: '6px',
+              marginBottom: '2px',
               padding: '12px 16px',
               backgroundColor: '#fff3cd',
               borderLeft: '4px solid #ffc107',

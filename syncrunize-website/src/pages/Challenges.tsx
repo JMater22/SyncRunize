@@ -10,7 +10,7 @@ import {
   IonCardHeader,
   IonCardTitle,
   IonCardContent,
-  IonImg,
+  IonImg, 
   IonButton,
   IonSpinner,
 } from "@ionic/react";
