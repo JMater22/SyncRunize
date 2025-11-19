@@ -203,8 +203,19 @@ const ReportHazard: React.FC = () => {
       return;
     }
 
-    const latNum = parseFloat(trimmedLat);
-    const lngNum = parseFloat(trimmedLng);
+    // ✅ FIX: Handle both comma and period as decimal separators (mobile keyboards may use comma)
+    const normalizedLat = trimmedLat.replace(',', '.');
+    const normalizedLng = trimmedLng.replace(',', '.');
+
+    console.log('[HazardReport] Normalized coordinates:', {
+      originalLat: trimmedLat,
+      originalLng: trimmedLng,
+      normalizedLat,
+      normalizedLng,
+    });
+
+    const latNum = parseFloat(normalizedLat);
+    const lngNum = parseFloat(normalizedLng);
 
     console.log('[HazardReport] Parsed coordinates:', {
       latNum,
@@ -403,7 +414,11 @@ const ReportHazard: React.FC = () => {
             <IonLabel position="stacked">Latitude</IonLabel>
             <IonInput
               value={lat}
-              onIonInput={(e) => setLat((e.detail.value ?? '').trim())}
+              onIonInput={(e) => {
+                // ✅ FIX: Normalize comma to period for mobile keyboards, then trim
+                const value = (e.detail.value ?? '').replace(',', '.').trim();
+                setLat(value);
+              }}
               placeholder="e.g. 15.123456"
               inputmode="decimal"
               type="text"
@@ -413,7 +428,11 @@ const ReportHazard: React.FC = () => {
             <IonLabel position="stacked">Longitude</IonLabel>
             <IonInput
               value={lng}
-              onIonInput={(e) => setLng((e.detail.value ?? '').trim())}
+              onIonInput={(e) => {
+                // ✅ FIX: Normalize comma to period for mobile keyboards, then trim
+                const value = (e.detail.value ?? '').replace(',', '.').trim();
+                setLng(value);
+              }}
               placeholder="e.g. 120.123456"
               inputmode="decimal"
               type="text"
