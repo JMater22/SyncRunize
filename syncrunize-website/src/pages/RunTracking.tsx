@@ -11,10 +11,10 @@ import '../components/RunTracking/RunTracking.css';
 const RunTracking: React.FC = () => { 
   const handleDownloadAPK = () => {
     // APK will be located in public/downloads/ folder
-    const apkUrl = "/downloads/SyncRunize-v1.0.8.apk";
+    const apkUrl = "/downloads/SyncRunize-v1.0.9.apk";
     const link = document.createElement('a');
     link.href = apkUrl;
-    link.download = "SyncRunize-v1.0.8.apk";
+    link.download = "SyncRunize-v1.0.9.apk";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

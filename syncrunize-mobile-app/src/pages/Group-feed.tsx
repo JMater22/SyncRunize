@@ -637,39 +637,74 @@ const GroupFeed: React.FC = () => {
       return;
     }
 
+    // Generate temporary ID for optimistic post (negative to avoid collisions)
+    const optimisticPostId = -Date.now();
+
+    // ✅ STEP 1: Create optimistic post - show IMMEDIATELY in UI
+    const optimisticPost: any = {
+      post_id: optimisticPostId,
+      author_name: currentUser.name,
+      author_id: currentUser.user_id,
+      author_avatar: currentUser.profile_picture,
+      created_at: new Date().toISOString(),
+      content: postContent.trim(),
+      title: postTitle.trim() || undefined,
+      images: postImages, // Use preview images temporarily (data URLs)
+      likes_count: 0,
+      comments_count: 0,
+      _optimistic: true, // Flag to show this is pending
+    };
+
+    // Add to UI immediately - user sees it instantly!
+    setGroupPosts(prev => [optimisticPost, ...prev]);
+
+    // Initialize likes and comments for optimistic post
+    setLikes(prev => ({
+      ...prev,
+      [optimisticPostId]: { count: 0, isLiked: false }
+    }));
+    setComments(prev => ({
+      ...prev,
+      [optimisticPostId]: []
+    }));
+
+    // Reset form immediately for better UX
+    const savedTitle = postTitle;
+    const savedContent = postContent;
+    const savedImages = postImages;
+
+    setPostTitle('');
+    setPostContent('');
+    setPostImages([]);
+    setShowCreatePostModal(false);
+
     try {
       setIsCreatingPost(true);
       console.log('[GroupFeed] Creating post...', {
         groupId,
         userId: currentUser.user_id,
-        contentLength: postContent.trim().length,
-        imageCount: postImages.length
+        contentLength: savedContent.trim().length,
+        imageCount: savedImages.length
       });
 
-      // Upload images to Supabase first if there are any
+      // ✅ STEP 2: Upload images in background
       let imageUrls: string[] = [];
-      if (postImages.length > 0) {
-        console.log('[GroupFeed] Uploading', postImages.length, 'images to Supabase...');
-        setToastMessage('Uploading images...');
-        setToastColor('primary');
-        setShowToast(true);
+      if (savedImages.length > 0) {
+        console.log('[GroupFeed] Uploading', savedImages.length, 'images to Supabase...');
 
         try {
-          imageUrls = await uploadImagesToSupabase(postImages);
+          imageUrls = await uploadImagesToSupabase(savedImages);
           console.log('[GroupFeed] All images uploaded successfully:', imageUrls);
         } catch (error: any) {
           console.error('[GroupFeed] Image upload failed:', error);
-          setToastMessage(error.message || 'Failed to upload images');
-          setToastColor('danger');
-          setShowToast(true);
-          setIsCreatingPost(false);
-          return;
+          throw new Error(error.message || 'Failed to upload images');
         }
       }
 
+      // ✅ STEP 3: Create post in backend
       const postData = {
-        title: postTitle.trim() || undefined,
-        content: postContent.trim(),
+        title: savedTitle.trim() || undefined,
+        content: savedContent.trim(),
         images: imageUrls.length > 0 ? imageUrls : undefined,
         userId: currentUser.user_id
       };
@@ -701,39 +736,59 @@ const GroupFeed: React.FC = () => {
         images: parsedImages
       };
 
-      console.log('[GroupFeed] Parsed new post images:', {
-        original: newPost.images,
-        parsed: parsedNewPost.images,
-        isArray: Array.isArray(parsedNewPost.images)
+      // ✅ STEP 4: Replace optimistic post with real data
+      setGroupPosts(prev => prev.map(post =>
+        post.post_id === optimisticPostId ? parsedNewPost : post
+      ));
+
+      // Update likes/comments with real post ID
+      setLikes(prev => {
+        const newLikes = { ...prev };
+        newLikes[parsedNewPost.post_id] = newLikes[optimisticPostId];
+        delete newLikes[optimisticPostId];
+        return newLikes;
       });
-
-      // ✅ IMMEDIATELY add the new post to the state (optimistic update)
-      setGroupPosts(prev => [parsedNewPost, ...prev]);
-
-      // Initialize likes and comments for the new post
-      setLikes(prev => ({
-        ...prev,
-        [parsedNewPost.post_id]: { count: 0, isLiked: false }
-      }));
-      setComments(prev => ({
-        ...prev,
-        [parsedNewPost.post_id]: []
-      }));
+      setComments(prev => {
+        const newComments = { ...prev };
+        newComments[parsedNewPost.post_id] = newComments[optimisticPostId];
+        delete newComments[optimisticPostId];
+        return newComments;
+      });
 
       setToastMessage('Post created successfully!');
       setToastColor('success');
       setShowToast(true);
 
-      // Close modal and reset
-      setShowCreatePostModal(false);
-      setPostTitle("");
-      setPostContent("");
-      setPostImages([]);
+      console.log('[GroupFeed] ✅ Optimistic post creation:', {
+        optimisticId: optimisticPostId,
+        realId: parsedNewPost.post_id,
+        totalTime: 'Instant to user!',
+        backgroundUpload: `${imageUrls.length} images`
+      });
 
-      // Don't fetch - trust the optimistic update to avoid cache race condition
-      // Post is already in state and saved to DB, will load fresh on next visit
     } catch (err: any) {
       console.error('[GroupFeed] Failed to create post:', err);
+
+      // ✅ STEP 5: Remove optimistic post on error
+      setGroupPosts(prev => prev.filter(post => post.post_id !== optimisticPostId));
+
+      // Remove from likes/comments
+      setLikes(prev => {
+        const newLikes = { ...prev };
+        delete newLikes[optimisticPostId];
+        return newLikes;
+      });
+      setComments(prev => {
+        const newComments = { ...prev };
+        delete newComments[optimisticPostId];
+        return newComments;
+      });
+
+      // Restore form data so user doesn't lose their work
+      setPostTitle(savedTitle);
+      setPostContent(savedContent);
+      setPostImages(savedImages);
+      setShowCreatePostModal(true);
 
       let errorMessage = 'Failed to create post';
       if (err.response?.data?.error) {

@@ -34,9 +34,21 @@ export const createHazard = async (req, res) => {
       hasImage: !!hazardData.image_url
     });
 
+    // Validate coordinates format
     if (isNaN(hazardData.lat) || isNaN(hazardData.lng)) {
-      console.error('[Hazard] ❌ Invalid coordinates');
-      return res.status(400).json({ error: "Invalid latitude or longitude." });
+      console.error('[Hazard] ❌ Invalid coordinates - not a number');
+      return res.status(400).json({ error: "Invalid latitude or longitude format." });
+    }
+
+    // Validate coordinate ranges
+    if (hazardData.lat < -90 || hazardData.lat > 90) {
+      console.error('[Hazard] ❌ Invalid latitude range:', hazardData.lat);
+      return res.status(400).json({ error: "Latitude must be between -90 and 90." });
+    }
+
+    if (hazardData.lng < -180 || hazardData.lng > 180) {
+      console.error('[Hazard] ❌ Invalid longitude range:', hazardData.lng);
+      return res.status(400).json({ error: "Longitude must be between -180 and 180." });
     }
 
     // Insert into DB with image_url already present

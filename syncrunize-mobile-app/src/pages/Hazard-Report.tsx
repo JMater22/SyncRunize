@@ -182,85 +182,108 @@ const ReportHazard: React.FC = () => {
     console.log('[HazardReport] Submit button clicked');
     const submitStart = performance.now();
 
-    if (!lat || !lng) {
+    // Trim whitespace from coordinates
+    const trimmedLat = lat.trim();
+    const trimmedLng = lng.trim();
+
+    if (!trimmedLat || !trimmedLng) {
       setToast({ message: 'Provide the hazard location first.', color: 'danger' });
       return;
     }
 
-    const latNum = parseFloat(lat);
-    const lngNum = parseFloat(lng);
+    const latNum = parseFloat(trimmedLat);
+    const lngNum = parseFloat(trimmedLng);
+
+    // Validate numeric values
     if (isNaN(latNum) || isNaN(lngNum)) {
-      setToast({ message: 'Invalid coordinates', color: 'danger' });
+      setToast({ message: 'Invalid coordinates format. Use numbers only.', color: 'danger' });
       return;
     }
 
-    try {
-      setSubmitting(true);
-      setUploadProgress(0); // ✅ FIX: Reset progress
-      console.log('[HazardReport] Validation passed, preparing data...');
-
-      // ✅ NEW: Upload image directly to Supabase first (if present)
-      let imageUrl: string | undefined = undefined;
-      if (photoBlob) {
-        console.log(`[HazardReport] Uploading image to Supabase (${(photoBlob.size / 1024).toFixed(0)}KB)...`);
-        const uploadStart = performance.now();
-
-        try {
-          const { uploadImageToSupabase } = await import('../lib/supabaseClient');
-          imageUrl = await uploadImageToSupabase(
-            photoBlob,
-            `hazard-${Date.now()}.jpg`,
-            'hazardImage',
-            (progress) => {
-              setUploadProgress(progress);
-              console.log(`[HazardReport] Upload progress: ${progress}%`);
-            }
-          );
-          const uploadTime = performance.now() - uploadStart;
-          console.log(`[HazardReport] ✅ Image uploaded to Supabase in ${uploadTime.toFixed(0)}ms: ${imageUrl}`);
-        } catch (uploadError: any) {
-          console.error('[HazardReport] ❌ Image upload failed:', uploadError);
-          throw new Error('Failed to upload image: ' + uploadError.message);
-        }
-      }
-
-      const hazardData = {
-        title: title.trim() || 'Hazard report',
-        incident_type: hazardType,
-        description: description.trim() || defaultDescription[hazardType] || 'Hazard reported.',
-        lat: latNum,
-        lng: lngNum,
-        severity_weight: severity / 100,
-        // ✅ NEW: Send image URL instead of file blob
-        image_url: imageUrl,
-      };
-
-      console.log('[HazardReport] Data prepared, calling API...', {
-        hasImage: !!imageUrl,
-        imageUrl: imageUrl || 'none',
-      });
-
-      const apiCallStart = performance.now();
-      // Backend now just saves the metadata (no file processing!)
-      await HazardsApi.reportHazard(hazardData);
-      const apiCallTime = performance.now() - apiCallStart;
-
-      console.log(`[HazardReport] ✅ API call completed in ${apiCallTime.toFixed(0)}ms`);
-      console.log(`[HazardReport] ✅ Total submit time: ${(performance.now() - submitStart).toFixed(0)}ms`);
-
-      setToast({ message: 'Hazard reported. Thank you!', color: 'success' });
-      setTimeout(() => {
-        history.replace('/run-tracking');
-      }, 1200);
-    } catch (err: any) {
-      const submitTime = performance.now() - submitStart;
-      console.error(`[HazardReport] ❌ Submit failed after ${submitTime.toFixed(0)}ms:`, err);
-      const msg = err?.response?.data?.error || err?.message || 'Failed to submit hazard.';
-      setToast({ message: msg, color: 'danger' });
-    } finally {
-      setSubmitting(false);
-      setUploadProgress(0); // ✅ FIX: Reset progress
+    // Validate coordinate ranges
+    if (latNum < -90 || latNum > 90) {
+      setToast({ message: 'Latitude must be between -90 and 90', color: 'danger' });
+      return;
     }
+
+    if (lngNum < -180 || lngNum > 180) {
+      setToast({ message: 'Longitude must be between -180 and 180', color: 'danger' });
+      return;
+    }
+
+    // ✅ Process submission with instant feedback
+    (async () => {
+      try {
+        setSubmitting(true);
+        setUploadProgress(0);
+        console.log('[HazardReport] Validation passed, submitting...');
+
+        // Upload image to Supabase first if present
+        let imageUrl: string | undefined = undefined;
+        if (photoBlob) {
+          console.log(`[HazardReport] Uploading image to Supabase (${(photoBlob.size / 1024).toFixed(0)}KB)...`);
+          const uploadStart = performance.now();
+
+          try {
+            const { uploadImageToSupabase } = await import('../lib/supabaseClient');
+            imageUrl = await uploadImageToSupabase(
+              photoBlob,
+              `hazard-${Date.now()}.jpg`,
+              'hazardImage',
+              (progress) => {
+                setUploadProgress(progress);
+                console.log(`[HazardReport] Upload progress: ${progress}%`);
+              }
+            );
+            const uploadTime = performance.now() - uploadStart;
+            console.log(`[HazardReport] ✅ Image uploaded to Supabase in ${uploadTime.toFixed(0)}ms: ${imageUrl}`);
+          } catch (uploadError: any) {
+            console.error('[HazardReport] ❌ Image upload failed:', uploadError);
+            throw new Error('Failed to upload image: ' + uploadError.message);
+          }
+        }
+
+        const hazardData = {
+          title: title.trim() || 'Hazard report',
+          incident_type: hazardType,
+          description: description.trim() || defaultDescription[hazardType] || 'Hazard reported.',
+          lat: latNum,
+          lng: lngNum,
+          severity_weight: severity / 100,
+          image_url: imageUrl,
+        };
+
+        console.log('[HazardReport] Data prepared, calling API...', {
+          hasImage: !!imageUrl,
+          imageUrl: imageUrl || 'none',
+        });
+
+        const apiCallStart = performance.now();
+        await HazardsApi.reportHazard(hazardData);
+        const apiCallTime = performance.now() - apiCallStart;
+
+        console.log(`[HazardReport] ✅ API call completed in ${apiCallTime.toFixed(0)}ms`);
+        console.log(`[HazardReport] ✅ Total submit time: ${(performance.now() - submitStart).toFixed(0)}ms`);
+
+        // ✅ Show success and navigate
+        setToast({ message: 'Hazard reported. Thank you!', color: 'success' });
+        setTimeout(() => {
+          history.replace('/run-tracking');
+        }, 600);
+
+      } catch (err: any) {
+        const submitTime = performance.now() - submitStart;
+        console.error(`[HazardReport] ❌ Submission failed after ${submitTime.toFixed(0)}ms:`, err);
+
+        // ✅ Show error toast so user knows what happened
+        const msg = err?.response?.data?.error || err?.message || 'Failed to submit hazard.';
+        setToast({ message: msg, color: 'danger' });
+        console.error('[HazardReport] ❌ Error details:', msg);
+      } finally {
+        setSubmitting(false);
+        setUploadProgress(0);
+      }
+    })();
   };
 
   return (
@@ -349,11 +372,23 @@ const ReportHazard: React.FC = () => {
           </IonGrid>
           <IonItem>
             <IonLabel position="stacked">Latitude</IonLabel>
-            <IonInput value={lat} onIonInput={(e) => setLat(e.detail.value ?? '')} placeholder="e.g. 15.123456" inputmode="decimal" />
+            <IonInput
+              value={lat}
+              onIonInput={(e) => setLat((e.detail.value ?? '').trim())}
+              placeholder="e.g. 15.123456"
+              inputmode="decimal"
+              type="text"
+            />
           </IonItem>
           <IonItem>
             <IonLabel position="stacked">Longitude</IonLabel>
-            <IonInput value={lng} onIonInput={(e) => setLng(e.detail.value ?? '')} placeholder="e.g. 120.123456" inputmode="decimal" />
+            <IonInput
+              value={lng}
+              onIonInput={(e) => setLng((e.detail.value ?? '').trim())}
+              placeholder="e.g. 120.123456"
+              inputmode="decimal"
+              type="text"
+            />
           </IonItem>
         </section>
 
