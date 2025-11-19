@@ -19,7 +19,9 @@ export const createUserProfile = async (req, res) => {
     // ✅ Check if profile already exists by auth_id
     const existingByAuthId = await UserModel.getUserByAuthId(auth_id);
     if (existingByAuthId) {
-      return res.status(400).json({ error: "Profile already exists for this account" });
+      // Profile already exists - return it (idempotent operation)
+      console.log(`[CreateUserProfile] Profile already exists for auth_id ${auth_id}. Returning existing profile.`);
+      return res.status(200).json(existingByAuthId);
     }
 
     // ✅ Check if email is already in use (from a previous account)
