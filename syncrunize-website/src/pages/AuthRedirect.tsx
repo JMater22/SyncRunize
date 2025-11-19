@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { IonPage, IonContent, IonSpinner, IonButton, IonText } from '@ionic/react';
-import LogoIcon from '../components/assets/SycnRunize-Logo.png';
+import LogoIcon from '../assets/SycnRunize-Logo.png';
 
 /**
  * Auth Redirect Bridge for Password Reset
