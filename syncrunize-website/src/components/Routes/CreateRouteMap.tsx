@@ -185,9 +185,22 @@ const CreateRouteMap = () => {
   // Legend panel state
   const [showLegend, setShowLegend] = useState(false);
 
-  // Initialize Mapbox map
+  // Mobile sidebar state
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+
+    
+
+// Initialize Mapbox map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
+
+    console.log('[CreateRoute Web] Initializing map...');
+    console.log('[CreateRoute Web] Container dimensions:', {
+      width: mapContainer.current.clientWidth,
+      height: mapContainer.current.clientHeight,
+      offsetWidth: mapContainer.current.offsetWidth,
+      offsetHeight: mapContainer.current.offsetHeight
+    });
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -203,12 +216,25 @@ const CreateRouteMap = () => {
     map.current.on('load', () => {
       console.log('[CreateRoute Web] Map loaded successfully');
       setMapLoaded(true);
-      // Resize map to fit container properly
+      // Multiple resize attempts to ensure proper rendering
       setTimeout(() => {
         if (map.current) {
+          console.log('[CreateRoute Web] First resize');
           map.current.resize();
         }
       }, 100);
+      setTimeout(() => {
+        if (map.current) {
+          console.log('[CreateRoute Web] Second resize');
+          map.current.resize();
+        }
+      }, 500);
+      setTimeout(() => {
+        if (map.current) {
+          console.log('[CreateRoute Web] Third resize');
+          map.current.resize();
+        }
+      }, 1000);
       fetchHazardsInView();
       fetchAccidentClusters();
     });
@@ -223,6 +249,33 @@ const CreateRouteMap = () => {
       }
     };
   }, []);
+
+  // Handle map resize on window resize (important for mobile)
+  useEffect(() => {
+    const handleResize = () => {
+      if (map.current && mapLoaded) {
+        setTimeout(() => {
+          map.current?.resize();
+        }, 100);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    // Force initial resize for mobile after a delay
+    const initialResize = setTimeout(() => {
+      if (map.current && mapLoaded) {
+        console.log('[CreateRoute Web] Forcing map resize for mobile');
+        map.current.resize();
+      }
+    }, 500);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(initialResize);
+    };
+  }, [mapLoaded]);
+  
 
   // Load user unit preference (km/mi)
   useEffect(() => {
@@ -1681,6 +1734,14 @@ const CreateRouteMap = () => {
 
             {/* Mapbox Map Container */}
             <div ref={mapContainer} style={mapContainerStyle} />
+
+              {/* Mobile Create Route FAB */}
+              <button
+                className="mobile-create-route-fab"
+                onClick={() => setShowMobileSidebar(true)}
+              >
+                <IonIcon icon={navigateOutline} />
+              </button>
 
             {/* Pin Mode Indicator */}
             {pinMode && (
