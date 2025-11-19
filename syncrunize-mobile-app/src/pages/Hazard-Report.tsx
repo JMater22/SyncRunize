@@ -189,8 +189,12 @@ const ReportHazard: React.FC = () => {
     console.log('[HazardReport] Validating coordinates:', {
       rawLat: lat,
       rawLng: lng,
+      rawLatType: typeof lat,
+      rawLngType: typeof lng,
       trimmedLat,
       trimmedLng,
+      trimmedLatLength: trimmedLat.length,
+      trimmedLngLength: trimmedLng.length,
     });
 
     if (!trimmedLat || !trimmedLng) {
@@ -274,8 +278,13 @@ const ReportHazard: React.FC = () => {
         };
 
         console.log('[HazardReport] Data prepared, calling API...', {
+          lat: hazardData.lat,
+          lng: hazardData.lng,
+          latType: typeof hazardData.lat,
+          lngType: typeof hazardData.lng,
           hasImage: !!imageUrl,
           imageUrl: imageUrl || 'none',
+          fullPayload: hazardData,
         });
 
         const apiCallStart = performance.now();
