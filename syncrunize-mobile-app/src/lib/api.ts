@@ -14,10 +14,18 @@ let cachedSession: { access_token: string; expires_at?: number } | null = null;
 let lastSessionFetch = 0;
 const SESSION_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-// Initialize session cache
+// Initialize session cache with timeout
 const refreshSessionCache = async () => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    // Add 5 second timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Session refresh timeout')), 5000)
+    );
+
+    const sessionPromise = supabase.auth.getSession();
+
+    const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+
     cachedSession = session?.access_token ? {
       access_token: session.access_token,
       expires_at: session.expires_at
@@ -26,7 +34,11 @@ const refreshSessionCache = async () => {
     console.log('[API] Session cache refreshed');
   } catch (err) {
     console.error('[API] Error refreshing session cache:', err);
-    cachedSession = null;
+    // If refresh fails, try to use existing cached session
+    if (!cachedSession) {
+      cachedSession = null;
+    }
+    lastSessionFetch = Date.now(); // Still update timestamp to avoid retry loop
   }
 };
 

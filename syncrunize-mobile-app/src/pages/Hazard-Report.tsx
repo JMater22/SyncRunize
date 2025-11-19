@@ -186,7 +186,15 @@ const ReportHazard: React.FC = () => {
     const trimmedLat = lat.trim();
     const trimmedLng = lng.trim();
 
+    console.log('[HazardReport] Validating coordinates:', {
+      rawLat: lat,
+      rawLng: lng,
+      trimmedLat,
+      trimmedLng,
+    });
+
     if (!trimmedLat || !trimmedLng) {
+      console.log('[HazardReport] ❌ Empty coordinates');
       setToast({ message: 'Provide the hazard location first.', color: 'danger' });
       return;
     }
@@ -194,22 +202,34 @@ const ReportHazard: React.FC = () => {
     const latNum = parseFloat(trimmedLat);
     const lngNum = parseFloat(trimmedLng);
 
+    console.log('[HazardReport] Parsed coordinates:', {
+      latNum,
+      lngNum,
+      isLatNaN: isNaN(latNum),
+      isLngNaN: isNaN(lngNum),
+    });
+
     // Validate numeric values
     if (isNaN(latNum) || isNaN(lngNum)) {
+      console.log('[HazardReport] ❌ Coordinates are not numbers');
       setToast({ message: 'Invalid coordinates format. Use numbers only.', color: 'danger' });
       return;
     }
 
     // Validate coordinate ranges
     if (latNum < -90 || latNum > 90) {
-      setToast({ message: 'Latitude must be between -90 and 90', color: 'danger' });
+      console.log('[HazardReport] ❌ Latitude out of range:', latNum);
+      setToast({ message: `Latitude must be between -90 and 90 (got ${latNum})`, color: 'danger' });
       return;
     }
 
     if (lngNum < -180 || lngNum > 180) {
-      setToast({ message: 'Longitude must be between -180 and 180', color: 'danger' });
+      console.log('[HazardReport] ❌ Longitude out of range:', lngNum);
+      setToast({ message: `Longitude must be between -180 and 180 (got ${lngNum})`, color: 'danger' });
       return;
     }
+
+    console.log('[HazardReport] ✅ Coordinate validation passed');
 
     // ✅ Process submission with instant feedback
     (async () => {
