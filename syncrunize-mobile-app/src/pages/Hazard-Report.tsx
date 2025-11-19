@@ -180,11 +180,20 @@ const ReportHazard: React.FC = () => {
 
   const handleSubmit = async () => {
     console.log('[HazardReport] Submit button clicked');
+
+    // ✅ CRITICAL FIX: Prevent multiple simultaneous submissions
+    if (submitting) {
+      console.log('[HazardReport] ⚠️ Already submitting, ignoring duplicate click');
+      return;
+    }
+
+    setSubmitting(true); // Lock immediately to prevent race conditions
     const submitStart = performance.now();
 
-    // Trim whitespace from coordinates
-    const trimmedLat = lat.trim();
-    const trimmedLng = lng.trim();
+    try {
+      // Trim whitespace from coordinates
+      const trimmedLat = lat.trim();
+      const trimmedLng = lng.trim();
 
     console.log('[HazardReport] Validating coordinates:', {
       rawLat: lat,
@@ -197,11 +206,12 @@ const ReportHazard: React.FC = () => {
       trimmedLngLength: trimmedLng.length,
     });
 
-    if (!trimmedLat || !trimmedLng) {
-      console.log('[HazardReport] ❌ Empty coordinates');
-      setToast({ message: 'Provide the hazard location first.', color: 'danger' });
-      return;
-    }
+      if (!trimmedLat || !trimmedLng) {
+        console.log('[HazardReport] ❌ Empty coordinates');
+        setToast({ message: 'Provide the hazard location first.', color: 'danger' });
+        setSubmitting(false);
+        return;
+      }
 
     // ✅ FIX: Handle both comma and period as decimal separators (mobile keyboards may use comma)
     const normalizedLat = trimmedLat.replace(',', '.');
@@ -224,106 +234,105 @@ const ReportHazard: React.FC = () => {
       isLngNaN: isNaN(lngNum),
     });
 
-    // Validate numeric values
-    if (isNaN(latNum) || isNaN(lngNum)) {
-      console.log('[HazardReport] ❌ Coordinates are not numbers');
-      setToast({ message: 'Invalid coordinates format. Use numbers only.', color: 'danger' });
-      return;
-    }
-
-    // Validate coordinate ranges
-    if (latNum < -90 || latNum > 90) {
-      console.log('[HazardReport] ❌ Latitude out of range:', latNum);
-      setToast({ message: `Latitude must be between -90 and 90 (got ${latNum})`, color: 'danger' });
-      return;
-    }
-
-    if (lngNum < -180 || lngNum > 180) {
-      console.log('[HazardReport] ❌ Longitude out of range:', lngNum);
-      setToast({ message: `Longitude must be between -180 and 180 (got ${lngNum})`, color: 'danger' });
-      return;
-    }
-
-    console.log('[HazardReport] ✅ Coordinate validation passed');
-
-    // ✅ Process submission with instant feedback
-    (async () => {
-      try {
-        setSubmitting(true);
-        setUploadProgress(0);
-        console.log('[HazardReport] Validation passed, submitting...');
-
-        // Upload image to Supabase first if present
-        let imageUrl: string | undefined = undefined;
-        if (photoBlob) {
-          console.log(`[HazardReport] Uploading image to Supabase (${(photoBlob.size / 1024).toFixed(0)}KB)...`);
-          const uploadStart = performance.now();
-
-          try {
-            const { uploadImageToSupabase } = await import('../lib/supabaseClient');
-            imageUrl = await uploadImageToSupabase(
-              photoBlob,
-              `hazard-${Date.now()}.jpg`,
-              'hazardImage',
-              (progress) => {
-                setUploadProgress(progress);
-                console.log(`[HazardReport] Upload progress: ${progress}%`);
-              }
-            );
-            const uploadTime = performance.now() - uploadStart;
-            console.log(`[HazardReport] ✅ Image uploaded to Supabase in ${uploadTime.toFixed(0)}ms: ${imageUrl}`);
-          } catch (uploadError: any) {
-            console.error('[HazardReport] ❌ Image upload failed:', uploadError);
-            throw new Error('Failed to upload image: ' + uploadError.message);
-          }
-        }
-
-        const hazardData = {
-          title: title.trim() || 'Hazard report',
-          incident_type: hazardType,
-          description: description.trim() || defaultDescription[hazardType] || 'Hazard reported.',
-          lat: latNum,
-          lng: lngNum,
-          severity_weight: severity / 100,
-          image_url: imageUrl,
-        };
-
-        console.log('[HazardReport] Data prepared, calling API...', {
-          lat: hazardData.lat,
-          lng: hazardData.lng,
-          latType: typeof hazardData.lat,
-          lngType: typeof hazardData.lng,
-          hasImage: !!imageUrl,
-          imageUrl: imageUrl || 'none',
-          fullPayload: hazardData,
-        });
-
-        const apiCallStart = performance.now();
-        await HazardsApi.reportHazard(hazardData);
-        const apiCallTime = performance.now() - apiCallStart;
-
-        console.log(`[HazardReport] ✅ API call completed in ${apiCallTime.toFixed(0)}ms`);
-        console.log(`[HazardReport] ✅ Total submit time: ${(performance.now() - submitStart).toFixed(0)}ms`);
-
-        // ✅ Show success and navigate
-        setToast({ message: 'Hazard reported. Thank you!', color: 'success' });
-        setTimeout(() => {
-          history.replace('/run-tracking');
-        }, 600);
-
-      } catch (err: any) {
-        const submitTime = performance.now() - submitStart;
-        console.error(`[HazardReport] ❌ Submission failed after ${submitTime.toFixed(0)}ms:`, err);
-
-        // ✅ Show error toast so user knows what happened
-        const msg = err?.response?.data?.error || err?.message || 'Failed to submit hazard.';
-        setToast({ message: msg, color: 'danger' });
-        console.error('[HazardReport] ❌ Error details:', msg);
-      } finally {
+      // Validate numeric values
+      if (isNaN(latNum) || isNaN(lngNum)) {
+        console.log('[HazardReport] ❌ Coordinates are not numbers');
+        setToast({ message: 'Invalid coordinates format. Use numbers only.', color: 'danger' });
         setSubmitting(false);
-        setUploadProgress(0);
+        return;
       }
-    })();
+
+      // Validate coordinate ranges
+      if (latNum < -90 || latNum > 90) {
+        console.log('[HazardReport] ❌ Latitude out of range:', latNum);
+        setToast({ message: `Latitude must be between -90 and 90 (got ${latNum})`, color: 'danger' });
+        setSubmitting(false);
+        return;
+      }
+
+      if (lngNum < -180 || lngNum > 180) {
+        console.log('[HazardReport] ❌ Longitude out of range:', lngNum);
+        setToast({ message: `Longitude must be between -180 and 180 (got ${lngNum})`, color: 'danger' });
+        setSubmitting(false);
+        return;
+      }
+
+      console.log('[HazardReport] ✅ Coordinate validation passed');
+      setUploadProgress(0);
+      console.log('[HazardReport] Validation passed, submitting...');
+
+      // Upload image to Supabase first if present
+      let imageUrl: string | undefined = undefined;
+      if (photoBlob) {
+        console.log(`[HazardReport] Uploading image to Supabase (${(photoBlob.size / 1024).toFixed(0)}KB)...`);
+        const uploadStart = performance.now();
+
+        try {
+          const { uploadImageToSupabase } = await import('../lib/supabaseClient');
+          imageUrl = await uploadImageToSupabase(
+            photoBlob,
+            `hazard-${Date.now()}.jpg`,
+            'hazardImage',
+            (progress) => {
+              setUploadProgress(progress);
+              console.log(`[HazardReport] Upload progress: ${progress}%`);
+            }
+          );
+          const uploadTime = performance.now() - uploadStart;
+          console.log(`[HazardReport] ✅ Image uploaded to Supabase in ${uploadTime.toFixed(0)}ms: ${imageUrl}`);
+        } catch (uploadError: any) {
+          console.error('[HazardReport] ❌ Image upload failed:', uploadError);
+          setSubmitting(false);
+          setToast({ message: 'Failed to upload image: ' + uploadError.message, color: 'danger' });
+          return;
+        }
+      }
+
+      const hazardData = {
+        title: title.trim() || 'Hazard report',
+        incident_type: hazardType,
+        description: description.trim() || defaultDescription[hazardType] || 'Hazard reported.',
+        lat: latNum,
+        lng: lngNum,
+        severity_weight: severity / 100,
+        image_url: imageUrl,
+      };
+
+      console.log('[HazardReport] Data prepared, calling API...', {
+        lat: hazardData.lat,
+        lng: hazardData.lng,
+        latType: typeof hazardData.lat,
+        lngType: typeof hazardData.lng,
+        hasImage: !!imageUrl,
+        imageUrl: imageUrl || 'none',
+        fullPayload: hazardData,
+      });
+
+      const apiCallStart = performance.now();
+      await HazardsApi.reportHazard(hazardData);
+      const apiCallTime = performance.now() - apiCallStart;
+
+      console.log(`[HazardReport] ✅ API call completed in ${apiCallTime.toFixed(0)}ms`);
+      console.log(`[HazardReport] ✅ Total submit time: ${(performance.now() - submitStart).toFixed(0)}ms`);
+
+      // ✅ Show success and navigate
+      setToast({ message: 'Hazard reported. Thank you!', color: 'success' });
+      setTimeout(() => {
+        history.replace('/run-tracking');
+      }, 600);
+
+    } catch (err: any) {
+      const submitTime = performance.now() - submitStart;
+      console.error(`[HazardReport] ❌ Submission failed after ${submitTime.toFixed(0)}ms:`, err);
+
+      // ✅ Show error toast so user knows what happened
+      const msg = err?.response?.data?.error || err?.message || 'Failed to submit hazard.';
+      setToast({ message: msg, color: 'danger' });
+      console.error('[HazardReport] ❌ Error details:', msg);
+    } finally {
+      setSubmitting(false);
+      setUploadProgress(0);
+    }
   };
 
   return (
