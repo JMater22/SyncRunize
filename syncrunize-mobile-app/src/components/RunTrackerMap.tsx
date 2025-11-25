@@ -471,6 +471,16 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
       const lngLat: [number, number] = [Number(hazard.lng), Number(hazard.lat)];
       const existingMarker = hazardMarkersRef.current.get(key);
       if (!existingMarker) {
+        // Create container for marker + label
+        const container = document.createElement('div');
+        container.className = 'hazard-marker-container';
+
+        // Create label (speech bubble)
+        const label = document.createElement('div');
+        label.className = 'hazard-label';
+        label.textContent = hazard.incident_type || 'Hazard';
+
+        // Create marker circle
         const element = document.createElement('div');
         element.className = 'hazard-marker';
         element.style.width = '24px';
@@ -481,12 +491,16 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
         element.style.cursor = 'pointer';
         element.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
 
-        element.addEventListener('click', (event) => {
+        // Assemble: label on top, marker below
+        container.appendChild(label);
+        container.appendChild(element);
+
+        container.addEventListener('click', (event) => {
           event.stopPropagation();
           onSelectHazard?.(hazard);
         });
 
-        const marker = new mapboxgl.Marker(element)
+        const marker = new mapboxgl.Marker(container)
           .setLngLat(lngLat)
           .addTo(map);
         hazardMarkersRef.current.set(key, marker);

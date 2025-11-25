@@ -337,8 +337,18 @@ const CreateRouteMap = () => {
       hazardMarkers.current.forEach(marker => marker.remove());
       hazardMarkers.current = [];
 
-      // Add new hazard markers
+      // Add new hazard markers with labels
       fetchedHazards.forEach((hazard) => {
+        // Create container for marker + label
+        const container = document.createElement('div');
+        container.className = 'hazard-marker-container';
+
+        // Create label (speech bubble)
+        const label = document.createElement('div');
+        label.className = 'hazard-label';
+        label.textContent = hazard.incident_type || 'Hazard';
+
+        // Create marker circle
         const el = document.createElement('div');
         el.className = 'hazard-marker';
         el.style.width = '24px';
@@ -349,12 +359,16 @@ const CreateRouteMap = () => {
         el.style.cursor = 'pointer';
         el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
 
-        el.addEventListener('click', () => {
+        // Assemble: label on top, marker below
+        container.appendChild(label);
+        container.appendChild(el);
+
+        container.addEventListener('click', () => {
           setSelectedHazard(hazard);
           setShowHazardModal(true);
         });
 
-        const marker = new mapboxgl.Marker(el)
+        const marker = new mapboxgl.Marker(container)
           .setLngLat([hazard.lng, hazard.lat])
           .addTo(map.current!);
 
