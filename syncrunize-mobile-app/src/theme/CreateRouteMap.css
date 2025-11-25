@@ -2059,6 +2059,34 @@
   transform: scale(0.95);
 }
 
+/* Accident Clusters Toggle Button */
+.accident-clusters-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 140, 0, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 22px;
+  color: #FF8C00;
+  flex-shrink: 0;
+}
+
+.accident-clusters-toggle-btn:active {
+  background: rgba(255, 140, 0, 0.3);
+  transform: scale(0.95);
+}
+
+.accident-clusters-toggle-btn.active {
+  background: rgba(255, 140, 0, 0.3);
+  color: #FF6500;
+  box-shadow: 0 0 0 2px rgba(255, 140, 0, 0.4);
+}
+
 /* Legend Modal Content - Dark Theme */
 .legend-modal-content {
   --background: #121212;

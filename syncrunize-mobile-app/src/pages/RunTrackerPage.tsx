@@ -45,6 +45,7 @@ const RunTrackerPage: React.FC = () => {
   const [hazardActionLoading, setHazardActionLoading] = useState(false);
   const [guidedRoute, setGuidedRoute] = useState<GuidedRoutePayload | null>(null);
   const [accidentClusters, setAccidentClusters] = useState<AccidentCluster[]>([]);
+  const [showAccidentClusters, setShowAccidentClusters] = useState(false); // Toggle for cluster visibility
 
   // ✅ Now we can pass accidentClusters to useRunTracker
   const { session, startRun, pauseRun, resumeRun, finishRun, discardRun, recordRun, isRecording, error } = useRunTracker({ accidentClusters });
@@ -401,6 +402,7 @@ const RunTrackerPage: React.FC = () => {
             selectedHazardId={selectedHazard?.report_id ?? null}
             hazardRadiusMeters={HAZARD_RADIUS_METERS}
             accidentClusters={accidentClusters}
+            showAccidentClusters={showAccidentClusters}
             mapType={mapType}
             mapOnlyView={mapOnlyView}
             mapboxToken={mapboxToken}
@@ -428,6 +430,13 @@ const RunTrackerPage: React.FC = () => {
                 onClick={() => setMapType('outdoors')}
               >
                 Outdoors
+              </button>
+              <button
+                className={`map-tab accident-clusters-toggle ${showAccidentClusters ? 'active' : ''}`}
+                onClick={() => setShowAccidentClusters(!showAccidentClusters)}
+                title={showAccidentClusters ? 'Hide Accident Clusters' : 'Show Accident Clusters'}
+              >
+                <IonIcon icon={warningOutline} />
               </button>
               <button
                 className="map-tab legend-toggle"

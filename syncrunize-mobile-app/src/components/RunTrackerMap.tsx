@@ -44,6 +44,7 @@ type RunTrackerMapProps = {
   selectedHazardId?: number | string | null;
   hazardRadiusMeters: number;
   accidentClusters: AccidentCluster[];
+  showAccidentClusters?: boolean; // Toggle for accident cluster visibility
   mapType: 'streets' | 'satellite' | 'outdoors';
   mapOnlyView: boolean;
   mapboxToken?: string;
@@ -132,6 +133,7 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
     selectedHazardId,
     hazardRadiusMeters,
     accidentClusters,
+    showAccidentClusters = false, // Default to hidden
     mapType,
     mapOnlyView,
     mapboxToken,
@@ -539,6 +541,9 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
           id: 'accident-cluster-circles',
           type: 'circle',
           source: 'accident-clusters',
+          layout: {
+            'visibility': showAccidentClusters ? 'visible' : 'none' // Toggle visibility
+          },
           paint: {
             'circle-radius': [
               'interpolate',
@@ -571,6 +576,23 @@ const RunTrackerMap = forwardRef<RunTrackerMapHandle, RunTrackerMapProps>((props
       console.error('[RunTrackerMap] Error displaying accident clusters:', error);
     }
   }, [accidentClusters, mapReady, styleVersion]);
+
+  // Update accident cluster visibility when toggle changes
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return;
+
+    const map = mapRef.current;
+    const layerId = 'accident-cluster-circles';
+
+    try {
+      if (map.getLayer(layerId)) {
+        map.setLayoutProperty(layerId, 'visibility', showAccidentClusters ? 'visible' : 'none');
+        console.log('[RunTrackerMap] Accident clusters visibility:', showAccidentClusters ? 'visible' : 'hidden');
+      }
+    } catch (error) {
+      console.error('[RunTrackerMap] Error updating accident cluster visibility:', error);
+    }
+  }, [showAccidentClusters, mapReady]);
 
   // ✅ FIX: Resize map when toggling between map-only and split view
   // Delay allows CSS transitions to complete before resize

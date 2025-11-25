@@ -1190,6 +1190,33 @@
   color: white;
 }
 
+/* Accident Clusters Toggle Button */
+.accident-clusters-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 140, 0, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 22px;
+  color: #FF8C00;
+}
+
+.accident-clusters-toggle-btn:hover {
+  background: rgba(255, 140, 0, 0.2);
+  transform: scale(1.05);
+}
+
+.accident-clusters-toggle-btn.active {
+  background: rgba(255, 140, 0, 0.3);
+  color: #FF6500;
+  box-shadow: 0 0 0 2px rgba(255, 140, 0, 0.4);
+}
+
 .map-legend-panel {
   position: fixed;
   top: 0;

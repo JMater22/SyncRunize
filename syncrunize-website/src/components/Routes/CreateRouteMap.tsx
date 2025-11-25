@@ -157,6 +157,7 @@ const CreateRouteMap = () => {
   // Accident cluster states
   const [accidentClusters, setAccidentClusters] = useState<AccidentCluster[]>([]);
   const [accidentWarnings, setAccidentWarnings] = useState<AccidentWarning[]>([]);
+  const [showAccidentClusters, setShowAccidentClusters] = useState(false); // Toggle for cluster visibility
 
   // Route mode: 'endpoint' or 'distance'
   const [routeMode, setRouteMode] = useState<'endpoint' | 'distance'>('endpoint');
@@ -771,6 +772,9 @@ const CreateRouteMap = () => {
         id: 'accident-cluster-circles',
         type: 'circle',
         source: 'accident-clusters',
+        layout: {
+          'visibility': showAccidentClusters ? 'visible' : 'none' // Toggle visibility based on state
+        },
         paint: {
           'circle-radius': [
             'interpolate',
@@ -799,11 +803,11 @@ const CreateRouteMap = () => {
         }
       });
 
-      console.log('[CreateRoute Web] Accident clusters displayed successfully');
+      console.log('[CreateRoute Web] Accident clusters layer created (visibility:', showAccidentClusters ? 'visible' : 'hidden', ')');
     } catch (error) {
       console.error('[CreateRoute Web] Error displaying accident clusters:', error);
     }
-  }, [accidentClusters, mapLoaded, styleVersion]);
+  }, [accidentClusters, mapLoaded, styleVersion, showAccidentClusters]);
 
   // Check if route passes near accident clusters
   const checkRouteProximityToAccidentClusters = useCallback((routePath: LatLng[], clusters: AccidentCluster[]): AccidentWarning[] => {
@@ -1723,6 +1727,13 @@ const CreateRouteMap = () => {
                   Outdoors
                 </button>
               </div>
+              <button
+                className={`accident-clusters-toggle-btn ${showAccidentClusters ? 'active' : ''}`}
+                onClick={() => setShowAccidentClusters(!showAccidentClusters)}
+                title={showAccidentClusters ? 'Hide Accident Clusters' : 'Show Accident Clusters'}
+              >
+                <IonIcon icon={warningOutline} />
+              </button>
               <button
                 className={`legend-toggle-btn ${showLegend ? 'active' : ''}`}
                 onClick={() => setShowLegend(!showLegend)}
