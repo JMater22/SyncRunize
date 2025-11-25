@@ -14,7 +14,12 @@ import {
   IonHeader,
   IonToolbar,
   IonTitle,
-  IonButtons
+  IonButtons,
+  IonLabel,
+  IonItem,
+  IonTextarea,
+  IonSelect,
+  IonSelectOption
 } from '@ionic/react';
 import {
   navigateOutline,
@@ -24,7 +29,10 @@ import {
   pinOutline,
   locationOutline,
   informationCircleOutline,
-  warningOutline
+  warningOutline,
+  createOutline,
+  trashOutline,
+  timeOutline
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import mapboxgl from 'mapbox-gl';
@@ -153,6 +161,14 @@ const CreateRouteMap = () => {
   const [hazards, setHazards] = useState<HazardReport[]>([]);
   const [selectedHazard, setSelectedHazard] = useState<HazardReport | null>(null);
   const [showHazardModal, setShowHazardModal] = useState(false);
+
+  // Edit hazard states
+  const [editMode, setEditMode] = useState(false);
+  const [editedHazard, setEditedHazard] = useState<any>(null);
+
+  // Audit history states
+  const [showAuditHistory, setShowAuditHistory] = useState(false);
+  const [auditHistory, setAuditHistory] = useState<any[]>([]);
 
   // Accident cluster states
   const [accidentClusters, setAccidentClusters] = useState<AccidentCluster[]>([]);
@@ -1232,6 +1248,152 @@ const CreateRouteMap = () => {
     }
   };
 
+  // Update hazard
+  const handleUpdateHazard = async () => {
+    if (!editedHazard || !selectedHazard) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        setToastMessage('Please log in to edit hazards');
+        setShowToast(true);
+        return;
+      }
+
+      // Send update request
+      const response = await axios.put(
+        `${import.meta.env.VITE_API_URL}/hazards/${selectedHazard.report_id}`,
+        {
+          title: editedHazard.title,
+          description: editedHazard.description,
+          incident_type: editedHazard.incident_type,
+          reason: editedHazard.updateReason || null
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      console.log('[CreateRoute Web] Hazard updated:', response.data);
+
+      setToastMessage('✓ Hazard updated successfully');
+      setShowToast(true);
+
+      // Update local state
+      setHazards(prev => prev.map(h =>
+        h.report_id === selectedHazard.report_id
+          ? { ...h, title: editedHazard.title, description: editedHazard.description, incident_type: editedHazard.incident_type }
+          : h
+      ));
+
+      setSelectedHazard({
+        ...selectedHazard,
+        title: editedHazard.title,
+        description: editedHazard.description,
+        incident_type: editedHazard.incident_type
+      });
+
+      // Exit edit mode
+      setEditMode(false);
+      setEditedHazard(null);
+
+    } catch (error: any) {
+      console.error('[CreateRoute Web] Failed to update hazard:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to update hazard';
+      setToastMessage(`Error: ${errorMsg}`);
+      setShowToast(true);
+    }
+  };
+
+  // Delete hazard
+  const handleDeleteHazard = async () => {
+    if (!selectedHazard) return;
+
+    const reason = prompt('Optional: Provide a reason for deleting this hazard (e.g., "Resolved", "Duplicate")');
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete this hazard?\n\nTitle: ${selectedHazard.title}`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        setToastMessage('Please log in to delete hazards');
+        setShowToast(true);
+        return;
+      }
+
+      // Send delete request with reason in body
+      const response = await axios.delete(
+        `${import.meta.env.VITE_API_URL}/hazards/${selectedHazard.report_id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          data: { reason: reason || null }
+        }
+      );
+
+      console.log('[CreateRoute Web] Hazard deleted:', response.data);
+
+      setToastMessage('✓ Hazard deleted successfully');
+      setShowToast(true);
+
+      // Remove from local state
+      setHazards(prev => prev.filter(h => h.report_id !== selectedHazard.report_id));
+
+      // Close modal
+      setShowHazardModal(false);
+      setSelectedHazard(null);
+      setEditMode(false);
+      setEditedHazard(null);
+
+    } catch (error: any) {
+      console.error('[CreateRoute Web] Failed to delete hazard:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to delete hazard';
+      setToastMessage(`Error: ${errorMsg}`);
+      setShowToast(true);
+    }
+  };
+
+  // View audit history
+  const handleViewAuditHistory = async () => {
+    if (!selectedHazard) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        setToastMessage('Please log in to view audit history');
+        setShowToast(true);
+        return;
+      }
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/audits/hazard/${selectedHazard.report_id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      console.log('[CreateRoute Web] Audit history:', response.data);
+
+      setAuditHistory(response.data.history || []);
+      setShowAuditHistory(true);
+
+    } catch (error: any) {
+      console.error('[CreateRoute Web] Failed to fetch audit history:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to fetch audit history';
+      setToastMessage(`Error: ${errorMsg}`);
+      setShowToast(true);
+    }
+  };
+
   // Cancel route creation
   const handleCancel = () => {
     // Clean up map layers first
@@ -1945,8 +2107,178 @@ const CreateRouteMap = () => {
                         </span>
                       </div>
                     </div>
+
+                    {/* Action Buttons */}
+                    {!editMode && selectedHazard && (
+                      <div className="hazard-actions">
+                        <IonButton expand="block" color="primary" onClick={() => {
+                          setEditMode(true);
+                          setEditedHazard({ ...selectedHazard, updateReason: '' });
+                        }}>
+                          <IonIcon icon={createOutline} slot="start" />
+                          Edit Hazard
+                        </IonButton>
+
+                        <IonButton expand="block" color="medium" onClick={handleViewAuditHistory}>
+                          <IonIcon icon={timeOutline} slot="start" />
+                          View History
+                        </IonButton>
+
+                        <IonButton expand="block" color="danger" onClick={handleDeleteHazard}>
+                          <IonIcon icon={trashOutline} slot="start" />
+                          Delete Hazard
+                        </IonButton>
+                      </div>
+                    )}
+
+                    {/* Edit Form */}
+                    {editMode && editedHazard && (
+                      <div className="edit-hazard-form">
+                        <h3>Edit Hazard</h3>
+
+                        <IonItem>
+                          <IonLabel position="floating">Title</IonLabel>
+                          <IonInput
+                            value={editedHazard.title}
+                            onIonChange={(e) => setEditedHazard({
+                              ...editedHazard,
+                              title: e.detail.value
+                            })}
+                          />
+                        </IonItem>
+
+                        <IonItem>
+                          <IonLabel position="floating">Description</IonLabel>
+                          <IonTextarea
+                            value={editedHazard.description}
+                            rows={4}
+                            onIonChange={(e) => setEditedHazard({
+                              ...editedHazard,
+                              description: e.detail.value
+                            })}
+                          />
+                        </IonItem>
+
+                        <IonItem>
+                          <IonLabel position="floating">Incident Type</IonLabel>
+                          <IonSelect
+                            value={editedHazard.incident_type}
+                            onIonChange={(e) => setEditedHazard({
+                              ...editedHazard,
+                              incident_type: e.detail.value
+                            })}
+                          >
+                            <IonSelectOption value="Pothole">Pothole</IonSelectOption>
+                            <IonSelectOption value="Accident">Accident</IonSelectOption>
+                            <IonSelectOption value="Road Damage">Road Damage</IonSelectOption>
+                            <IonSelectOption value="Flood">Flood</IonSelectOption>
+                            <IonSelectOption value="Construction">Construction</IonSelectOption>
+                            <IonSelectOption value="Debris">Debris</IonSelectOption>
+                            <IonSelectOption value="Animal">Animal</IonSelectOption>
+                            <IonSelectOption value="Other">Other</IonSelectOption>
+                          </IonSelect>
+                        </IonItem>
+
+                        <IonItem>
+                          <IonLabel position="floating">Reason for update (optional)</IonLabel>
+                          <IonInput
+                            value={editedHazard.updateReason}
+                            placeholder="E.g., Hazard got worse"
+                            onIonChange={(e) => setEditedHazard({
+                              ...editedHazard,
+                              updateReason: e.detail.value
+                            })}
+                          />
+                        </IonItem>
+
+                        <div className="edit-actions">
+                          <IonButton expand="block" onClick={handleUpdateHazard}>
+                            Save Changes
+                          </IonButton>
+                          <IonButton
+                            expand="block"
+                            color="light"
+                            onClick={() => {
+                              setEditMode(false);
+                              setEditedHazard(null);
+                            }}
+                          >
+                            Cancel
+                          </IonButton>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
+              </div>
+            )}
+          </IonContent>
+        </IonModal>
+
+        {/* Audit History Modal */}
+        <IonModal
+          isOpen={showAuditHistory}
+          onDidDismiss={() => setShowAuditHistory(false)}
+          className="audit-history-modal"
+        >
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Hazard History</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setShowAuditHistory(false)}>
+                  <IonIcon icon={closeCircleOutline} />
+                </IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+
+          <IonContent className="audit-history-content">
+            {auditHistory.length === 0 ? (
+              <div className="no-history">
+                <p>No history available for this hazard.</p>
+              </div>
+            ) : (
+              <div className="audit-timeline">
+                {auditHistory.map((log: any) => (
+                  <div key={log.audit_id} className="audit-entry">
+                    <div className="audit-header">
+                      <strong className={`audit-action audit-action-${log.action}`}>
+                        {log.action.toUpperCase()}
+                      </strong>
+                      <span className="audit-time">
+                        {new Date(log.created_at).toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="audit-user">
+                      <img
+                        src={log.user?.profile_picture || DEFAULT_AVATAR}
+                        alt={log.user?.username || 'Unknown'}
+                      />
+                      <span>By: {log.user?.username || 'Unknown'}</span>
+                    </div>
+
+                    {log.changed_fields && Object.keys(log.changed_fields).length > 0 && (
+                      <div className="audit-changes">
+                        <strong>Changes:</strong>
+                        {Object.entries(log.changed_fields).map(([field, change]: [string, any]) => (
+                          <div key={field} className="audit-change-item">
+                            <span className="change-field">{field}:</span>
+                            <span className="change-old">"{String(change.old)}"</span>
+                            <span className="change-arrow">→</span>
+                            <span className="change-new">"{String(change.new)}"</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {log.reason && (
+                      <div className="audit-reason">
+                        <strong>Reason:</strong> <em>{log.reason}</em>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </IonContent>

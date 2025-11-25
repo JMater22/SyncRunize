@@ -1660,3 +1660,297 @@
     right: 0;
   }
 }
+
+/* ========================================
+   HAZARD AUDIT UI STYLES (Dark Theme)
+   ======================================== */
+
+/* Hazard Action Buttons Container */
+.hazard-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 0;
+  margin-top: 12px;
+  border-top: 1px solid rgba(146, 198, 40, 0.2);
+}
+
+.hazard-actions ion-button {
+  --border-radius: 12px;
+  --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  font-weight: 600;
+  text-transform: none;
+  height: 44px;
+}
+
+/* Edit Hazard Form */
+.edit-hazard-form {
+  background: linear-gradient(145deg, #1a1a1a 0%, #222222 100%);
+  border-radius: 16px;
+  padding: 20px;
+  margin: 16px 0;
+  border: 1px solid rgba(146, 198, 40, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.edit-hazard-form h3 {
+  color: #92c628;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.edit-hazard-form ion-item {
+  --background: #2a2a2a;
+  --border-color: rgba(146, 198, 40, 0.2);
+  --border-radius: 12px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --highlight-color-focused: #92c628;
+  margin-bottom: 16px;
+  border-radius: 12px;
+}
+
+.edit-hazard-form ion-label {
+  color: #92c628 !important;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.edit-hazard-form ion-input,
+.edit-hazard-form ion-textarea,
+.edit-hazard-form ion-select {
+  --color: #ffffff;
+  --placeholder-color: #666666;
+  font-size: 14px;
+}
+
+.edit-hazard-form ion-textarea {
+  min-height: 100px;
+}
+
+/* Edit Form Actions */
+.edit-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.edit-actions ion-button {
+  --border-radius: 12px;
+  --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  font-weight: 600;
+  text-transform: none;
+  height: 44px;
+}
+
+/* Audit History Modal Content */
+.audit-history-content {
+  --background: #121212;
+  --padding-top: 0;
+  --padding-bottom: 0;
+}
+
+/* Audit Timeline Container */
+.audit-timeline {
+  padding: 16px;
+  background: #121212;
+}
+
+/* Individual Audit Entry */
+.audit-entry {
+  background: linear-gradient(145deg, #1e1e1e 0%, #252525 100%);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-left: 4px solid #92c628;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s ease;
+}
+
+.audit-entry:hover {
+  transform: translateX(4px);
+}
+
+.audit-entry:last-child {
+  margin-bottom: 0;
+}
+
+/* Audit Entry Header (Action Type + Timestamp) */
+.audit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.audit-action {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.audit-action-create {
+  background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+  color: #fff;
+}
+
+.audit-action-update {
+  background: linear-gradient(135deg, #2196f3 0%, #42a5f5 100%);
+  color: #fff;
+}
+
+.audit-action-delete {
+  background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
+  color: #fff;
+}
+
+.audit-action-restore {
+  background: linear-gradient(135deg, #ff9800 0%, #ffa726 100%);
+  color: #fff;
+}
+
+.audit-action-status_change {
+  background: linear-gradient(135deg, #9c27b0 0%, #ab47bc 100%);
+  color: #fff;
+}
+
+.audit-time {
+  color: #999999;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Audit User Info */
+.audit-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 8px;
+  background: rgba(146, 198, 40, 0.05);
+  border-radius: 10px;
+}
+
+.audit-user img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #92c628;
+  object-fit: cover;
+}
+
+.audit-user span {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Changed Fields Section */
+.audit-changes {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.audit-changes strong {
+  display: block;
+  color: #92c628;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+/* Individual Change Item */
+.audit-change-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  margin-top: 6px;
+  background: rgba(146, 198, 40, 0.05);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.change-field {
+  color: #92c628;
+  font-weight: 700;
+  min-width: 80px;
+}
+
+.change-old {
+  color: #f44336;
+  background: rgba(244, 67, 54, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  text-decoration: line-through;
+}
+
+.change-arrow {
+  color: #92c628;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.change-new {
+  color: #4caf50;
+  background: rgba(76, 175, 80, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Reason Section */
+.audit-reason {
+  background: rgba(146, 198, 40, 0.1);
+  border-left: 3px solid #92c628;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+.audit-reason strong {
+  color: #92c628;
+  font-size: 12px;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.audit-reason em {
+  color: #cccccc;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* Empty State */
+.no-history {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.no-history p {
+  color: #999999;
+  font-size: 15px;
+  margin: 0;
+}

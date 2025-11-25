@@ -16,6 +16,7 @@
   import groupComments from "./routes/group_comment_routes.js";
   
   import hazardRoutes from "./routes/hazard_routes.js";
+  import auditRoutes from "./routes/audit_routes.js";
   import officialIncidentRoutes from "./routes/official_incident_routes.js";
 
   import challengeRoutes from "./routes/challenge_routes.js";
@@ -117,6 +118,7 @@
   app.use("/api/group-comments", groupComments);
 
   app.use("/api/hazards", hazardRoutes); // GOODS GUMANA
+  app.use("/api/audits", auditRoutes); // Audit logs for hazards
   app.use("/api/official-incidents", officialIncidentRoutes);
 
   app.use("/api/challenges", challengeRoutes);

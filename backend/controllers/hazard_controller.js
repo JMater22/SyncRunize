@@ -3,6 +3,7 @@ import * as Hazard from "../models/hazard_model.js";
 import { computeAgreement, computeTrust } from "../services/hazard_service.js";
 import { summarizeHazard, summarizeNearbyHazards } from "../services/ai_service.js";
 import { sendAlertPush } from "../services/push_service.js";
+import * as AuditService from "../services/audit_service.js";
 
 // ✅ NEW: No file upload logic needed - images uploaded directly from frontend to Supabase
 
@@ -86,6 +87,11 @@ export const createHazard = async (req, res) => {
     console.log(`[Hazard] ✅ DB insert completed in ${Date.now() - dbInsertStart}ms, ID: ${newHazard?.report_id}`);
 
     if (!newHazard) throw new Error("Failed to insert hazard");
+
+    // ✅ Log hazard creation to audit table (background, non-blocking)
+    AuditService.logHazardCreate(newHazard.report_id, userId, newHazard).catch(err => {
+      console.error('[Hazard] Failed to log audit entry:', err);
+    });
 
     // ✅ Return response IMMEDIATELY
     // Algorithm scoring and AI summary happen in background
@@ -459,6 +465,12 @@ export const updateHazard = async (req, res) => {
 
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
+    // ✅ NEW: Fetch old data for audit logging
+    const oldHazard = await Hazard.getHazardById(id);
+    if (!oldHazard || oldHazard.user_id !== userId) {
+      return res.status(404).json({ error: "Hazard not found or not owned by you." });
+    }
+
     // If an image file was uploaded via multer, build image_url
     let image_url = null;
     if (req.file) {
@@ -476,17 +488,24 @@ export const updateHazard = async (req, res) => {
       image_url, // will be null if no new image uploaded
       status: req.body.status ?? null,
     };
-    
+
     if ((updates.lat && isNaN(updates.lat)) || (updates.lng && isNaN(updates.lng))) {
       return res.status(400).json({ error: "Invalid latitude or longitude." });
     }
 
+    // ✅ NEW: Extract optional reason for audit log
+    const reason = req.body.reason || null;
 
     const updated = await Hazard.updateHazard(id, userId, updates);
 
     if (!updated) {
       return res.status(404).json({ error: "Hazard not found or not owned by you." });
     }
+
+    // ✅ NEW: Log hazard update to audit table (background, non-blocking)
+    AuditService.logHazardUpdate(id, userId, oldHazard, updated, reason).catch(err => {
+      console.error('[Hazard] Failed to log audit entry:', err);
+    });
 
     return res.status(200).json({
       message: "✅ Hazard updated successfully.",
@@ -506,11 +525,19 @@ export const deleteHazard = async (req, res) => {
 
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
+    // ✅ NEW: Extract optional reason from request body
+    const reason = req.body?.reason || null;
+
     const deleted = await Hazard.deleteHazard(id, userId);
 
     if (!deleted) {
       return res.status(404).json({ error: "Hazard not found or not owned by you." });
     }
+
+    // ✅ NEW: Log hazard deletion to audit table (background, non-blocking)
+    AuditService.logHazardDelete(id, userId, reason).catch(err => {
+      console.error('[Hazard] Failed to log audit entry:', err);
+    });
 
     return res.status(200).json({
       message: "🗑️ Hazard deleted successfully.",
