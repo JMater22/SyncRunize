@@ -158,16 +158,21 @@ export const deleteHazard = async (report_id, user_id) => {
       })
       .eq("report_id", report_id)
       .eq("user_id", user_id)
-      .select()
-      .single();
+      .eq("status", "active") // Only delete active hazards
+      .select();
 
     if (updateError) throw updateError;
+
+    // Return null if no rows were updated (not found or not owned)
+    if (!result || result.length === 0) {
+      return null;
+    }
 
     // ✅ KEEP IMAGE: Don't delete image file (preserve for audit trail and potential recovery)
     // Images can be cleaned up later via scheduled job for old deleted hazards
     // Example cleanup: DELETE images where deleted_at < NOW() - INTERVAL '90 days'
 
-    return result;
+    return result[0];
   } catch (error) {
     console.error("Error soft-deleting hazard:", error.message);
     throw error;
