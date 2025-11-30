@@ -18,8 +18,8 @@ export const getHazardConfirmations = async (req, res) => {
         confirmed_at,
         user:users (
           user_id,
-          full_name,
-          profile_pic
+          username,
+          profile_picture
         )
       `)
       .eq("report_id", reportId)
@@ -35,8 +35,8 @@ export const getHazardConfirmations = async (req, res) => {
       confirmation_id: conf.confirmation_id,
       confirmed_at: conf.confirmed_at,
       user_id: conf.user?.user_id,
-      full_name: conf.user?.full_name,
-      profile_pic: conf.user?.profile_pic,
+      full_name: conf.user?.username, // Use username as display name
+      profile_pic: conf.user?.profile_picture,
     }));
 
     return res.status(200).json({
