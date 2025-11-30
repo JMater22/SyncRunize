@@ -68,7 +68,20 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
         counts.set(hazard.report_id, hazard.confirmation_count);
       }
     });
-    setConfirmationCounts(counts);
+
+    // Only update if counts actually changed
+    setConfirmationCounts((prevCounts) => {
+      // Check if sizes are different
+      if (prevCounts.size !== counts.size) return counts;
+
+      // Check if any values changed
+      for (const [id, count] of counts) {
+        if (prevCounts.get(id) !== count) return counts;
+      }
+
+      // No changes, return previous state to prevent re-render
+      return prevCounts;
+    });
   }, [hazards]);
 
   const fetchUserConfirmations = async () => {
@@ -80,7 +93,7 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
       const promises = hazards.map(async (hazard) => {
         try {
           const response = await axios.get(
-            `${API_URL}/api/confirmations/${hazard.report_id}/check`,
+            `${API_URL}/confirmations/${hazard.report_id}/check`,
             {
               headers: { Authorization: `Bearer ${userToken}` },
             }
@@ -103,7 +116,7 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
   const fetchHazardConfirmers = async (reportId: number) => {
     try {
       const response = await axios.get(
-        `${API_URL}/api/confirmations/${reportId}`
+        `${API_URL}/confirmations/${reportId}`
       );
 
       setConfirmersMap((prev) => new Map(prev).set(reportId, response.data.confirmations || []));
@@ -137,7 +150,7 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
       if (isConfirmed) {
         // Un-confirm
         await axios.delete(
-          `${API_URL}/api/confirmations/${reportId}`,
+          `${API_URL}/confirmations/${reportId}`,
           {
             headers: { Authorization: `Bearer ${userToken}` },
           }
@@ -159,7 +172,7 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
       } else {
         // Confirm
         await axios.post(
-          `${API_URL}/api/confirmations/${reportId}`,
+          `${API_URL}/confirmations/${reportId}`,
           {},
           {
             headers: { Authorization: `Bearer ${userToken}` },

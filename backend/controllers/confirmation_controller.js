@@ -1,5 +1,5 @@
 // controllers/confirmation_controller.js
-import supabase from "../utils/supabase.js";
+import { supabase } from "../utils/supabase.js";
 
 /**
  * GET /api/confirmations/:reportId
