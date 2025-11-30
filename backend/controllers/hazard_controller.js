@@ -381,17 +381,18 @@ const notifyNearbyUsersOfHazard = async (hazard, summary, reporterUserId) => {
 // Get hazards near location
 export const getHazardsNearby = async (req, res) => {
   try {
-    const { lat, lng, radius } = req.query;
+    const { lat, lng, radius, sortBy } = req.query;
 
     const latNum = parseFloat(lat);
     const lngNum = parseFloat(lng);
     const radiusNum = parseFloat(radius || 0.3);
+    const sortByParam = sortBy || 'nearest'; // 'nearest' or 'newest'
 
     if (isNaN(latNum) || isNaN(lngNum)) {
       return res.status(400).json({ error: "Invalid latitude or longitude" });
     }
 
-    const hazards = await Hazard.findHazardsNearLocation(latNum, lngNum, radiusNum);
+    const hazards = await Hazard.findHazardsNearLocation(latNum, lngNum, radiusNum, sortByParam);
 
 
     if (!hazards.length) {

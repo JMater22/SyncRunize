@@ -3,6 +3,43 @@ import { supabase } from "../utils/supabase.js";
 import fs from "fs";
 import path from "path";
 
+// ============================================================================
+// TIME DECAY CONFIGURATION
+// ============================================================================
+// Configuration for time decay system - hazards fade over time unless confirmed
+
+const DECAY_START_DAYS = 30;        // No decay for first 30 days
+const DECAY_HALF_LIFE = 60;         // Score halves every 60 days after grace period
+const MIN_SCORE = 0.10;             // Minimum decayed score (10%)
+const AUTO_HIDE_THRESHOLD = 0.10;   // Hide hazards when decayed score drops below 10%
+
+/**
+ * Calculate time-decayed trust score for a hazard
+ * Hazards decay over time unless confirmed by users
+ *
+ * @param {Object} hazard - Hazard object with trust_score and effective_reported_at
+ * @returns {number} Decayed trust score (between MIN_SCORE and original trust_score)
+ */
+export const calculateDecayedTrustScore = (hazard) => {
+  const now = new Date();
+  const effectiveDate = new Date(hazard.effective_reported_at || hazard.reported_at);
+  const daysOld = (now - effectiveDate) / (1000 * 60 * 60 * 24);
+
+  // No decay during grace period
+  if (daysOld < DECAY_START_DAYS) {
+    return hazard.trust_score || 0;
+  }
+
+  // Calculate decay factor using half-life formula
+  const decayDays = daysOld - DECAY_START_DAYS;
+  const decayFactor = Math.pow(0.5, decayDays / DECAY_HALF_LIFE);
+
+  // Apply decay but never go below minimum score
+  const baseTrustScore = hazard.trust_score || 0;
+  const decayedScore = Math.max(baseTrustScore * decayFactor, MIN_SCORE);
+
+  return decayedScore;
+};
 
 // 🧩 Create a new hazard report with optional image
 export const create = async (data) => {
@@ -72,6 +109,25 @@ export const findByTitle = async (title) => {
   return data || [];
 };
 
+/**
+ * Get a single hazard by ID
+ */
+export const getHazardById = async (report_id) => {
+  const { data, error } = await supabase
+    .from("hazard_reports")
+    .select("*")
+    .eq("report_id", report_id)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null;
+    }
+    throw error;
+  }
+  return data;
+};
 
 export const updateHazard = async (report_id, user_id, updates) => {
   const {
@@ -182,7 +238,8 @@ export const deleteHazard = async (report_id, user_id) => {
 //I modified this part
 // 🧭 Retrieve hazards near a location (within radius in km)
 // Using Supabase with RPC function or fetch all and filter client-side
-export const findHazardsNearLocation = async (lat, lng, radiusKm) => {
+// ✅ UPDATED: Now includes time decay calculation and flexible sorting
+export const findHazardsNearLocation = async (lat, lng, radiusKm, sortBy = 'nearest') => {
   try {
     // ✅ FIX: Calculate bounding box to filter at database level (dramatically faster)
     // 1 degree of latitude ≈ 111 km, so calculate lat/lng delta for the radius
@@ -220,10 +277,34 @@ export const findHazardsNearLocation = async (lat, lng, radiusKm) => {
       };
     }).filter(hazard => hazard.distance_km < radiusKm);  // Precise radius filter
 
-    // Sort by distance
-    hazardsWithDistance.sort((a, b) => a.distance_km - b.distance_km);
+    // ✅ NEW: Apply time decay calculation to all hazards
+    const hazardsWithDecay = hazardsWithDistance.map(hazard => {
+      const decayed_trust_score = calculateDecayedTrustScore(hazard);
+      return {
+        ...hazard,
+        decayed_trust_score,
+      };
+    });
 
-    return hazardsWithDistance;
+    // ✅ NEW: Filter out hazards below auto-hide threshold
+    const visibleHazards = hazardsWithDecay.filter(
+      hazard => hazard.decayed_trust_score >= AUTO_HIDE_THRESHOLD
+    );
+
+    // ✅ NEW: Sort based on sortBy parameter
+    if (sortBy === 'newest') {
+      // Sort by effective_reported_at (newest first)
+      visibleHazards.sort((a, b) => {
+        const dateA = new Date(a.effective_reported_at || a.reported_at);
+        const dateB = new Date(b.effective_reported_at || b.reported_at);
+        return dateB - dateA; // Descending (newest first)
+      });
+    } else {
+      // Default: sort by distance (nearest first)
+      visibleHazards.sort((a, b) => a.distance_km - b.distance_km);
+    }
+
+    return visibleHazards;
   } catch (error) {
     console.error("❌ Error finding hazards near location:", error.message);
     throw error;
@@ -287,10 +368,12 @@ export default {
   create,
   findByUser,
   findByTitle,
+  getHazardById,
   updateHazard,
   deleteHazard,
   findHazardsNearLocation,
   modifyHazard,
+  calculateDecayedTrustScore,
 };
 
 

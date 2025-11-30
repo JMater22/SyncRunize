@@ -41,6 +41,7 @@ import axios from 'axios';
 import { supabase } from '../../supabaseClient';
 import { DEFAULT_AVATAR } from '../../constants/avatar';
 import { kmToMiles } from '../../utils/distanceConverter';
+import UnifiedMapPanel from './UnifiedMapPanel';
 import './CreateRouteMap.css';
 
 // Mapbox configuration
@@ -161,6 +162,7 @@ const CreateRouteMap = () => {
   const [hazards, setHazards] = useState<HazardReport[]>([]);
   const [selectedHazard, setSelectedHazard] = useState<HazardReport | null>(null);
   const [showHazardModal, setShowHazardModal] = useState(false);
+  const [userToken, setUserToken] = useState<string | undefined>(undefined);
 
   // Edit hazard states
   const [editMode, setEditMode] = useState(false);
@@ -198,9 +200,6 @@ const CreateRouteMap = () => {
   const [endSuggestions, setEndSuggestions] = useState<MapboxFeature[]>([]);
   const [showStartSuggestions, setShowStartSuggestions] = useState(false);
   const [showEndSuggestions, setShowEndSuggestions] = useState(false);
-
-  // Legend panel state
-  const [showLegend, setShowLegend] = useState(false);
 
   // Mobile sidebar state
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
@@ -294,12 +293,16 @@ const CreateRouteMap = () => {
   }, [mapLoaded]);
   
 
-  // Load user unit preference (km/mi)
+  // Load user unit preference (km/mi) and user token
   useEffect(() => {
     (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) return;
+
+        // Store user token for HazardListPanel
+        setUserToken(session.access_token);
+
         const { data: me } = await axios.get(`${import.meta.env.VITE_API_URL}/users/me`, {
           headers: { Authorization: `Bearer ${session.access_token}` }
         });
@@ -341,7 +344,8 @@ const CreateRouteMap = () => {
           params: {
             lat: center.lat,
             lng: center.lng,
-            radius: 1000 // 1000km radius to get all hazards
+            radius: 1000, // 1000km radius to get all hazards
+            sortBy: 'newest' // Sort by newest first for Create Route page
           }
         }
       );
@@ -1448,6 +1452,17 @@ const CreateRouteMap = () => {
     history.push('/routes');
   };
 
+  // Handler for recenter button in HazardListPanel
+  const handleRecenterFromPanel = (coords: { lat: number; lng: number }) => {
+    if (map.current) {
+      map.current.flyTo({
+        center: [coords.lng, coords.lat],
+        zoom: 16,
+        duration: 1000
+      });
+    }
+  };
+
   return (
     <IonPage>
       <IonContent className="route-builder-content" scrollY={true}>
@@ -1910,13 +1925,6 @@ const CreateRouteMap = () => {
               >
                 <IonIcon icon={warningOutline} />
               </button>
-              <button
-                className={`legend-toggle-btn ${showLegend ? 'active' : ''}`}
-                onClick={() => setShowLegend(!showLegend)}
-                title="Map Legend"
-              >
-                <IonIcon icon={informationCircleOutline} />
-              </button>
             </div>
 
             {/* Mapbox Map Container */}
@@ -1938,67 +1946,6 @@ const CreateRouteMap = () => {
               </div>
             )}
 
-            {/* Map Legend Panel */}
-            {showLegend && (
-              <div
-                className="legend-backdrop"
-                onClick={() => setShowLegend(false)}
-              />
-            )}
-            <div className={`map-legend-panel ${showLegend ? 'visible' : ''}`}>
-              <div className="legend-header">
-                <h3>Map Legend</h3>
-                <button
-                  className="legend-close-btn"
-                  onClick={() => setShowLegend(false)}
-                >
-                  <IonIcon icon={closeCircleOutline} />
-                </button>
-              </div>
-
-              <div className="legend-content">
-                {/* User-Reported Hazards */}
-                <div className="legend-section">
-                  <h4 className="legend-section-title">User-Reported Hazards</h4>
-                  <div className="legend-item">
-                    <div className="legend-color-sample hazard-sample"></div>
-                    <div className="legend-item-text">
-                      <span className="legend-item-name">Active Hazard</span>
-                      <span className="legend-item-desc">Crimson Red</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Accident Clusters */}
-                <div className="legend-section">
-                  <h4 className="legend-section-title">Accident Clusters (Historical Data)</h4>
-
-                  <div className="legend-item">
-                    <div className="legend-color-sample cluster-low"></div>
-                    <div className="legend-item-text">
-                      <span className="legend-item-name">Low Severity</span>
-                      <span className="legend-item-desc">Yellow-Orange • &lt; 15 accidents</span>
-                    </div>
-                  </div>
-
-                  <div className="legend-item">
-                    <div className="legend-color-sample cluster-medium"></div>
-                    <div className="legend-item-text">
-                      <span className="legend-item-name">Medium Severity</span>
-                      <span className="legend-item-desc">Dark Orange • 15-29 accidents</span>
-                    </div>
-                  </div>
-
-                  <div className="legend-item">
-                    <div className="legend-color-sample cluster-high"></div>
-                    <div className="legend-item-text">
-                      <span className="legend-item-name">High Severity</span>
-                      <span className="legend-item-desc">Vivid Orange • ≥ 30 accidents</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -2283,6 +2230,14 @@ const CreateRouteMap = () => {
             )}
           </IonContent>
         </IonModal>
+
+        {/* Unified Map Panel (Legend + Hazard List) */}
+        <UnifiedMapPanel
+          hazards={hazards}
+          mode="create-route"
+          onRecenter={handleRecenterFromPanel}
+          userToken={userToken}
+        />
       </IonContent>
     </IonPage>
   );
