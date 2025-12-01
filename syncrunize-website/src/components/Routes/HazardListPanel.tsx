@@ -21,7 +21,7 @@ interface Hazard {
   distance_km?: number;
   users?: {
     username: string;
-    profile_picture?: string;
+    profile_picture?: string | null;
   };
 }
 
