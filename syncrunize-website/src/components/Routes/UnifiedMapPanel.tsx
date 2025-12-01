@@ -4,7 +4,7 @@ import './UnifiedMapPanel.css';
 
 interface Hazard {
   report_id: number;
-  user_id: number;
+  user_id?: number; // Optional since API returns user data in nested 'users' object
   incident_type: string;
   description: string;
   lat: number;
