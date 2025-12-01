@@ -156,7 +156,6 @@ const CreateRouteMap = () => {
   // Marker references
   const startMarker = useRef<mapboxgl.Marker | null>(null);
   const endMarker = useRef<mapboxgl.Marker | null>(null);
-  const hazardMarkers = useRef<mapboxgl.Marker[]>([]);
 
   // Hazard states
   const [hazards, setHazards] = useState<HazardReport[]>([]);
@@ -251,15 +250,32 @@ const CreateRouteMap = () => {
           map.current.resize();
         }
       }, 1000);
+
+      // Create custom hazard icon for symbol layer
+      const iconCanvas = document.createElement('canvas');
+      iconCanvas.width = 40;
+      iconCanvas.height = 40;
+      const ctx = iconCanvas.getContext('2d')!;
+
+      // Draw red circle marker
+      ctx.beginPath();
+      ctx.arc(20, 20, 12, 0, 2 * Math.PI);
+      ctx.fillStyle = '#DC143C';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Add hazard icon to map
+      map.current.addImage('hazard-icon', iconCanvas);
+
       fetchHazardsInView();
       fetchAccidentClusters();
     });
 
-    // Fetch hazards when map is moved
+    // Fetch hazards when map is moved (panning)
     map.current.on('idle', fetchHazardsInView);
-
-    // Fetch hazards when zoom completes to keep markers accurate
-    map.current.on('zoomend', fetchHazardsInView);
+    // Symbol layers auto-update on zoom - no zoomend listener needed
 
     return () => {
       if (map.current) {
@@ -356,50 +372,96 @@ const CreateRouteMap = () => {
       const fetchedHazards = response.data.hazards || [];
       setHazards(fetchedHazards);
 
-      // Clear existing hazard markers
-      hazardMarkers.current.forEach(marker => marker.remove());
-      hazardMarkers.current = [];
+      // Convert hazards to GeoJSON for symbol layer
+      const hazardsGeoJSON = {
+        type: 'FeatureCollection' as const,
+        features: fetchedHazards.map(hazard => ({
+          type: 'Feature' as const,
+          geometry: {
+            type: 'Point' as const,
+            coordinates: [hazard.lng, hazard.lat]
+          },
+          properties: {
+            id: hazard.report_id,
+            title: hazard.incident_type,
+            description: hazard.description,
+            severity: hazard.severity_weight
+          }
+        }))
+      };
 
-      // Add new hazard markers with labels
-      fetchedHazards.forEach((hazard) => {
-        // Create container for marker + label
-        const container = document.createElement('div');
-        container.className = 'hazard-marker-container';
-
-        // Create label (speech bubble)
-        const label = document.createElement('div');
-        label.className = 'hazard-label';
-        label.textContent = hazard.incident_type || 'Hazard';
-
-        // Create marker circle
-        const el = document.createElement('div');
-        el.className = 'hazard-marker';
-        el.style.width = '24px';
-        el.style.height = '24px';
-        el.style.borderRadius = '50%';
-        el.style.backgroundColor = '#DC143C';
-        el.style.border = '2px solid white';
-        el.style.cursor = 'pointer';
-        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-
-        // Assemble: label on top, marker below
-        container.appendChild(label);
-        container.appendChild(el);
-
-        container.addEventListener('click', () => {
-          setSelectedHazard(hazard);
-          setShowHazardModal(true);
+      // Update or create GeoJSON source
+      if (map.current!.getSource('hazards-source')) {
+        (map.current!.getSource('hazards-source') as mapboxgl.GeoJSONSource)
+          .setData(hazardsGeoJSON);
+      } else {
+        // First time: create source and layers
+        map.current!.addSource('hazards-source', {
+          type: 'geojson',
+          data: hazardsGeoJSON
         });
 
-        const marker = new mapboxgl.Marker({
-          element: container,
-          anchor: 'bottom'  // Geographic point at bottom center of marker for accurate positioning
-        })
-          .setLngLat([hazard.lng, hazard.lat])
-          .addTo(map.current!);
+        // Add symbol layer for icons
+        map.current!.addLayer({
+          id: 'hazard-icons',
+          type: 'symbol',
+          source: 'hazards-source',
+          minzoom: 10,  // Only show at zoom 10+
+          layout: {
+            'icon-image': 'hazard-icon',
+            'icon-size': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              10, 0.6,   // zoom 10 = 60% size
+              15, 1.0,   // zoom 15 = 100% size
+              18, 1.2    // zoom 18 = 120% size
+            ],
+            'icon-allow-overlap': true
+          }
+        });
 
-        hazardMarkers.current.push(marker);
-      });
+        // Add text labels (hide at low zoom - Google Maps pattern)
+        map.current!.addLayer({
+          id: 'hazard-labels',
+          type: 'symbol',
+          source: 'hazards-source',
+          minzoom: 13,  // Only show labels at zoom 13+
+          layout: {
+            'text-field': ['get', 'title'],
+            'text-size': 11,
+            'text-offset': [0, -2],  // Above icon
+            'text-anchor': 'bottom',
+            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold']
+          },
+          paint: {
+            'text-color': '#333',
+            'text-halo-color': '#fff',
+            'text-halo-width': 2
+          }
+        });
+
+        // Add click handler for hazard selection
+        map.current!.on('click', 'hazard-icons', (e) => {
+          if (!e.features || e.features.length === 0) return;
+
+          const hazardId = e.features[0].properties!.id;
+          const hazard = fetchedHazards.find(h => h.report_id === hazardId);
+
+          if (hazard) {
+            setSelectedHazard(hazard);
+            setShowHazardModal(true);
+          }
+        });
+
+        // Change cursor on hover
+        map.current!.on('mouseenter', 'hazard-icons', () => {
+          map.current!.getCanvas().style.cursor = 'pointer';
+        });
+        map.current!.on('mouseleave', 'hazard-icons', () => {
+          map.current!.getCanvas().style.cursor = '';
+        });
+      }
     } catch (error) {
       console.error('Failed to fetch hazards:', error);
     }
