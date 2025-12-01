@@ -6,7 +6,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface Hazard {
   report_id: number;
-  user_id: number;
+  user_id?: number; // Optional since API returns user data in nested 'users' object
   incident_type: string;
   description: string;
   lat: number;
