@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { IonIcon } from '@ionic/react';
+import { personCircle } from 'ionicons/icons';
 import './HazardListPanel.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -253,14 +255,24 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
     return (
       <div className="confirmer-avatars">
         {displayConfirmers.map((confirmer, index) => (
-          <img
-            key={confirmer.user_id}
-            src={confirmer.profile_pic || '/default-avatar.png'}
-            alt={confirmer.full_name}
-            className="confirmer-avatar"
-            style={{ zIndex: 10 - index }}
-            title={confirmer.full_name}
-          />
+          confirmer.profile_pic ? (
+            <img
+              key={confirmer.user_id}
+              src={confirmer.profile_pic}
+              alt={confirmer.full_name}
+              className="confirmer-avatar"
+              style={{ zIndex: 10 - index }}
+              title={confirmer.full_name}
+            />
+          ) : (
+            <IonIcon
+              key={confirmer.user_id}
+              icon={personCircle}
+              className="confirmer-avatar confirmer-avatar-icon"
+              style={{ zIndex: 10 - index }}
+              title={confirmer.full_name}
+            />
+          )
         ))}
         {remainingCount > 0 && (
           <span className="confirmer-more">+{remainingCount} more</span>
@@ -292,11 +304,18 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
                       className="hazard-item-header"
                       onClick={() => handleExpandHazard(hazard.report_id)}
                     >
-                      <img
-                        src={hazard.users?.profile_picture || '/default-avatar.png'}
-                        alt="Reporter"
-                        className="reporter-avatar"
-                      />
+                      {hazard.users?.profile_picture ? (
+                        <img
+                          src={hazard.users.profile_picture}
+                          alt="Reporter"
+                          className="reporter-avatar"
+                        />
+                      ) : (
+                        <IonIcon
+                          icon={personCircle}
+                          className="reporter-avatar reporter-avatar-icon"
+                        />
+                      )}
                       <span className="hazard-icon-large">
                         {getHazardIcon(hazard.incident_type)}
                       </span>

@@ -180,6 +180,13 @@
   border: 2px solid #667eea;
 }
 
+.reporter-avatar-icon {
+  font-size: 36px;
+  color: #667eea;
+  background: #f0f0f0;
+  border-radius: 50%;
+}
+
 .hazard-icon-large {
   font-size: 24px;
   flex-shrink: 0;
@@ -313,6 +320,12 @@
   margin-left: -8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease;
+}
+
+.confirmer-avatar-icon {
+  font-size: 32px;
+  color: #667eea;
+  background: #f0f0f0;
 }
 
 .confirmer-avatar:first-child {
