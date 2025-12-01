@@ -258,6 +258,9 @@ const CreateRouteMap = () => {
     // Fetch hazards when map is moved
     map.current.on('idle', fetchHazardsInView);
 
+    // Fetch hazards when zoom completes to keep markers accurate
+    map.current.on('zoomend', fetchHazardsInView);
+
     return () => {
       if (map.current) {
         map.current.remove();
@@ -388,7 +391,10 @@ const CreateRouteMap = () => {
           setShowHazardModal(true);
         });
 
-        const marker = new mapboxgl.Marker(container)
+        const marker = new mapboxgl.Marker({
+          element: container,
+          anchor: 'bottom'  // Geographic point at bottom center of marker for accurate positioning
+        })
           .setLngLat([hazard.lng, hazard.lat])
           .addTo(map.current!);
 
