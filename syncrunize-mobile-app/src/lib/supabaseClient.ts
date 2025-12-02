@@ -54,7 +54,7 @@ export const uploadImageToSupabase = async (
         });
 
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Upload timeout after 30 seconds')), 30000)
+        setTimeout(() => reject(new Error('Upload timeout after 60 seconds')), 60000)
       );
 
       const { error } = await Promise.race([uploadPromise, timeoutPromise]);
