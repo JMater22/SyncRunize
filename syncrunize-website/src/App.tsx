@@ -16,8 +16,7 @@ import {
   IonMenuButton,
   IonList,
   IonItem,
-  setupIonicReact,
-  IonFooter
+  setupIonicReact
 } from "@ionic/react";
 import { IonReactRouter } from "@ionic/react-router";
 
@@ -236,17 +235,6 @@ const AppLayout: React.FC<{ session: any }> = ({ session }) => {
             </div>
           </IonHeader>
         </IonTabs>
-
-        {/* Footer - visible on both mobile and desktop but NOT on auth pages */}
-        {!isAuthPage && (
-          <IonFooter className="app-footer">
-            <IonToolbar>
-              <div className="footer-content">
-                <p>© 2025 SyncRunize. All rights reserved.</p>
-              </div>
-            </IonToolbar>
-          </IonFooter>
-        )}
       </IonPage>
     </>
   );

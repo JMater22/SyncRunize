@@ -140,7 +140,12 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
     }
   };
 
-  const handleConfirmToggle = async (reportId: number) => {
+  const handleConfirmToggle = async (reportId: number, event?: React.MouseEvent) => {
+    // Stop event propagation to prevent triggering parent click handlers
+    if (event) {
+      event.stopPropagation();
+    }
+
     if (!userToken) {
       alert('Please log in to confirm hazards');
       return;
@@ -204,7 +209,11 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
     }
   };
 
-  const handleRecenter = (hazard: Hazard) => {
+  const handleRecenter = (hazard: Hazard, event?: React.MouseEvent) => {
+    // Stop event propagation to prevent triggering parent click handlers
+    if (event) {
+      event.stopPropagation();
+    }
     onRecenter({ lat: hazard.lat, lng: hazard.lng });
   };
 
@@ -354,7 +363,7 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
 
                           <button
                             className={`confirm-btn ${isConfirmed ? 'confirmed' : ''}`}
-                            onClick={() => handleConfirmToggle(hazard.report_id)}
+                            onClick={(e) => handleConfirmToggle(hazard.report_id, e)}
                           >
                             {isConfirmed ? '✓ Confirmed' : 'Confirm'}
                           </button>
@@ -363,7 +372,7 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
                         {/* Recenter Button */}
                         <button
                           className="recenter-btn"
-                          onClick={() => handleRecenter(hazard)}
+                          onClick={(e) => handleRecenter(hazard, e)}
                         >
                           Show on map
                         </button>

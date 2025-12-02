@@ -41,6 +41,7 @@ import axios from 'axios';
 import { supabase } from '../../supabaseClient';
 import { DEFAULT_AVATAR } from '../../constants/avatar';
 import { kmToMiles } from '../../utils/distanceConverter';
+import { clusterHazards, calculateCentroid, SPIDERFY_CONFIG } from '../../utils/hazardClustering';
 import UnifiedMapPanel from './UnifiedMapPanel';
 import './CreateRouteMap.css';
 
@@ -156,6 +157,11 @@ const CreateRouteMap = () => {
   // Marker references
   const startMarker = useRef<mapboxgl.Marker | null>(null);
   const endMarker = useRef<mapboxgl.Marker | null>(null);
+  const hazardMarkers = useRef<mapboxgl.Marker[]>([]);
+  const hazardClusters = useRef<Map<string, HazardReport[]>>(new Map());
+
+  // Track zoom state for responsive spiderfy
+  const lastZoomState = useRef<'spiderfied' | 'clustered' | null>(null);
 
   // Hazard states
   const [hazards, setHazards] = useState<HazardReport[]>([]);
@@ -251,31 +257,13 @@ const CreateRouteMap = () => {
         }
       }, 1000);
 
-      // Create custom hazard icon for symbol layer
-      const iconCanvas = document.createElement('canvas');
-      iconCanvas.width = 40;
-      iconCanvas.height = 40;
-      const ctx = iconCanvas.getContext('2d')!;
-
-      // Draw red circle marker
-      ctx.beginPath();
-      ctx.arc(20, 20, 12, 0, 2 * Math.PI);
-      ctx.fillStyle = '#DC143C';
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Add hazard icon to map
-      map.current.addImage('hazard-icon', iconCanvas);
-
       fetchHazardsInView();
       fetchAccidentClusters();
     });
 
-    // Fetch hazards when map is moved (panning)
-    map.current.on('idle', fetchHazardsInView);
-    // Symbol layers auto-update on zoom - no zoomend listener needed
+    // NOTE: Removed 'moveend' listener - it was causing constant re-rendering
+    // because map.resize() operations trigger moveend events repeatedly.
+    // Hazards now only fetch on initial map load.
 
     return () => {
       if (map.current) {
@@ -283,7 +271,7 @@ const CreateRouteMap = () => {
         map.current = null;
       }
     };
-  }, []);
+  }, []); // Empty deps - map initialization runs once
 
   // Handle map resize on window resize (important for mobile)
   useEffect(() => {
@@ -346,10 +334,185 @@ const CreateRouteMap = () => {
 
     // Re-render layers after style loads
     map.current.once('style.load', () => {
-      console.log('[CreateRoute Web] Style loaded, incrementing styleVersion to re-render layers');
+      console.log('[CreateRoute Web] Style loaded');
       setStyleVersion(prev => prev + 1);
+      fetchHazardsInView(); // Re-add HTML markers
     });
   }, [mapType, mapLoaded]);
+
+  // Update marker visibility and size based on zoom level
+  const updateMarkersForZoom = useCallback(() => {
+    if (!map.current) return;
+
+    const zoom = map.current.getZoom();
+    const minZoom = 12; // Only show markers at zoom 12+ (street/neighborhood view)
+
+    hazardMarkers.current.forEach(marker => {
+      const el = marker.getElement();
+
+      // Skip spiderfied markers - they use translate() transforms
+      if (el.classList.contains('hazard-marker-spiderfied')) {
+        el.style.display = 'flex';  // Ensure visibility
+        return;
+      }
+
+      if (zoom < minZoom) {
+        // Hide markers when zoomed out too far
+        el.style.display = 'none';
+      } else {
+        // Show markers and scale based on zoom level
+        el.style.display = 'flex';
+
+        // Responsive sizing: 0.7x at zoom 12, 1.0x at zoom 15, 1.3x at zoom 18+
+        let scale = 0.7;
+        if (zoom >= 15) {
+          scale = 1.0 + ((zoom - 15) * 0.1); // Grows after zoom 15
+        } else {
+          scale = 0.7 + ((zoom - 12) * 0.1); // Grows from zoom 12 to 15
+        }
+        scale = Math.min(scale, 1.3); // Max 1.3x
+
+        el.style.transform = `scale(${scale})`;
+      }
+    });
+  }, []);
+
+  // Create a single hazard marker (non-clustered)
+  const createSingleHazardMarker = useCallback((hazard: HazardReport): mapboxgl.Marker => {
+    const el = document.createElement('div');
+    el.className = 'hazard-marker-simple';
+    el.innerHTML = `
+      <div class="crimson-marker"></div>
+      <div class="cloud-bubble">${hazard.incident_type}</div>
+    `;
+
+    el.addEventListener('click', () => {
+      setSelectedHazard(hazard);
+      setShowHazardModal(true);
+    });
+
+    return new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([hazard.lng, hazard.lat])
+      .addTo(map.current!);
+  }, []);
+
+  // Create a cluster marker with count badge (shown at lower zoom levels)
+  const createClusterMarker = useCallback((
+    position: { lat: number; lng: number },
+    count: number,
+    clusterId: string
+  ): mapboxgl.Marker => {
+    const el = document.createElement('div');
+    el.className = 'hazard-marker-cluster';
+    el.dataset.clusterId = clusterId;
+    el.innerHTML = `
+      <div class="crimson-marker">
+        <span class="cluster-count">${count}</span>
+      </div>
+      <div class="cloud-bubble">Multiple Hazards</div>
+    `;
+
+    return new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([position.lng, position.lat])
+      .addTo(map.current!);
+  }, []);
+
+  // Create spiderfied markers (shown at high zoom levels)
+  const createSpiderfiedMarkers = useCallback((
+    hazards: HazardReport[],
+    centerPosition: { lat: number; lng: number }
+  ): mapboxgl.Marker[] => {
+    if (!map.current) return [];
+
+    const isMobile = window.innerWidth <= 768;
+    const radius = isMobile
+      ? SPIDERFY_CONFIG.SPIDER_RADIUS_MOBILE
+      : SPIDERFY_CONFIG.SPIDER_RADIUS_DESKTOP;
+
+    const displayHazards = hazards.slice(0, SPIDERFY_CONFIG.MAX_SPIDER_DISPLAY);
+    const angleStep = (2 * Math.PI) / displayHazards.length;
+    const startAngle = -Math.PI / 2;
+
+    const markers: mapboxgl.Marker[] = [];
+
+    displayHazards.forEach((hazard, index) => {
+      const angle = startAngle + (angleStep * index);
+      const offsetX = Math.cos(angle) * radius;
+      const offsetY = Math.sin(angle) * radius;
+
+      const markerEl = document.createElement('div');
+      markerEl.className = 'hazard-marker-spiderfied';
+      markerEl.innerHTML = `
+        <div class="crimson-marker"></div>
+        <div class="cloud-bubble">${hazard.incident_type}</div>
+      `;
+
+      markerEl.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+
+      markerEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setSelectedHazard(hazard);
+        setShowHazardModal(true);
+      });
+
+      const marker = new mapboxgl.Marker({
+        element: markerEl,
+        anchor: 'bottom'
+      })
+        .setLngLat([centerPosition.lng, centerPosition.lat])
+        .addTo(map.current!);
+
+      markers.push(marker);
+    });
+
+    return markers;
+  }, []);
+
+  // Render markers based on current zoom level (without re-fetching)
+  const renderMarkersForZoom = useCallback(() => {
+    if (!map.current || hazardClusters.current.size === 0) return;
+
+    const zoom = map.current.getZoom();
+    const SPIDERFY_ZOOM_THRESHOLD = 16;
+    const currentState = zoom >= SPIDERFY_ZOOM_THRESHOLD ? 'spiderfied' : 'clustered';
+
+    // Update tracked state
+    lastZoomState.current = currentState;
+
+    // Defensive cleanup (handleZoomStart already does this)
+    hazardMarkers.current.forEach(marker => {
+      try {
+        marker.remove();
+      } catch (e) {
+        // Marker may already be removed
+      }
+    });
+    hazardMarkers.current = [];
+
+    // Render based on zoom level
+    hazardClusters.current.forEach((hazardsInCluster, clusterId) => {
+      try {
+        if (hazardsInCluster.length === 1) {
+          const marker = createSingleHazardMarker(hazardsInCluster[0]);
+          hazardMarkers.current.push(marker);
+        } else {
+          const centroid = calculateCentroid(hazardsInCluster);
+
+          if (zoom >= SPIDERFY_ZOOM_THRESHOLD) {
+            const spiderfiedMarkers = createSpiderfiedMarkers(hazardsInCluster, centroid);
+            hazardMarkers.current.push(...spiderfiedMarkers);
+          } else {
+            const marker = createClusterMarker(centroid, hazardsInCluster.length, clusterId);
+            hazardMarkers.current.push(marker);
+          }
+        }
+      } catch (error) {
+        console.error('[CreateRoute] Failed to create marker for cluster:', clusterId, error);
+      }
+    });
+
+    updateMarkersForZoom();
+  }, [updateMarkersForZoom, createSingleHazardMarker, createClusterMarker, createSpiderfiedMarkers]);
 
   // Fetch all active hazards
   const fetchHazardsInView = useCallback(async () => {
@@ -357,14 +520,15 @@ const CreateRouteMap = () => {
 
     try {
       const center = map.current.getCenter();
+
       const response = await axios.get<{ hazards: HazardReport[] }>(
         `${import.meta.env.VITE_API_URL}/hazards/nearby`,
         {
           params: {
             lat: center.lat,
             lng: center.lng,
-            radius: 1000, // 1000km radius to get all hazards
-            sortBy: 'newest' // Sort by newest first for Create Route page
+            radius: 1000,
+            sortBy: 'newest'
           }
         }
       );
@@ -372,100 +536,36 @@ const CreateRouteMap = () => {
       const fetchedHazards = response.data.hazards || [];
       setHazards(fetchedHazards);
 
-      // Convert hazards to GeoJSON for symbol layer
-      const hazardsGeoJSON = {
-        type: 'FeatureCollection' as const,
-        features: fetchedHazards.map(hazard => ({
-          type: 'Feature' as const,
-          geometry: {
-            type: 'Point' as const,
-            coordinates: [hazard.lng, hazard.lat]
-          },
-          properties: {
-            id: hazard.report_id,
-            title: hazard.incident_type,
-            description: hazard.description,
-            severity: hazard.severity_weight
-          }
-        }))
-      };
+      const clusters = clusterHazards(fetchedHazards);
+      hazardClusters.current = clusters;
 
-      // Update or create GeoJSON source
-      if (map.current!.getSource('hazards-source')) {
-        (map.current!.getSource('hazards-source') as mapboxgl.GeoJSONSource)
-          .setData(hazardsGeoJSON);
-      } else {
-        // First time: create source and layers
-        map.current!.addSource('hazards-source', {
-          type: 'geojson',
-          data: hazardsGeoJSON
-        });
+      // Clean up old markers before rendering new ones
+      hazardMarkers.current.forEach(marker => {
+        try {
+          marker.remove();
+        } catch (e) {
+          // Marker may already be removed
+        }
+      });
+      hazardMarkers.current = [];
 
-        // Add symbol layer for icons
-        map.current!.addLayer({
-          id: 'hazard-icons',
-          type: 'symbol',
-          source: 'hazards-source',
-          minzoom: 10,  // Only show at zoom 10+
-          layout: {
-            'icon-image': 'hazard-icon',
-            'icon-size': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              10, 0.6,   // zoom 10 = 60% size
-              15, 1.0,   // zoom 15 = 100% size
-              18, 1.2    // zoom 18 = 120% size
-            ],
-            'icon-allow-overlap': true
-          }
-        });
+      // Reset zoom state to force re-render
+      lastZoomState.current = null;
 
-        // Add text labels (hide at low zoom - Google Maps pattern)
-        map.current!.addLayer({
-          id: 'hazard-labels',
-          type: 'symbol',
-          source: 'hazards-source',
-          minzoom: 13,  // Only show labels at zoom 13+
-          layout: {
-            'text-field': ['get', 'title'],
-            'text-size': 11,
-            'text-offset': [0, -2],  // Above icon
-            'text-anchor': 'bottom',
-            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold']
-          },
-          paint: {
-            'text-color': '#333',
-            'text-halo-color': '#fff',
-            'text-halo-width': 2
-          }
-        });
-
-        // Add click handler for hazard selection
-        map.current!.on('click', 'hazard-icons', (e) => {
-          if (!e.features || e.features.length === 0) return;
-
-          const hazardId = e.features[0].properties!.id;
-          const hazard = fetchedHazards.find(h => h.report_id === hazardId);
-
-          if (hazard) {
-            setSelectedHazard(hazard);
-            setShowHazardModal(true);
-          }
-        });
-
-        // Change cursor on hover
-        map.current!.on('mouseenter', 'hazard-icons', () => {
-          map.current!.getCanvas().style.cursor = 'pointer';
-        });
-        map.current!.on('mouseleave', 'hazard-icons', () => {
-          map.current!.getCanvas().style.cursor = '';
-        });
-      }
+      renderMarkersForZoom();
     } catch (error) {
       console.error('Failed to fetch hazards:', error);
+      // Ensure clean state on error
+      hazardMarkers.current.forEach(marker => {
+        try {
+          marker.remove();
+        } catch (e) {
+          // Ignore
+        }
+      });
+      hazardMarkers.current = [];
     }
-  }, []);
+  }, [renderMarkersForZoom]);
 
   // Fetch accident clusters from Supabase
   const fetchAccidentClusters = useCallback(async () => {
@@ -723,18 +823,53 @@ const CreateRouteMap = () => {
   useEffect(() => {
     if (!map.current || !mapLoaded) return;
 
-    const clickHandler = (e: mapboxgl.MapMouseEvent) => {
-      handleMapClick(e);
-    };
-
-    map.current.on('click', clickHandler);
+    map.current.on('click', handleMapClick);
 
     return () => {
       if (map.current) {
-        map.current.off('click', clickHandler);
+        map.current.off('click', handleMapClick);
       }
     };
   }, [mapLoaded, handleMapClick]);
+
+  // Responsive zoom handler - updates on zoom end
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+
+    const handleZoomStart = () => {
+      // Remove ALL markers immediately to prevent visual glitches
+      hazardMarkers.current.forEach(marker => {
+        try {
+          marker.remove();
+        } catch (e) {
+          console.warn('[CreateRoute] Failed to remove marker during zoom:', e);
+        }
+      });
+      hazardMarkers.current = [];
+    };
+
+    const handleZoomEnd = () => {
+      if (!map.current) return;
+
+      // Always re-render markers based on current zoom level
+      try {
+        renderMarkersForZoom();
+      } catch (error) {
+        console.error('[CreateRoute] Failed to render markers after zoom:', error);
+        hazardMarkers.current = [];
+      }
+    };
+
+    map.current.on('zoomstart', handleZoomStart);
+    map.current.on('zoomend', handleZoomEnd);
+
+    return () => {
+      if (map.current) {
+        map.current.off('zoomstart', handleZoomStart);
+        map.current.off('zoomend', handleZoomEnd);
+      }
+    };
+  }, [mapLoaded, renderMarkersForZoom]);
 
   // Update polyline on map
   const updatePolyline = useCallback((path: LatLng[]) => {
@@ -1522,13 +1657,52 @@ const CreateRouteMap = () => {
 
   // Handler for recenter button in HazardListPanel
   const handleRecenterFromPanel = (coords: { lat: number; lng: number }) => {
-    if (map.current) {
-      map.current.flyTo({
-        center: [coords.lng, coords.lat],
-        zoom: 16,
-        duration: 1000
+    if (!map.current) return;
+
+    const currentZoom = map.current.getZoom();
+    const SPIDERFY_ZOOM_THRESHOLD = 16;
+
+    // Check if the hazard is part of a cluster
+    let isInCluster = false;
+    let clusterSize = 0;
+
+    hazardClusters.current.forEach((hazardsInCluster) => {
+      hazardsInCluster.forEach((hazard) => {
+        if (hazard.lat === coords.lat && hazard.lng === coords.lng) {
+          if (hazardsInCluster.length > 1) {
+            isInCluster = true;
+            clusterSize = hazardsInCluster.length;
+          }
+        }
       });
+    });
+
+    // Determine appropriate zoom level and message
+    let targetZoom = 17; // Default: zoom in close to see individual hazard
+    let message = '📍 Centering on hazard...';
+
+    if (isInCluster) {
+      if (currentZoom < SPIDERFY_ZOOM_THRESHOLD) {
+        targetZoom = 17; // Zoom to spiderfy level
+        message = `📍 Showing cluster of ${clusterSize} hazards (zooming to expand)`;
+      } else {
+        targetZoom = Math.max(currentZoom, 17); // Keep current zoom or go higher
+        message = `📍 Centering on hazard (${clusterSize} clustered hazards at this location)`;
+      }
+    } else {
+      message = '📍 Centering on hazard...';
     }
+
+    // Fly to the hazard
+    map.current.flyTo({
+      center: [coords.lng, coords.lat],
+      zoom: targetZoom,
+      duration: 1000
+    });
+
+    // Show feedback toast
+    setToastMessage(message);
+    setShowToast(true);
   };
 
   return (

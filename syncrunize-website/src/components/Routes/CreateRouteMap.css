@@ -1954,3 +1954,195 @@
   font-size: 15px;
   margin: 0;
 }
+
+/* Simple Crimson Hazard Markers with Cloud Speech Bubble */
+.hazard-marker-simple {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.crimson-marker {
+  width: 24px;
+  height: 24px;
+  background: #DC143C;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(220, 20, 60, 0.4);
+  transition: transform 0.2s;
+}
+
+.hazard-marker-simple:hover .crimson-marker {
+  transform: scale(1.2);
+}
+
+.cloud-bubble {
+  position: absolute;
+  bottom: 30px;
+  background: white;
+  color: #333;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+/* Cloud speech bubble pointer */
+.cloud-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid white;
+}
+
+/* ========================================
+   SPIDERFY CLUSTER STYLES
+   ======================================== */
+
+/* Cluster marker with count badge */
+.hazard-marker-cluster {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  transition: opacity 0.3s ease-out;
+}
+
+.hazard-marker-cluster .crimson-marker {
+  width: 32px;
+  height: 32px;
+  background: #DC143C;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 3px 12px rgba(220, 20, 60, 0.5);
+  transition: transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hazard-marker-cluster:hover .crimson-marker {
+  transform: scale(1.15);
+  box-shadow: 0 4px 16px rgba(220, 20, 60, 0.6);
+}
+
+.cluster-count {
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Spiderfied marker */
+.hazard-marker-spiderfied {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1000;
+}
+
+.hazard-marker-spiderfied .crimson-marker {
+  width: 24px;
+  height: 24px;
+  background: #DC143C;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(220, 20, 60, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.hazard-marker-spiderfied:hover .crimson-marker {
+  transform: scale(1.3);
+  box-shadow: 0 3px 12px rgba(220, 20, 60, 0.6);
+  z-index: 1001;
+}
+
+.hazard-marker-spiderfied .cloud-bubble {
+  font-size: 10px;
+  padding: 4px 8px;
+  bottom: 28px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.hazard-marker-spiderfied:hover .cloud-bubble {
+  opacity: 1;
+}
+
+/* Spider leg */
+.spider-leg {
+  position: absolute;
+  background: rgba(220, 20, 60, 0.4);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Collapse button for spiderfied cluster */
+.spiderfy-collapse-button {
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  z-index: 1002;
+}
+
+.spiderfy-collapse-button:hover {
+  transform: scale(1.1);
+}
+
+.spiderfy-collapse-button:active {
+  transform: scale(0.95);
+}
+
+.spiderfy-collapse-button svg {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+/* View All button for large clusters */
+.view-all-button {
+  cursor: pointer;
+  padding: 8px 16px;
+  background: white;
+  border: 2px solid #DC143C;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #DC143C;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.view-all-button:hover {
+  background: #DC143C;
+  color: white;
+  transform: scale(1.05);
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .hazard-marker-cluster .crimson-marker {
+    width: 28px;
+    height: 28px;
+  }
+
+  .cluster-count {
+    font-size: 11px;
+  }
+}
