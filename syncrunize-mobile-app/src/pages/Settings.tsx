@@ -155,7 +155,18 @@ export default function Settings() {
       }
 
       // Sign out from Supabase (invalidates session and clears auth tokens)
-      await supabase.auth.signOut();
+      // ✅ FIX: Add timeout to prevent hanging logout
+      try {
+        const signOutPromise = supabase.auth.signOut();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Sign out timeout after 10s')), 10000)
+        );
+        await Promise.race([signOutPromise, timeoutPromise]);
+        console.log('[Settings] Supabase signOut succeeded');
+      } catch (signOutErr) {
+        console.error('[Settings] Supabase signOut failed:', signOutErr);
+        // Continue anyway - local cleanup already done
+      }
 
       console.log('[Settings] Logout cleanup completed, navigating...');
 
@@ -164,9 +175,17 @@ export default function Settings() {
 
     } catch (e) {
       console.error('[Settings] Logout error:', e);
-      setToastMessage('Failed to log out');
-      setToastColor('danger');
+
+      // ✅ FIX: Force redirect even on error (local state already cleared)
+      console.log('[Settings] Forcing redirect to login despite error');
+      setToastMessage('Logged out (some cleanup may have failed)');
+      setToastColor('warning');
       setShowToast(true);
+
+      // Force navigation after showing toast
+      setTimeout(() => {
+        history.replace('/authentication');
+      }, 1000);
     } finally {
       setLoggingOut(false);
     }
