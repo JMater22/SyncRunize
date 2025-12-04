@@ -33,19 +33,14 @@ export const uploadImageToSupabase = async (
 
     console.log(`[Supabase] Uploading to: ${storagePath} (${(blob.size / 1024).toFixed(0)}KB)`);
 
-    // ✅ FIX: Simulate progress updates with incremental increase (not random)
-    let currentProgress = 0;
-    const progressInterval = setInterval(() => {
-      if (onProgress && currentProgress < 90) {
-        // Increment progress gradually: +3-8% each tick
-        currentProgress += Math.random() * 5 + 3;
-        currentProgress = Math.min(90, currentProgress); // Cap at 90%
-        onProgress(Math.round(currentProgress));
-      }
-    }, 300);
-
+    // ✅ PHASE 3: Milestone-based progress (no fake simulation)
     try {
-      // ✅ FIX: Add 30-second timeout to prevent infinite hanging
+      // 0% - Starting upload
+      if (onProgress) onProgress(0);
+
+      // 30% - Uploading to Supabase storage
+      if (onProgress) onProgress(30);
+
       const uploadPromise = supabase.storage
         .from('assets')
         .upload(storagePath, blob, {
@@ -59,30 +54,58 @@ export const uploadImageToSupabase = async (
 
       const { error } = await Promise.race([uploadPromise, timeoutPromise]);
 
-      clearInterval(progressInterval);
-
       if (error) {
         console.error('[Supabase] Upload error:', error);
         throw new Error(error.message || 'Failed to upload image');
       }
 
-      if (onProgress) onProgress(100);
+      // 70% - Upload complete, retrieving URL
+      if (onProgress) onProgress(70);
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('assets')
-        .getPublicUrl(storagePath);
+      // ✅ PHASE 3: Retry logic for getPublicUrl() with exponential backoff
+      let publicUrl: string | null = null;
+      let retryCount = 0;
+      const maxRetries = 3;
 
-      const publicUrl = urlData?.publicUrl;
+      while (retryCount < maxRetries) {
+        try {
+          const { data: urlData } = supabase.storage
+            .from('assets')
+            .getPublicUrl(storagePath);
+
+          publicUrl = urlData?.publicUrl;
+
+          if (publicUrl) {
+            console.log(`[Supabase] Got public URL on attempt ${retryCount + 1}: ${publicUrl}`);
+            break; // Success, exit retry loop
+          }
+
+          throw new Error('Public URL is null');
+        } catch (urlErr) {
+          retryCount++;
+          console.warn(`[Supabase] getPublicUrl attempt ${retryCount}/${maxRetries} failed:`, urlErr);
+
+          if (retryCount < maxRetries) {
+            // Exponential backoff: 500ms, 1000ms, 1500ms
+            const delayMs = 500 * retryCount;
+            console.log(`[Supabase] Retrying in ${delayMs}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+          } else {
+            throw new Error('Failed to get public URL after 3 attempts');
+          }
+        }
+      }
 
       if (!publicUrl) {
         throw new Error('Failed to get public URL for uploaded image');
       }
 
+      // 100% - Complete
+      if (onProgress) onProgress(100);
+
       console.log(`[Supabase] Upload successful: ${publicUrl}`);
       return publicUrl;
     } catch (error: any) {
-      clearInterval(progressInterval); // ✅ FIX: Always clear interval on error
       console.error('[Supabase] Upload failed:', error);
       throw error;
     }
