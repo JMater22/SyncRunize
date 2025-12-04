@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { supabase } from './supabaseClient';
+import { ToastService } from './toastService';
 
 const baseURL = (import.meta as any)?.env?.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -31,6 +32,9 @@ const refreshSessionCache = async () => {
       console.warn('[API] Refresh token expired - triggering auto-logout');
       cachedSession = null;
       lastSessionFetch = Date.now();
+
+      // Show toast notification for testing/debugging
+      ToastService.warning('Session expired. Please log in again.', 5000);
 
       // Trigger logout to clear all auth state and redirect to login
       try {
@@ -81,6 +85,10 @@ api.interceptors.request.use(async (config) => {
     if (!cachedSession || cacheAge > SESSION_CACHE_DURATION || tokenExpired) {
       if (tokenExpired) {
         console.log('[API] Token expired or expiring soon, refreshing...');
+        // Show toast during testing to see when refresh happens
+        if (import.meta.env.DEV) {
+          ToastService.info('Refreshing session...', 2000);
+        }
       } else {
         console.log(`[API] Session cache stale (${(cacheAge / 1000).toFixed(1)}s old), refreshing...`);
       }
@@ -143,6 +151,10 @@ api.interceptors.response.use(
     // Better handling of auth errors
     if (error.response.status === 401 || error.response.status === 403) {
       console.error('[API] Authentication failed:', error.response.data);
+
+      // Show toast for testing/debugging
+      ToastService.error('Authentication failed. Please log in again.', 4000);
+
       return Promise.reject(new Error('Authentication failed. Please log in again.'));
     }
 
