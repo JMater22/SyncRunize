@@ -26,10 +26,25 @@ const refreshSessionCache = async () => {
 
     const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
 
-    cachedSession = session?.access_token ? {
+    // ✅ FIX: Auto-logout when refresh token expires
+    if (!session || !session.access_token) {
+      console.warn('[API] Refresh token expired - triggering auto-logout');
+      cachedSession = null;
+      lastSessionFetch = Date.now();
+
+      // Trigger logout to clear all auth state and redirect to login
+      try {
+        await supabase.auth.signOut();
+      } catch (signOutErr) {
+        console.error('[API] Auto-logout failed:', signOutErr);
+      }
+      return;
+    }
+
+    cachedSession = {
       access_token: session.access_token,
       expires_at: session.expires_at
-    } : null;
+    };
     lastSessionFetch = Date.now();
     console.log('[API] Session cache refreshed');
   } catch (err) {
