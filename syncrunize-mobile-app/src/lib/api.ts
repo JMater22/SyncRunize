@@ -60,7 +60,7 @@ api.interceptors.request.use(async (config) => {
     const now = Date.now();
     const cacheAge = now - lastSessionFetch;
     const tokenExpired = cachedSession?.expires_at
-      ? (cachedSession.expires_at * 1000) <= now + 60000 // Refresh if expires in < 1 minute
+      ? (cachedSession.expires_at * 1000) <= now + 300000 // Refresh if expires in < 5 minutes
       : false;
 
     if (!cachedSession || cacheAge > SESSION_CACHE_DURATION || tokenExpired) {
