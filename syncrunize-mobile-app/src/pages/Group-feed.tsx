@@ -57,7 +57,8 @@ import { GroupsApi, Group, GroupMember, GroupPost } from "../services/groups";
 import { UsersApi } from "../services/users";
 import { useUser } from "../contexts/UserContext";
 import { getAvatarUrl, formatRelativeTime, DEFAULT_AVATAR } from "../lib/utils";
-import { supabase } from "../lib/supabaseClient";
+import { supabase, uploadImageToSupabase } from "../lib/supabaseClient";
+import { ToastService } from "../lib/toastService";
 import "../theme/Group-feed.css";
 
 interface Post {
@@ -559,7 +560,8 @@ const GroupFeed: React.FC = () => {
     return new Blob([u8arr], { type: mime });
   };
 
-  // Upload images to Supabase Storage
+  // ✅ FIX: Upload images using the fixed uploadImageToSupabase function
+  // This includes 60s timeout, exponential backoff retry, and progress tracking
   const uploadImagesToSupabase = async (dataUrls: string[]): Promise<string[]> => {
     const uploadedUrls: string[] = [];
 
@@ -574,33 +576,33 @@ const GroupFeed: React.FC = () => {
         const timestamp = Date.now();
         const random = Math.random().toString(36).substring(7);
         const fileName = `${timestamp}_${random}.jpg`;
-        const filePath = `group-posts/${fileName}`;
 
-        console.log(`[GroupFeed] Uploading image ${i + 1}/${dataUrls.length}: ${filePath}`);
+        console.log(`[GroupFeed] Uploading image ${i + 1}/${dataUrls.length}...`);
 
-        // Upload to Supabase Storage
-        const { data, error } = await supabase.storage
-          .from('assets')
-          .upload(filePath, blob, {
-            contentType: 'image/jpeg',
-            upsert: false
-          });
+        // ✅ Use fixed upload function with timeout + retry protection
+        const publicUrl = await uploadImageToSupabase(
+          blob,
+          fileName,
+          'group-posts',
+          (progress) => {
+            console.log(`[GroupFeed] Image ${i + 1} progress: ${progress}%`);
+            // Show progress toast in dev mode for debugging
+            if (import.meta.env.DEV && progress === 0) {
+              ToastService.info(`Uploading image ${i + 1}/${dataUrls.length}...`, 2000);
+            }
+          }
+        );
 
-        if (error) {
-          console.error('[GroupFeed] Upload error:', error);
-          throw error;
-        }
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('assets')
-          .getPublicUrl(filePath);
-
-        console.log(`[GroupFeed] Image ${i + 1} uploaded successfully:`, urlData.publicUrl);
-        uploadedUrls.push(urlData.publicUrl);
+        console.log(`[GroupFeed] Image ${i + 1} uploaded successfully:`, publicUrl);
+        uploadedUrls.push(publicUrl);
       } catch (error) {
         console.error('[GroupFeed] Failed to upload image:', error);
-        throw new Error(`Failed to upload image ${i + 1}`);
+
+        // Show error toast to user
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        ToastService.error(`Failed to upload image ${i + 1}: ${errorMsg}`, 5000);
+
+        throw new Error(`Failed to upload image ${i + 1}: ${errorMsg}`);
       }
     }
 
