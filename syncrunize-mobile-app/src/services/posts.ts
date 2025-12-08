@@ -25,6 +25,7 @@ export interface CreatePostData {
   content?: string;
   route_id?: number;
   visibility?: 'public' | 'private';
+  image_url?: string; // ✅ Add support for image uploads
 }
 
 export interface UpdatePostData {

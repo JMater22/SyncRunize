@@ -25,6 +25,8 @@ import { useHistory } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { RoutesApi, Route } from "../services/routes";
 import { PostsApi } from "../services/posts";
+import { uploadImageToSupabase } from "../lib/supabaseClient";
+import { ToastService } from "../lib/toastService";
 import { formatDistance, formatDuration } from "../lib/utils";
 import "../theme/Create-Post.css";
 
@@ -34,11 +36,13 @@ const CreatePost: React.FC = () => {
 
   const [content, setContent] = useState("");
   const [image, setImage] = useState<string | null>(null);
+  const [imageBlob, setImageBlob] = useState<Blob | null>(null); // ✅ Store blob for upload
   const [selectedRouteId, setSelectedRouteId] = useState<number | undefined>(undefined);
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
   const [completedRoutes, setCompletedRoutes] = useState<Route[]>([]);
   const [loadingRoutes, setLoadingRoutes] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0); // ✅ Track upload progress
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastColor, setToastColor] = useState<'success' | 'danger' | 'warning'>('success');
@@ -63,11 +67,25 @@ const CreatePost: React.FC = () => {
     }
   };
 
+  // Helper: Convert dataURL to Blob
+  const dataURLtoBlob = (dataURL: string): Blob => {
+    const arr = dataURL.split(',');
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  };
+
   // Take or pick a photo
   const handleAddPhoto = async () => {
     try {
       const photo = await Camera.getPhoto({
-        quality: 90,
+        quality: 40, // ✅ Lower quality for faster uploads (matches Hazard-Report)
         allowEditing: false,
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Prompt, // Allows choosing camera or gallery
@@ -75,6 +93,10 @@ const CreatePost: React.FC = () => {
 
       if (photo?.dataUrl) {
         setImage(photo.dataUrl);
+        // ✅ Convert to blob immediately for faster upload later
+        const blob = dataURLtoBlob(photo.dataUrl);
+        setImageBlob(blob);
+        console.log('[CreatePost] Image converted to blob:', (blob.size / 1024).toFixed(0), 'KB');
       }
     } catch (error) {
       console.error("Camera error:", error);
@@ -82,7 +104,10 @@ const CreatePost: React.FC = () => {
     }
   };
 
-  const handleRemovePhoto = () => setImage(null);
+  const handleRemovePhoto = () => {
+    setImage(null);
+    setImageBlob(null);
+  };
 
   const handleCreatePost = async () => {
     // Validation: Must have either content or a route
@@ -92,10 +117,41 @@ const CreatePost: React.FC = () => {
 
     try {
       setSubmitting(true);
+      setUploadProgress(0);
+
+      // ✅ Upload image to Supabase first if present
+      let imageUrl: string | undefined = undefined;
+      if (imageBlob) {
+        console.log('[CreatePost] Uploading image to Supabase...');
+        try {
+          imageUrl = await uploadImageToSupabase(
+            imageBlob,
+            `post-${Date.now()}.jpg`,
+            'posts', // Folder name in Supabase storage
+            (progress) => {
+              setUploadProgress(progress);
+              console.log(`[CreatePost] Upload progress: ${progress}%`);
+              if (import.meta.env.DEV && progress === 30) {
+                ToastService.info('Uploading image...', 2000);
+              }
+            }
+          );
+          console.log('[CreatePost] Image uploaded successfully:', imageUrl);
+        } catch (uploadError: any) {
+          console.error('[CreatePost] Image upload failed:', uploadError);
+          ToastService.error(`Failed to upload image: ${uploadError.message}`, 5000);
+          setSubmitting(false);
+          setUploadProgress(0);
+          return;
+        }
+      }
+
+      // ✅ Create post with image URL
       await PostsApi.createPost({
         content: content.trim() || undefined,
         route_id: selectedRouteId,
-        visibility
+        visibility,
+        image_url: imageUrl // ✅ Include image URL in post
       });
 
       showToastMessage("Post created successfully!", 'success');
@@ -103,8 +159,10 @@ const CreatePost: React.FC = () => {
       // Reset form
       setContent("");
       setImage(null);
+      setImageBlob(null);
       setSelectedRouteId(undefined);
       setVisibility('public');
+      setUploadProgress(0);
 
       // Navigate back to community feed after a short delay
       setTimeout(() => {
