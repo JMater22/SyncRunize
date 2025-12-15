@@ -33,6 +33,7 @@ import {
 import { useParams, useLocation, useHistory } from "react-router-dom";
 import axios from "axios";
 import { supabase } from "../../supabaseClient";
+import { GroupsApi } from "../../services/groups";
 import "./GroupFeed.css";
 
 // Import default images
@@ -507,10 +508,8 @@ const handleInviteUser = async (userId: number) => {
 
     try {
       setIsDeletingGroup(true);
-      await axios.delete(
-        `${import.meta.env.VITE_API_URL}/groups/${groupId}`,
-        { headers: { Authorization: `Bearer ${authToken}` } }
-      );
+      // Use centralized API service with automatic auth token handling
+      await GroupsApi.deleteGroup(parseInt(groupId));
       showToastMessage('Group disbanded successfully', 'success');
       // Redirect back to community after short delay
       setTimeout(() => {
@@ -518,7 +517,7 @@ const handleInviteUser = async (userId: number) => {
       }, 600);
     } catch (error: any) {
       console.error('Error deleting group:', error);
-      showToastMessage(error.response?.data?.error || 'Failed to disband group', 'danger');
+      showToastMessage(error.message || 'Failed to disband group', 'danger');
     } finally {
       setIsDeletingGroup(false);
     }
