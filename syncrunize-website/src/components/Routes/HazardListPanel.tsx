@@ -28,13 +28,6 @@ interface Hazard {
   };
 }
 
-interface Confirmer {
-  user_id: number;
-  full_name: string;
-  profile_pic?: string;
-  confirmed_at: string;
-}
-
 interface HazardListPanelProps {
   hazards: Hazard[];
   mode: 'create-route' | 'run-tracking';
@@ -53,7 +46,7 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
   const [showPanel, setShowPanel] = useState(false);
   const [expandedHazardId, setExpandedHazardId] = useState<number | null>(null);
   const [userConfirmations, setUserConfirmations] = useState<Set<number>>(new Set());
-  const [confirmersMap, setConfirmersMap] = useState<Map<number, Confirmer[]>>(new Map());
+  const [confirmersMap, setConfirmersMap] = useState<Map<number, any[]>>(new Map());
   const [confirmationCounts, setConfirmationCounts] = useState<Map<number, number>>(new Map());
 
   // Fetch user's confirmations on mount
