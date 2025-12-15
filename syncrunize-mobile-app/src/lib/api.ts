@@ -124,7 +124,7 @@ api.interceptors.response.use(
     }
     return response;
   },
-  error => {
+  async (error) => {
     // Calculate request duration even on error
     const duration = Date.now() - ((error.config as any)?.metadata?.startTime || Date.now());
 
@@ -148,17 +148,42 @@ api.interceptors.response.use(
       return Promise.reject(new Error(`Network error - cannot reach backend at ${baseURL}. Please verify backend is running and device is on the same network.`));
     }
 
-    // Better handling of auth errors
+    // Better handling of auth errors - try refresh once before logout
     if (error.response.status === 401 || error.response.status === 403) {
       console.error('[API] Authentication failed:', error.response.data);
 
-      // Clear session cache
-      cachedSession = null;
-      lastSessionFetch = 0;
+      // Check if this is already a retry attempt
+      const isRetry = error.config.headers?.['X-Retry-After-Auth'];
 
-      // Show toast and force logout
+      if (!isRetry) {
+        console.log('[API] First auth failure - attempting token refresh...');
+
+        // Clear stale cache and try to refresh
+        cachedSession = null;
+        lastSessionFetch = 0;
+
+        try {
+          await refreshSessionCache();
+
+          // If we got a valid token, retry the request
+          // @ts-ignore - TypeScript cannot track that refreshSessionCache modifies cachedSession
+          if (cachedSession !== null && cachedSession.access_token) {
+            console.log('[API] Token refreshed successfully - retrying request');
+            error.config.headers = error.config.headers || {};
+            // @ts-ignore
+            error.config.headers.Authorization = `Bearer ${cachedSession.access_token}`;
+            error.config.headers['X-Retry-After-Auth'] = 'true'; // Mark as retry
+            return api.request(error.config);
+          }
+        } catch (refreshError) {
+          console.error('[API] Token refresh failed:', refreshError);
+        }
+      }
+
+      // If retry failed or this is already a retry, force logout
+      console.log('[API] Authentication cannot be recovered - logging out');
       ToastService.error('Session expired. Logging out...', 3000);
-      
+
       setTimeout(() => {
         supabase.auth.signOut().then(() => {
           window.location.href = '/log-in';
