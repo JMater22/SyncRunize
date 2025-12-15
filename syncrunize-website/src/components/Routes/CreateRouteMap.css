@@ -1002,7 +1002,12 @@
 @media (max-width: 768px) {
   .route-builder-container {
     flex-direction: column;
-    min-height: auto;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
   }
 
   .sidebar {
@@ -1013,7 +1018,9 @@
 
   .map-container {
     flex: 1;
-    min-height: 100vh;
+    width: 100%;
+    height: 100vh;
+    position: relative;
   }
 
   .pin-mode-indicator {
@@ -1419,6 +1426,22 @@
 }
 
 
+/* Mobile Route Input Modal */
+.route-input-modal {
+  --border-radius: 20px 20px 0 0;
+}
+
+.route-input-modal ion-toolbar {
+  --background: #ffffff;
+  --color: #2c2c2c;
+  --border-color: #e0e0e0;
+}
+
+.route-input-modal ion-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
 /* Mobile Styles - Only active on screens <= 768px */
 @media (max-width: 768px) {
   /* Hide desktop back button on mobile */
@@ -1430,29 +1453,29 @@
   .mobile-create-route-fab {
     display: flex !important;
     position: fixed;
-    bottom: 54px;
-    right: 24px;
-    width: 64px;
-    height: 64px;
+    bottom: 24px;
+    right: 16px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #92C628 0%, #7ab01f 100%);
+    background: linear-gradient(135deg, #2dd55b 0%, #1fa845 100%);
     border: none;
-    box-shadow: 0 4px 16px rgba(146, 198, 40, 0.4);
+    box-shadow: 0 4px 12px rgba(45, 213, 91, 0.3);
     align-items: center;
     justify-content: center;
     cursor: pointer;
     z-index: 900;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .mobile-create-route-fab ion-icon {
-    font-size: 32px;
+    font-size: 28px;
     color: white;
   }
 
   .mobile-create-route-fab:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 20px rgba(146, 198, 40, 0.5);
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(45, 213, 91, 0.4);
   }
 
   .mobile-create-route-fab:active {
@@ -1467,21 +1490,23 @@
     left: 0;
     right: 0;
     width: 100%;
-    height: 85vh;
-    max-height: 85vh;
+    height: 90vh;
+    max-height: 90vh;
     border-radius: 20px 20px 0 0;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
     z-index: 1001;
     transform: translateY(100%);
-    transition: transform 0.3s ease-in-out;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     padding: 0;
     min-height: unset;
     overflow-y: auto;
+    background: #ffffff;
   }
 
   /* Sidebar visible state - slides up */
   .sidebar.mobile-visible {
     transform: translateY(0);
+    display: flex;
   }
 
   /* Mobile sidebar header */

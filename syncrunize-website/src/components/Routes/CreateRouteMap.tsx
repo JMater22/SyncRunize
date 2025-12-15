@@ -1646,8 +1646,8 @@ const CreateRouteMap = () => {
     <IonPage>
       <IonContent className="route-builder-content" scrollY={true}>
         <div className="route-builder-container">
-          {/* Left Sidebar */}
-          <div className="sidebar">
+          {/* Left Sidebar - Desktop */}
+          <div className={`sidebar desktop-only`}>
             {/* Back Button */}
             <IonButton
               fill="clear"
@@ -2127,6 +2127,368 @@ const CreateRouteMap = () => {
 
           </div>
         </div>
+
+        {/* Mobile Modal for Route Creation */}
+        <IonModal
+          isOpen={showMobileSidebar}
+          onDidDismiss={() => setShowMobileSidebar(false)}
+          initialBreakpoint={0.9}
+          breakpoints={[0, 0.5, 0.75, 0.9, 1]}
+          className="route-input-modal"
+        >
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Create Route</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setShowMobileSidebar(false)}>
+                  <IonIcon icon={closeCircleOutline} />
+                </IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+          <IonContent style={{ '--background': '#ffffff' }}>
+            <div style={{ padding: '16px' }}>
+              {/* Route Name */}
+              <div className="section-card">
+                <div className="section-header">
+                  <div className="step-number">1</div>
+                  <div className="section-title-wrapper">
+                    <span className="section-title">ROUTE NAME</span>
+                  </div>
+                </div>
+                <IonInput
+                  value={routeName}
+                  onIonChange={(e) => setRouteName(e.detail.value!)}
+                  placeholder="Enter route name (optional)"
+                  className="location-input"
+                />
+              </div>
+
+              {/* Starting Point Section */}
+              <div className="section-card">
+                <div className="section-header">
+                  <div className="step-number">2</div>
+                  <div className="section-title-wrapper">
+                    <span className="section-title">STARTING POINT</span>
+                  </div>
+                </div>
+
+                <div className="input-with-suggestions">
+                  <div className="input-wrapper">
+                    <IonInput
+                      value={startSearchQuery}
+                      onIonChange={(e) => {
+                        const value = e.detail.value!;
+                        setStartSearchQuery(value);
+                        fetchSuggestions(value, 'start');
+                      }}
+                      placeholder="Type to search location..."
+                      className="location-input"
+                      disabled={pinMode === 'start'}
+                    />
+                    <IonButton
+                      fill="clear"
+                      className="pin-icon-button"
+                      onClick={() => {
+                        setPinMode(pinMode === 'start' ? null : 'start');
+                        setShowMobileSidebar(false);
+                      }}
+                    >
+                      <IonIcon
+                        icon={pinOutline}
+                        className={pinMode === 'start' ? 'pin-active' : ''}
+                      />
+                    </IonButton>
+                  </div>
+
+                  {/* Autocomplete Suggestions */}
+                  {showStartSuggestions && startSuggestions.length > 0 && (
+                    <div className="suggestions-dropdown">
+                      {startSuggestions.map((feature, index) => (
+                        <div
+                          key={`start-${feature.id}-${index}`}
+                          className="suggestion-item"
+                          onClick={() => selectSuggestion(feature, 'start')}
+                        >
+                          <IonIcon icon={locationOutline} className="suggestion-icon" />
+                          <div className="suggestion-text">
+                            <div className="suggestion-main">{feature.text}</div>
+                            <div className="suggestion-secondary">{feature.place_name}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {startPoint && (
+                  <IonText color="success" className="point-set-text">
+                    ✓ Location set
+                  </IonText>
+                )}
+              </div>
+
+              {/* Route Mode Selection */}
+              <div className="section-card">
+                <div className="section-header">
+                  <div className="step-number">3</div>
+                  <div className="section-title-wrapper">
+                    <span className="section-title">ROUTE TYPE</span>
+                  </div>
+                </div>
+
+                <div className="mode-selector">
+                  <div
+                    className={`mode-option ${routeMode === 'endpoint' ? 'active' : ''}`}
+                    onClick={() => {
+                      setRouteMode('endpoint');
+                      setEndPoint(null);
+                      setEndSearchQuery('');
+                      if (endMarker.current) {
+                        endMarker.current.remove();
+                        endMarker.current = null;
+                      }
+                    }}
+                  >
+                    <IonIcon icon={navigateOutline} className="mode-icon" />
+                    <div className="mode-content">
+                      <div className="mode-title">Choose Destination</div>
+                      <div className="mode-desc">Set a specific end point</div>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`mode-option ${routeMode === 'distance' ? 'active' : ''}`}
+                    onClick={() => {
+                      setRouteMode('distance');
+                      setEndPoint(null);
+                      setEndSearchQuery('');
+                      setPinMode(null);
+                      if (endMarker.current) {
+                        endMarker.current.remove();
+                        endMarker.current = null;
+                      }
+                    }}
+                  >
+                    <IonIcon icon={navigateOutline} className="mode-icon" />
+                    <div className="mode-content">
+                      <div className="mode-title">Choose Distance</div>
+                      <div className="mode-desc">Auto-find safe circular route</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Distance-based Configuration */}
+              {routeMode === 'distance' && (
+                <div className="section-card">
+                  <div className="section-header">
+                    <div className="step-number">4</div>
+                    <div className="section-title-wrapper">
+                      <span className="section-title">TARGET DISTANCE</span>
+                      <span style={{ marginLeft: 8, display: 'inline-flex', alignItems: 'center', color: '#6b7280', fontSize: 12 }}>
+                        <IonIcon icon={informationCircleOutline} style={{ marginRight: 4, fontSize: 14 }} />
+                        Distance is approximate — safety prioritized
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="distance-config">
+                    <div className="distance-input-wrapper">
+                      <IonInput
+                        type="number"
+                        value={targetDistance}
+                        onIonChange={(e) => setTargetDistance(parseFloat(e.detail.value!) || 5)}
+                        placeholder="Enter distance"
+                        className="distance-input"
+                        min="0.5"
+                        step="0.5"
+                      />
+                      <div className="unit-toggle">
+                        <button
+                          className={`unit-btn ${distanceUnit === 'km' ? 'active' : ''}`}
+                          onClick={() => setDistanceUnit('km')}
+                        >
+                          KM
+                        </button>
+                        <button
+                          className={`unit-btn ${distanceUnit === 'miles' ? 'active' : ''}`}
+                          onClick={() => setDistanceUnit('miles')}
+                        >
+                          Miles
+                        </button>
+                      </div>
+                    </div>
+                    <div className="distance-info">
+                      {distanceUnit === 'km'
+                        ? `≈ ${(targetDistance * 0.621371).toFixed(2)} miles`
+                        : `≈ ${(targetDistance * 1.60934).toFixed(2)} km`
+                      }
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Endpoint-based Configuration */}
+              {routeMode === 'endpoint' && (
+                <div className="section-card">
+                  <div className="section-header">
+                    <div className="step-number">4</div>
+                    <div className="section-title-wrapper">
+                      <span className="section-title">DESTINATION</span>
+                    </div>
+                  </div>
+
+                  <div className="input-with-suggestions">
+                    <div className="input-wrapper">
+                      <IonInput
+                        value={endSearchQuery}
+                        onIonChange={(e) => {
+                          const value = e.detail.value!;
+                          setEndSearchQuery(value);
+                          fetchSuggestions(value, 'end');
+                        }}
+                        placeholder="Type to search destination..."
+                        className="location-input"
+                        disabled={pinMode === 'end'}
+                      />
+                      <IonButton
+                        fill="clear"
+                        className="pin-icon-button"
+                        onClick={() => {
+                          setPinMode(pinMode === 'end' ? null : 'end');
+                          setShowMobileSidebar(false);
+                        }}
+                      >
+                        <IonIcon
+                          icon={pinOutline}
+                          className={pinMode === 'end' ? 'pin-active' : ''}
+                        />
+                      </IonButton>
+                    </div>
+
+                    {/* Autocomplete Suggestions */}
+                    {showEndSuggestions && endSuggestions.length > 0 && (
+                      <div className="suggestions-dropdown">
+                        {endSuggestions.map((feature, index) => (
+                          <div
+                            key={`end-${feature.id}-${index}`}
+                            className="suggestion-item"
+                            onClick={() => selectSuggestion(feature, 'end')}
+                          >
+                            <IonIcon icon={locationOutline} className="suggestion-icon" />
+                            <div className="suggestion-text">
+                              <div className="suggestion-main">{feature.text}</div>
+                              <div className="suggestion-secondary">{feature.place_name}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {endPoint && (
+                    <IonText color="success" className="point-set-text">
+                      ✓ Location set
+                    </IonText>
+                  )}
+                </div>
+              )}
+
+              {/* Generate Route Button */}
+              {!showActions && (
+                <IonButton
+                  expand="block"
+                  className="next-button"
+                  onClick={() => {
+                    setShowMobileSidebar(false);
+                    handleGenerateRoute();
+                  }}
+                  disabled={
+                    !startPoint ||
+                    (routeMode === 'endpoint' && !endPoint) ||
+                    (routeMode === 'distance' && (!targetDistance || targetDistance <= 0)) ||
+                    isGenerating
+                  }
+                >
+                  {isGenerating ? (
+                    <>
+                      <IonSpinner name="crescent" style={{ marginRight: '8px' }} />
+                      Generating Route...
+                    </>
+                  ) : routeMode === 'distance' ? (
+                    `Generate ${targetDistance} ${distanceUnit} Route`
+                  ) : (
+                    'Generate Safe Route'
+                  )}
+                </IonButton>
+              )}
+
+              {/* Action Buttons (Save/Cancel) - shown after route generation */}
+              {showActions && generatedRoute && (
+                <div className="action-buttons">
+                  <IonCard className="route-info-card">
+                    <IonCardContent>
+                      <h3>{generatedRoute.route_name}</h3>
+                      <div style={{ display: 'flex', gap: 8, margin: '6px 0 10px' }}>
+                        <button
+                          className={`unit-btn ${distanceUnit === 'km' ? 'active' : ''}`}
+                          onClick={() => setDistanceUnit('km')}
+                          style={{ padding: '4px 10px' }}
+                        >
+                          KM
+                        </button>
+                        <button
+                          className={`unit-btn ${distanceUnit === 'miles' ? 'active' : ''}`}
+                          onClick={() => setDistanceUnit('miles')}
+                          style={{ padding: '4px 10px' }}
+                        >
+                          Miles
+                        </button>
+                      </div>
+
+                      <div className="route-stats">
+                        <div className="stat-item">
+                          <span className="stat-label">Distance</span>
+                          <span className="stat-value">
+                            {distanceUnit === 'km'
+                              ? `${(distanceInfo?.generated_distance_km ?? generatedRoute.distance_km).toFixed(2)} km`
+                              : `${kmToMiles(distanceInfo?.generated_distance_km ?? generatedRoute.distance_km).toFixed(2)} miles`}
+                          </span>
+                        </div>
+                        <div className="stat-item">
+                          <span className="stat-label">Est. Time</span>
+                          <span className="stat-value">{Math.round(generatedRoute.duration_seconds / 60)} min</span>
+                        </div>
+                      </div>
+                    </IonCardContent>
+                  </IonCard>
+
+                  <div className="action-button-group">
+                    <IonButton
+                      expand="block"
+                      className="save-button"
+                      onClick={handleSaveRoute}
+                    >
+                      <IonIcon icon={saveOutline} slot="start" />
+                      Save Route
+                    </IonButton>
+
+                    <IonButton
+                      expand="block"
+                      fill="outline"
+                      className="cancel-button"
+                      onClick={handleCancel}
+                    >
+                      <IonIcon icon={closeCircleOutline} slot="start" />
+                      Cancel
+                    </IonButton>
+                  </div>
+                </div>
+              )}
+            </div>
+          </IonContent>
+        </IonModal>
 
         {/* Toast for notifications */}
         <IonToast
