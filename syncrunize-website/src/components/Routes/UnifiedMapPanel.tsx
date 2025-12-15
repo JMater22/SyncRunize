@@ -45,7 +45,7 @@ const UnifiedMapPanel: React.FC<UnifiedMapPanelProps> = ({
     <>
       {/* Toggle Button */}
       <button
-        className="unified-panel-toggle-btn"
+        className={`unified-panel-toggle-btn ${showPanel ? 'panel-open' : ''}`}
         onClick={() => setShowPanel(!showPanel)}
         aria-label="Toggle map panel"
       >

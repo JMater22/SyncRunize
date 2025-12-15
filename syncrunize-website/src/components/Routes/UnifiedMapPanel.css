@@ -293,10 +293,15 @@
   }
 
   .unified-panel-toggle-btn {
-    bottom: 20px;
-    right: 20px;
+    bottom: 88px;
+    right: 16px;
     width: 56px;
     height: 56px;
+  }
+
+  /* Hide toggle button when panel is open on mobile */
+  .unified-panel-toggle-btn.panel-open {
+    display: none;
   }
 
   .unified-panel-toggle-btn .panel-icon {
