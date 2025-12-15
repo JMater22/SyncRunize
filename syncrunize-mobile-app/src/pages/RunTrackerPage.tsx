@@ -564,8 +564,8 @@ const RunTrackerPage: React.FC = () => {
                 mapHandleRef.current?.resize();
               });
             }}
-            initialBreakpoint={0.5}
-            breakpoints={[0, 0.5]}
+            initialBreakpoint={0.65}
+            breakpoints={[0, 0.5, 0.65, 0.85]}
             className="run-stats-modal"
           >
             <div className="stats-modal-content">
