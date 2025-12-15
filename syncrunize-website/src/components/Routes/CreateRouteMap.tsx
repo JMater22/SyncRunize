@@ -27,8 +27,7 @@ import {
   locationOutline,
   informationCircleOutline,
   warningOutline,
-  trashOutline,
-  timeOutline
+  trashOutline
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import mapboxgl from 'mapbox-gl';
@@ -165,10 +164,6 @@ const CreateRouteMap = () => {
   const [selectedHazard, setSelectedHazard] = useState<HazardReport | null>(null);
   const [showHazardModal, setShowHazardModal] = useState(false);
   const [userToken, setUserToken] = useState<string | undefined>(undefined);
-
-  // Audit history states
-  const [showAuditHistory, setShowAuditHistory] = useState(false);
-  const [auditHistory, setAuditHistory] = useState<any[]>([]);
 
   // Accident cluster states
   const [accidentClusters, setAccidentClusters] = useState<AccidentCluster[]>([]);
@@ -1503,41 +1498,6 @@ const CreateRouteMap = () => {
       setShowToast(true);
     }
   };
-
-  // View audit history
-  const handleViewAuditHistory = async () => {
-    if (!selectedHazard) return;
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) {
-        setToastMessage('Please log in to view audit history');
-        setShowToast(true);
-        return;
-      }
-
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/audits/hazard/${selectedHazard.report_id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-
-      console.log('[CreateRoute Web] Audit history:', response.data);
-
-      setAuditHistory(response.data.history || []);
-      setShowAuditHistory(true);
-
-    } catch (error: any) {
-      console.error('[CreateRoute Web] Failed to fetch audit history:', error);
-      const errorMsg = error.response?.data?.error || 'Failed to fetch audit history';
-      setToastMessage(`Error: ${errorMsg}`);
-      setShowToast(true);
-    }
-  };
-
   // Cancel route creation
   const handleCancel = () => {
     // Clean up map layers first
@@ -2599,11 +2559,6 @@ const CreateRouteMap = () => {
                     {/* Action Buttons */}
                     {selectedHazard && (
                       <div className="hazard-actions">
-                        <IonButton expand="block" color="medium" onClick={handleViewAuditHistory}>
-                          <IonIcon icon={timeOutline} slot="start" />
-                          View History
-                        </IonButton>
-
                         <IonButton expand="block" color="danger" onClick={handleDeleteHazard}>
                           <IonIcon icon={trashOutline} slot="start" />
                           Delete Hazard
@@ -2612,75 +2567,6 @@ const CreateRouteMap = () => {
                     )}
                   </div>
                 </div>
-              </div>
-            )}
-          </IonContent>
-        </IonModal>
-
-        {/* Audit History Modal */}
-        <IonModal
-          isOpen={showAuditHistory}
-          onDidDismiss={() => setShowAuditHistory(false)}
-          className="audit-history-modal"
-        >
-          <IonHeader>
-            <IonToolbar>
-              <IonTitle>Hazard History</IonTitle>
-              <IonButtons slot="end">
-                <IonButton onClick={() => setShowAuditHistory(false)}>
-                  <IonIcon icon={closeCircleOutline} />
-                </IonButton>
-              </IonButtons>
-            </IonToolbar>
-          </IonHeader>
-
-          <IonContent className="audit-history-content">
-            {auditHistory.length === 0 ? (
-              <div className="no-history">
-                <p>No history available for this hazard.</p>
-              </div>
-            ) : (
-              <div className="audit-timeline">
-                {auditHistory.map((log: any) => (
-                  <div key={log.audit_id} className="audit-entry">
-                    <div className="audit-header">
-                      <strong className={`audit-action audit-action-${log.action}`}>
-                        {log.action.toUpperCase()}
-                      </strong>
-                      <span className="audit-time">
-                        {new Date(log.created_at).toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className="audit-user">
-                      <img
-                        src={log.user?.profile_picture || DEFAULT_AVATAR}
-                        alt={log.user?.username || 'Unknown'}
-                      />
-                      <span>By: {log.user?.username || 'Unknown'}</span>
-                    </div>
-
-                    {log.changed_fields && Object.keys(log.changed_fields).length > 0 && (
-                      <div className="audit-changes">
-                        <strong>Changes:</strong>
-                        {Object.entries(log.changed_fields).map(([field, change]: [string, any]) => (
-                          <div key={field} className="audit-change-item">
-                            <span className="change-field">{field}:</span>
-                            <span className="change-old">"{String(change.old)}"</span>
-                            <span className="change-arrow">→</span>
-                            <span className="change-new">"{String(change.new)}"</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {log.reason && (
-                      <div className="audit-reason">
-                        <strong>Reason:</strong> <em>{log.reason}</em>
-                      </div>
-                    )}
-                  </div>
-                ))}
               </div>
             )}
           </IonContent>

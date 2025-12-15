@@ -227,15 +227,9 @@
 .map-controls-top-right {
   position: fixed;
   top: calc(56px + env(safe-area-inset-top));
-  left: 64px;
-  right: 16px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 12;
-  display: flex;
-  flex-direction: row;
-  gap: 4px;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: nowrap;
 }
 
 /* Map Type Tabs */
@@ -246,8 +240,6 @@
   border-radius: 999px;
   padding: 2px;
   backdrop-filter: blur(10px);
-  flex-shrink: 1;
-  max-width: fit-content;
 }
 
 .map-tab {
@@ -306,13 +298,7 @@
 
 /* Responsive breakpoints to prevent overlapping */
 @media (max-width: 576px) {
-  /* Very small screens - reduce sizes further, keep in one row */
-  .map-controls-top-right {
-    left: 48px;
-    right: 8px;
-    gap: 3px;
-  }
-
+  /* Very small screens - reduce sizes further, keep centered */
   .map-type-tabs {
     gap: 1px;
   }
@@ -338,13 +324,7 @@
 }
 
 @media (max-width: 400px) {
-  /* Extra small screens - keep in one row with minimal sizes */
-  .map-controls-top-right {
-    left: 48px;
-    right: 6px;
-    gap: 2px;
-  }
-
+  /* Extra small screens - keep centered with minimal sizes */
   .map-tab {
     padding: 3px 5px;
     font-size: 8px;
@@ -357,13 +337,7 @@
 }
 
 @media (max-width: 360px) {
-  /* Ultra small screens - minimal layout, one row */
-  .map-controls-top-right {
-    left: 44px;
-    right: 4px;
-    gap: 2px;
-  }
-
+  /* Ultra small screens - keep centered, minimal layout */
   .map-type-tabs {
     gap: 1px;
   }
@@ -539,32 +513,75 @@
   cursor: pointer;
 }
 
-/* Stats Panel Redesigned */
-.stats-panel {
+/* Run Stats FAB Button - Lower Right */
+.run-stats-fab {
   position: fixed;
-  bottom: 16px;
-  left: 12px;
-  right: 12px;
-  z-index: 10;
-  pointer-events: none;
-  max-width: 500px;
-  margin: 0 auto;
+  bottom: 88px;
+  right: 16px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2dd55b 0%, #1fa845 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(45, 213, 91, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1100;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.stats-panel * {
-  pointer-events: auto;
+.run-stats-fab ion-icon {
+  font-size: 28px;
+  color: white;
+}
+
+.run-stats-fab:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(45, 213, 91, 0.4);
+}
+
+.run-stats-fab:active {
+  transform: scale(0.95);
+}
+
+/* Run Stats Modal */
+.run-stats-modal {
+  --border-radius: 20px 20px 0 0;
+  --background: transparent;
+}
+
+.run-stats-modal::part(backdrop) {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.stats-modal-content {
+  background: #000000;
+  border-radius: 20px 20px 0 0;
+  padding: 0;
+  position: relative;
+  min-height: 200px;
+}
+
+/* Drag Indicator */
+.drag-indicator {
+  width: 40px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  margin: 12px auto 8px;
 }
 
 .tracking-overlay {
-  background: rgba(0, 0, 0, 0.75);
-  border-radius: 16px;
-  padding: 14px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+  background: transparent;
+  border-radius: 0;
+  padding: 8px 16px 16px;
+  border: none;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  backdrop-filter: blur(12px);
+  gap: 14px;
 }
 
 .guided-route-banner {

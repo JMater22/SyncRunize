@@ -51,7 +51,6 @@ const hazardTypes = [
   { id: 'pothole', label: 'Pothole / Road damage', icon: trailSignOutline },
   { id: 'heavy_traffic', label: 'Heavy traffic', icon: carOutline },
   { id: 'construction', label: 'Construction zone', icon: buildOutline },
-  { id: 'unsafe_area', label: 'Unsafe area', icon: warningOutline },
   { id: 'other', label: 'Other hazard', icon: ellipsisHorizontal },
 ];
 
@@ -59,7 +58,6 @@ const defaultDescription: Record<string, string> = {
   pothole: 'Large pothole along the route.',
   heavy_traffic: 'Significant traffic congestion in this segment.',
   construction: 'Construction zone blocking part of the path.',
-  unsafe_area: 'Reported unsafe area. Stay alert.',
   other: 'Reported hazard.',
 };
 

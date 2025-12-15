@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IonPage, IonContent, IonIcon, IonAlert, IonToast, IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton } from '@ionic/react';
-import { arrowBack, pauseOutline, playOutline, stopOutline, mapOutline, warningOutline, checkmarkCircle, banOutline, navigateOutline, informationCircleOutline, closeCircleOutline } from 'ionicons/icons';
+import { arrowBack, pauseOutline, playOutline, stopOutline, mapOutline, warningOutline, checkmarkCircle, banOutline, navigateOutline, informationCircleOutline, closeCircleOutline, statsChartOutline } from 'ionicons/icons';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useHideTabBar } from '../hooks/useHideTabBar';
 import { useRunTracker } from '../hooks/useRunTracker';
@@ -368,11 +368,18 @@ const RunTrackerPage: React.FC = () => {
       setToastMessage('Need GPS lock before reporting a hazard.');
       return;
     }
-    history.push('/hazard-report', {
-      lat: latest.lat,
-      lng: latest.lng,
-      source: 'run-tracking',
-    });
+
+    // FIX: Dismiss stats modal first to prevent visual bugs
+    setMapOnlyView(true);
+
+    // Small delay to allow modal animation to complete
+    setTimeout(() => {
+      history.push('/hazard-report', {
+        lat: latest.lat,
+        lng: latest.lng,
+        source: 'run-tracking',
+      });
+    }, 100);
   };
   console.log('[RunTracking] Render - mapbox token:', !!mapboxToken, 'mapError:', mapError, 'mapLoaded:', mapLoaded);
   console.log('[RunTracking] latestCoord:', latestCoord, 'pathCoords.length:', pathCoords.length);
@@ -446,22 +453,41 @@ const RunTrackerPage: React.FC = () => {
                 <IonIcon icon={informationCircleOutline} />
               </button>
             </div>
+          </div>
 
+          {/* FAB Button - Only show when stats modal is closed */}
+          {mapOnlyView && (
             <button
-              className="view-toggle"
+              className="run-stats-fab"
               onClick={() => {
-                setMapOnlyView((prev) => !prev);
+                setMapOnlyView(false);
                 requestAnimationFrame(() => {
                   mapHandleRef.current?.resize();
                 });
               }}
             >
-              <IonIcon icon={mapOutline} /> {mapOnlyView ? 'Show stats' : 'Map only'}
+              <IonIcon icon={statsChartOutline} />
             </button>
-          </div>
+          )}
 
-          <div className={`stats-panel ${mapOnlyView ? 'hidden' : ''}`}>
-            <div className="tracking-overlay">
+          {/* Stats Modal */}
+          <IonModal
+            isOpen={!mapOnlyView}
+            onDidDismiss={() => {
+              setMapOnlyView(true);
+              requestAnimationFrame(() => {
+                mapHandleRef.current?.resize();
+              });
+            }}
+            initialBreakpoint={0.5}
+            breakpoints={[0, 0.5]}
+            className="run-stats-modal"
+          >
+            <div className="stats-modal-content">
+              {/* Drag Indicator */}
+              <div className="drag-indicator"></div>
+
+              <div className="tracking-overlay">
               {guidedRoute && (
                 <div className="guided-route-banner">
                   <div>
@@ -557,7 +583,8 @@ const RunTrackerPage: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
+            </div>
+          </IonModal>
         </div>
 
         <ActivitySummarySheet

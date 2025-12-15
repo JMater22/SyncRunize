@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { IonIcon, IonButton, IonChip } from '@ionic/react';
-import { personCircle, locationOutline, checkmarkCircle, checkmarkCircleOutline } from 'ionicons/icons';
+import { personCircle, locationOutline, checkmarkCircle, checkmarkCircleOutline, trashOutline } from 'ionicons/icons';
 import './HazardListPanel.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -28,13 +28,6 @@ interface Hazard {
   };
 }
 
-interface Confirmer {
-  user_id: number;
-  full_name: string;
-  profile_pic?: string;
-  confirmed_at: string;
-}
-
 interface HazardListPanelProps {
   hazards: Hazard[];
   mode: 'create-route' | 'run-tracking';
@@ -52,31 +45,12 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
 }) => {
   const [expandedHazardId, setExpandedHazardId] = useState<number | null>(null);
   const [userConfirmations, setUserConfirmations] = useState<Set<number>>(new Set());
-  const [confirmersMap, setConfirmersMap] = useState<Map<number, Confirmer[]>>(new Map());
-  const [confirmationCounts, setConfirmationCounts] = useState<Map<number, number>>(new Map());
 
   useEffect(() => {
     if (userToken) {
       fetchUserConfirmations();
     }
   }, [userToken]);
-
-  useEffect(() => {
-    const counts = new Map<number, number>();
-    hazards.forEach((hazard) => {
-      if (hazard.confirmation_count !== undefined) {
-        counts.set(hazard.report_id, hazard.confirmation_count);
-      }
-    });
-
-    setConfirmationCounts((prevCounts) => {
-      if (prevCounts.size !== counts.size) return counts;
-      for (const [id, count] of counts) {
-        if (prevCounts.get(id) !== count) return counts;
-      }
-      return prevCounts;
-    });
-  }, [hazards]);
 
   const fetchUserConfirmations = async () => {
     try {
@@ -102,22 +76,9 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
     }
   };
 
-  const fetchHazardConfirmers = async (reportId: number) => {
-    try {
-      const response = await axios.get(`${API_URL}/confirmations/${reportId}`);
-      setConfirmersMap((prev) => new Map(prev).set(reportId, response.data.confirmations || []));
-    } catch (error) {
-      console.error(`Error fetching confirmers for hazard ${reportId}:`, error);
-    }
-  };
-
   const handleExpandHazard = (reportId: number) => {
     const isExpanding = expandedHazardId !== reportId;
     setExpandedHazardId(isExpanding ? reportId : null);
-
-    if (isExpanding && !confirmersMap.has(reportId)) {
-      fetchHazardConfirmers(reportId);
-    }
   };
 
   const handleConfirmToggle = async (reportId: number, event?: React.MouseEvent) => {
@@ -143,29 +104,13 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
           newSet.delete(reportId);
           return newSet;
         });
-
-        setConfirmationCounts((prev) => {
-          const newMap = new Map(prev);
-          const currentCount = newMap.get(reportId) || 0;
-          newMap.set(reportId, Math.max(0, currentCount - 1));
-          return newMap;
-        });
       } else {
         await axios.post(`${API_URL}/confirmations/${reportId}`, {}, {
           headers: { Authorization: `Bearer ${userToken}` },
         });
 
         setUserConfirmations((prev) => new Set(prev).add(reportId));
-
-        setConfirmationCounts((prev) => {
-          const newMap = new Map(prev);
-          const currentCount = newMap.get(reportId) || 0;
-          newMap.set(reportId, currentCount + 1);
-          return newMap;
-        });
       }
-
-      await fetchHazardConfirmers(reportId);
     } catch (error: any) {
       console.error('Error toggling confirmation:', error);
       if (error.response?.status === 409) {
@@ -181,6 +126,39 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
       event.stopPropagation();
     }
     onRecenter({ lat: hazard.lat, lng: hazard.lng });
+  };
+
+  const handleRemoveHazard = async (reportId: number, event?: React.MouseEvent) => {
+    if (event) {
+      event.stopPropagation();
+    }
+
+    if (!userToken) {
+      alert('Please log in to remove hazards');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to mark this hazard as resolved?')) {
+      return;
+    }
+
+    try {
+      await axios.patch(
+        `${API_URL}/hazards/${reportId}`,
+        { status: 'resolved' },
+        {
+          headers: { Authorization: `Bearer ${userToken}` }
+        }
+      );
+
+      // Trigger parent component to refresh hazards list
+      alert('Hazard marked as resolved');
+      window.location.reload(); // Simple refresh for now
+    } catch (error: any) {
+      console.error('[HazardListPanel] Failed to remove hazard:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to remove hazard';
+      alert(`Error: ${errorMsg}`);
+    }
   };
 
   const formatTimeAgo = (timestamp: string): string => {
@@ -222,39 +200,6 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
     return 'success';
   };
 
-  const renderConfirmerAvatars = (reportId: number) => {
-    const confirmers = confirmersMap.get(reportId) || [];
-    const displayConfirmers = confirmers.slice(0, 3);
-    const remainingCount = Math.max(0, confirmers.length - 3);
-
-    return (
-      <div className="confirmer-avatars-mobile">
-        {displayConfirmers.map((confirmer, index) => (
-          confirmer.profile_pic ? (
-            <img
-              key={confirmer.user_id}
-              src={confirmer.profile_pic}
-              alt={confirmer.full_name}
-              className="confirmer-avatar-mobile"
-              style={{ zIndex: 10 - index }}
-              title={confirmer.full_name}
-            />
-          ) : (
-            <IonIcon
-              key={confirmer.user_id}
-              icon={personCircle}
-              className="confirmer-avatar-mobile confirmer-avatar-icon-mobile"
-              style={{ zIndex: 10 - index }}
-            />
-          )
-        ))}
-        {remainingCount > 0 && (
-          <span className="confirmer-more-mobile">+{remainingCount}</span>
-        )}
-      </div>
-    );
-  };
-
   const renderHazardItems = () => {
     // Sort hazards based on mode
     const sortedHazards = [...hazards].sort((a, b) => {
@@ -278,7 +223,6 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
         sortedHazards.map((hazard) => {
         const isExpanded = expandedHazardId === hazard.report_id;
         const isConfirmed = userConfirmations.has(hazard.report_id);
-        const confirmCount = confirmationCounts.get(hazard.report_id) || 0;
         const isFading = (hazard.decayed_trust_score || hazard.trust_score) < 0.3;
 
         return (
@@ -327,22 +271,6 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
                   <span>{hazard.cached_address || `${hazard.lat.toFixed(4)}, ${hazard.lng.toFixed(4)}`}</span>
                 </div>
 
-                {/* Confirmation Section */}
-                <div className="confirmation-section-mobile">
-                  <div className="confirmation-stats-mobile">
-                    <span className="confirmation-count-mobile">
-                      {confirmCount} {confirmCount === 1 ? 'confirmation' : 'confirmations'}
-                    </span>
-                    {hazard.last_confirmed_at && (
-                      <span className="last-confirmed-mobile">
-                        Last: {formatTimeAgo(hazard.last_confirmed_at)}
-                      </span>
-                    )}
-                  </div>
-
-                  {confirmCount > 0 && renderConfirmerAvatars(hazard.report_id)}
-                </div>
-
                 {/* Action Buttons */}
                 <div className="hazard-actions-mobile">
                   <IonButton
@@ -357,6 +285,17 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
                       icon={isConfirmed ? checkmarkCircle : checkmarkCircleOutline}
                     />
                     {isConfirmed ? 'Confirmed' : 'Confirm'}
+                  </IonButton>
+
+                  <IonButton
+                    expand="block"
+                    fill="outline"
+                    color="danger"
+                    onClick={(e) => handleRemoveHazard(hazard.report_id, e)}
+                    className="remove-btn-mobile"
+                  >
+                    <IonIcon slot="start" icon={trashOutline} />
+                    Remove Hazard
                   </IonButton>
 
                   <IonButton
