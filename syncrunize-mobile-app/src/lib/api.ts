@@ -152,8 +152,20 @@ api.interceptors.response.use(
     if (error.response.status === 401 || error.response.status === 403) {
       console.error('[API] Authentication failed:', error.response.data);
 
-      // Show toast for testing/debugging
-      ToastService.error('Authentication failed. Please log in again.', 4000);
+      // Clear session cache
+      cachedSession = null;
+      lastSessionFetch = 0;
+
+      // Show toast and force logout
+      ToastService.error('Session expired. Logging out...', 3000);
+      
+      setTimeout(() => {
+        supabase.auth.signOut().then(() => {
+          window.location.href = '/log-in';
+        }).catch(() => {
+          window.location.href = '/log-in';
+        });
+      }, 1000);
 
       return Promise.reject(new Error('Authentication failed. Please log in again.'));
     }
