@@ -2147,7 +2147,7 @@ const CreateRouteMap = () => {
             </IonToolbar>
           </IonHeader>
           <IonContent scrollY={true} style={{ '--background': '#ffffff' }}>
-            <div style={{ padding: '16px' }}>
+            <div className="route-input-wrapper" style={{ padding: '16px' }}>
               {/* Route Name */}
               <div className="section-card">
                 <div className="section-header">

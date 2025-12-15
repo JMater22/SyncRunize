@@ -1433,6 +1433,20 @@
 
 .route-input-modal ion-content {
   --overflow: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.route-input-modal ion-content::part(scroll) {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}
+
+.route-input-wrapper {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overflow-x: hidden;
 }
 
 /* Drag indicator handle */

@@ -2,6 +2,27 @@
   --ion-background-color: #e8f0f7;
 }
 
+/* Global Touch Scrolling for Mobile */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+html, body {
+  touch-action: pan-y pan-x;
+  -webkit-overflow-scrolling: touch;
+}
+
+ion-content {
+  --overflow: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+ion-content::part(scroll) {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Source - https://stackoverflow.com/a
    Posted by Ivan Paredes
    Retrieved 2025-11-17, License - CC BY-SA 3.0 */
