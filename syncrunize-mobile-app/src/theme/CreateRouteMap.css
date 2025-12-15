@@ -2143,11 +2143,42 @@
 }
 
 .hazard-actions ion-button {
-  --border-radius: 12px;
+  --border-radius: 8px;
   --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   font-weight: 600;
   text-transform: none;
-  height: 44px;
+  height: 48px;
+  width: 100%;
+  font-size: 15px;
+  margin: 0;
+}
+
+/* Confirmed button - solid green */
+.hazard-actions ion-button[color="success"][fill="solid"] {
+  --background: #10b981;
+  --background-hover: #059669;
+  --background-activated: #047857;
+  --color: white;
+  --border-width: 0;
+}
+
+/* Unconfirmed button - outline primary */
+.hazard-actions ion-button[color="primary"][fill="outline"] {
+  --border-color: #3b82f6;
+  --border-width: 2px;
+  --color: #3b82f6;
+  --background: transparent;
+  --background-hover: rgba(59, 130, 246, 0.1);
+  --background-activated: rgba(59, 130, 246, 0.2);
+}
+
+/* Remove hazard button - danger red */
+.hazard-actions ion-button[color="danger"] {
+  --background: #ef4444;
+  --background-hover: #dc2626;
+  --background-activated: #b91c1c;
+  --color: white;
+  --border-width: 0;
 }
 
 /* Edit Hazard Form */
