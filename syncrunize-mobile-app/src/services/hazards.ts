@@ -112,6 +112,28 @@ export const HazardsApi = {
     return data?.hazard ?? data;
   },
 
+  // Check if user has confirmed a hazard
+  checkConfirmation: async (hazardId: number, token: string): Promise<{ confirmed: boolean }> => {
+    const { data } = await api.get(`/confirmations/${hazardId}/check`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return data;
+  },
+
+  // Confirm a hazard
+  confirmHazard: async (hazardId: number, token: string): Promise<void> => {
+    await api.post(`/confirmations/${hazardId}`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  // Remove confirmation from a hazard
+  removeConfirmation: async (hazardId: number, token: string): Promise<void> => {
+    await api.delete(`/confirmations/${hazardId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
   // Get safety analysis for a route (if backend provides this)
   getSafetyAnalysis: async (routePath: Array<{ lat: number; lng: number }>): Promise<SafetyAnalysis> => {
     const { data } = await api.post('/hazards/analyze', { path: routePath });

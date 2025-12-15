@@ -27,7 +27,9 @@ import {
   locationOutline,
   informationCircleOutline,
   warningOutline,
-  trashOutline
+  trashOutline,
+  checkmarkCircle,
+  checkmarkCircleOutline
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import mapboxgl from 'mapbox-gl';
@@ -164,6 +166,9 @@ const CreateRouteMap = () => {
   const [selectedHazard, setSelectedHazard] = useState<HazardReport | null>(null);
   const [showHazardModal, setShowHazardModal] = useState(false);
   const [userToken, setUserToken] = useState<string | undefined>(undefined);
+
+  // Hazard confirmation states
+  const [userConfirmations, setUserConfirmations] = useState<Set<number>>(new Set());
 
   // Accident cluster states
   const [accidentClusters, setAccidentClusters] = useState<AccidentCluster[]>([]);
@@ -306,6 +311,38 @@ const CreateRouteMap = () => {
       } catch (_) { /* default to km */ }
     })();
   }, []);
+
+  // Fetch user confirmations when token and hazards are available
+  useEffect(() => {
+    if (userToken && hazards.length > 0) {
+      fetchUserConfirmations();
+    }
+  }, [userToken, hazards]);
+
+  const fetchUserConfirmations = async () => {
+    if (!userToken) return;
+
+    try {
+      const confirmationSet = new Set<number>();
+      const promises = hazards.map(async (hazard) => {
+        try {
+          const response = await axios.get(
+            `${import.meta.env.VITE_API_URL}/confirmations/${hazard.report_id}/check`,
+            { headers: { Authorization: `Bearer ${userToken}` } }
+          );
+          if (response.data.confirmed) {
+            confirmationSet.add(hazard.report_id);
+          }
+        } catch (error) {
+          console.error(`Error checking confirmation for hazard ${hazard.report_id}:`, error);
+        }
+      });
+      await Promise.all(promises);
+      setUserConfirmations(confirmationSet);
+    } catch (error) {
+      console.error('Error fetching user confirmations:', error);
+    }
+  };
 
   // Update map style when mapType changes
   useEffect(() => {
@@ -1448,6 +1485,50 @@ const CreateRouteMap = () => {
     }
   };
 
+  // Handle hazard confirmation toggle
+  const handleConfirmToggle = async () => {
+    if (!selectedHazard) return;
+
+    if (!userToken) {
+      setToastMessage('Please log in to confirm hazards');
+      setShowToast(true);
+      return;
+    }
+
+    const isConfirmed = userConfirmations.has(selectedHazard.report_id);
+
+    try {
+      if (isConfirmed) {
+        await axios.delete(`${import.meta.env.VITE_API_URL}/confirmations/${selectedHazard.report_id}`, {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+
+        setUserConfirmations((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(selectedHazard.report_id);
+          return newSet;
+        });
+
+        setToastMessage('✓ Confirmation removed');
+        setShowToast(true);
+      } else {
+        await axios.post(`${import.meta.env.VITE_API_URL}/confirmations/${selectedHazard.report_id}`, {}, {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+
+        setUserConfirmations((prev) => new Set(prev).add(selectedHazard.report_id));
+
+        setToastMessage('✓ Hazard confirmed');
+        setShowToast(true);
+      }
+    } catch (error: any) {
+      console.error('[CreateRoute Web] Confirmation toggle failed:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to update confirmation';
+      setToastMessage(`Error: ${errorMsg}`);
+      setShowToast(true);
+    }
+  };
+
   // Delete hazard
   const handleDeleteHazard = async () => {
     if (!selectedHazard) return;
@@ -2559,9 +2640,22 @@ const CreateRouteMap = () => {
                     {/* Action Buttons */}
                     {selectedHazard && (
                       <div className="hazard-actions">
+                        <IonButton
+                          expand="block"
+                          fill={userConfirmations.has(selectedHazard.report_id) ? 'solid' : 'outline'}
+                          color={userConfirmations.has(selectedHazard.report_id) ? 'success' : 'primary'}
+                          onClick={handleConfirmToggle}
+                        >
+                          <IonIcon
+                            slot="start"
+                            icon={userConfirmations.has(selectedHazard.report_id) ? checkmarkCircle : checkmarkCircleOutline}
+                          />
+                          {userConfirmations.has(selectedHazard.report_id) ? 'Confirmed' : 'Confirm Hazard'}
+                        </IonButton>
+
                         <IonButton expand="block" color="danger" onClick={handleDeleteHazard}>
                           <IonIcon icon={trashOutline} slot="start" />
-                          Delete Hazard
+                          Remove Hazard
                         </IonButton>
                       </div>
                     )}

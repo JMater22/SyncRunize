@@ -235,6 +235,38 @@ const CreateRouteMap = () => {
     getUserToken();
   }, []);
 
+  // Fetch user confirmations when token and hazards are available
+  useEffect(() => {
+    if (userToken && hazards.length > 0) {
+      fetchUserConfirmations();
+    }
+  }, [userToken, hazards]);
+
+  const fetchUserConfirmations = async () => {
+    if (!userToken) return;
+
+    try {
+      const confirmationSet = new Set<number>();
+      const promises = hazards.map(async (hazard) => {
+        try {
+          const response = await axios.get(
+            `${import.meta.env.VITE_API_URL}/confirmations/${hazard.report_id}/check`,
+            { headers: { Authorization: `Bearer ${userToken}` } }
+          );
+          if (response.data.confirmed) {
+            confirmationSet.add(hazard.report_id);
+          }
+        } catch (error) {
+          console.error(`Error checking confirmation for hazard ${hazard.report_id}:`, error);
+        }
+      });
+      await Promise.all(promises);
+      setUserConfirmations(confirmationSet);
+    } catch (error) {
+      console.error('Error fetching user confirmations:', error);
+    }
+  };
+
   // Handler for recenter button from HazardListPanel
   const handleRecenterFromPanel = useCallback((coords: { lat: number; lng: number }) => {
     if (map.current) {

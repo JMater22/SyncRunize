@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IonPage, IonContent, IonIcon, IonAlert, IonToast, IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton } from '@ionic/react';
-import { arrowBack, pauseOutline, playOutline, stopOutline, mapOutline, warningOutline, checkmarkCircle, banOutline, navigateOutline, informationCircleOutline, closeCircleOutline, statsChartOutline } from 'ionicons/icons';
+import { arrowBack, pauseOutline, playOutline, stopOutline, mapOutline, warningOutline, checkmarkCircle, checkmarkCircleOutline, navigateOutline, informationCircleOutline, closeCircleOutline, statsChartOutline, trashOutline } from 'ionicons/icons';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useHideTabBar } from '../hooks/useHideTabBar';
 import { useRunTracker } from '../hooks/useRunTracker';
@@ -46,6 +46,10 @@ const RunTrackerPage: React.FC = () => {
   const [guidedRoute, setGuidedRoute] = useState<GuidedRoutePayload | null>(null);
   const [accidentClusters, setAccidentClusters] = useState<AccidentCluster[]>([]);
   const [showAccidentClusters, setShowAccidentClusters] = useState(false); // Toggle for cluster visibility
+
+  // User token and confirmations for hazards
+  const [userToken, setUserToken] = useState<string | undefined>(undefined);
+  const [userConfirmations, setUserConfirmations] = useState<Set<number>>(new Set());
 
   // ✅ Now we can pass accidentClusters to useRunTracker
   const { session, startRun, pauseRun, resumeRun, finishRun, discardRun, recordRun, isRecording, error } = useRunTracker({ accidentClusters });
@@ -200,6 +204,46 @@ const RunTrackerPage: React.FC = () => {
     }
   }, [mapboxToken]);
 
+  // Get user token for hazard confirmations
+  useEffect(() => {
+    const getUserToken = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        setUserToken(session.access_token);
+      }
+    };
+    getUserToken();
+  }, []);
+
+  // Fetch user confirmations when token and hazards are available
+  useEffect(() => {
+    if (userToken && hazards.length > 0) {
+      fetchUserConfirmations();
+    }
+  }, [userToken, hazards]);
+
+  const fetchUserConfirmations = async () => {
+    if (!userToken) return;
+
+    try {
+      const confirmationSet = new Set<number>();
+      const promises = hazards.map(async (hazard) => {
+        try {
+          const response = await HazardsApi.checkConfirmation(hazard.report_id, userToken);
+          if (response.confirmed) {
+            confirmationSet.add(hazard.report_id);
+          }
+        } catch (error) {
+          console.error(`Error checking confirmation for hazard ${hazard.report_id}:`, error);
+        }
+      });
+      await Promise.all(promises);
+      setUserConfirmations(confirmationSet);
+    } catch (error) {
+      console.error('Error fetching user confirmations:', error);
+    }
+  };
+
   useEffect(() => {
     if (mapLoaded) {
       fetchAccidentClusters();
@@ -338,26 +382,67 @@ const RunTrackerPage: React.FC = () => {
     discardRun();
   }, [clearGuidedRoute, discardRun]);
 
-  const updateHazardStatus = useCallback(async (status: 'active' | 'resolved') => {
+  const handleConfirmToggle = useCallback(async () => {
     if (!selectedHazard) return;
+
+    if (!userToken) {
+      setToastMessage('Please log in to confirm hazards');
+      return;
+    }
+
+    const isConfirmed = userConfirmations.has(selectedHazard.report_id);
+
     try {
       setHazardActionLoading(true);
-      await HazardsApi.updateHazardStatus(selectedHazard.report_id, status);
-      const latest = latestLocationRef.current;
-      if (latest) {
-        await loadHazards(latest, { force: true });
-      }
-      setToastMessage(status === 'resolved' ? 'Thanks! Hazard cleared.' : 'Hazard confirmed. Stay alert!');
-      if (status === 'resolved') {
-        setSelectedHazard(null);
+      if (isConfirmed) {
+        await HazardsApi.removeConfirmation(selectedHazard.report_id, userToken);
+
+        setUserConfirmations((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(selectedHazard.report_id);
+          return newSet;
+        });
+
+        setToastMessage('✓ Confirmation removed');
+      } else {
+        await HazardsApi.confirmHazard(selectedHazard.report_id, userToken);
+
+        setUserConfirmations((prev) => new Set(prev).add(selectedHazard.report_id));
+
+        setToastMessage('✓ Hazard confirmed. Stay alert!');
       }
     } catch (err: any) {
-      const message = err?.response?.data?.error || err?.message || 'Unable to update hazard.';
+      const message = err?.response?.data?.error || err?.message || 'Unable to update confirmation.';
       setToastMessage(message);
     } finally {
       setHazardActionLoading(false);
     }
-  }, [selectedHazard, loadHazards]);
+  }, [selectedHazard, userToken, userConfirmations]);
+
+  const handleRemoveHazard = useCallback(async () => {
+    if (!selectedHazard) return;
+
+    if (!userToken) {
+      setToastMessage('Please log in to remove hazards');
+      return;
+    }
+
+    try {
+      setHazardActionLoading(true);
+      await HazardsApi.updateHazardStatus(selectedHazard.report_id, 'resolved');
+      const latest = latestLocationRef.current;
+      if (latest) {
+        await loadHazards(latest, { force: true });
+      }
+      setToastMessage('✓ Hazard marked as resolved');
+      setSelectedHazard(null);
+    } catch (err: any) {
+      const message = err?.response?.data?.error || err?.message || 'Unable to remove hazard.';
+      setToastMessage(message);
+    } finally {
+      setHazardActionLoading(false);
+    }
+  }, [selectedHazard, userToken, loadHazards]);
 
   const paceLabel = !isIdle && session.avgPaceMinPerKm > 0 ? formatPace(session.avgPaceMinPerKm) : '--';
   const selectedHazardDistance = computeHazardDistanceKm(selectedHazard);
@@ -673,21 +758,26 @@ const RunTrackerPage: React.FC = () => {
 
                   <div className="hazard-detail-actions">
                     <IonButton
-                      fill="clear"
-                      color="warning"
-                      onClick={() => updateHazardStatus('active')}
+                      expand="block"
+                      fill={selectedHazard && userConfirmations.has(selectedHazard.report_id) ? 'solid' : 'outline'}
+                      color={selectedHazard && userConfirmations.has(selectedHazard.report_id) ? 'success' : 'primary'}
+                      onClick={handleConfirmToggle}
                       disabled={hazardActionLoading}
                     >
-                      <IonIcon slot="start" icon={checkmarkCircle} />
-                      Still there
+                      <IonIcon
+                        slot="start"
+                        icon={selectedHazard && userConfirmations.has(selectedHazard.report_id) ? checkmarkCircle : checkmarkCircleOutline}
+                      />
+                      {selectedHazard && userConfirmations.has(selectedHazard.report_id) ? 'Confirmed' : 'Confirm Hazard'}
                     </IonButton>
                     <IonButton
-                      color="success"
-                      onClick={() => updateHazardStatus('resolved')}
+                      expand="block"
+                      color="danger"
+                      onClick={handleRemoveHazard}
                       disabled={hazardActionLoading}
                     >
-                      <IonIcon slot="start" icon={banOutline} />
-                      Hazard cleared
+                      <IonIcon slot="start" icon={trashOutline} />
+                      Remove Hazard
                     </IonButton>
                   </div>
                 </div>
