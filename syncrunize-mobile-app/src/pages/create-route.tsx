@@ -14,12 +14,7 @@ import {
   IonHeader,
   IonToolbar,
   IonTitle,
-  IonButtons,
-  IonLabel,
-  IonItem,
-  IonTextarea,
-  IonSelect,
-  IonSelectOption
+  IonButtons
 } from '@ionic/react';
 import {
   navigateOutline,
@@ -32,9 +27,9 @@ import {
   mapOutline,
   listOutline,
   warningOutline,
-  createOutline,
   trashOutline,
-  timeOutline
+  checkmarkCircle,
+  checkmarkCircleOutline
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import mapboxgl from 'mapbox-gl';
@@ -184,14 +179,6 @@ const CreateRouteMap = () => {
   const [selectedHazard, setSelectedHazard] = useState<HazardReport | null>(null);
   const [showHazardModal, setShowHazardModal] = useState(false);
 
-  // ✅ NEW: Edit hazard states
-  const [editMode, setEditMode] = useState(false);
-  const [editedHazard, setEditedHazard] = useState<any>(null);
-
-  // ✅ NEW: Audit history states
-  const [showAuditHistory, setShowAuditHistory] = useState(false);
-  const [auditHistory, setAuditHistory] = useState<any[]>([]);
-
   // Accident cluster states
   const [accidentClusters, setAccidentClusters] = useState<AccidentCluster[]>([]);
   const [accidentWarnings, setAccidentWarnings] = useState<AccidentWarning[]>([]);
@@ -213,6 +200,9 @@ const CreateRouteMap = () => {
 
   // User token for hazard confirmations
   const [userToken, setUserToken] = useState<string | undefined>(undefined);
+
+  // Hazard confirmation states
+  const [userConfirmations, setUserConfirmations] = useState<Set<number>>(new Set());
 
   // Input modal state
   const [showInputModal, setShowInputModal] = useState(false);
@@ -680,53 +670,38 @@ const CreateRouteMap = () => {
     }
   }, [renderMarkersForZoom]);
 
-  // ✅ NEW: Handle hazard update
-  const handleUpdateHazard = async () => {
-    if (!editedHazard) return;
+  // Handle hazard confirmation toggle
+  const handleConfirmToggle = async () => {
+    if (!selectedHazard) return;
+
+    if (!userToken) {
+      alert('Please log in to confirm hazards');
+      return;
+    }
+
+    const isConfirmed = userConfirmations.has(selectedHazard.report_id);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        alert('Please log in to update hazards');
-        return;
+      if (isConfirmed) {
+        await axios.delete(`${import.meta.env.VITE_API_URL}/confirmations/${selectedHazard.report_id}`, {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+
+        setUserConfirmations((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(selectedHazard.report_id);
+          return newSet;
+        });
+      } else {
+        await axios.post(`${import.meta.env.VITE_API_URL}/confirmations/${selectedHazard.report_id}`, {}, {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+
+        setUserConfirmations((prev) => new Set(prev).add(selectedHazard.report_id));
       }
-
-      const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/hazards/${editedHazard.report_id}`,
-        {
-          title: editedHazard.title,
-          description: editedHazard.description,
-          incident_type: editedHazard.incident_type,
-          reason: editedHazard.updateReason || null
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          }
-        }
-      );
-
-      console.log('[CreateRoute] Hazard updated successfully:', response.data);
-
-      // Update local hazards state
-      setHazards(hazards.map(h =>
-        h.report_id === editedHazard.report_id ? response.data.hazard : h
-      ));
-
-      // Update selected hazard
-      setSelectedHazard(response.data.hazard);
-
-      // Refresh map
-      await fetchHazardsInView();
-
-      // Exit edit mode
-      setEditMode(false);
-      setEditedHazard(null);
-
-      alert('Hazard updated successfully!');
     } catch (error: any) {
-      console.error('[CreateRoute] Update failed:', error);
-      alert(error.response?.data?.error || 'Failed to update hazard');
+      console.error('[CreateRoute] Confirmation toggle failed:', error);
+      alert(error.response?.data?.error || 'Failed to update confirmation');
     }
   };
 
@@ -775,36 +750,6 @@ const CreateRouteMap = () => {
     } catch (error: any) {
       console.error('[CreateRoute] Delete failed:', error);
       alert(error.response?.data?.error || 'Failed to delete hazard');
-    }
-  };
-
-  // ✅ NEW: Fetch and display audit history
-  const handleViewAuditHistory = async () => {
-    if (!selectedHazard) return;
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        alert('Please log in to view history');
-        return;
-      }
-
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/audits/hazard/${selectedHazard.report_id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          }
-        }
-      );
-
-      console.log('[CreateRoute] Audit history fetched:', response.data);
-
-      setAuditHistory(response.data.history || []);
-      setShowAuditHistory(true);
-    } catch (error: any) {
-      console.error('[CreateRoute] Failed to fetch audit history:', error);
-      alert(error.response?.data?.error || 'Failed to fetch history');
     }
   };
 
@@ -2359,31 +2304,20 @@ const CreateRouteMap = () => {
                   </div>
                 </div>
 
-                {/* ✅ NEW: Action buttons for hazard owner */}
-                {!editMode && selectedHazard && (
+                {/* Action buttons */}
+                {selectedHazard && (
                   <div className="hazard-actions">
                     <IonButton
                       expand="block"
-                      color="primary"
-                      onClick={() => {
-                        setEditMode(true);
-                        setEditedHazard({
-                          ...selectedHazard,
-                          updateReason: ''
-                        });
-                      }}
+                      fill={userConfirmations.has(selectedHazard.report_id) ? 'solid' : 'outline'}
+                      color={userConfirmations.has(selectedHazard.report_id) ? 'success' : 'primary'}
+                      onClick={handleConfirmToggle}
                     >
-                      <IonIcon icon={createOutline} slot="start" />
-                      Edit Hazard
-                    </IonButton>
-
-                    <IonButton
-                      expand="block"
-                      color="medium"
-                      onClick={handleViewAuditHistory}
-                    >
-                      <IonIcon icon={timeOutline} slot="start" />
-                      View History
+                      <IonIcon
+                        slot="start"
+                        icon={userConfirmations.has(selectedHazard.report_id) ? checkmarkCircle : checkmarkCircleOutline}
+                      />
+                      {userConfirmations.has(selectedHazard.report_id) ? 'Confirmed' : 'Confirm Hazard'}
                     </IonButton>
 
                     <IonButton
@@ -2392,160 +2326,10 @@ const CreateRouteMap = () => {
                       onClick={handleDeleteHazard}
                     >
                       <IonIcon icon={trashOutline} slot="start" />
-                      Delete Hazard
+                      Remove Hazard
                     </IonButton>
                   </div>
                 )}
-
-                {/* ✅ NEW: Edit form */}
-                {editMode && editedHazard && (
-                  <div className="edit-hazard-form">
-                    <h3>Edit Hazard</h3>
-
-                    <IonItem>
-                      <IonLabel position="floating">Title</IonLabel>
-                      <IonInput
-                        value={editedHazard.title}
-                        onIonChange={(e) => setEditedHazard({
-                          ...editedHazard,
-                          title: e.detail.value
-                        })}
-                      />
-                    </IonItem>
-
-                    <IonItem>
-                      <IonLabel position="floating">Description</IonLabel>
-                      <IonTextarea
-                        value={editedHazard.description}
-                        rows={4}
-                        onIonChange={(e) => setEditedHazard({
-                          ...editedHazard,
-                          description: e.detail.value
-                        })}
-                      />
-                    </IonItem>
-
-                    <IonItem>
-                      <IonLabel position="floating">Incident Type</IonLabel>
-                      <IonSelect
-                        value={editedHazard.incident_type}
-                        onIonChange={(e) => setEditedHazard({
-                          ...editedHazard,
-                          incident_type: e.detail.value
-                        })}
-                      >
-                        <IonSelectOption value="Pothole">Pothole</IonSelectOption>
-                        <IonSelectOption value="Accident">Accident</IonSelectOption>
-                        <IonSelectOption value="Road Debris">Road Debris</IonSelectOption>
-                        <IonSelectOption value="Flooding">Flooding</IonSelectOption>
-                        <IonSelectOption value="Stray Animal">Stray Animal</IonSelectOption>
-                        <IonSelectOption value="Poor Lighting">Poor Lighting</IonSelectOption>
-                        <IonSelectOption value="Other">Other</IonSelectOption>
-                      </IonSelect>
-                    </IonItem>
-
-                    <IonItem>
-                      <IonLabel position="floating">Reason for update (optional)</IonLabel>
-                      <IonInput
-                        value={editedHazard.updateReason}
-                        onIonChange={(e) => setEditedHazard({
-                          ...editedHazard,
-                          updateReason: e.detail.value
-                        })}
-                        placeholder="E.g., Hazard got worse"
-                      />
-                    </IonItem>
-
-                    <div className="edit-actions">
-                      <IonButton
-                        expand="block"
-                        onClick={handleUpdateHazard}
-                      >
-                        Save Changes
-                      </IonButton>
-                      <IonButton
-                        expand="block"
-                        color="light"
-                        onClick={() => {
-                          setEditMode(false);
-                          setEditedHazard(null);
-                        }}
-                      >
-                        Cancel
-                      </IonButton>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </IonContent>
-        </IonModal>
-
-        {/* ✅ NEW: Audit History Modal */}
-        <IonModal
-          isOpen={showAuditHistory}
-          onDidDismiss={() => setShowAuditHistory(false)}
-          className="audit-history-modal"
-        >
-          <IonHeader>
-            <IonToolbar>
-              <IonTitle>Hazard History</IonTitle>
-              <IonButtons slot="end">
-                <IonButton onClick={() => setShowAuditHistory(false)}>
-                  <IonIcon icon={closeCircleOutline} />
-                </IonButton>
-              </IonButtons>
-            </IonToolbar>
-          </IonHeader>
-
-          <IonContent className="audit-history-content">
-            {auditHistory.length === 0 ? (
-              <div className="no-history">
-                <p>No history available for this hazard.</p>
-              </div>
-            ) : (
-              <div className="audit-timeline">
-                {auditHistory.map((log) => (
-                  <div key={log.audit_id} className="audit-entry">
-                    <div className="audit-header">
-                      <strong className={`audit-action audit-action-${log.action}`}>
-                        {log.action.toUpperCase()}
-                      </strong>
-                      <span className="audit-time">
-                        {new Date(log.created_at).toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className="audit-user">
-                      <img
-                        src={log.user?.profile_picture || DEFAULT_AVATAR}
-                        alt={log.user?.username || 'Unknown'}
-                        className="audit-avatar"
-                      />
-                      <span>By: {log.user?.username || 'Unknown'}</span>
-                    </div>
-
-                    {log.changed_fields && Object.keys(log.changed_fields).length > 0 && (
-                      <div className="audit-changes">
-                        <strong>Changes:</strong>
-                        {Object.entries(log.changed_fields).map(([field, change]: [string, any]) => (
-                          <div key={field} className="audit-change-item">
-                            <span className="change-field">{field}:</span>
-                            <span className="change-old">"{String(change.old)}"</span>
-                            <span className="change-arrow">→</span>
-                            <span className="change-new">"{String(change.new)}"</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {log.reason && (
-                      <div className="audit-reason">
-                        <strong>Reason:</strong> <em>{log.reason}</em>
-                      </div>
-                    )}
-                  </div>
-                ))}
               </div>
             )}
           </IonContent>
