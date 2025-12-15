@@ -1431,6 +1431,10 @@
   --border-radius: 20px 20px 0 0;
 }
 
+.route-input-modal ion-content {
+  --overflow: auto;
+}
+
 .route-input-modal ion-toolbar {
   --background: #ffffff;
   --color: #2c2c2c;
