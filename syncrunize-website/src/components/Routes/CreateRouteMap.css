@@ -1453,7 +1453,7 @@
   .mobile-create-route-fab {
     display: flex !important;
     position: fixed;
-    bottom: 24px;
+    bottom: 160px;
     right: 16px;
     width: 56px;
     height: 56px;
@@ -1464,7 +1464,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 900;
+    z-index: 1100;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
