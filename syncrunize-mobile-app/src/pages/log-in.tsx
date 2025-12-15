@@ -72,10 +72,11 @@ const Login: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     try {
-      const redirectTo = getAuthRedirectUrl('/home');
+      // ✅ Use HTTPS app link for OAuth (opens directly in app like ChatGPT/Claude)
+      const redirectTo = 'https://syncrunize-website.vercel.app/auth-redirect';
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: redirectTo ? { redirectTo } : {},
+        options: { redirectTo },
       });
 
       if (error) {

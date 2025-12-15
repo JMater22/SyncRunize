@@ -16,10 +16,7 @@ import {
   IonTitle,
   IonButtons,
   IonLabel,
-  IonItem,
-  IonTextarea,
-  IonSelect,
-  IonSelectOption
+  IonItem
 } from '@ionic/react';
 import {
   navigateOutline,
@@ -30,7 +27,6 @@ import {
   locationOutline,
   informationCircleOutline,
   warningOutline,
-  createOutline,
   trashOutline,
   timeOutline
 } from 'ionicons/icons';
@@ -84,6 +80,7 @@ interface HazardReport {
   description: string;
   lat: number;
   lng: number;
+  cached_address?: string | null; // Human-readable address from reverse geocoding
   image_url: string | null;
   reported_at: string;
   severity_weight: number;
@@ -161,17 +158,13 @@ const CreateRouteMap = () => {
   const hazardClusters = useRef<Map<string, HazardReport[]>>(new Map());
 
   // Track zoom state for responsive spiderfy
-  const lastZoomState = useRef<'spiderfied' | 'clustered' | null>(null);
+  const lastZoomState = useRef<'spiderfied' | 'clustered' | 'hidden' | null>(null);
 
   // Hazard states
   const [hazards, setHazards] = useState<HazardReport[]>([]);
   const [selectedHazard, setSelectedHazard] = useState<HazardReport | null>(null);
   const [showHazardModal, setShowHazardModal] = useState(false);
   const [userToken, setUserToken] = useState<string | undefined>(undefined);
-
-  // Edit hazard states
-  const [editMode, setEditMode] = useState(false);
-  const [editedHazard, setEditedHazard] = useState<any>(null);
 
   // Audit history states
   const [showAuditHistory, setShowAuditHistory] = useState(false);
@@ -473,13 +466,10 @@ const CreateRouteMap = () => {
     if (!map.current || hazardClusters.current.size === 0) return;
 
     const zoom = map.current.getZoom();
-    const SPIDERFY_ZOOM_THRESHOLD = 16;
-    const currentState = zoom >= SPIDERFY_ZOOM_THRESHOLD ? 'spiderfied' : 'clustered';
+    const MIN_ZOOM_THRESHOLD = 12;
+    const SPIDERFY_ZOOM_THRESHOLD = 18;
 
-    // Update tracked state
-    lastZoomState.current = currentState;
-
-    // Defensive cleanup (handleZoomStart already does this)
+    // Clear old markers first
     hazardMarkers.current.forEach(marker => {
       try {
         marker.remove();
@@ -488,6 +478,15 @@ const CreateRouteMap = () => {
       }
     });
     hazardMarkers.current = [];
+
+    // Hide markers when zoomed out too far
+    if (zoom < MIN_ZOOM_THRESHOLD) {
+      lastZoomState.current = 'hidden';
+      return;
+    }
+
+    const currentState = zoom >= SPIDERFY_ZOOM_THRESHOLD ? 'spiderfied' : 'clustered';
+    lastZoomState.current = currentState;
 
     // Render based on zoom level
     hazardClusters.current.forEach((hazardsInCluster, clusterId) => {
@@ -513,6 +512,38 @@ const CreateRouteMap = () => {
 
     updateMarkersForZoom();
   }, [updateMarkersForZoom, createSingleHazardMarker, createClusterMarker, createSpiderfiedMarkers]);
+
+  // Re-render markers when zoom crosses threshold (clustered <-> spiderfied)
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+
+    const handleZoomEnd = () => {
+      if (!map.current || hazardClusters.current.size === 0) return;
+
+      const zoom = map.current.getZoom();
+      const MIN_ZOOM_THRESHOLD = 12;
+      const SPIDERFY_ZOOM_THRESHOLD = 18;
+
+      const currentState = zoom < MIN_ZOOM_THRESHOLD
+        ? 'hidden'
+        : zoom >= SPIDERFY_ZOOM_THRESHOLD
+          ? 'spiderfied'
+          : 'clustered';
+
+      // Only re-render when crossing threshold
+      if (currentState !== lastZoomState.current) {
+        renderMarkersForZoom();
+      }
+    };
+
+    map.current.on('zoomend', handleZoomEnd);
+
+    return () => {
+      if (map.current) {
+        map.current.off('zoomend', handleZoomEnd);
+      }
+    };
+  }, [mapLoaded, renderMarkersForZoom]);
 
   // Fetch all active hazards
   const fetchHazardsInView = useCallback(async () => {
@@ -552,7 +583,10 @@ const CreateRouteMap = () => {
       // Reset zoom state to force re-render
       lastZoomState.current = null;
 
-      renderMarkersForZoom();
+      // Render markers after brief delay (ensures map is ready)
+      setTimeout(() => {
+        renderMarkersForZoom();
+      }, 100);
     } catch (error) {
       console.error('Failed to fetch hazards:', error);
       // Ensure clean state on error
@@ -832,44 +866,8 @@ const CreateRouteMap = () => {
     };
   }, [mapLoaded, handleMapClick]);
 
-  // Responsive zoom handler - updates on zoom end
-  useEffect(() => {
-    if (!map.current || !mapLoaded) return;
-
-    const handleZoomStart = () => {
-      // Remove ALL markers immediately to prevent visual glitches
-      hazardMarkers.current.forEach(marker => {
-        try {
-          marker.remove();
-        } catch (e) {
-          console.warn('[CreateRoute] Failed to remove marker during zoom:', e);
-        }
-      });
-      hazardMarkers.current = [];
-    };
-
-    const handleZoomEnd = () => {
-      if (!map.current) return;
-
-      // Always re-render markers based on current zoom level
-      try {
-        renderMarkersForZoom();
-      } catch (error) {
-        console.error('[CreateRoute] Failed to render markers after zoom:', error);
-        hazardMarkers.current = [];
-      }
-    };
-
-    map.current.on('zoomstart', handleZoomStart);
-    map.current.on('zoomend', handleZoomEnd);
-
-    return () => {
-      if (map.current) {
-        map.current.off('zoomstart', handleZoomStart);
-        map.current.off('zoomend', handleZoomEnd);
-      }
-    };
-  }, [mapLoaded, renderMarkersForZoom]);
+  // DON'T re-render on zoom - markers are rendered once and stay stable
+  // No zoom event listener = no re-rendering = no positioning glitches
 
   // Update polyline on map
   const updatePolyline = useCallback((path: LatLng[]) => {
@@ -1455,65 +1453,6 @@ const CreateRouteMap = () => {
     }
   };
 
-  // Update hazard
-  const handleUpdateHazard = async () => {
-    if (!editedHazard || !selectedHazard) return;
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) {
-        setToastMessage('Please log in to edit hazards');
-        setShowToast(true);
-        return;
-      }
-
-      // Send update request
-      const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/hazards/${selectedHazard.report_id}`,
-        {
-          title: editedHazard.title,
-          description: editedHazard.description,
-          incident_type: editedHazard.incident_type,
-          reason: editedHazard.updateReason || null
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-
-      console.log('[CreateRoute Web] Hazard updated:', response.data);
-
-      setToastMessage('✓ Hazard updated successfully');
-      setShowToast(true);
-
-      // Update local state
-      setHazards(prev => prev.map(h =>
-        h.report_id === selectedHazard.report_id
-          ? { ...h, title: editedHazard.title, description: editedHazard.description, incident_type: editedHazard.incident_type }
-          : h
-      ));
-
-      setSelectedHazard({
-        ...selectedHazard,
-        title: editedHazard.title,
-        description: editedHazard.description,
-        incident_type: editedHazard.incident_type
-      });
-
-      // Exit edit mode
-      setEditMode(false);
-      setEditedHazard(null);
-
-    } catch (error: any) {
-      console.error('[CreateRoute Web] Failed to update hazard:', error);
-      const errorMsg = error.response?.data?.error || 'Failed to update hazard';
-      setToastMessage(`Error: ${errorMsg}`);
-      setShowToast(true);
-    }
-  };
-
   // Delete hazard
   const handleDeleteHazard = async () => {
     if (!selectedHazard) return;
@@ -1556,8 +1495,6 @@ const CreateRouteMap = () => {
       // Close modal
       setShowHazardModal(false);
       setSelectedHazard(null);
-      setEditMode(false);
-      setEditedHazard(null);
 
     } catch (error: any) {
       console.error('[CreateRoute Web] Failed to delete hazard:', error);
@@ -1660,7 +1597,7 @@ const CreateRouteMap = () => {
     if (!map.current) return;
 
     const currentZoom = map.current.getZoom();
-    const SPIDERFY_ZOOM_THRESHOLD = 16;
+    const SPIDERFY_ZOOM_THRESHOLD = 18;
 
     // Check if the hazard is part of a cluster
     let isInCluster = false;
@@ -2291,23 +2228,15 @@ const CreateRouteMap = () => {
                       </div>
                       <div className="stat">
                         <span className="stat-label">Location</span>
-                        <span className="stat-value">
-                          {selectedHazard.lat.toFixed(4)}, {selectedHazard.lng.toFixed(4)}
+                        <span className="stat-value" title={`${selectedHazard.lat.toFixed(4)}, ${selectedHazard.lng.toFixed(4)}`}>
+                          {selectedHazard.cached_address || `${selectedHazard.lat.toFixed(4)}, ${selectedHazard.lng.toFixed(4)}`}
                         </span>
                       </div>
                     </div>
 
                     {/* Action Buttons */}
-                    {!editMode && selectedHazard && (
+                    {selectedHazard && (
                       <div className="hazard-actions">
-                        <IonButton expand="block" color="primary" onClick={() => {
-                          setEditMode(true);
-                          setEditedHazard({ ...selectedHazard, updateReason: '' });
-                        }}>
-                          <IonIcon icon={createOutline} slot="start" />
-                          Edit Hazard
-                        </IonButton>
-
                         <IonButton expand="block" color="medium" onClick={handleViewAuditHistory}>
                           <IonIcon icon={timeOutline} slot="start" />
                           View History
@@ -2317,84 +2246,6 @@ const CreateRouteMap = () => {
                           <IonIcon icon={trashOutline} slot="start" />
                           Delete Hazard
                         </IonButton>
-                      </div>
-                    )}
-
-                    {/* Edit Form */}
-                    {editMode && editedHazard && (
-                      <div className="edit-hazard-form">
-                        <h3>Edit Hazard</h3>
-
-                        <IonItem>
-                          <IonLabel position="floating">Title</IonLabel>
-                          <IonInput
-                            value={editedHazard.title}
-                            onIonChange={(e) => setEditedHazard({
-                              ...editedHazard,
-                              title: e.detail.value
-                            })}
-                          />
-                        </IonItem>
-
-                        <IonItem>
-                          <IonLabel position="floating">Description</IonLabel>
-                          <IonTextarea
-                            value={editedHazard.description}
-                            rows={4}
-                            onIonChange={(e) => setEditedHazard({
-                              ...editedHazard,
-                              description: e.detail.value
-                            })}
-                          />
-                        </IonItem>
-
-                        <IonItem>
-                          <IonLabel position="floating">Incident Type</IonLabel>
-                          <IonSelect
-                            value={editedHazard.incident_type}
-                            onIonChange={(e) => setEditedHazard({
-                              ...editedHazard,
-                              incident_type: e.detail.value
-                            })}
-                          >
-                            <IonSelectOption value="Pothole">Pothole</IonSelectOption>
-                            <IonSelectOption value="Accident">Accident</IonSelectOption>
-                            <IonSelectOption value="Road Damage">Road Damage</IonSelectOption>
-                            <IonSelectOption value="Flood">Flood</IonSelectOption>
-                            <IonSelectOption value="Construction">Construction</IonSelectOption>
-                            <IonSelectOption value="Debris">Debris</IonSelectOption>
-                            <IonSelectOption value="Animal">Animal</IonSelectOption>
-                            <IonSelectOption value="Other">Other</IonSelectOption>
-                          </IonSelect>
-                        </IonItem>
-
-                        <IonItem>
-                          <IonLabel position="floating">Reason for update (optional)</IonLabel>
-                          <IonInput
-                            value={editedHazard.updateReason}
-                            placeholder="E.g., Hazard got worse"
-                            onIonChange={(e) => setEditedHazard({
-                              ...editedHazard,
-                              updateReason: e.detail.value
-                            })}
-                          />
-                        </IonItem>
-
-                        <div className="edit-actions">
-                          <IonButton expand="block" onClick={handleUpdateHazard}>
-                            Save Changes
-                          </IonButton>
-                          <IonButton
-                            expand="block"
-                            color="light"
-                            onClick={() => {
-                              setEditMode(false);
-                              setEditedHazard(null);
-                            }}
-                          >
-                            Cancel
-                          </IonButton>
-                        </div>
                       </div>
                     )}
                   </div>

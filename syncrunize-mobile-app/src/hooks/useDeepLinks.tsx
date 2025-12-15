@@ -30,10 +30,73 @@ export const useDeepLinks = () => {
       try {
         // Parse the deep link URL
         const urlObj = new URL(url);
+        const isHttps = urlObj.protocol === 'https:';
         const path = urlObj.pathname || urlObj.host; // host is used for custom schemes
 
+        console.log('[DeepLink] Protocol:', urlObj.protocol);
         console.log('[DeepLink] Path:', path);
+        console.log('[DeepLink] Hash:', urlObj.hash);
         console.log('[DeepLink] Search params:', urlObj.searchParams.toString());
+
+        // ✅ Handle Android App Links (HTTPS from email)
+        // Format: https://syncrunize-website.vercel.app/auth-redirect#access_token=...
+        if (isHttps && path === '/auth-redirect') {
+          console.log('[DeepLink] Detected HTTPS app link for auth redirect');
+
+          // Extract tokens from hash (Supabase uses hash-based redirect)
+          const hash = urlObj.hash.substring(1); // Remove '#'
+          const hashParams = new URLSearchParams(hash);
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          const type = hashParams.get('type');
+
+          console.log('[DeepLink] Token type:', type);
+          console.log('[DeepLink] Has access token:', !!accessToken);
+
+          if (accessToken && type === 'recovery') {
+            // Password reset flow
+            console.log('[DeepLink] Setting session for password reset...');
+            supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+            }).then(({ error }) => {
+              if (error) {
+                console.error('[DeepLink] Error setting session:', error);
+                history.push('/log-in');
+                return;
+              }
+              console.log('[DeepLink] Session established, navigating to reset password');
+              setTimeout(() => {
+                history.push('/reset-password');
+              }, 100);
+            });
+          } else if (accessToken) {
+            // OAuth sign-in flow
+            console.log('[DeepLink] Setting session for OAuth...');
+            supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+            }).then(({ data: { session }, error }) => {
+              if (error) {
+                console.error('[DeepLink] Error establishing OAuth session:', error);
+                history.push('/log-in');
+                return;
+              }
+              if (session) {
+                console.log('[DeepLink] OAuth session established, redirecting to home');
+                setTimeout(() => {
+                  history.push('/home');
+                }, 100);
+              } else {
+                history.push('/log-in');
+              }
+            });
+          } else {
+            console.warn('[DeepLink] No tokens found in auth redirect');
+            history.push('/log-in');
+          }
+          return;
+        }
 
         // Handle OAuth callback (Google Sign-In)
         // Format: syncrunize://home#access_token=...&refresh_token=...

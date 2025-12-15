@@ -1,4 +1,4 @@
-import { toastController } from '@ionic/react';
+import { toastController } from '@ionic/core';
 
 /**
  * Global toast service for showing notifications from anywhere in the app

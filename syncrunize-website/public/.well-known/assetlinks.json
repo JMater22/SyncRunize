@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.app.syncrunize",
+    "sha256_cert_fingerprints": [
+      "35:F9:32:3D:44:AE:17:D0:5F:22:95:77:E8:D0:04:17:A2:18:9F:5F:DF:47:38:0B:10:64:7A:C4:6D:73:60:B1"
+    ]
+  }
+}]

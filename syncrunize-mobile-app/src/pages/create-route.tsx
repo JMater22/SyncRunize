@@ -40,10 +40,13 @@ import { useHistory } from 'react-router-dom';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import axios from 'axios';
+import { Geolocation } from '@capacitor/geolocation';
 import { useHideTabBar } from '../hooks/useHideTabBar';
 import { supabase } from '../lib/supabaseClient';
 import { DEFAULT_AVATAR, kmToMiles } from '../lib/utils';
 import { buildGuidedRoutePayload } from '../lib/routeGuides';
+import { clusterHazards, calculateCentroid, SPIDERFY_CONFIG } from '../lib/hazardClustering';
+import UnifiedMapPanel from '../components/UnifiedMapPanel';
 import '../theme/CreateRouteMap.css';
 
 // Mapbox configuration
@@ -89,6 +92,7 @@ interface HazardReport {
   description: string;
   lat: number;
   lng: number;
+  cached_address?: string | null; // Human-readable address from reverse geocoding
   image_url: string | null;
   reported_at: string;
   severity_weight: number;
@@ -170,6 +174,10 @@ const CreateRouteMap = () => {
   const startMarker = useRef<mapboxgl.Marker | null>(null);
   const endMarker = useRef<mapboxgl.Marker | null>(null);
   const hazardMarkers = useRef<mapboxgl.Marker[]>([]);
+  const hazardClusters = useRef<Map<string, HazardReport[]>>(new Map());
+
+  // Spiderfy state tracking
+  const lastZoomState = useRef<'spiderfied' | 'clustered' | 'hidden' | null>(null);
 
   // Hazard states
   const [hazards, setHazards] = useState<HazardReport[]>([]);
@@ -203,14 +211,18 @@ const CreateRouteMap = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
 
-  // View toggle state - map or selection panel
-  const [viewMode, setViewMode] = useState<'map' | 'selection'>('map');
+  // User token for hazard confirmations
+  const [userToken, setUserToken] = useState<string | undefined>(undefined);
+
+  // Input modal state
+  const [showInputModal, setShowInputModal] = useState(false);
+
+  // Use my location loading state
+  const [gettingLocation, setGettingLocation] = useState(false);
 
   // Map refresh key for forcing complete map remount
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
 
-  // Legend modal state
-  const [showLegendModal, setShowLegendModal] = useState(false);
 
   // Search input states
   const [startSearchQuery, setStartSearchQuery] = useState('');
@@ -221,6 +233,89 @@ const CreateRouteMap = () => {
   const [endSuggestions, setEndSuggestions] = useState<MapboxFeature[]>([]);
   const [showStartSuggestions, setShowStartSuggestions] = useState(false);
   const [showEndSuggestions, setShowEndSuggestions] = useState(false);
+
+  // Get user token for hazard confirmations
+  useEffect(() => {
+    const getUserToken = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        setUserToken(session.access_token);
+      }
+    };
+    getUserToken();
+  }, []);
+
+  // Handler for recenter button from HazardListPanel
+  const handleRecenterFromPanel = useCallback((coords: { lat: number; lng: number }) => {
+    if (map.current) {
+      map.current.flyTo({
+        center: [coords.lng, coords.lat],
+        zoom: 16,
+        duration: 1500,
+      });
+    }
+  }, []);
+
+  // Handler for "Use My Location" button
+  const handleUseMyLocation = async () => {
+    setGettingLocation(true);
+    try {
+      // Request location permission and get current position
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000,
+      });
+
+      const { latitude, longitude } = position.coords;
+
+      // Reverse geocode to get address
+      const response = await axios.get(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json`,
+        {
+          params: {
+            access_token: mapboxgl.accessToken,
+            limit: 1,
+          },
+        }
+      );
+
+      if (response.data.features && response.data.features.length > 0) {
+        const feature = response.data.features[0];
+
+        // Update start location
+        setStartPoint({ lat: latitude, lng: longitude });
+        setStartSearchQuery(feature.place_name);
+        setShowStartSuggestions(false);
+
+        // Fly to location on map
+        if (map.current) {
+          map.current.flyTo({
+            center: [longitude, latitude],
+            zoom: 15,
+            duration: 1500,
+          });
+        }
+
+        // Show success toast
+        setToastMessage('Current location set as starting point');
+        setShowToast(true);
+      }
+    } catch (error: any) {
+      console.error('Error getting location:', error);
+
+      let errorMessage = 'Unable to get your location';
+      if (error.message?.includes('denied')) {
+        errorMessage = 'Location permission denied. Please enable location access in settings.';
+      } else if (error.message?.includes('timeout')) {
+        errorMessage = 'Location request timed out. Please try again.';
+      }
+
+      setToastMessage(errorMessage);
+      setShowToast(true);
+    } finally {
+      setGettingLocation(false);
+    }
+  };
 
   // Initialize Mapbox map
   useEffect(() => {
@@ -271,8 +366,8 @@ const CreateRouteMap = () => {
         setShowToast(true);
       });
 
-      // Fetch hazards when map is moved
-      map.current.on('idle', fetchHazardsInView);
+      // DON'T fetch hazards on every idle event - this causes constant re-rendering
+      // Hazards are fetched once on load (line 270)
 
       console.log('[CreateRoute] Map initialization started');
     } catch (error) {
@@ -318,6 +413,218 @@ const CreateRouteMap = () => {
     map.current.setStyle(styleMap[mapType]);
   }, [mapType, mapLoaded]);
 
+  // Update marker visibility and scaling based on zoom level
+  const updateMarkersForZoom = useCallback(() => {
+    if (!map.current) return;
+
+    const zoom = map.current.getZoom();
+    const minZoom = 12; // Only show markers at zoom 12+ (street/neighborhood view)
+
+    hazardMarkers.current.forEach(marker => {
+      const el = marker.getElement();
+
+      // Skip spiderfied markers - they use translate() transforms
+      if (el.classList.contains('hazard-marker-spiderfied')) {
+        el.style.display = 'flex';  // Ensure visibility
+        return;
+      }
+
+      if (zoom < minZoom) {
+        // Hide markers when zoomed out too far
+        el.style.display = 'none';
+      } else {
+        // Show markers and scale based on zoom level
+        el.style.display = 'flex';
+
+        // Responsive sizing: 0.7x at zoom 12, 1.0x at zoom 15, 1.3x at zoom 18+
+        let scale = 0.7;
+        if (zoom >= 15) {
+          scale = 1.0 + ((zoom - 15) * 0.1); // Grows after zoom 15
+        } else {
+          scale = 0.7 + ((zoom - 12) * 0.1); // Grows from zoom 12 to 15
+        }
+        scale = Math.min(scale, 1.3); // Max 1.3x
+
+        el.style.transform = `scale(${scale})`;
+      }
+    });
+  }, []);
+
+  // Create a single hazard marker (non-clustered)
+  const createSingleHazardMarker = useCallback((hazard: HazardReport): mapboxgl.Marker => {
+    const el = document.createElement('div');
+    el.className = 'hazard-marker-simple';
+    el.innerHTML = `
+      <div class="crimson-marker"></div>
+      <div class="cloud-bubble">${hazard.incident_type}</div>
+    `;
+
+    el.addEventListener('click', () => {
+      setSelectedHazard(hazard);
+      setShowHazardModal(true);
+    });
+
+    return new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([hazard.lng, hazard.lat])
+      .addTo(map.current!);
+  }, []);
+
+  // Create a cluster marker with count badge (shown at lower zoom levels)
+  const createClusterMarker = useCallback((
+    position: { lat: number; lng: number },
+    count: number,
+    clusterId: string
+  ): mapboxgl.Marker => {
+    const el = document.createElement('div');
+    el.className = 'hazard-marker-cluster';
+    el.dataset.clusterId = clusterId;
+    el.innerHTML = `
+      <div class="crimson-marker">
+        <span class="cluster-count">${count}</span>
+      </div>
+      <div class="cloud-bubble">Multiple Hazards</div>
+    `;
+
+    return new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([position.lng, position.lat])
+      .addTo(map.current!);
+  }, []);
+
+  // Create spiderfied markers (shown at high zoom levels)
+  const createSpiderfiedMarkers = useCallback((
+    hazards: HazardReport[],
+    centerPosition: { lat: number; lng: number }
+  ): mapboxgl.Marker[] => {
+    if (!map.current) return [];
+
+    const isMobile = window.innerWidth <= 768;
+    const radius = isMobile
+      ? SPIDERFY_CONFIG.SPIDER_RADIUS_MOBILE
+      : SPIDERFY_CONFIG.SPIDER_RADIUS_DESKTOP;
+
+    const displayHazards = hazards.slice(0, SPIDERFY_CONFIG.MAX_SPIDER_DISPLAY);
+    const angleStep = (2 * Math.PI) / displayHazards.length;
+    const startAngle = -Math.PI / 2;
+
+    const markers: mapboxgl.Marker[] = [];
+
+    displayHazards.forEach((hazard, index) => {
+      const angle = startAngle + (angleStep * index);
+      const offsetX = Math.cos(angle) * radius;
+      const offsetY = Math.sin(angle) * radius;
+
+      const markerEl = document.createElement('div');
+      markerEl.className = 'hazard-marker-spiderfied';
+      markerEl.innerHTML = `
+        <div class="crimson-marker"></div>
+        <div class="cloud-bubble">${hazard.incident_type}</div>
+      `;
+
+      markerEl.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+
+      markerEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setSelectedHazard(hazard);
+        setShowHazardModal(true);
+      });
+
+      const marker = new mapboxgl.Marker({
+        element: markerEl,
+        anchor: 'bottom'
+      })
+        .setLngLat([centerPosition.lng, centerPosition.lat])
+        .addTo(map.current!);
+
+      markers.push(marker);
+    });
+
+    return markers;
+  }, []);
+
+  // Render markers based on current zoom level (without re-fetching)
+  const renderMarkersForZoom = useCallback(() => {
+    if (!map.current || hazardClusters.current.size === 0) return;
+
+    const zoom = map.current.getZoom();
+    const MIN_ZOOM_THRESHOLD = 12;
+    const SPIDERFY_ZOOM_THRESHOLD = 18;
+
+    // Clear old markers first
+    hazardMarkers.current.forEach(marker => {
+      try {
+        marker.remove();
+      } catch (e) {
+        // Marker may already be removed
+      }
+    });
+    hazardMarkers.current = [];
+
+    // Hide markers when zoomed out too far
+    if (zoom < MIN_ZOOM_THRESHOLD) {
+      lastZoomState.current = 'hidden';
+      return;
+    }
+
+    const currentState = zoom >= SPIDERFY_ZOOM_THRESHOLD ? 'spiderfied' : 'clustered';
+    lastZoomState.current = currentState;
+
+    // Render based on zoom level
+    hazardClusters.current.forEach((hazardsInCluster, clusterId) => {
+      try {
+        if (hazardsInCluster.length === 1) {
+          const marker = createSingleHazardMarker(hazardsInCluster[0]);
+          hazardMarkers.current.push(marker);
+        } else {
+          const centroid = calculateCentroid(hazardsInCluster);
+
+          if (zoom >= SPIDERFY_ZOOM_THRESHOLD) {
+            const spiderfiedMarkers = createSpiderfiedMarkers(hazardsInCluster, centroid);
+            hazardMarkers.current.push(...spiderfiedMarkers);
+          } else {
+            const marker = createClusterMarker(centroid, hazardsInCluster.length, clusterId);
+            hazardMarkers.current.push(marker);
+          }
+        }
+      } catch (error) {
+        console.error('[CreateRoute Mobile] Failed to create marker for cluster:', clusterId, error);
+      }
+    });
+
+    updateMarkersForZoom();
+  }, [updateMarkersForZoom, createSingleHazardMarker, createClusterMarker, createSpiderfiedMarkers]);
+
+  // Re-render markers when zoom crosses threshold (clustered <-> spiderfied)
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+
+    const handleZoomEnd = () => {
+      if (!map.current || hazardClusters.current.size === 0) return;
+
+      const zoom = map.current.getZoom();
+      const MIN_ZOOM_THRESHOLD = 12;
+      const SPIDERFY_ZOOM_THRESHOLD = 18;
+
+      const currentState = zoom < MIN_ZOOM_THRESHOLD
+        ? 'hidden'
+        : zoom >= SPIDERFY_ZOOM_THRESHOLD
+          ? 'spiderfied'
+          : 'clustered';
+
+      // Only re-render when crossing threshold
+      if (currentState !== lastZoomState.current) {
+        renderMarkersForZoom();
+      }
+    };
+
+    map.current.on('zoomend', handleZoomEnd);
+
+    return () => {
+      if (map.current) {
+        map.current.off('zoomend', handleZoomEnd);
+      }
+    };
+  }, [mapLoaded, renderMarkersForZoom]);
+
   // Fetch all active hazards
   const fetchHazardsInView = useCallback(async () => {
     if (!map.current) return;
@@ -338,51 +645,40 @@ const CreateRouteMap = () => {
       const fetchedHazards = response.data.hazards || [];
       setHazards(fetchedHazards);
 
-      // Clear existing hazard markers
-      hazardMarkers.current.forEach(marker => marker.remove());
+      // Cluster hazards by proximity
+      const clusters = clusterHazards(fetchedHazards);
+      hazardClusters.current = clusters;
+
+      // Clean up old markers before rendering new ones
+      hazardMarkers.current.forEach(marker => {
+        try {
+          marker.remove();
+        } catch (e) {
+          // Marker may already be removed
+        }
+      });
       hazardMarkers.current = [];
 
-      // Add new hazard markers with labels
-      fetchedHazards.forEach((hazard) => {
-        // Create container for marker + label
-        const container = document.createElement('div');
-        container.className = 'hazard-marker-container';
+      // Reset zoom state to force re-render
+      lastZoomState.current = null;
 
-        // Create label (speech bubble)
-        const label = document.createElement('div');
-        label.className = 'hazard-label';
-        label.textContent = hazard.incident_type || 'Hazard';
-
-        // Create marker circle
-        const el = document.createElement('div');
-        el.className = 'hazard-marker';
-        el.style.width = '24px';
-        el.style.height = '24px';
-        el.style.borderRadius = '50%';
-        el.style.backgroundColor = '#DC143C';
-        el.style.border = '2px solid white';
-        el.style.cursor = 'pointer';
-        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-
-        // Assemble: label on top, marker below
-        container.appendChild(label);
-        container.appendChild(el);
-
-        container.addEventListener('click', () => {
-          setSelectedHazard(hazard);
-          setShowHazardModal(true);
-        });
-
-        const marker = new mapboxgl.Marker(container)
-          .setLngLat([hazard.lng, hazard.lat])
-          .addTo(map.current!);
-
-        hazardMarkers.current.push(marker);
-      });
+      // Render markers after brief delay (ensures map is ready)
+      setTimeout(() => {
+        renderMarkersForZoom();
+      }, 100);
     } catch (error) {
       console.error('Failed to fetch hazards:', error);
+      // Ensure clean state on error
+      hazardMarkers.current.forEach(marker => {
+        try {
+          marker.remove();
+        } catch (e) {
+          // Ignore
+        }
+      });
+      hazardMarkers.current = [];
     }
-  }, []);
+  }, [renderMarkersForZoom]);
 
   // ✅ NEW: Handle hazard update
   const handleUpdateHazard = async () => {
@@ -1406,28 +1702,37 @@ const CreateRouteMap = () => {
       </IonHeader>
       <IonContent className="route-builder-content">
         <div className="route-builder-container">
-          {/* View Toggle Button */}
+          {/* Input FAB Button */}
           <button
-            className="create-route-view-toggle"
-            onClick={() => {
-              const newMode = viewMode === 'map' ? 'selection' : 'map';
-              setViewMode(newMode);
-
-              // Refresh map when switching to map view to prevent black screen
-              if (newMode === 'map' && map.current) {
-                setTimeout(() => {
-                  console.log('[CreateRoute] Resizing map on view toggle');
-                  map.current?.resize();
-                }, 100);
-              }
-            }}
+            className="create-route-input-fab"
+            onClick={() => setShowInputModal(true)}
+            aria-label="Open route inputs"
           >
-            <IonIcon icon={viewMode === 'map' ? listOutline : mapOutline} />
-            {viewMode === 'map' ? 'Show inputs' : 'Show map'}
+            <IonIcon icon={listOutline} />
           </button>
 
-          {/* Selection Panel (Sidebar) */}
-          <div className={`create-route-sidebar ${viewMode === 'selection' ? 'visible' : ''}`}>
+          {/* Input Modal */}
+          <IonModal
+            isOpen={showInputModal}
+            onDidDismiss={() => setShowInputModal(false)}
+            initialBreakpoint={0.9}
+            breakpoints={[0, 0.5, 0.75, 0.9, 1]}
+            className="route-input-modal"
+          >
+            <IonHeader>
+              <IonToolbar>
+                <IonTitle>Create Route</IonTitle>
+                <IonButtons slot="end">
+                  <IonButton onClick={() => setShowInputModal(false)}>
+                    <IonIcon icon={closeCircleOutline} />
+                  </IonButton>
+                </IonButtons>
+              </IonToolbar>
+            </IonHeader>
+
+            <IonContent className="route-input-content">
+          {/* Selection Panel Content */}
+          <div className="create-route-sidebar-content">
             <div className="create-route-sidebar-header">
               <h1 className="create-route-main-title">Create a New Route</h1>
               <p className="create-route-subtitle">
@@ -1481,7 +1786,7 @@ const CreateRouteMap = () => {
                       const newPinMode = pinMode === 'start' ? null : 'start';
                       setPinMode(newPinMode);
                       if (newPinMode === 'start') {
-                        setViewMode('map');
+                        setShowInputModal(false); // Close modal when pinning
                       }
                     }}
                   >
@@ -1491,6 +1796,27 @@ const CreateRouteMap = () => {
                     />
                   </IonButton>
                 </div>
+
+                {/* Use My Location Button */}
+                <IonButton
+                  expand="block"
+                  fill="clear"
+                  className="use-location-btn"
+                  onClick={handleUseMyLocation}
+                  disabled={gettingLocation || pinMode === 'start'}
+                >
+                  {gettingLocation ? (
+                    <>
+                      <IonSpinner name="crescent" />
+                      <span style={{ marginLeft: '8px' }}>Getting location...</span>
+                    </>
+                  ) : (
+                    <>
+                      <IonIcon slot="start" icon={navigateOutline} />
+                      Use My Location
+                    </>
+                  )}
+                </IonButton>
 
                 {/* Autocomplete Suggestions */}
                 {showStartSuggestions && startSuggestions.length > 0 && (
@@ -1655,7 +1981,7 @@ const CreateRouteMap = () => {
                         const newPinMode = pinMode === 'end' ? null : 'end';
                         setPinMode(newPinMode);
                         if (newPinMode === 'end') {
-                          setViewMode('map');
+                          setShowInputModal(false); // Close modal when pinning
                         }
                       }}
                     >
@@ -1875,6 +2201,8 @@ const CreateRouteMap = () => {
               </div>
             )}
           </div>
+            </IonContent>
+          </IonModal>
 
           {/* Map Container */}
           <div className={`map-container ${pinMode ? 'pin-mode-active' : ''}`}>
@@ -1905,13 +2233,6 @@ const CreateRouteMap = () => {
                 title={showAccidentClusters ? 'Hide Accident Clusters' : 'Show Accident Clusters'}
               >
                 <IonIcon icon={warningOutline} />
-              </button>
-              <button
-                className="legend-toggle-btn"
-                onClick={() => setShowLegendModal(true)}
-                title="Map Legend"
-              >
-                <IonIcon icon={informationCircleOutline} />
               </button>
             </div>
 
@@ -2230,70 +2551,13 @@ const CreateRouteMap = () => {
           </IonContent>
         </IonModal>
 
-        {/* Map Legend Modal */}
-        <IonModal
-          isOpen={showLegendModal}
-          onDidDismiss={() => setShowLegendModal(false)}
-          className="legend-modal"
-          breakpoints={[0, 0.6, 0.75]}
-          initialBreakpoint={0.6}
-        >
-          <IonHeader>
-            <IonToolbar>
-              <IonTitle>Map Legend</IonTitle>
-              <IonButtons slot="end">
-                <IonButton onClick={() => setShowLegendModal(false)}>
-                  <IonIcon icon={closeCircleOutline} />
-                </IonButton>
-              </IonButtons>
-            </IonToolbar>
-          </IonHeader>
-
-          <IonContent className="legend-modal-content">
-            <div className="legend-content-wrapper">
-              {/* User-Reported Hazards */}
-              <div className="legend-section">
-                <h4 className="legend-section-title">User-Reported Hazards</h4>
-                <div className="legend-item">
-                  <div className="legend-color-sample hazard-sample"></div>
-                  <div className="legend-item-text">
-                    <span className="legend-item-name">Active Hazard</span>
-                    <span className="legend-item-desc">Crimson Red</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Accident Clusters */}
-              <div className="legend-section">
-                <h4 className="legend-section-title">Accident Clusters (Historical Data)</h4>
-
-                <div className="legend-item">
-                  <div className="legend-color-sample cluster-low"></div>
-                  <div className="legend-item-text">
-                    <span className="legend-item-name">Low Severity</span>
-                    <span className="legend-item-desc">Yellow-Orange • &lt; 15 accidents</span>
-                  </div>
-                </div>
-
-                <div className="legend-item">
-                  <div className="legend-color-sample cluster-medium"></div>
-                  <div className="legend-item-text">
-                    <span className="legend-item-name">Medium Severity</span>
-                    <span className="legend-item-desc">Dark Orange • 15-29 accidents</span>
-                  </div>
-                </div>
-
-                <div className="legend-item">
-                  <div className="legend-color-sample cluster-high"></div>
-                  <div className="legend-item-text">
-                    <span className="legend-item-name">High Severity</span>
-                    <span className="legend-item-desc">Vivid Orange • ≥ 30 accidents</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </IonContent>
-        </IonModal>
+        {/* Unified Map Panel (Legend + Hazard List) */}
+        <UnifiedMapPanel
+          hazards={hazards}
+          mode="create-route"
+          onRecenter={handleRecenterFromPanel}
+          userToken={userToken}
+        />
       </IonContent>
     </IonPage>
   );

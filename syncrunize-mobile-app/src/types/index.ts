@@ -277,6 +277,7 @@ export interface HazardReport {
   description: string;
   lat: number;
   lng: number;
+  cached_address?: string | null; // Human-readable address from reverse geocoding
   image_url?: string | null;
   reported_at: string;
   severity_weight: number;

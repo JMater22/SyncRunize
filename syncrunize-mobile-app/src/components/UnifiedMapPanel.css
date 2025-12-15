@@ -1,0 +1,251 @@
+/* Mobile-Optimized Unified Map Panel */
+
+/* Floating Toggle Button - Mobile */
+.unified-panel-toggle-btn-mobile {
+  position: fixed;
+  bottom: 90px;
+  right: 16px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2dd55b 0%, #1fa845 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.unified-panel-toggle-btn-mobile:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.unified-panel-toggle-btn-mobile .panel-icon {
+  font-size: 28px;
+}
+
+.panel-count-badge-mobile {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ff4757;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Modal Content - Force Dark Theme */
+.unified-map-modal {
+  --border-radius: 20px 20px 0 0;
+}
+
+.unified-map-modal ion-toolbar {
+  --background: #000000;
+  --color: #ffffff;
+}
+
+.unified-map-modal ion-title {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.unified-panel-content-mobile {
+  --padding-top: 8px;
+  --padding-bottom: 16px;
+  --padding-start: 0;
+  --padding-end: 0;
+  --background: #000000;
+}
+
+/* Panel Sections - Force Dark Theme */
+.panel-section-mobile {
+  margin-bottom: 4px;
+  background: #000000;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.section-header-mobile {
+  width: 100%;
+  padding: 16px;
+  background: #000000;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  min-height: 56px; /* Minimum touch target */
+}
+
+.section-header-mobile:active {
+  background-color: #1a1a1a;
+}
+
+.section-title-mobile {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hazard-count-inline-mobile {
+  color: #2dd55b;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.section-header-mobile ion-icon {
+  font-size: 20px;
+  color: #666;
+}
+
+.section-content-mobile {
+  padding: 8px 16px 16px;
+}
+
+/* Legend Styles */
+.legend-category-mobile {
+  margin-bottom: 20px;
+}
+
+.legend-category-mobile:last-child {
+  margin-bottom: 0;
+}
+
+.legend-section-title-mobile {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 12px;
+}
+
+.legend-items-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.legend-item-mobile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #1a1a1a;
+  border-radius: 10px;
+  transition: background-color 0.2s ease;
+}
+
+.legend-item-mobile span {
+  font-size: 14px;
+  color: #e0e0e0;
+  line-height: 1.4;
+}
+
+.legend-marker-mobile {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Hazard Marker Legend Styles */
+.legend-marker-mobile.hazard-marker-legend {
+  background: #DC143C;
+}
+
+.legend-marker-mobile.hazard-marker-fading {
+  background: #FFA07A;
+  opacity: 0.6;
+}
+
+/* Accident Cluster Legend Styles */
+.legend-marker-mobile.cluster-low {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+}
+
+.legend-marker-mobile.cluster-medium {
+  background: linear-gradient(135deg, #FF8C00 0%, #FF6347 100%);
+}
+
+.legend-marker-mobile.cluster-high {
+  background: linear-gradient(135deg, #FF4500 0%, #DC143C 100%);
+}
+
+/* Hazard List Section */
+.hazard-list-section-mobile {
+  padding: 0;
+  padding-bottom: 16px;
+}
+
+.no-hazards-mobile {
+  text-align: center;
+  padding: 32px 16px;
+  color: #95a5a6;
+}
+
+.no-hazards-mobile p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .unified-map-modal ion-toolbar {
+    --background: #000000;
+    --color: #ffffff;
+  }
+
+  .panel-section-mobile {
+    background: #000000;
+    border-bottom-color: #1a1a1a;
+  }
+
+  .section-header-mobile {
+    background: #000000;
+  }
+
+  .section-header-mobile:active {
+    background-color: #1a1a1a;
+  }
+
+  .section-title-mobile,
+  .legend-section-title-mobile {
+    color: #ffffff;
+  }
+
+  .legend-item-mobile {
+    background: #1a1a1a;
+  }
+
+  .legend-item-mobile span {
+    color: #e0e0e0;
+  }
+
+  .no-hazards-mobile {
+    color: #666;
+  }
+
+  .hazard-count-inline-mobile {
+    color: #2dd55b;
+  }
+
+  .section-header-mobile ion-icon {
+    color: #666;
+  }
+}

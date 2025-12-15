@@ -41,7 +41,7 @@ export const calculateDecayedTrustScore = (hazard) => {
   return decayedScore;
 };
 
-// 🧩 Create a new hazard report with optional image
+// 🧩 Create a new hazard report with optional image and address
 export const create = async (data) => {
   try {
     const {
@@ -56,6 +56,7 @@ export const create = async (data) => {
       severity_weight = 0,
       status = "active",
       image_url = null, // ← Optional image URL
+      cached_address = null, // ← Optional human-readable address
     } = data;
 
     const { data: result, error } = await supabase
@@ -71,7 +72,8 @@ export const create = async (data) => {
         agreement_score,
         severity_weight,
         status,
-        image_url
+        image_url,
+        cached_address
       }])
       .select()
       .single();
@@ -138,7 +140,8 @@ export const updateHazard = async (report_id, user_id, updates) => {
     lng,
     severity_weight,
     image_url,
-    status
+    status,
+    cached_address
   } = updates;
 
   try {
@@ -166,6 +169,7 @@ export const updateHazard = async (report_id, user_id, updates) => {
     if (severity_weight !== null && severity_weight !== undefined) updateData.severity_weight = severity_weight;
     if (image_url !== null && image_url !== undefined) updateData.image_url = image_url;
     if (status !== null && status !== undefined) updateData.status = status;
+    if (cached_address !== null && cached_address !== undefined) updateData.cached_address = cached_address;
 
     // 3. Update the DB row
     const { data: result, error: updateError } = await supabase

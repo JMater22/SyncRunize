@@ -9,6 +9,7 @@ interface Hazard {
   description: string;
   lat: number;
   lng: number;
+  cached_address?: string | null; // Human-readable address from reverse geocoding
   reported_at: string;
   effective_reported_at?: string;
   trust_score: number;

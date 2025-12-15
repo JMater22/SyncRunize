@@ -1002,7 +1002,7 @@
 @media (max-width: 768px) {
   .route-builder-container {
     flex-direction: column;
-    min-height: 100vh;
+    min-height: auto;
   }
 
   .sidebar {
@@ -1014,7 +1014,6 @@
   .map-container {
     flex: 1;
     min-height: 100vh;
-    height: 100vh;
   }
 
   .pin-mode-indicator {

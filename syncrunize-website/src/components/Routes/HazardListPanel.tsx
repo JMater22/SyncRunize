@@ -13,6 +13,7 @@ interface Hazard {
   description: string;
   lat: number;
   lng: number;
+  cached_address?: string | null; // Human-readable address from reverse geocoding
   reported_at: string;
   effective_reported_at?: string;
   trust_score: number;
@@ -291,13 +292,27 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
   };
 
   // If embedded mode, render only the hazard list items without wrapper
-  const renderHazardItems = () => (
-    hazards.length === 0 ? (
-      <div className="no-hazards">
-        <p>No hazards found in this area</p>
-      </div>
-    ) : (
-      hazards.map((hazard) => {
+  const renderHazardItems = () => {
+    // Sort hazards based on mode
+    const sortedHazards = [...hazards].sort((a, b) => {
+      if (mode === 'create-route') {
+        // Sort by newest first (reported_at descending)
+        const dateA = new Date(a.effective_reported_at || a.reported_at).getTime();
+        const dateB = new Date(b.effective_reported_at || b.reported_at).getTime();
+        return dateB - dateA; // Newest first
+      } else {
+        // Sort by nearest first (distance ascending)
+        return (a.distance_km || 0) - (b.distance_km || 0);
+      }
+    });
+
+    return (
+      sortedHazards.length === 0 ? (
+        <div className="no-hazards">
+          <p>No hazards found in this area</p>
+        </div>
+      ) : (
+        sortedHazards.map((hazard) => {
                 const isExpanded = expandedHazardId === hazard.report_id;
                 const isConfirmed = userConfirmations.has(hazard.report_id);
                 const confirmCount = confirmationCounts.get(hazard.report_id) || 0;
@@ -338,8 +353,8 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
                         <p className="hazard-description">{hazard.description}</p>
 
                         <div className="hazard-meta">
-                          <span className="meta-item">
-                            📍 {hazard.lat.toFixed(4)}, {hazard.lng.toFixed(4)}
+                          <span className="meta-item" title={`${hazard.lat.toFixed(4)}, ${hazard.lng.toFixed(4)}`}>
+                            📍 {hazard.cached_address || `${hazard.lat.toFixed(4)}, ${hazard.lng.toFixed(4)}`}
                           </span>
                           <span className={`severity-badge ${getSeverityColor(hazard.severity_weight)}`}>
                             Severity: {(hazard.severity_weight * 100).toFixed(0)}%
@@ -381,8 +396,9 @@ const HazardListPanel: React.FC<HazardListPanelProps> = ({
                   </div>
                 );
               })
-    )
-  );
+      )
+    );
+  };
 
   // Embedded mode: render only the hazard items
   if (embedded) {

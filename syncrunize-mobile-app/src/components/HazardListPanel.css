@@ -1,0 +1,290 @@
+/* Mobile-Optimized Hazard List Panel */
+
+/* Hazard Item - Mobile */
+.hazard-item-mobile {
+  background: white;
+  border-radius: 12px;
+  margin: 8px 16px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.hazard-item-mobile.fading {
+  opacity: 0.7;
+  border-left: 4px solid #FFA07A;
+}
+
+.hazard-item-mobile.expanded {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Hazard Header - Mobile */
+.hazard-item-header-mobile {
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  min-height: 72px; /* Larger touch target */
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
+}
+
+.hazard-item-header-mobile:active {
+  background-color: #f8f9fa;
+}
+
+.hazard-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
+}
+
+.reporter-avatar-mobile {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #e0e0e0;
+}
+
+.reporter-avatar-icon-mobile {
+  font-size: 40px;
+  color: #95a5a6;
+}
+
+.hazard-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.hazard-type-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hazard-icon-mobile {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.hazard-type-text-mobile {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2c3e50;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hazard-time-mobile {
+  font-size: 12px;
+  color: #95a5a6;
+}
+
+.severity-chip-mobile {
+  height: 28px;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Hazard Details - Mobile */
+.hazard-item-details-mobile {
+  padding: 0 16px 16px;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hazard-description-mobile {
+  font-size: 14px;
+  color: #34495e;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.hazard-location-mobile {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.hazard-location-mobile ion-icon {
+  font-size: 18px;
+  color: #2dd55b;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.hazard-location-mobile span {
+  font-size: 13px;
+  color: #2c3e50;
+  line-height: 1.4;
+}
+
+/* Confirmation Section - Mobile */
+.confirmation-section-mobile {
+  margin-bottom: 16px;
+}
+
+.confirmation-stats-mobile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.confirmation-count-mobile {
+  font-size: 13px;
+  font-weight: 600;
+  color: #34495e;
+}
+
+.last-confirmed-mobile {
+  font-size: 12px;
+  color: #95a5a6;
+}
+
+/* Confirmer Avatars - Mobile */
+.confirmer-avatars-mobile {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.confirmer-avatar-mobile {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid white;
+  object-fit: cover;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.confirmer-avatar-icon-mobile {
+  font-size: 32px;
+  color: #95a5a6;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: white;
+}
+
+.confirmer-more-mobile {
+  font-size: 12px;
+  color: #2dd55b;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+/* Action Buttons - Mobile */
+.hazard-actions-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.confirm-btn-mobile,
+.recenter-btn-mobile {
+  margin: 0;
+  height: 44px; /* iOS-recommended touch target */
+  font-size: 14px;
+  font-weight: 600;
+  --border-radius: 10px;
+}
+
+.confirm-btn-mobile ion-icon,
+.recenter-btn-mobile ion-icon {
+  font-size: 20px;
+}
+
+/* No Hazards State */
+.no-hazards-mobile {
+  text-align: center;
+  padding: 48px 24px;
+  color: #95a5a6;
+}
+
+.no-hazards-mobile p {
+  margin: 0;
+  font-size: 15px;
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .hazard-item-mobile {
+    background: #0a0a0a;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  .hazard-item-mobile.expanded {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  }
+
+  .hazard-item-header-mobile:active {
+    background-color: #1a1a1a;
+  }
+
+  .hazard-type-text-mobile,
+  .hazard-description-mobile,
+  .hazard-location-mobile span,
+  .confirmation-count-mobile {
+    color: #ffffff;
+  }
+
+  .hazard-location-mobile {
+    background: #1a1a1a;
+  }
+
+  .hazard-time-mobile,
+  .last-confirmed-mobile,
+  .no-hazards-mobile {
+    color: #666;
+  }
+
+  .reporter-avatar-mobile {
+    background: #1a1a1a;
+  }
+
+  .confirmer-avatar-mobile,
+  .confirmer-avatar-icon-mobile {
+    border-color: #0a0a0a;
+    background: #0a0a0a;
+  }
+
+  .confirmer-more-mobile {
+    color: #2dd55b;
+  }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: max(0px)) {
+  .hazard-item-mobile:first-child {
+    margin-top: max(8px, env(safe-area-inset-top));
+  }
+
+  .hazard-item-mobile:last-child {
+    margin-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+}

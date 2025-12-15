@@ -4,6 +4,7 @@ import { computeAgreement, computeTrust } from "../services/hazard_service.js";
 import { summarizeHazard, summarizeNearbyHazards } from "../services/ai_service.js";
 import { sendAlertPush } from "../services/push_service.js";
 import * as AuditService from "../services/audit_service.js";
+import { reverseGeocode } from "../services/geocoding_service.js";
 
 // ✅ NEW: No file upload logic needed - images uploaded directly from frontend to Supabase
 
@@ -80,7 +81,16 @@ export const createHazard = async (req, res) => {
       return res.status(400).json({ error: "Longitude must be between -180 and 180." });
     }
 
-    // Insert into DB with image_url already present
+    // Reverse geocode coordinates to get human-readable address
+    console.log('[Hazard] Reverse geocoding coordinates...');
+    const geocodeStart = Date.now();
+    const cached_address = await reverseGeocode(hazardData.lng, hazardData.lat);
+    console.log(`[Hazard] Geocoding completed in ${Date.now() - geocodeStart}ms: ${cached_address || 'null'}`);
+
+    // Add cached_address to hazard data
+    hazardData.cached_address = cached_address;
+
+    // Insert into DB with image_url and cached_address
     console.log('[Hazard] Inserting hazard into DB...');
     const dbInsertStart = Date.now();
     const newHazard = await Hazard.create(hazardData);
@@ -492,6 +502,14 @@ export const updateHazard = async (req, res) => {
 
     if ((updates.lat && isNaN(updates.lat)) || (updates.lng && isNaN(updates.lng))) {
       return res.status(400).json({ error: "Invalid latitude or longitude." });
+    }
+
+    // If coordinates changed, reverse geocode to update cached_address
+    if (updates.lat && updates.lng && (updates.lat !== oldHazard.lat || updates.lng !== oldHazard.lng)) {
+      console.log('[Hazard] Coordinates changed, reverse geocoding new location...');
+      const cached_address = await reverseGeocode(updates.lng, updates.lat);
+      updates.cached_address = cached_address;
+      console.log(`[Hazard] New address: ${cached_address || 'null'}`);
     }
 
     // ✅ NEW: Extract optional reason for audit log
