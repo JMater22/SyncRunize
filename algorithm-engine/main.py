@@ -202,8 +202,11 @@ def calculate_route_risk(coordinates: List[Tuple[float, float]], hazards: List[d
 
                 # Increased base risk multiplier from 100 to 300 for stronger impact
                 base_risk = severity * 300
-                trust_multiplier = 0.5 + (trust * 0.5)
-                agreement_multiplier = 0.5 + (agreement * 0.5)
+
+                # Solution 2: Uniform penalty - treat all hazards equally
+                # Goal: Hazard awareness and avoidance regardless of trust/agreement
+                trust_multiplier = 1.0
+                agreement_multiplier = 1.0
 
                 hazard_risk = base_risk * trust_multiplier * agreement_multiplier
 
@@ -241,8 +244,10 @@ def create_avoidance_polygons(hazards: List[dict]) -> List[dict]:
         agreement = hazard.get("agreement_score", 0.5)
 
         # Calculate composite score (0 to 1 scale) - same logic as risk calculation
-        trust_multiplier = 0.5 + (trust * 0.5)  # 0.5 to 1.0
-        agreement_multiplier = 0.5 + (agreement * 0.5)  # 0.5 to 1.0
+        # Solution 2: Uniform penalty - treat all hazards equally
+        # Goal: Hazard awareness and avoidance regardless of trust/agreement
+        trust_multiplier = 1.0
+        agreement_multiplier = 1.0
         composite_score = severity * trust_multiplier * agreement_multiplier
 
         # Determine avoidance radius based on composite score
