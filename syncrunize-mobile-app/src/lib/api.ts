@@ -15,49 +15,169 @@ let cachedSession: { access_token: string; expires_at?: number } | null = null;
 let lastSessionFetch = 0;
 const SESSION_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+// Mutex to prevent concurrent refresh attempts
+let isRefreshing = false;
+let refreshPromise: Promise<void> | null = null;
+
+// Track consecutive failures to distinguish transient vs permanent issues
+let consecutiveRefreshFailures = 0;
+const MAX_CONSECUTIVE_FAILURES = 3; // Show warning only after 3 consecutive failures
+
+// Constants for retry logic
+const REFRESH_TIMEOUT_MS = 3000; // Reduced from 5s to 3s for faster failure detection
+const MAX_REFRESH_RETRIES = 2; // Retry twice on timeout (3 total attempts)
+const RETRY_DELAY_BASE_MS = 1000; // Exponential backoff: 1s, 2s
+const MAX_REFRESH_AGE_MS = 30000; // Consider refresh stuck if running for >30s
+
 // Initialize session cache with timeout
-const refreshSessionCache = async () => {
-  try {
-    // Add 5 second timeout to prevent hanging
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Session refresh timeout')), 5000)
-    );
+const refreshSessionCache = async (): Promise<void> => {
+  // If already refreshing, wait for the existing refresh to complete
+  if (isRefreshing && refreshPromise) {
+    console.log('[API] Refresh already in progress - waiting for completion');
+    return refreshPromise;
+  }
 
-    const sessionPromise = supabase.auth.getSession();
+  // Set mutex flag and track start time
+  isRefreshing = true;
+  refreshStartTime = Date.now();
 
-    const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+  // Create the refresh promise
+  refreshPromise = (async () => {
+    let lastError: Error | null = null;
 
-    // ✅ FIX: Auto-logout when refresh token expires
-    if (!session || !session.access_token) {
-      console.warn('[API] Refresh token expired - triggering auto-logout');
-      cachedSession = null;
-      lastSessionFetch = Date.now();
-
-      // Show toast notification for testing/debugging
-      ToastService.warning('Session expired. Please log in again.', 5000);
-
-      // Trigger logout to clear all auth state and redirect to login
+    // Retry loop with exponential backoff
+    for (let attempt = 0; attempt <= MAX_REFRESH_RETRIES; attempt++) {
       try {
-        await supabase.auth.signOut();
-      } catch (signOutErr) {
-        console.error('[API] Auto-logout failed:', signOutErr);
-      }
-      return;
-    }
+        if (attempt > 0) {
+          // Exponential backoff: 1s, 2s, 4s...
+          const delayMs = RETRY_DELAY_BASE_MS * Math.pow(2, attempt - 1);
+          console.log(`[API] Retry attempt ${attempt}/${MAX_REFRESH_RETRIES} after ${delayMs}ms delay`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
 
-    cachedSession = {
-      access_token: session.access_token,
-      expires_at: session.expires_at
-    };
-    lastSessionFetch = Date.now();
-    console.log('[API] Session cache refreshed');
-  } catch (err) {
-    console.error('[API] Error refreshing session cache:', err);
-    // If refresh fails, try to use existing cached session
-    if (!cachedSession) {
-      cachedSession = null;
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Session refresh timeout')), REFRESH_TIMEOUT_MS)
+        );
+
+        const sessionPromise = supabase.auth.getSession();
+
+        const { data: { session }, error } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]) as any;
+
+        // Check for Supabase errors
+        if (error) {
+          throw new Error(`Supabase auth error: ${error.message}`);
+        }
+
+        // SUCCESS: Session retrieved
+        if (session && session.access_token) {
+          cachedSession = {
+            access_token: session.access_token,
+            expires_at: session.expires_at
+          };
+          lastSessionFetch = Date.now();
+          consecutiveRefreshFailures = 0; // Reset failure counter on success
+
+          console.log('[API] Session cache refreshed successfully');
+          return; // Exit retry loop
+        }
+
+        // No session but no error - could be logged out or refresh token expired
+        // Try one more time before giving up
+        if (attempt < MAX_REFRESH_RETRIES) {
+          lastError = new Error('Session is null - retrying');
+          continue;
+        }
+
+        // After all retries, session is still null - this is a permanent failure
+        console.warn('[API] Refresh token expired after all retries - triggering auto-logout');
+        cachedSession = null;
+        lastSessionFetch = Date.now();
+        consecutiveRefreshFailures++;
+
+        // Only show warning if we've had multiple consecutive failures
+        // This prevents false positives from single transient issues
+        if (consecutiveRefreshFailures >= MAX_CONSECUTIVE_FAILURES) {
+          ToastService.warning('Session expired. Please log in again.', 5000);
+
+          // Trigger logout
+          try {
+            await supabase.auth.signOut();
+          } catch (signOutErr) {
+            console.error('[API] Auto-logout failed:', signOutErr);
+          }
+        } else {
+          console.log(`[API] Consecutive failure ${consecutiveRefreshFailures}/${MAX_CONSECUTIVE_FAILURES} - not showing warning yet`);
+        }
+
+        return;
+
+      } catch (err: any) {
+        lastError = err;
+        console.error(`[API] Session refresh attempt ${attempt + 1} failed:`, err.message);
+
+        // If this is the last attempt, handle the failure
+        if (attempt === MAX_REFRESH_RETRIES) {
+          // Timeout or network error - this is likely transient
+          if (err.message.includes('timeout') || err.message.includes('network')) {
+            console.warn('[API] Session refresh failed due to timeout/network - checking cached session');
+            consecutiveRefreshFailures++;
+
+            // Check if cached session is still valid (not expired)
+            const now = Date.now();
+            const tokenExpired = cachedSession?.expires_at
+              ? (cachedSession.expires_at * 1000) <= now
+              : true; // Assume expired if no expiry time
+
+            // Only keep cached session if it's not expired
+            if (cachedSession && !tokenExpired) {
+              console.log('[API] Using valid cached session as fallback');
+              lastSessionFetch = Date.now(); // Update timestamp to prevent immediate retry
+            } else {
+              // Token is expired or missing - force clear to prevent 401 cascade
+              if (cachedSession && tokenExpired) {
+                console.warn('[API] Cached session is expired - clearing to prevent 401 cascade');
+              }
+              cachedSession = null;
+              lastSessionFetch = 0; // Allow immediate retry on next request
+
+              // Only show warning after multiple consecutive failures
+              if (consecutiveRefreshFailures >= MAX_CONSECUTIVE_FAILURES) {
+                ToastService.warning('Unable to refresh session. Please check your connection.', 4000);
+              }
+            }
+          } else {
+            // Other errors (auth errors, etc) - treat as potentially permanent
+            console.error('[API] Session refresh failed with auth error:', err);
+            cachedSession = null;
+            lastSessionFetch = Date.now();
+            consecutiveRefreshFailures++;
+
+            if (consecutiveRefreshFailures >= MAX_CONSECUTIVE_FAILURES) {
+              ToastService.warning('Session expired. Please log in again.', 5000);
+
+              try {
+                await supabase.auth.signOut();
+              } catch (signOutErr) {
+                console.error('[API] Auto-logout failed:', signOutErr);
+              }
+            }
+          }
+        }
+        // Continue to next retry attempt
+      }
     }
-    lastSessionFetch = Date.now(); // Still update timestamp to avoid retry loop
+  })();
+
+  try {
+    await refreshPromise;
+  } finally {
+    // Always clear mutex when done
+    isRefreshing = false;
+    refreshPromise = null;
   }
 };
 
@@ -66,7 +186,47 @@ export const clearSessionCache = () => {
   console.log('[API] Clearing session cache');
   cachedSession = null;
   lastSessionFetch = 0;
+  consecutiveRefreshFailures = 0; // Reset failure counter on explicit cache clear
+  isRefreshing = false; // Reset mutex
+  refreshPromise = null; // Clear any pending refresh
 };
+
+// ✅ FIX: Export function to force reset refresh state (emergency recovery)
+export const resetRefreshState = () => {
+  console.warn('[API] Force resetting refresh state');
+  isRefreshing = false;
+  refreshPromise = null;
+  // Don't clear cached session or failure counter - just unlock the mutex
+};
+
+// ✅ FIX: Detect and recover from stuck refresh when app returns from background
+// Track when refresh started to detect stuck refreshes
+let refreshStartTime = 0;
+
+// Setup app state listener for mobile (Capacitor)
+if (typeof window !== 'undefined' && (window as any).Capacitor) {
+  import('@capacitor/app').then(({ App }) => {
+    App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        console.log('[API] App returned to foreground');
+
+        // Check if refresh is stuck (running for >30 seconds)
+        const refreshAge = Date.now() - refreshStartTime;
+        if (isRefreshing && refreshAge > MAX_REFRESH_AGE_MS) {
+          console.warn(`[API] Refresh was stuck for ${(refreshAge / 1000).toFixed(1)}s - resetting`);
+          resetRefreshState();
+
+          // Force a fresh session check
+          cachedSession = null;
+          lastSessionFetch = 0;
+        }
+      }
+    });
+    console.log('[API] App state listener registered');
+  }).catch(err => {
+    console.log('[API] Capacitor not available (likely web environment):', err.message);
+  });
+}
 
 // Attach Supabase JWT to every request
 api.interceptors.request.use(async (config) => {
@@ -169,6 +329,7 @@ api.interceptors.response.use(
           // @ts-ignore - TypeScript cannot track that refreshSessionCache modifies cachedSession
           if (cachedSession !== null && cachedSession.access_token) {
             console.log('[API] Token refreshed successfully - retrying request');
+            consecutiveRefreshFailures = 0; // Reset on successful refresh
             error.config.headers = error.config.headers || {};
             // @ts-ignore
             error.config.headers.Authorization = `Bearer ${cachedSession.access_token}`;

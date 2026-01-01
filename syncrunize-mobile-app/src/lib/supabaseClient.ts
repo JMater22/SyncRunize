@@ -33,6 +33,53 @@ export const uploadImageToSupabase = async (
 
     console.log(`[Supabase] Uploading to: ${storagePath} (${(blob.size / 1024).toFixed(0)}KB)`);
 
+    // ✅ FIX: Proactively refresh session before upload to prevent auth failures on mobile
+    try {
+      console.log('[Supabase] Checking session before upload...');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.warn('[Supabase] Session check error:', sessionError);
+        // Try to refresh session
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          console.error('[Supabase] Session refresh failed:', refreshError);
+          throw new Error('Authentication required. Please log in again.');
+        }
+        console.log('[Supabase] Session refreshed successfully before upload');
+      } else if (!session) {
+        console.warn('[Supabase] No active session - attempting refresh');
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          throw new Error('Authentication required. Please log in again.');
+        }
+        console.log('[Supabase] Session refreshed successfully before upload');
+      } else {
+        // Check if token is close to expiry (within 5 minutes)
+        const expiresAt = session.expires_at;
+        if (expiresAt) {
+          const timeToExpiry = expiresAt * 1000 - Date.now();
+          const fiveMinutes = 5 * 60 * 1000;
+
+          if (timeToExpiry < fiveMinutes) {
+            console.log(`[Supabase] Token expires in ${(timeToExpiry / 1000 / 60).toFixed(1)} minutes - refreshing`);
+            const { error: refreshError } = await supabase.auth.refreshSession();
+            if (refreshError) {
+              console.warn('[Supabase] Proactive refresh failed:', refreshError);
+              // Continue anyway - autoRefreshToken will handle it
+            } else {
+              console.log('[Supabase] Session proactively refreshed before upload');
+            }
+          } else {
+            console.log('[Supabase] Session is valid, proceeding with upload');
+          }
+        }
+      }
+    } catch (authCheck) {
+      console.warn('[Supabase] Auth check failed, proceeding with upload (autoRefresh will handle):', authCheck);
+      // Don't fail the upload - let Supabase's autoRefreshToken handle it
+    }
+
     // ✅ PHASE 3: Milestone-based progress (no fake simulation)
     try {
       // 0% - Starting upload
