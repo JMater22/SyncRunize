@@ -385,8 +385,8 @@ const handleSubmit = async (e: React.FormEvent) => {
                   <IonButton
                     expand="block"
                     className="download-apk-button"
-                    href="/downloads/SyncRunize-v1.0.21.apk"
-                    download="SyncRunize-v1.0.21.apk"
+                    href="/downloads/SyncRunize-v1.0.22.apk"
+                    download="SyncRunize-v1.0.22.apk"
                     style={{
                       '--background': '#7cb342',
                       '--background-hover': '#689f38',

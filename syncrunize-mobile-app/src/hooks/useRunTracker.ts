@@ -413,8 +413,9 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
           lng: lastSample.lng,
         });
       })
-      .catch((err) => {
-        console.warn('[RunTracker] Batch alert polling failed', err);
+      .catch(() => {
+        // ✅ FIX: Completely silent failures during runs - don't interrupt user
+        // Hazard polling is best-effort; run tracking continues regardless
       })
       .finally(() => {
         state.pending = false;
@@ -426,6 +427,13 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     smoothingStateRef.current = createSmoothingState(); // Reset Kalman filter state
     runSessionAlertCache.current.clear(); // ✅ Clear per-run alert cache
     dispatch({ type: 'START' });
+
+    // ✅ FIX: Set run status in sessionStorage to suppress session warnings during runs
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('runStatus', 'RUNNING');
+      console.log('[RunTracker] Run status set to RUNNING - session warnings will be suppressed');
+    }
+
     // ✅ TTS: Notify user that run tracking has started
     speakText('Run tracking started. Stay safe!').catch(() => undefined);
   }, [dispatch]);
@@ -433,6 +441,13 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
   const pauseRun = useCallback(() => {
     if (session.status !== 'RUNNING') return;
     dispatch({ type: 'PAUSE', at: Date.now() });
+
+    // ✅ FIX: Clear run status when paused to allow session warnings again
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('runStatus');
+      console.log('[RunTracker] Run paused - session warnings enabled');
+    }
+
     // ✅ TTS: Notify user that tracking is paused
     speakText('Tracking paused.').catch(() => undefined);
   }, [dispatch, session.status]);
@@ -440,6 +455,13 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
   const resumeRun = useCallback(() => {
     if (session.status !== 'PAUSED') return;
     dispatch({ type: 'RESUME', at: Date.now() });
+
+    // ✅ FIX: Set run status back to RUNNING when resumed
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('runStatus', 'RUNNING');
+      console.log('[RunTracker] Run resumed - session warnings suppressed');
+    }
+
     // ✅ TTS: Notify user that tracking has resumed
     speakText('Resumed. Keep going!').catch(() => undefined);
   }, [dispatch, session.status]);
@@ -448,6 +470,12 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     if (session.status === 'RUNNING' || session.status === 'PAUSED') {
       console.log('🏃 [RunTracker] 🔴 Run state: FINISHED');
       dispatch({ type: 'FINISH', at: Date.now() });
+
+      // ✅ FIX: Clear run status when finished to allow session warnings again
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('runStatus');
+        console.log('[RunTracker] Run finished - session warnings enabled');
+      }
     }
   }, [dispatch, session.status]);
 
@@ -462,6 +490,12 @@ export const useRunTracker = (options: UseRunTrackerOptions = {}) => {
     hazardAlertState.current.cache.clear();
     trafficAlertState.current.cache.clear();
     runSessionAlertCache.current.clear(); // ✅ Clear per-run alert cache
+
+    // ✅ FIX: Clear run status when discarded to allow session warnings again
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('runStatus');
+      console.log('[RunTracker] Run discarded - session warnings enabled');
+    }
   }, [resetSession, stopSampler, clearTimer, clearStorage]);
 
   const recordRun = useCallback(async (

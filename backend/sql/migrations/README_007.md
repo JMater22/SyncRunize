@@ -1,4 +1,4 @@
-# Migration 007: Add Cached Address to Hazard Reports
+    # Migration 007: Add Cached Address to Hazard Reports
 
 ## What This Does
 Adds a `cached_address` column to the `hazard_reports` table to store human-readable addresses from reverse geocoding (e.g., "123 Rizal Ave, Manila").

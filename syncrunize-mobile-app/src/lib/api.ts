@@ -29,6 +29,73 @@ const MAX_REFRESH_RETRIES = 2; // Retry twice on timeout (3 total attempts)
 const RETRY_DELAY_BASE_MS = 1000; // Exponential backoff: 1s, 2s
 const MAX_REFRESH_AGE_MS = 30000; // Consider refresh stuck if running for >30s
 
+// ✅ FIX: Initialize session cache on app load to prevent "session expired within seconds" issue
+let isInitialized = false;
+
+const initializeSessionCache = async (): Promise<void> => {
+  if (isInitialized) return;
+
+  try {
+    console.log('[API] Initializing session cache on app load...');
+    const { data: { session }, error } = await supabase.auth.getSession();
+
+    if (error) {
+      console.warn('[API] Session initialization failed:', error);
+      return;
+    }
+
+    if (session?.access_token) {
+      cachedSession = {
+        access_token: session.access_token,
+        expires_at: session.expires_at
+      };
+      lastSessionFetch = Date.now();
+      isInitialized = true;
+      consecutiveRefreshFailures = 0; // Reset on successful initialization
+      console.log('[API] Session cache initialized successfully');
+    } else {
+      console.log('[API] No active session found during initialization');
+    }
+  } catch (err) {
+    console.warn('[API] Session initialization error:', err);
+  }
+};
+
+// ✅ FIX: Reset failure counter and cache on login to prevent false "session expired" warnings
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log('[API] Auth state changed:', event);
+
+  if (event === 'SIGNED_IN' && session) {
+    console.log('[API] User signed in - resetting session state');
+    consecutiveRefreshFailures = 0; // Reset failure counter
+    cachedSession = {
+      access_token: session.access_token,
+      expires_at: session.expires_at
+    };
+    lastSessionFetch = Date.now();
+    isInitialized = true;
+  } else if (event === 'SIGNED_OUT') {
+    console.log('[API] User signed out - clearing session state');
+    cachedSession = null;
+    lastSessionFetch = 0;
+    consecutiveRefreshFailures = 0;
+    isInitialized = false;
+  } else if (event === 'TOKEN_REFRESHED' && session) {
+    console.log('[API] Token refreshed via auth state change');
+    cachedSession = {
+      access_token: session.access_token,
+      expires_at: session.expires_at
+    };
+    lastSessionFetch = Date.now();
+    consecutiveRefreshFailures = 0; // Reset on successful refresh
+  }
+});
+
+// Call initialization on module load
+if (typeof window !== 'undefined') {
+  initializeSessionCache();
+}
+
 // Initialize session cache with timeout
 const refreshSessionCache = async (): Promise<void> => {
   // If already refreshing, wait for the existing refresh to complete
@@ -100,14 +167,21 @@ const refreshSessionCache = async (): Promise<void> => {
 
         // Only show warning if we've had multiple consecutive failures
         // This prevents false positives from single transient issues
-        if (consecutiveRefreshFailures >= MAX_CONSECUTIVE_FAILURES) {
-          ToastService.warning('Session expired. Please log in again.', 5000);
+        // ✅ FIX: Don't show warnings during active runs to avoid interrupting users
+        const isRunActive = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('runStatus') === 'RUNNING';
 
-          // Trigger logout
-          try {
-            await supabase.auth.signOut();
-          } catch (signOutErr) {
-            console.error('[API] Auto-logout failed:', signOutErr);
+        if (consecutiveRefreshFailures >= MAX_CONSECUTIVE_FAILURES) {
+          if (!isRunActive) {
+            ToastService.warning('Session expired. Please log in again.', 5000);
+
+            // Trigger logout
+            try {
+              await supabase.auth.signOut();
+            } catch (signOutErr) {
+              console.error('[API] Auto-logout failed:', signOutErr);
+            }
+          } else {
+            console.log('[API] Session expired but run is active - suppressing warning');
           }
         } else {
           console.log(`[API] Consecutive failure ${consecutiveRefreshFailures}/${MAX_CONSECUTIVE_FAILURES} - not showing warning yet`);
@@ -145,8 +219,12 @@ const refreshSessionCache = async (): Promise<void> => {
               lastSessionFetch = 0; // Allow immediate retry on next request
 
               // Only show warning after multiple consecutive failures
-              if (consecutiveRefreshFailures >= MAX_CONSECUTIVE_FAILURES) {
+              // ✅ FIX: Don't show warnings during active runs
+              const isRunActive = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('runStatus') === 'RUNNING';
+              if (consecutiveRefreshFailures >= MAX_CONSECUTIVE_FAILURES && !isRunActive) {
                 ToastService.warning('Unable to refresh session. Please check your connection.', 4000);
+              } else if (isRunActive) {
+                console.log('[API] Network issue but run is active - suppressing warning');
               }
             }
           } else {
@@ -156,13 +234,19 @@ const refreshSessionCache = async (): Promise<void> => {
             lastSessionFetch = Date.now();
             consecutiveRefreshFailures++;
 
+            // ✅ FIX: Don't show warnings during active runs
+            const isRunActive = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('runStatus') === 'RUNNING';
             if (consecutiveRefreshFailures >= MAX_CONSECUTIVE_FAILURES) {
-              ToastService.warning('Session expired. Please log in again.', 5000);
+              if (!isRunActive) {
+                ToastService.warning('Session expired. Please log in again.', 5000);
 
-              try {
-                await supabase.auth.signOut();
-              } catch (signOutErr) {
-                console.error('[API] Auto-logout failed:', signOutErr);
+                try {
+                  await supabase.auth.signOut();
+                } catch (signOutErr) {
+                  console.error('[API] Auto-logout failed:', signOutErr);
+                }
+              } else {
+                console.log('[API] Auth error but run is active - suppressing warning');
               }
             }
           }
@@ -343,15 +427,23 @@ api.interceptors.response.use(
 
       // If retry failed or this is already a retry, force logout
       console.log('[API] Authentication cannot be recovered - logging out');
-      ToastService.error('Session expired. Logging out...', 3000);
 
-      setTimeout(() => {
-        supabase.auth.signOut().then(() => {
-          window.location.href = '/log-in';
-        }).catch(() => {
-          window.location.href = '/log-in';
-        });
-      }, 1000);
+      // ✅ FIX: Don't show warnings or force logout during active runs
+      const isRunActive = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('runStatus') === 'RUNNING';
+
+      if (!isRunActive) {
+        ToastService.error('Session expired. Logging out...', 3000);
+
+        setTimeout(() => {
+          supabase.auth.signOut().then(() => {
+            window.location.href = '/log-in';
+          }).catch(() => {
+            window.location.href = '/log-in';
+          });
+        }, 1000);
+      } else {
+        console.log('[API] 401 error but run is active - suppressing logout');
+      }
 
       return Promise.reject(new Error('Authentication failed. Please log in again.'));
     }
