@@ -25,6 +25,7 @@
     "@capacitor/preferences": "^7.0.2",
     "@capacitor/push-notifications": "^7.0.3",
     "@capacitor/status-bar": "7.0.2",
+    "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4",
     "@ionic/react": "^8.5.0",
     "@ionic/react-router": "^8.5.0",
     "@mapbox/mapbox-sdk": "^0.16.2",

@@ -15,6 +15,7 @@ import LogoIcon from "../components/assets/SycnRunize-Logo.png";
 import { useHideTabBar } from "../hooks/useHideTabBar";
 import { supabase } from "../lib/supabaseClient";
 import { getAuthRedirectUrl } from "../lib/authRedirect";
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 
 
 const GetStarted: React.FC = () => {
@@ -52,6 +53,11 @@ const GetStarted: React.FC = () => {
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
+  // Initialize GoogleAuth
+  useEffect(() => {
+    GoogleAuth.initialize();
+  }, []);
+
   // Listen for auth state changes and redirect when logged in
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -68,19 +74,42 @@ const GetStarted: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     try {
-      const redirectTo = getAuthRedirectUrl('/home');
-      const { error } = await supabase.auth.signInWithOAuth({
+      setSubmitting(true);
+      setError(null);
+
+      // Use native Google Sign-In SDK
+      const googleUser = await GoogleAuth.signIn();
+
+      if (!googleUser || !googleUser.authentication?.idToken) {
+        throw new Error('Failed to get Google authentication token');
+      }
+
+      // Sign in to Supabase with Google ID token
+      const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
-        options: redirectTo ? { redirectTo } : {},
+        token: googleUser.authentication.idToken,
       });
 
       if (error) {
-        console.error('[GetStarted] Google OAuth error:', error);
+        console.error('[GetStarted] Supabase auth error:', error);
         setError(error.message);
+        setSubmitting(false);
+        return;
       }
+
+      if (!data.session) {
+        setError("Failed to establish session. Please try again.");
+        setSubmitting(false);
+        return;
+      }
+
+      console.log('[GetStarted] Google sign-in successful, waiting for auth state change event');
+      // Keep submitting=true, the auth listener will handle redirect
+
     } catch (err: any) {
       console.error('[GetStarted] Google sign-in error:', err);
       setError(err?.message || "Google sign-in failed");
+      setSubmitting(false);
     }
   };
 
