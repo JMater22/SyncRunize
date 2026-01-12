@@ -12,7 +12,12 @@
           "package_name": "com.app.syncrunize"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "92219394673-blv9r5jusesa05f4djnvkaatmo4e6dr0.apps.googleusercontent.com",
+          "client_type": 1
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyARbWYL2siDTeovfYVqMrMmkM4_buITr3I"
