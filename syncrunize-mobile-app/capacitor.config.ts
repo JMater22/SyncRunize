@@ -15,7 +15,7 @@ const config: CapacitorConfig = {
     },
     GoogleAuth: {
       scopes: ['profile', 'email'],
-      serverClientId: '92219394673-blv9r5jusesa05f4djnvkaatmo4e6dr0.apps.googleusercontent.com',
+      serverClientId: '92219394673-4v48s4lbe6vei99rmo9gu73ag991chj7.apps.googleusercontent.com',
       forceCodeForRefreshToken: true,
     },
   },
